@@ -220,6 +220,49 @@ func (r *Router) HydraError(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.oauth2_error"))
 }
 
+// HydraLogout implements the Hydra OIDC logout flow. Hydra redirects the
+// user here with a logout_challenge; we destroy the local session, accept
+// the challenge, and redirect the user back (e.g. to the client's
+// post_logout_redirect_uri). See https://www.ory.sh/docs/hydra/concepts/logout
+func (r *Router) HydraLogout(c *fiber.Ctx) error {
+	challenge := c.Query("logout_challenge")
+
+	getparams := admin.NewGetLogoutRequestParams()
+	getparams.SetLogoutChallenge(challenge)
+	getparams.SetHTTPClient(r.hydraAdminHTTPClient)
+	getResponse, err := r.hydraClient.Admin.GetLogoutRequest(getparams)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"ip":    RemoteIP(c),
+		}).Error("Failed to validate hydra logout challenge")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_logout"))
+	}
+
+	// Destroy the local mokey session (also revokes the user's hydra
+	// authentication sessions when a session cookie is present)
+	r.logout(c)
+
+	acceptparams := admin.NewAcceptLogoutRequestParams()
+	acceptparams.SetLogoutChallenge(challenge)
+	acceptparams.SetHTTPClient(r.hydraAdminHTTPClient)
+	completedResponse, err := r.hydraClient.Admin.AcceptLogoutRequest(acceptparams)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"ip":    RemoteIP(c),
+		}).Error("Failed to accept hydra logout request")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_accept_logout"))
+	}
+
+	log.WithFields(log.Fields{
+		"subject": getResponse.Payload.Subject,
+		"ip":      RemoteIP(c),
+	}).Info("Completed hydra logout flow")
+
+	return c.Redirect(*completedResponse.Payload.RedirectTo)
+}
+
 func (r *Router) revokeHydraAuthenticationSession(username string, c *fiber.Ctx) error {
 	params := admin.NewRevokeAuthenticationSessionParams()
 	params.SetSubject(username)

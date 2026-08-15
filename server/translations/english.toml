@@ -146,6 +146,8 @@ sorry_page_not_found = "Sorry, the page you requested was not found"
 system_trouble = "We are currently experiencing some system trouble. If this problem persists, please contact the site administrator."
 
 [hydra]
+failed_to_validate_logout = "Failed to validate logout"
+failed_to_accept_logout = "Failed to accept logout"
 consent_without_challenge = "Consent without challenge"
 failed_to_validate_consent = "Failed to validate consent"
 access_denied = "Access denied"

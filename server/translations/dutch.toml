@@ -146,6 +146,8 @@ sorry_page_not_found = "Sorry, de pagina die je hebt aangevraagd is niet gevonde
 system_trouble = "We hebben momenteel wat systeemproblemen. Als dit probleem aanhoudt, neem dan contact op met de sitebeheerder."
 
 [hydra]
+failed_to_validate_logout = "Valideren van uitloggen mislukt"
+failed_to_accept_logout = "Accepteren van uitloggen mislukt"
 consent_without_challenge = "Toestemming zonder uitdaging"
 failed_to_validate_consent = "Mislukt bij het valideren van toestemming"
 access_denied = "Toegang geweigerd"

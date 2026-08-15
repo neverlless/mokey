@@ -126,6 +126,8 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/auth/verify/:token", r.AccountVerify)
 	app.Post("/auth/verify/:token", r.AccountVerify)
 	app.Post("/auth/logout", r.Logout)
+	// Hydra redirects the browser here with a logout_challenge (OIDC logout)
+	app.Get("/auth/logout", r.Logout)
 	app.Get("/auth/captcha/:id.png", r.Captcha)
 
 	// Account Settings

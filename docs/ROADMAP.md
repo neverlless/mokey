@@ -29,7 +29,7 @@ Priorities may shift based on feedback. Open an
 ## v1.3 — Feature gap
 
 - [ ] Self-manage email addresses: add, confirm, set default (ubccr#100)
-- [ ] Hydra logout endpoint — full OIDC logout flow (ubccr#75)
+- [x] Hydra logout endpoint — full OIDC logout flow (ubccr#75)
 - [ ] Documentation guide: mokey + Keycloak (ubccr#136)
 
 ## v2.0 — Ideas

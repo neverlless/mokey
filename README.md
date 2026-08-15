@@ -190,6 +190,18 @@ Any OAuth clients configured in Hydra will be authenticated via mokey using
 FreeIPA as the identity provider. For an example OAuth 2.0/OIDC client
 application see [here](examples/mokey-oidc/main.go).
 
+mokey also implements the [OIDC logout flow](https://www.ory.sh/docs/hydra/concepts/logout):
+point Hydra's `urls.logout` at mokey's `/auth/logout` endpoint and users will
+be redirected back to the client's `post_logout_redirect_uri` after logout:
+
+```yaml
+# hydra.yaml
+urls:
+  login: https://mokey.example.com/oauth/login
+  consent: https://mokey.example.com/oauth/consent
+  logout: https://mokey.example.com/auth/logout
+```
+
 ## Building from source
 
 First, you will need Go v1.21 or greater. Clone the repository:

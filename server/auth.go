@@ -71,6 +71,10 @@ func (r *Router) Login(c *fiber.Ctx) error {
 }
 
 func (r *Router) Logout(c *fiber.Ctx) error {
+	if viper.IsSet("hydra.admin_url") && c.Query("logout_challenge") != "" {
+		return r.HydraLogout(c)
+	}
+
 	return r.redirectLogin(c)
 }
 
