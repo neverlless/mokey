@@ -1,5 +1,17 @@
 # Mokey ChangeLog
 
+## [v1.1.0] - 2026-08-15
+
+- Project is now maintained standalone (detached from ubccr/mokey fork network)
+- Module path renamed to github.com/neverlless/mokey
+- Add arm64 (aarch64) release builds [ubccr#172](https://github.com/ubccr/mokey/pull/172)
+- Add `accounts.enable_signup` option to disable self-registration [ubccr#156](https://github.com/ubccr/mokey/issues/156)
+- Add `server.tls_min_version` and `server.tls_ciphers` options [ubccr#131](https://github.com/ubccr/mokey/issues/131)
+- Fix: stopped TLS listener no longer falls through to a plain HTTP listener
+- Fix: reject emails with an empty local part during username generation
+- Fix: IPv6 SMTP host addresses are now handled correctly
+- Add CI workflows, CONTRIBUTING.md, SECURITY.md, and project roadmap
+
 ## [v0.6.6] - 2025-11-24
 
 - Modify OIDC payload params (effects Hydra support)

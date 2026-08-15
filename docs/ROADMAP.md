@@ -9,12 +9,12 @@ Priorities may shift based on feedback. Open an
 
 ## v1.1 — Community quick wins
 
-- [ ] Merge i18n support (upstream PR ubccr#157 by @tubby1981) — configurable
+- [ ] (moved to v1.2) Merge i18n support (upstream PR ubccr#157 by @tubby1981) — configurable
       translations, multiple languages
-- [ ] arm64 release builds (upstream PR ubccr#172 by @cmd-ntrf)
-- [ ] `accounts.enable_signup` config option to disable self-registration
+- [x] arm64 release builds (upstream PR ubccr#172 by @cmd-ntrf)
+- [x] `accounts.enable_signup` config option to disable self-registration
       (ubccr#156)
-- [ ] Configurable TLS ciphers (ubccr#131)
+- [x] Configurable TLS ciphers (ubccr#131)
 - [ ] Optional single-page login (username + password on one page, ubccr#154)
 
 ## v1.2 — Distribution and docs
