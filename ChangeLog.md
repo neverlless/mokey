@@ -1,5 +1,15 @@
 # Mokey ChangeLog
 
+## [v1.3.0] - 2026-08-15
+
+- Implement Hydra OIDC logout flow — users are redirected back to the
+  client's `post_logout_redirect_uri` after logout [ubccr#75](https://github.com/ubccr/mokey/issues/75)
+- Add self-service email change with confirmation link sent to the new
+  address; the old address is notified after the change [ubccr#100](https://github.com/ubccr/mokey/issues/100)
+- Add Keycloak identity broker guide (`docs/keycloak.md`) for SAML-only
+  service providers [ubccr#136](https://github.com/ubccr/mokey/issues/136)
+- Build container image only on version tags and manual dispatch
+
 ## [v1.2.0] - 2026-08-15
 
 - Add multi-language support for the interface and emails; English and Dutch
