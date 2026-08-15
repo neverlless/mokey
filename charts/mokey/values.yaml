@@ -1,0 +1,80 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/neverlless/mokey
+  tag: ""            # defaults to chart appVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# mokey.toml contents. Rendered into a Secret and mounted at
+# /etc/mokey/mokey.toml. See mokey.toml.sample in the repo for all options.
+# Ignored when existingConfigSecret is set.
+config: |
+  [site]
+  name = "Identity Management"
+
+  [server]
+  listen = "0.0.0.0:8866"
+
+  [storage]
+  driver = "memory"
+
+# Name of an existing Secret with a `mokey.toml` key to use instead of
+# `config` above (recommended for production — config contains secrets).
+existingConfigSecret: ""
+
+# Name of an existing Secret containing the keytab file
+# `mokeyapp.keytab`, mounted at /etc/mokey/private/. When set, container
+# self-enrollment is skipped.
+existingKeytabSecret: ""
+
+# Container-side FreeIPA enrollment (alternative to existingKeytabSecret).
+# ipa-getkeytab rotates the principal's key on every run — use only with
+# replicaCount: 1.
+ipa:
+  enroll: false
+  server: ""            # FreeIPA server hostname
+  domain: ""            # IPA domain, e.g. example.com
+  realm: ""             # defaults to domain uppercased
+  adminPrincipal: admin
+  # Secret with the enrollment password under key `password`
+  existingAdminSecret: ""
+  keytabPrincipal: mokeyapp
+
+# Extra environment variables for the mokey container
+extraEnv: []
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: ""
+  tls: []
+
+# Requires the Prometheus Operator CRDs. mokey must have
+# server.enable_metrics = true in its config.
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  labels: {}
+
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}

@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mokey.fullname" . }}
+  labels:
+    {{- include "mokey.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mokey.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mokey.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if not .Values.existingConfigSecret }}
+        checksum/config: {{ .Values.config | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mokey
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if .Values.ipa.enroll }}
+            - name: IPA_ENROLL
+              value: "true"
+            - name: IPA_SERVER
+              value: {{ required "ipa.server is required when ipa.enroll is true" .Values.ipa.server | quote }}
+            - name: IPA_DOMAIN
+              value: {{ required "ipa.domain is required when ipa.enroll is true" .Values.ipa.domain | quote }}
+            {{- with .Values.ipa.realm }}
+            - name: IPA_REALM
+              value: {{ . | quote }}
+            {{- end }}
+            - name: IPA_ADMIN_PRINCIPAL
+              value: {{ .Values.ipa.adminPrincipal | quote }}
+            - name: IPA_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "ipa.existingAdminSecret is required when ipa.enroll is true" .Values.ipa.existingAdminSecret }}
+                  key: password
+            - name: MOKEY_KT_PRINCIPAL
+              value: {{ .Values.ipa.keytabPrincipal | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8866
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mokey/mokey.toml
+              subPath: mokey.toml
+            {{- if .Values.existingKeytabSecret }}
+            - name: keytab
+              mountPath: /etc/mokey/private
+              readOnly: true
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ .Values.existingConfigSecret | default (printf "%s-config" (include "mokey.fullname" .)) }}
+        {{- if .Values.existingKeytabSecret }}
+        - name: keytab
+          secret:
+            secretName: {{ .Values.existingKeytabSecret }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

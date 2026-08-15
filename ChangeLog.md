@@ -1,5 +1,16 @@
 # Mokey ChangeLog
 
+## [v1.2.0] - 2026-08-15
+
+- Add multi-language support for the interface and emails; English and Dutch
+  built in, custom languages via `site.translations_dir` [ubccr#157](https://github.com/ubccr/mokey/pull/157)
+- Publish container image to ghcr.io (`ghcr.io/neverlless/mokey`) with
+  optional container-side FreeIPA enrollment
+- Add Helm chart (`charts/mokey`) with health probes, ingress, and
+  ServiceMonitor support
+- Add production docker-compose example
+- Add complete configuration reference (`docs/configuration.md`) [ubccr#119](https://github.com/ubccr/mokey/issues/119)
+
 ## [v1.1.0] - 2026-08-15
 
 - Project is now maintained standalone (detached from ubccr/mokey fork network)

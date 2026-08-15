@@ -1,7 +1,7 @@
 mokey.yaml
 mokey.toml
 mokey.db
-mokey
+/mokey
 .env
 dist/
 key.gpg
