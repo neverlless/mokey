@@ -24,7 +24,8 @@ Priorities may shift based on feedback. Open an
 - [x] Complete configuration reference for every option (ubccr#119)
 - [ ] Investigate bugs: password reset with expired password (ubccr#127),
       policy error on reset (ubccr#170), login issue since v0.6.5 (ubccr#150)
-- [ ] Get listed on freeipa.org Self-Service Password Reset page (ubccr#51)
+- [x] Get listed on freeipa.org Self-Service Password Reset page (ubccr#51 —
+      PR [freeipa.github.io#70](https://github.com/freeipa/freeipa.github.io/pull/70) submitted, awaiting review)
 
 ## v1.3 — Feature gap
 
