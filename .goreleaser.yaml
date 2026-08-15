@@ -35,10 +35,10 @@ archives:
       - ChangeLog.md
       - mokey.toml.sample
 nfpms:
-  - vendor: University at Buffalo
+  - vendor: neverlless
     homepage: https://github.com/neverlless/mokey
-    maintainer: Andrew E. Bruno <aebruno2@buffalo.edu>
-    license: MIT
+    maintainer: Maksym Hrytsaienko <hrytsaienko.my@gmail.com>
+    license: BSD-3-Clause
     description: |-
       FreeIPA self-service account management tool
     formats:
