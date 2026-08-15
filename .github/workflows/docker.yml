@@ -2,9 +2,9 @@ name: Docker
 
 on:
   push:
-    branches: [main]
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,8 +32,8 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=sha,enable=${{ github.ref_type != 'tag' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
