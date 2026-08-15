@@ -7,6 +7,7 @@
 - Add arm64 (aarch64) release builds [ubccr#172](https://github.com/ubccr/mokey/pull/172)
 - Add `accounts.enable_signup` option to disable self-registration [ubccr#156](https://github.com/ubccr/mokey/issues/156)
 - Add `server.tls_min_version` and `server.tls_ciphers` options [ubccr#131](https://github.com/ubccr/mokey/issues/131)
+- Add `accounts.single_page_login` option — username and password on one page [ubccr#154](https://github.com/ubccr/mokey/issues/154)
 - Fix: stopped TLS listener no longer falls through to a plain HTTP listener
 - Fix: reject emails with an empty local part during username generation
 - Fix: IPv6 SMTP host addresses are now handled correctly

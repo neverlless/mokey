@@ -15,7 +15,7 @@ Priorities may shift based on feedback. Open an
 - [x] `accounts.enable_signup` config option to disable self-registration
       (ubccr#156)
 - [x] Configurable TLS ciphers (ubccr#131)
-- [ ] Optional single-page login (username + password on one page, ubccr#154)
+- [x] Optional single-page login (username + password on one page, ubccr#154)
 
 ## v1.2 — Distribution and docs
 
