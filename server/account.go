@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	valid "github.com/asaskevich/govalidator"
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
@@ -326,4 +327,116 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 	}
 
 	return c.Render("account-verify-forgot-success.html", fiber.Map{})
+}
+
+// EmailChange handles a logged-in user's request to change their email
+// address. A confirmation link is sent to the new address; the change is
+// applied only after the link is visited (see EmailChangeConfirm).
+func (r *Router) EmailChange(c *fiber.Ctx) error {
+	user := r.user(c)
+
+	vars := fiber.Map{
+		"user": user,
+	}
+
+	newEmail := strings.TrimSpace(strings.ToLower(c.FormValue("email")))
+
+	if newEmail == "" || !valid.IsEmail(newEmail) {
+		vars["message"] = T("account.email_invalid")
+		return c.Render("account.html", vars)
+	}
+
+	if strings.EqualFold(newEmail, user.Email) {
+		vars["message"] = T("account.email_same_as_current")
+		return c.Render("account.html", vars)
+	}
+
+	check := &ipa.User{Email: newEmail}
+	if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
+		vars["message"] = T("account.email_invalid")
+		return c.Render("account.html", vars)
+	}
+
+	if err := r.emailer.SendEmailChangeConfirmEmail(user, newEmail, c); err != nil {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+			"email":    newEmail,
+			"err":      err,
+		}).Error("Failed to send email change confirmation email")
+		vars["message"] = T("account.fatal_system_error")
+		return c.Render("account.html", vars)
+	}
+
+	log.WithFields(log.Fields{
+		"username":  user.Username,
+		"new_email": newEmail,
+		"ip":        RemoteIP(c),
+	}).Info("AUDIT email change requested")
+
+	vars["email_change_sent"] = true
+	return c.Render("account.html", vars)
+}
+
+// EmailChangeConfirm applies a pending email change. GET renders a
+// confirmation page, POST performs the change.
+func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
+	token := c.Params("token")
+
+	claims, err := ParseToken(token, TokenEmailChange, r.storage)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Debug("Invalid email change token")
+		return c.Status(fiber.StatusNotFound).SendString("")
+	}
+
+	vars := fiber.Map{
+		"claims": claims,
+	}
+
+	if c.Method() == fiber.MethodGet {
+		return c.Render("email-change-confirm.html", vars)
+	}
+
+	user, err := r.adminClient.UserShow(claims.Username)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"username": claims.Username,
+			"email":    claims.Email,
+			"err":      err,
+		}).Error("Email change failed while fetching user from FreeIPA")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+	}
+
+	oldEmail := user.Email
+	user.Email = claims.Email
+
+	if _, err := r.adminClient.UserMod(user); err != nil {
+		log.WithFields(log.Fields{
+			"username": claims.Username,
+			"email":    claims.Email,
+			"err":      err,
+		}).Error("Email change failed to modify user in FreeIPA")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+	}
+
+	r.storage.Set(TokenEmailChange+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+
+	if oldEmail != "" {
+		if err := r.emailer.SendEmailChangedNotification(oldEmail, user, c); err != nil {
+			log.WithFields(log.Fields{
+				"username": claims.Username,
+				"err":      err,
+			}).Error("Failed to notify old address about email change")
+		}
+	}
+
+	log.WithFields(log.Fields{
+		"username":  claims.Username,
+		"old_email": oldEmail,
+		"new_email": claims.Email,
+		"ip":        RemoteIP(c),
+	}).Info("AUDIT email address changed successfully")
+
+	return c.Render("email-change-success.html", fiber.Map{})
 }

@@ -30,6 +30,11 @@ verify_account = "Verifieer Account"
 too_many_requests = "Te veel verzoeken. Probeer het later opnieuw."
 
 [account]
+email_invalid = "Geef een geldig e-mailadres op"
+email_same_as_current = "Dit is al uw huidige e-mailadres"
+email_change_sent = "Er is een bevestigingsmail naar het nieuwe adres gestuurd. De wijziging gaat in nadat u deze bevestigt."
+email_change_button = "Wijzigen"
+email_change_help = "Het wijzigen van uw e-mailadres vereist bevestiging via een link die naar het nieuwe adres wordt gestuurd."
 title = "Accountinstellingen"
 groups = "Groepen"
 home_dir = "Home Dir"
@@ -56,6 +61,15 @@ system_error = "Systeemfout, neem contact op met de beheerder"
 weak_password = "Je wachtwoord is te zwak. Zorg ervoor dat je wachtwoord een cijfer en zowel kleine als hoofdletters bevat"
 
 [email_template]
+email_change_subject = "Bevestig uw nieuwe e-mailadres"
+email_change_preheader = "Gebruik deze link om uw nieuwe e-mailadres te bevestigen. De link is slechts geldig voor"
+email_change_greeting = "Hallo"
+email_change_intro_part1 = "U heeft onlangs verzocht het e-mailadres van uw "
+email_change_intro_part2 = " account te wijzigen naar dit adres. Gebruik de knop hieronder om de wijziging te bevestigen. "
+email_change_intro_part3 = "Deze link is slechts geldig voor de komende "
+email_change_button = "Bevestig nieuw e-mailadres"
+email_change_title = "Bevestig uw nieuwe e-mailadres"
+email_changed_event = "E-mailadres gewijzigd"
 welcome_mfa_notice = "U MOET tweefactorauthenticatie inschakelen voor uw account. Log in en maak een nieuw OTP-token aan met uw authenticator-app."
 welcome_getting_started_part1 = "Om het meeste uit "
 welcome_getting_started_part2 = " te halen, bekijk onze handleiding om te beginnen:"
@@ -297,3 +311,10 @@ message = "Verifieer je e-mail"
 [verify_success]
 title = "Account Verifiëren"
 message = "Je account is succesvol geverifieerd. Dank je wel"
+
+[email_change]
+title = "E-mailwijziging bevestigen"
+message = "Bevestig het wijzigen van het e-mailadres van uw account naar"
+instruction = "Klik hieronder op Bevestigen om de wijziging toe te passen."
+confirm_button = "Bevestigen"
+success_message = "Uw e-mailadres is succesvol gewijzigd."

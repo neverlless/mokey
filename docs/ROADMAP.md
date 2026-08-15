@@ -28,7 +28,9 @@ Priorities may shift based on feedback. Open an
 
 ## v1.3 — Feature gap
 
-- [ ] Self-manage email addresses: add, confirm, set default (ubccr#100)
+- [x] Self-service email change with confirmation link (ubccr#100 — scoped:
+      multiple addresses per account need multi-value mail support in goipa,
+      tracked as a follow-up)
 - [x] Hydra logout endpoint — full OIDC logout flow (ubccr#75)
 - [ ] Documentation guide: mokey + Keycloak (ubccr#136)
 

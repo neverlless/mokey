@@ -103,6 +103,40 @@ func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	return e.sendEmail(user, ctx, T("email_template.account_verify_subject"), "account-verify", vars)
 }
 
+// SendEmailChangeConfirmEmail sends a confirmation link to the NEW email
+// address. The change is only applied after the link is visited.
+func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, ctx *fiber.Ctx) error {
+	token, err := NewToken(user.Username, newEmail, TokenEmailChange, e.storage)
+	if err != nil {
+		return err
+	}
+
+	vars := map[string]interface{}{
+		"link":         fmt.Sprintf("%s/auth/email/confirm/%s", BaseURL(ctx), token),
+		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+		"new_email":    newEmail,
+	}
+
+	// deliver to the new address
+	recipient := *user
+	recipient.Email = newEmail
+
+	return e.sendEmail(&recipient, ctx, T("email_template.email_change_subject"), "email-change", vars)
+}
+
+// SendEmailChangedNotification notifies the OLD address that the account
+// email was changed.
+func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, ctx *fiber.Ctx) error {
+	vars := map[string]interface{}{
+		"event": T("email_template.email_changed_event"),
+	}
+
+	recipient := *user
+	recipient.Email = oldEmail
+
+	return e.sendEmail(&recipient, ctx, T("email_template.email_changed_event"), "account-updated", vars)
+}
+
 func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	vars := map[string]interface{}{
 		"getting_started_url": viper.GetString("site.getting_started_url"),

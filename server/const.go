@@ -13,6 +13,7 @@ const (
 	UserCategoryUnverified  = "mokey-user-unverified"
 	TokenAccountVerify      = "verify"
 	TokenPasswordReset      = "reset"
+	TokenEmailChange        = "emailchange"
 	TokenUsedPrefix         = "used-"
 	TokenIssuedPrefix       = "issued-"
 )

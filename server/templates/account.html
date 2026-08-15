@@ -15,6 +15,12 @@
   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 {{ end }}
+{{  with $.email_change_sent }}
+<div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
+  {{ T "account.email_change_sent" }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{{ end }}
 <div id="account-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
 <h3 class="mb-4">{{ T "account.settings" }}</h3>
@@ -35,7 +41,17 @@
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label class="form-label">{{ T "common.email" }}</label>
-		  	<input type="text" class="form-control" value="{{ .user.Email }}" disabled readonly>
+			<div class="input-group">
+		  		<input type="email" class="form-control" name="email" id="email" value="{{ .user.Email }}">
+				<button class="btn btn-outline-secondary" type="button" hx-target-error="account-failed"
+						hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+						data-hx-vals='{"csrf": "{{ $.csrf }}"}'
+						data-hx-include="#email"
+						data-hx-target="#account" data-hx-post="/account/email">
+					{{ T "account.email_change_button" }}
+				</button>
+			</div>
+			<div class="form-text">{{ T "account.email_change_help" }}</div>
 		</div>
 	</div>
 	<div class="col-md-6">
