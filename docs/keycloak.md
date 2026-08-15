@@ -19,6 +19,20 @@ Any OIDC-only application can also connect straight to Hydra and skip
 Keycloak entirely — the broker exists only to translate protocols (SAML,
 WS-Fed) that Hydra does not speak.
 
+### Why not Keycloak → FreeIPA directly?
+
+Hydra is required in this chain because mokey is not an identity provider
+itself: it issues no tokens and exposes no OIDC/SAML endpoints a broker
+could talk to. mokey only implements the login/consent pages for Hydra's
+challenge flow — so keeping the mokey login page means keeping Hydra.
+
+If the mokey login page is not a requirement for you, Keycloak can instead
+talk to FreeIPA directly via **LDAP user federation** (with Kerberos/SPNEGO
+support if desired). That removes Hydra and mokey from the authentication
+path entirely: users authenticate on Keycloak's own login screens, and
+mokey remains purely a self-service portal (password resets, OTP
+enrollment, SSH keys) alongside it.
+
 ## Prerequisites
 
 - Working mokey + Hydra setup (see the
