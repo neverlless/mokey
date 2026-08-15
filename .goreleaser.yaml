@@ -9,8 +9,14 @@ builds:
       - CGO_ENABLED=1
     goarch:
       - amd64
+      - arm64
     goos:
       - linux
+    overrides:
+      - goos: linux
+        goarch: arm64
+        env:
+          - CC=aarch64-linux-gnu-gcc
     ldflags:
       - -s -w -X github.com/neverlless/mokey/server.Version={{.Version}}
       - -extldflags=-static
