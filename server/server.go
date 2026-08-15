@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"embed"
 	"errors"
 	"io/fs"
@@ -223,10 +224,18 @@ func newFiber() (*fiber.App, error) {
 func (s *Server) Serve() error {
 	if s.CertFile != "" && s.KeyFile != "" {
 		s.Scheme = "https"
-		log.Infof("Listening on %s://%s", s.Scheme, s.ListenAddress)
-		if err := s.app.ListenTLS(s.ListenAddress, s.CertFile, s.KeyFile); err != nil {
+		tlsConfig, err := s.tlsConfig()
+		if err != nil {
 			return err
 		}
+
+		ln, err := tls.Listen("tcp", s.ListenAddress, tlsConfig)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("Listening on %s://%s", s.Scheme, s.ListenAddress)
+		return s.app.Listener(ln)
 	}
 
 	s.Scheme = "http"

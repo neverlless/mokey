@@ -161,6 +161,17 @@ read_buffer_size = 16384
 # Path to ssl key
 # ssl_key = ""
 
+# Minimum TLS version: "1.2" (default) or "1.3"
+# tls_min_version = "1.2"
+
+# Restrict TLS 1.2 cipher suites. Names as defined by Go's crypto/tls
+# (https://pkg.go.dev/crypto/tls#pkg-constants). If unset, Go's default
+# secure set is used. TLS 1.3 cipher suites are not configurable.
+# tls_ciphers = [
+#   "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+#   "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+# ]
+
 # Require secure cookies
 secure_cookies = true
 
