@@ -23,7 +23,9 @@
                           </button>
                         </div>
                         </form>
+                        {{ if ConfigValueBool "accounts.enable_signup" }}
                         <p class="text-muted text-center">New user? <a href="/signup">Create Account</a></p>
+                        {{ end }}
                     </div>
                 </div>
             </div>

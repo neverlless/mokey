@@ -51,6 +51,11 @@ keytab = "/etc/mokey/private/mokeyapp.keytab"
 # User account settings
 #------------------------------------------------------------------------------
 [accounts]
+# Enable self-service account registration (/signup). When false, the signup
+# page is disabled and the "Create Account" link is hidden — accounts must be
+# created by an admin directly in FreeIPA.
+enable_signup = true
+
 # Default home directory
 default_homedir = "/home"
 

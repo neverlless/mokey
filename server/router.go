@@ -107,8 +107,10 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/otp", r.RequireLogin, r.Index)
 
 	// Account Create
-	app.Get("/signup", r.RequireNoLogin, r.AccountCreate)
-	app.Post("/signup", r.RequireNoLogin, r.AccountCreate)
+	if viper.GetBool("accounts.enable_signup") {
+		app.Get("/signup", r.RequireNoLogin, r.AccountCreate)
+		app.Post("/signup", r.RequireNoLogin, r.AccountCreate)
+	}
 
 	// Auth
 	app.Get("/auth/login", r.RequireNoLogin, r.Login)
