@@ -42,6 +42,7 @@ func SetDefaults() {
 	viper.SetDefault("site.name", "Acme Widgets")
 	viper.SetDefault("site.ktuser", "mokeyapp")
 	viper.SetDefault("accounts.enable_signup", true)
+	viper.SetDefault("accounts.single_page_login", false)
 	viper.SetDefault("accounts.hide_invalid_username_error", false)
 	viper.SetDefault("accounts.default_homedir", "/home")
 	viper.SetDefault("accounts.default_shell", "/bin/bash")

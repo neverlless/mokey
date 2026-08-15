@@ -56,6 +56,11 @@ keytab = "/etc/mokey/private/mokeyapp.keytab"
 # created by an admin directly in FreeIPA.
 enable_signup = true
 
+# Show username and password on a single login page instead of the two-step
+# flow. The OTP field is always shown and may be left empty by users without
+# Two-Factor Authentication.
+single_page_login = false
+
 # Default home directory
 default_homedir = "/home"
 
