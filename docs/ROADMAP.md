@@ -9,7 +9,7 @@ Priorities may shift based on feedback. Open an
 
 ## v1.1 — Community quick wins
 
-- [ ] (moved to v1.2) Merge i18n support (upstream PR ubccr#157 by @tubby1981) — configurable
+- [x] Merge i18n support (upstream PR ubccr#157 by @tubby1981) — configurable
       translations, multiple languages
 - [x] arm64 release builds (upstream PR ubccr#172 by @cmd-ntrf)
 - [x] `accounts.enable_signup` config option to disable self-registration

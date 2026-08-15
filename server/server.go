@@ -40,6 +40,7 @@ type Server struct {
 
 func SetDefaults() {
 	viper.SetDefault("site.name", "Acme Widgets")
+	viper.SetDefault("site.default_language", "english")
 	viper.SetDefault("site.ktuser", "mokeyapp")
 	viper.SetDefault("accounts.enable_signup", true)
 	viper.SetDefault("accounts.single_page_login", false)
@@ -132,6 +133,10 @@ func newStorage() fiber.Storage {
 }
 
 func newFiber() (*fiber.App, error) {
+	if err := LoadTranslations(); err != nil {
+		return nil, err
+	}
+
 	engine, err := NewTemplateRenderer()
 	if err != nil {
 		log.Fatal(err)

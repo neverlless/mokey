@@ -27,7 +27,7 @@ func checkPassword(pass string) error {
 
 	l := len([]rune(pass))
 	if l < minLength {
-		return fmt.Errorf("Password does not conform to policy. Min length: %d", minLength)
+		return fmt.Errorf(T("password.min_length"), minLength)
 	}
 
 	numCategories := 0
@@ -65,7 +65,7 @@ func checkPassword(pass string) error {
 	}
 
 	if numCategories < minClasses {
-		return fmt.Errorf("Password does not conform to policy. Try including both upper/lower case, numbers, and other characters")
+		return errors.New(T("password.policy_not_met"))
 	}
 
 	return nil
@@ -73,11 +73,11 @@ func checkPassword(pass string) error {
 
 func validatePassword(password, passwordConfirm string) error {
 	if password == "" {
-		return errors.New("Please enter a new password")
+		return errors.New(T("password.enter_new"))
 	}
 
 	if passwordConfirm == "" {
-		return errors.New("Please confirm your new password")
+		return errors.New(T("password.confirm_new"))
 	}
 
 	if password != passwordConfirm {
@@ -93,11 +93,11 @@ func validatePassword(password, passwordConfirm string) error {
 
 func validatePasswordChange(passwordCurrent, password, passwordConfirm string) error {
 	if passwordCurrent == "" {
-		return errors.New("Please enter you current password")
+		return errors.New(T("password.enter_current"))
 	}
 
 	if passwordCurrent == passwordConfirm {
-		return errors.New("Current password is the same as new password. Please set a different password.")
+		return errors.New(T("password.same_as_new"))
 	}
 
 	return validatePassword(password, passwordConfirm)
@@ -121,7 +121,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 	otp := c.FormValue("otpcode")
 
 	if user.OTPOnly() && otp == "" {
-		vars["message"] = "Please enter the 6-digit OTP code from your mobile app"
+		vars["message"] = T("otptoken.enter_6_digit_code_help")
 		return c.Render("password.html", vars)
 	}
 
@@ -144,7 +144,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 				"username": user.Username,
 				"error":    err.Error(),
 			}).Error("Failed to change password")
-			vars["message"] = "Fatal system error"
+			vars["message"] = T("account.fatal_system_error")
 		}
 	} else {
 		err = r.emailer.SendPasswordChangedEmail(user, c)
@@ -260,7 +260,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 	otp := c.FormValue("otpcode")
 
 	if user.OTPOnly() && otp == "" {
-		return c.Status(fiber.StatusBadRequest).SendString("Please enter the 6-digit OTP code from your mobile app")
+		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.enter_6_digit_code_help"))
 	}
 
 	if err := validatePassword(password, passwordConfirm); err != nil {
@@ -269,7 +269,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 
 	rand, err := r.adminClient.ResetPassword(user.Username)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("System error please contact administrator")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("account.system_error"))
 	}
 
 	err = r.adminClient.SetPassword(user.Username, rand, password, otp)
@@ -280,19 +280,19 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 				"username": user.Username,
 				"error":    err,
 			}).Error("Password does not conform to policy")
-			return c.Status(fiber.StatusBadRequest).SendString("Your password is too weak. Please ensure your password includes a number and lower/upper case character")
+			return c.Status(fiber.StatusBadRequest).SendString(T("account.weak_password"))
 		case errors.Is(err, ipa.ErrInvalidPassword):
 			log.WithFields(log.Fields{
 				"username": user.Username,
 				"error":    err,
 			}).Error("invalid password from FreeIPA")
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid OTP code.")
+			return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.invalid_otp"))
 		default:
 			log.WithFields(log.Fields{
 				"username": user.Username,
 				"error":    err,
 			}).Error("failed to set user password in FreeIPA")
-			return c.Status(fiber.StatusInternalServerError).SendString("System error please contact administrator")
+			return c.Status(fiber.StatusInternalServerError).SendString(T("account.system_error"))
 		}
 	}
 
@@ -352,7 +352,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	otp := c.FormValue("otp")
 
 	if user.OTPOnly() && otp == "" {
-		return c.Status(fiber.StatusBadRequest).SendString("Please enter the 6-digit OTP code from your mobile app")
+		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.enter_6_digit_code_help"))
 	}
 
 	if err := validatePasswordChange(password, newpass, newpass2); err != nil {
@@ -386,7 +386,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 			"username":         user.Username,
 			"ipa_client_error": err,
 		}).Error("Failed to login after expired password change")
-		return c.Status(fiber.StatusUnauthorized).SendString("Login failed")
+		return c.Status(fiber.StatusUnauthorized).SendString(T("login.failed"))
 	}
 
 	_, err = client.Ping()
@@ -395,7 +395,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 			"username":         user.Username,
 			"ipa_client_error": err,
 		}).Error("Failed to ping FreeIPA after expired password change")
-		return c.Status(fiber.StatusUnauthorized).SendString("Invalid credentials")
+		return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
 	}
 
 	sess.Set(SessionKeyAuthenticated, true)

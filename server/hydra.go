@@ -27,7 +27,7 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 			"ip": RemoteIP(c),
 		}).Error("Consent endpoint was called without a consent challenge")
 		r.metrics.totalHydraFailedLogins.Inc()
-		return c.Status(fiber.StatusBadRequest).SendString("consent without challenge")
+		return c.Status(fiber.StatusBadRequest).SendString(T("hydra.consent_without_challenge"))
 	}
 
 	cparams := admin.NewGetConsentRequestParams()
@@ -39,7 +39,7 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 			"error": err,
 		}).Error("Failed to validate the consent challenge")
 		r.metrics.totalHydraFailedLogins.Inc()
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to validate consent")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_consent"))
 	}
 
 	consent := cresponse.Payload
@@ -51,12 +51,12 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 			"username": consent.Subject,
 		}).Warn("Failed to find User record for consent")
 		r.metrics.totalHydraFailedLogins.Inc()
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to validate consent")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_consent"))
 	}
 
 	if viper.GetBool("accounts.require_mfa") && !user.OTPOnly() {
 		r.metrics.totalHydraFailedLogins.Inc()
-		return c.Status(fiber.StatusUnauthorized).SendString("Access denied.")
+		return c.Status(fiber.StatusUnauthorized).SendString(T("hydra.access_denied"))
 	}
 
 	params := admin.NewAcceptConsentRequestParams()
@@ -84,7 +84,7 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 			"error": err,
 		}).Error("Failed to accept the consent challenge")
 		r.metrics.totalHydraFailedLogins.Inc()
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to accept consent")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_accept_consent"))
 	}
 
 	log.WithFields(log.Fields{
@@ -103,7 +103,7 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{
 			"ip": RemoteIP(c),
 		}).Error("Login OAuth endpoint was called without a challenge")
-		return c.Status(fiber.StatusBadRequest).SendString("login without challenge")
+		return c.Status(fiber.StatusBadRequest).SendString(T("hydra.login_without_challenge"))
 	}
 
 	getparams := admin.NewGetLoginRequestParams()
@@ -114,7 +114,7 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("Failed to validate the login challenge")
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to validate login")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_login"))
 	}
 
 	login := response.Payload
@@ -132,12 +132,12 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 				"username": *login.Subject,
 			}).Warn("Failed to find User record for login")
 			r.metrics.totalHydraFailedLogins.Inc()
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to validate login")
+			return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_login"))
 		}
 
 		if viper.GetBool("accounts.require_mfa") && !user.OTPOnly() {
 			r.metrics.totalHydraFailedLogins.Inc()
-			return c.Status(fiber.StatusUnauthorized).SendString("Access denied.")
+			return c.Status(fiber.StatusUnauthorized).SendString(T("hydra.access_denied"))
 		}
 
 		acceptparams := admin.NewAcceptLoginRequestParams()
@@ -153,7 +153,7 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 				"error": err,
 			}).Error("Failed to accept the GET login challenge")
 			r.metrics.totalHydraFailedLogins.Inc()
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to accept login")
+			return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_accept_login"))
 		}
 
 		log.WithFields(log.Fields{
@@ -191,7 +191,7 @@ func (r *Router) LoginOAuthPost(username, challenge string, c *fiber.Ctx) error 
 			"username": username,
 			"error":    err,
 		}).Error("Failed to accept the POST login challenge")
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to accept login")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_accept_login"))
 	}
 
 	log.WithFields(log.Fields{
@@ -217,7 +217,7 @@ func (r *Router) HydraError(c *fiber.Ctx) error {
 		"hint":    hint,
 	}).Error("OAuth2 request failed")
 
-	return c.Status(fiber.StatusInternalServerError).SendString("OAuth2 Error")
+	return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.oauth2_error"))
 }
 
 func (r *Router) revokeHydraAuthenticationSession(username string, c *fiber.Ctx) error {

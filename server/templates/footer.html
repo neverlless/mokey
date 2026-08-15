@@ -5,7 +5,7 @@
         {{ with ConfigValueString "site.homepage" }}
             <a href="{{ . }}">{{ ConfigValueString "site.name" }}</a>
         {{ else }}
-            Powered by <a href="https://github.com/neverlless/mokey"><i class="fa-brands fa-github" aria-hidden="true"></i> mokey</a>
+            {{ T "common.powered_by" }} <a href="https://github.com/neverlless/mokey"><i class="fa-brands fa-github" aria-hidden="true"></i> mokey</a>
         {{ end }}
     </p>
 

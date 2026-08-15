@@ -86,7 +86,7 @@ func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
 		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
 	}
 
-	return e.sendEmail(user, ctx, "Please reset your password", "password-reset", vars)
+	return e.sendEmail(user, ctx, T("email_template.password_reset_subject"), "password-reset", vars)
 }
 
 func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
@@ -100,7 +100,7 @@ func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
 		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
 	}
 
-	return e.sendEmail(user, ctx, "Verify your email", "account-verify", vars)
+	return e.sendEmail(user, ctx, T("email_template.account_verify_subject"), "account-verify", vars)
 }
 
 func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {
@@ -108,17 +108,17 @@ func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {
 		"getting_started_url": viper.GetString("site.getting_started_url"),
 	}
 
-	subject := "Welcome to " + viper.GetString("site.name")
+	subject := T("email_template.welcome_subject") + viper.GetString("site.name")
 
 	return e.sendEmail(user, ctx, subject, "welcome", vars)
 }
 
 func (e *Emailer) SendMFAChangedEmail(enabled bool, user *ipa.User, ctx *fiber.Ctx) error {
-	verb := "Disabled"
+	verb := T("email_template.two_factor_auth_disabled")
 	if enabled {
-		verb = "Enabled"
+		verb = T("email_template.two_factor_auth_enabled")
 	}
-	event := "Two-Factor Authentication " + verb
+	event := T("email_template.two_factor_auth_event") + verb
 
 	vars := map[string]interface{}{
 		"event": event,
@@ -128,11 +128,11 @@ func (e *Emailer) SendMFAChangedEmail(enabled bool, user *ipa.User, ctx *fiber.C
 }
 
 func (e *Emailer) SendSSHKeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
-	verb := "removed"
+	verb := T("email_template.ssh_key_removed")
 	if added {
-		verb = "added"
+		verb = T("email_template.ssh_key_added")
 	}
-	event := "SSH key " + verb
+	event := T("email_template.ssh_key_event") + verb
 
 	vars := map[string]interface{}{
 		"event": event,
@@ -142,11 +142,11 @@ func (e *Emailer) SendSSHKeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.
 }
 
 func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
-	verb := "removed"
+	verb := T("email_template.otp_token_removed")
 	if added {
-		verb = "added"
+		verb = T("email_template.otp_token_added")
 	}
-	event := "OTP token " + verb
+	event := T("email_template.otp_token_event") + verb
 
 	vars := map[string]interface{}{
 		"event": event,
@@ -157,10 +157,10 @@ func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx *fibe
 
 func (e *Emailer) SendPasswordChangedEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	vars := map[string]interface{}{
-		"event": "Password changed",
+		"event": T("email_template.password_changed_event"),
 	}
 
-	return e.sendEmail(user, ctx, "Your password has been changed", "account-updated", vars)
+	return e.sendEmail(user, ctx, T("email_template.account_updated_subject"), "account-updated", vars)
 }
 
 func (e *Emailer) quotedBody(body []byte) ([]byte, error) {

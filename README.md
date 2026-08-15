@@ -44,8 +44,30 @@ following on top of it:
   `[slack]` section in `mokey.toml.sample`)
 - **Unauthenticated `/healthz` endpoint** — for load balancer and Kubernetes
   liveness/readiness probes
+- **Multiple languages** — the interface and emails are translatable; English
+  and Dutch are built in (translations contributed by
+  [@tubby1981](https://github.com/tubby1981) in
+  [ubccr/mokey#157](https://github.com/ubccr/mokey/pull/157)). See
+  [Localization](#localization).
 
 Upstream changes are merged in periodically when relevant.
+
+## Localization
+
+Set the interface language in `mokey.toml`:
+
+```toml
+[site]
+default_language = "dutch"   # built-in: english (default), dutch
+```
+
+To add or customize a language, point `site.translations_dir` at a directory
+containing `<language>.toml` files and set `default_language` to the file
+name. Copy
+[`server/translations/english.toml`](server/translations/english.toml) as a
+starting point — a file named after a built-in language fully replaces it.
+Missing keys fall back to English. Contributions of new languages are
+welcome.
 
 ## Requirements
 

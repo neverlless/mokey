@@ -2,16 +2,16 @@
   <div class="modal-content">
     <form>
     <div class="modal-header">
-       <h5 class="modal-title" id="modalLabel"><i class="fa fa-qrcode"></i> Scan QR code with authenticator app</h5>
+       <h5 class="modal-title" id="modalLabel"><i class="fa fa-qrcode"></i> {{ T "otptoken.scan_qr_title" }}</h5>
     </div>
     <div id="modal-body" class="modal-body">
         <div id="verify-token-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto" role="alert">
         </div>
         <div class="text-center">
-            <img class="img-fluid" alt="QRCode" src="data:image/png;base64,{{ .otpdata }}" />
+            <img class="img-fluid" alt="{{ T "otptoken.qr_code_alt" }}" src="data:image/png;base64,{{ .otpdata }}" />
             <p>
               <a class="text-muted" data-bs-toggle="collapse" href="#showURI" role="button" aria-expanded="false" aria-controls="showURI">
-                Show URI
+                {{ T "otptoken.show_uri" }}
               </a>
             </p>
             <div class="collapse" id="showURI">
@@ -21,18 +21,18 @@
             </div>
         </div>
         <div class="p-4 p-md-5">
-            <label class="form-label">6-Digit Code</label>
+            <label class="form-label">{{ T "otptoken.6_digit_code_label" }}</label>
             <input type="text" class="form-control" name="otpcode" id="otpcode" value="" autofocus="autofocus" aria-describedby="tokenHelpBlock">
             <input type="hidden" name="uuid" value="{{ $.otptoken.UUID }}" />
             <input type="hidden" name="uri" value="{{ $.otptoken.URI }}" />
             <div id="tokenHelpBlock" class="form-text">
-                Enter the 6-digit code from your mobile app
+                {{ T "otptoken.enter_6_digit_code_help" }}
             </div>
         </div>
     </div>
     <div class="modal-footer">
       <div id="verify-indicator" class="htmx-indicator spinner-border text-primary" role="status">
-          <span class="visually-hidden">Verifying token...</span>
+          <span class="visually-hidden">{{ T "otptoken.verifying_token" }}</span>
       </div>
       <button 
         hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
@@ -43,7 +43,7 @@
         hx-swap="innerHTML"
         class="btn btn-primary"
         type="submit">
-      Verify
+      {{ T "common.verify" }}
       </button>
       <button 
         hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
@@ -55,7 +55,7 @@
         hx-swap="innerHTML"
         class="btn btn-secondary"
         type="submit">
-      Cancel
+      {{ T "common.cancel" }}
       </button>
     </div>
     </form>

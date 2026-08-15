@@ -5,16 +5,16 @@
         <div id="login" class="container">
             <div class="login-card rounded-3 overflow-hidden bg-white mx-auto">
                 <div class="login-head bg-dark text-light p-4">
-                    <h3 class="text-center m-0">Verify Account</h3>
+                    <h3 class="text-center m-0">{{ T "verify_account.title" }}</h3>
                 </div>
                 <div class="login-body p-4 p-md-5">
                     <div class="login-body-wrapper mx-auto">
                         <form method="post">
                         <div class="mb-3 d-grid gap-2">
-                          <p class="text-center">Verify your email: <strong>{{ $.claims.Email }}</strong>. Click verify below to finish setting up your account.</p>
+                          <p class="text-center">{{ T "verify_account.message" }} <strong>{{ $.claims.Email }}</strong>. {{ T "verify_account.instruction" }}</p>
                           <button hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-target-error="login-failed" hx-post hx-target="#login" hx-swap="innerHTML" class="btn btn-primary btn-lg" type="submit">
                           <span class="htmx-indicator spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 
-                          Verify Account
+                          {{ T "common.verify_account" }}
                           </button>
                         </div>
                         </form>

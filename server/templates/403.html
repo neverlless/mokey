@@ -3,11 +3,11 @@
 	<div class="container">
 
 <div class="page-header">
-  <h1><i class="fa fa-face-frown"></i> Access denied</h1>
+  <h1><i class="fa fa-face-frown"></i> {{ T "error.access_denied" }}</h1>
 </div>
 
   <div class="alert alert-danger" role="alert">
-    Your session timed out. Please try <a href="/auth/login">logging in again</a>.
+    {{ T "error.session_timed_out" }} <a href="/auth/login">{{ T "error.log_in_again" }}</a>.
   </div>
 
 

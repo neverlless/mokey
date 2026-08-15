@@ -6,46 +6,46 @@
         <div id="login" class="container">
             <div class="login-card rounded-3 overflow-hidden bg-white mx-auto">
                 <div class="login-head bg-dark text-light p-4">
-                    <h3 class="text-center m-0">Login</h3>
+                    <h3 class="text-center m-0">{{ T "login.title" }}</h3>
                 </div>
                 <div class="login-body p-4 p-md-5">
                     <div class="login-body-wrapper mx-auto">
                         {{ if ConfigValueBool "accounts.single_page_login" }}
                         <form>
                         <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
+                            <label for="username" class="form-label">{{ T "common.username" }}</label>
                             <input type="username" class="form-control form-control-lg" name="username" id="username" autofocus="autofocus" placeholder="">
                         </div>
                         <div class="mb-3">
-                            <label for="password" class="form-label">Password</label>
+                            <label for="password" class="form-label">{{ T "common.password" }}</label>
                             <input type="password" class="form-control form-control-lg" name="password" id="password" placeholder="">
                         </div>
                         <div class="mb-3 d-grid gap-2">
                           <input type="hidden" name="challenge" value="{{ $.challenge }}" />
                           <button hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-target-error="login-failed" hx-post="/auth/authenticate" hx-target="#login" hx-swap="innerHTML" class="btn btn-primary btn-lg" type="submit">
                           <span class="htmx-indicator spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                          Login
+                          {{ T "common.login" }}
                           </button>
                         </div>
                         </form>
-                        <p class="text-muted text-center"><a href="/auth/forgotpw">Forgot password?</a></p>
+                        <p class="text-muted text-center"><a href="/auth/forgotpw">{{ T "login.forgot_password" }}</a></p>
                         {{ else }}
                         <form>
                         <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
+                            <label for="username" class="form-label">{{ T "common.username" }}</label>
                             <input type="username" class="form-control form-control-lg" name="username" id="username" autofocus="autofocus" placeholder="">
                         </div>
                         <div class="mb-3 d-grid gap-2">
                           <input type="hidden" name="challenge" value="{{ $.challenge }}" />
                           <button hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-target-error="login-failed" hx-post="/auth/login" hx-target="#login" hx-swap="innerHTML" class="btn btn-primary btn-lg" type="submit">
                           <span class="htmx-indicator spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                          Next
+                          {{ T "login.next_button" }}
                           </button>
                         </div>
                         </form>
                         {{ end }}
                         {{ if ConfigValueBool "accounts.enable_signup" }}
-                        <p class="text-muted text-center">New user? <a href="/signup">Create Account</a></p>
+                        <p class="text-muted text-center">{{ T "login.new_user" }} <a href="/signup">{{ T "login.create_account" }}</a></p>
                         {{ end }}
                     </div>
                 </div>

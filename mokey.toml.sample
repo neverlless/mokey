@@ -9,6 +9,14 @@
 # Name of your site
 name = "Identity Management"
 
+# Interface language. Built-in languages: "english" (default), "dutch".
+# default_language = "english"
+
+# Directory with additional <language>.toml translation files. A file with
+# the same name as a built-in language fully replaces it. See
+# server/translations/english.toml for the full list of keys.
+# translations_dir = "/etc/mokey/translations"
+
 # Homepage of your organization
 homepage = ""
 

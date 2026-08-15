@@ -1,16 +1,15 @@
 [{{ $.site_name }}] ( {{ $.homepage }} )
 
 ****************
-Hi {{ $.user.First }},
+{{ T "email_template.account_updated_greeting" }} {{ $.user.First }},
 ****************
 
-You recently updated your {{ $.site_name }} account. For reference, here's what changed:
+{{ T "email_template.account_updated_body_part1" }}{{ $.site_name }}{{ T "email_template.account_updated_body_part2" }}
 
 {{ $.event }}
 
-For security, this change was made from a {{ $.os }} device using {{ $.browser }}. If you did not make this change, please immediately contact support ( {{ $.contact }} ) or check out our help documentation ( {{ $.help_url }} ) if you have questions.
+{{ T "email_template.account_updated_security_notice_part1" }}{{ $.os }}{{ T "email_template.account_updated_security_notice_part2" }}{{ $.browser }}{{ T "email_template.account_updated_security_notice_part3" }}{{ T "email_template.account_updated_security_notice_part4" }} ( {{ $.contact }} ){{ T "email_template.account_updated_security_notice_part5" }}{{ T "email_template.account_updated_security_notice_help" }} ( {{ $.help_url }} ){{ T "email_template.account_updated_security_notice_part6" }}
 
-Thanks,
-The [{{ $.site_name }}] team
+{{ T "email_template.closing_part1" }}[{{ $.site_name }}]{{ T "email_template.closing_part2" }}
 
 {{ $.sig }}

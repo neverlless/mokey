@@ -24,6 +24,7 @@ var funcMap = template.FuncMap{
 	"ConfigValueBool":   ConfigValueBool,
 	"AllowedDomains":    AllowedDomains,
 	"BreakNewlines":     BreakNewlines,
+	"T":                 T,
 }
 
 type TemplateRenderer struct {
