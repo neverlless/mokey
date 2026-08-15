@@ -188,7 +188,9 @@ fake_tls_termination = true
 
 Any OAuth clients configured in Hydra will be authenticated via mokey using
 FreeIPA as the identity provider. For an example OAuth 2.0/OIDC client
-application see [here](examples/mokey-oidc/main.go).
+application see [here](examples/mokey-oidc/main.go). To serve SAML-only
+service providers via Keycloak as an identity broker, see the
+[Keycloak guide](docs/keycloak.md).
 
 mokey also implements the [OIDC logout flow](https://www.ory.sh/docs/hydra/concepts/logout):
 point Hydra's `urls.logout` at mokey's `/auth/logout` endpoint and users will

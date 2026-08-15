@@ -32,7 +32,7 @@ Priorities may shift based on feedback. Open an
       multiple addresses per account need multi-value mail support in goipa,
       tracked as a follow-up)
 - [x] Hydra logout endpoint — full OIDC logout flow (ubccr#75)
-- [ ] Documentation guide: mokey + Keycloak (ubccr#136)
+- [x] Documentation guide: mokey + Keycloak (ubccr#136)
 
 ## v2.0 — Ideas
 
