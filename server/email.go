@@ -14,6 +14,7 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -267,7 +268,7 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 		return err
 	}
 
-	smtpHostPort := fmt.Sprintf("%s:%d", viper.GetString("email.smtp_host"), viper.GetInt("email.smtp_port"))
+	smtpHostPort := net.JoinHostPort(viper.GetString("email.smtp_host"), strconv.Itoa(viper.GetInt("email.smtp_port")))
 	var conn net.Conn
 	tlsMode := viper.GetString("email.smtp_tls")
 

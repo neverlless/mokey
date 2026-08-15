@@ -12,7 +12,7 @@ builds:
     goos:
       - linux
     ldflags:
-      - -s -w -X github.com/ubccr/mokey/server.Version={{.Version}}
+      - -s -w -X github.com/neverlless/mokey/server.Version={{.Version}}
       - -extldflags=-static
     tags:
       - sqlite_omit_load_extension
@@ -36,7 +36,7 @@ archives:
       - mokey.toml.sample
 nfpms:
   - vendor: University at Buffalo
-    homepage: https://github.com/ubccr/mokey
+    homepage: https://github.com/neverlless/mokey
     maintainer: Andrew E. Bruno <aebruno2@buffalo.edu>
     license: MIT
     description: |-

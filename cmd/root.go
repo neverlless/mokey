@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/neverlless/mokey/server"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/ubccr/mokey/server"
 )
 
 var (

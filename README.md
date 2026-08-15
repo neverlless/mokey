@@ -1,5 +1,9 @@
 # FreeIPA self-service account management tool
 
+> **Note:** This project began as a fork of [ubccr/mokey](https://github.com/ubccr/mokey)
+> and is now maintained independently. See
+> [Differences from upstream](#differences-from-upstream) for what has changed.
+
 ## What is mokey?
 
 mokey is web application that provides self-service user account management
@@ -30,6 +34,19 @@ and can make your systems vulnerable to abuse.
 - Hydra Consent/Login Endpoint for OAuth/OpenID Connect
 - Easy to install and configure (requires no FreeIPA/LDAP schema changes)
 
+## Differences from upstream
+
+This project tracks [ubccr/mokey](https://github.com/ubccr/mokey) and adds the
+following on top of it:
+
+- **Slack notifications** — account events that trigger emails are also
+  delivered to the user as a Slack direct message via a bot token (see the
+  `[slack]` section in `mokey.toml.sample`)
+- **Unauthenticated `/healthz` endpoint** — for load balancer and Kubernetes
+  liveness/readiness probes
+
+Upstream changes are merged in periodically when relevant.
+
 ## Requirements
 
 - FreeIPA v4.6.8 or greater
@@ -43,7 +60,7 @@ Note: mokey needs to be installed on a machine already enrolled in FreeIPA.
 It's also recommended to have the ipa-admintools package installed. Enrolling a
 host in FreeIPA is outside the scope of this document.
 
-To install mokey download a copy of the pre-compiled binary [here](https://github.com/ubccr/mokey/releases).
+To install mokey download a copy of the pre-compiled binary [here](https://github.com/neverlless/mokey/releases).
 
 tar.gz archive:
 
@@ -85,7 +102,7 @@ $ kdestroy
 Edit mokey configuration file and set path to keytab file. The values for
 `token_secret` and `csrf_secret` will be automatically generated for you if
 left blank. Set these secret values if you'd like sessions to persist after a restart.
-For other site specific config options [see here](https://github.com/ubccr/mokey/blob/main/mokey.toml.sample):
+For other site specific config options [see here](https://github.com/neverlless/mokey/blob/main/mokey.toml.sample):
 
 ```
 $ vim /etc/mokey/mokey.toml
@@ -146,7 +163,7 @@ application see [here](examples/mokey-oidc/main.go).
 First, you will need Go v1.21 or greater. Clone the repository:
 
 ```
-$ git clone https://github.com/ubccr/mokey
+$ git clone https://github.com/neverlless/mokey
 $ cd mokey
 $ go build .
 ```

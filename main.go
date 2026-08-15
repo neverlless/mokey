@@ -5,8 +5,8 @@
 package main
 
 import (
-	"github.com/ubccr/mokey/cmd"
-	_ "github.com/ubccr/mokey/cmd/serve"
+	"github.com/neverlless/mokey/cmd"
+	_ "github.com/neverlless/mokey/cmd/serve"
 )
 
 func main() {
