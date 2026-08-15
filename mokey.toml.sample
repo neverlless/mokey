@@ -57,8 +57,9 @@ keytab = "/etc/mokey/private/mokeyapp.keytab"
 enable_signup = true
 
 # Show username and password on a single login page instead of the two-step
-# flow. The OTP field is always shown and may be left empty by users without
-# Two-Factor Authentication.
+# flow (username, then password on a separate page). Users with Two-Factor
+# Authentication enter their password followed by the OTP code in the
+# password field (FreeIPA style: password+otp).
 single_page_login = false
 
 # Default home directory

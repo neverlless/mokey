@@ -20,13 +20,6 @@
                             <label for="password" class="form-label">Password</label>
                             <input type="password" class="form-control form-control-lg" name="password" id="password" placeholder="">
                         </div>
-                        <div class="mb-3">
-                            <label for="otp" class="form-label">OTP six digit code</label>
-                            <input type="otp" class="form-control form-control-lg" name="otp" id="otp" placeholder="">
-                            <div id="otpHelpBlock" class="form-text">
-                             Leave empty if Two-Factor Authentication is not enabled for your account.
-                            </div>
-                        </div>
                         <div class="mb-3 d-grid gap-2">
                           <input type="hidden" name="challenge" value="{{ $.challenge }}" />
                           <button hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-target-error="login-failed" hx-post="/auth/authenticate" hx-target="#login" hx-swap="innerHTML" class="btn btn-primary btn-lg" type="submit">
