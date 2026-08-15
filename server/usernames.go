@@ -52,6 +52,10 @@ func generateUsernameFromEmail(user *ipa.User, allowedDomains map[string]string)
 		}
 	}
 
+	if user.Username == "" {
+		return fmt.Errorf("%w: %s", ErrInvalidUsername, user.Email)
+	}
+
 	return nil
 }
 
