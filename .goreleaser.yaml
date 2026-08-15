@@ -64,12 +64,6 @@ nfpms:
           {{- else }}{{ .Arch }}{{ end }}
         scripts:
           postinstall: ./scripts/nfpm/postinstall.sh
-    rpm:
-      signature:
-        key_file: key.gpg
-    deb:
-      signature:
-        key_file: key.gpg
     contents:
       - src: ./scripts/nfpm/mokey.toml.default
         dst: /etc/mokey/mokey.toml
