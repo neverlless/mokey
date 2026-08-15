@@ -134,7 +134,7 @@ $ kdestroy
 Edit mokey configuration file and set path to keytab file. The values for
 `token_secret` and `csrf_secret` will be automatically generated for you if
 left blank. Set these secret values if you'd like sessions to persist after a restart.
-For other site specific config options [see here](https://github.com/neverlless/mokey/blob/main/mokey.toml.sample):
+The full list of options is documented in the [configuration reference](docs/configuration.md); a ready starting point is [mokey.toml.sample](mokey.toml.sample):
 
 ```
 $ vim /etc/mokey/mokey.toml

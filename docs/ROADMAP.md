@@ -21,7 +21,7 @@ Priorities may shift based on feedback. Open an
 
 - [x] Publish container image to ghcr.io + production docker-compose example
 - [x] Helm chart for Kubernetes (uses the `/healthz` endpoint)
-- [ ] Complete configuration reference for every option (ubccr#119)
+- [x] Complete configuration reference for every option (ubccr#119)
 - [ ] Investigate bugs: password reset with expired password (ubccr#127),
       policy error on reset (ubccr#170), login issue since v0.6.5 (ubccr#150)
 - [ ] Get listed on freeipa.org Self-Service Password Reset page (ubccr#51)
