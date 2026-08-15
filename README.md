@@ -84,6 +84,16 @@ host in FreeIPA is outside the scope of this document.
 
 To install mokey download a copy of the pre-compiled binary [here](https://github.com/neverlless/mokey/releases).
 
+Container image (linux/amd64):
+
+```sh
+docker pull ghcr.io/neverlless/mokey:latest
+```
+
+See [examples/production/docker-compose.yml](examples/production/docker-compose.yml)
+for a docker-compose setup and [charts/mokey](charts/mokey) for the Helm
+chart (Kubernetes).
+
 tar.gz archive:
 
 ```

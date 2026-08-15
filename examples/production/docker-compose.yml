@@ -1,0 +1,34 @@
+# Production-style mokey deployment against an EXISTING FreeIPA server.
+# (The docker-compose.yml in the repo root spins up a full FreeIPA dev
+# environment instead.)
+#
+# 1. Create mokey.toml next to this file (see mokey.toml.sample). Use
+#    driver = "redis" with url = "redis://redis:6379/0" for sessions.
+# 2. Either mount a ready keytab (default below) or switch to the
+#    IPA_ENROLL variables — see docker/entrypoint.sh for details.
+
+services:
+  mokey:
+    image: ghcr.io/neverlless/mokey:latest
+    restart: unless-stopped
+    ports:
+      - "8866:8866"
+    volumes:
+      - ./mokey.toml:/etc/mokey/mokey.toml:ro
+      - ./mokeyapp.keytab:/etc/mokey/private/mokeyapp.keytab:ro
+    # environment:
+    #   IPA_ENROLL: "true"
+    #   IPA_SERVER: ipa.example.com
+    #   IPA_DOMAIN: example.com
+    #   IPA_ADMIN_PASSWORD: change-me
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
