@@ -1,5 +1,4 @@
 
-
 services:
   ipaserver:
     image: ipaserver
@@ -41,7 +40,7 @@ services:
       - ipaserver:ipa.mokey.local
     ports:
       - "127.0.0.1:9023:22"
-      - "0.0.0.0:8080:8080"
+      - "0.0.0.0:8866:8866"
 
 volumes:
   mokeyipa_data:

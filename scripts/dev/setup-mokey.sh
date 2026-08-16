@@ -62,7 +62,7 @@ from = "mokey@mokey.local"
 token_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 [server]
-listen = "0.0.0.0:8080"
+listen = "0.0.0.0:8866"
 secure_cookies = false
 csrf_secret = "dev-csrf-secret"
 
@@ -87,7 +87,7 @@ go build -o /tmp/mokey .
 nohup /tmp/mokey serve --config=/etc/mokey/mokey.toml --loglevel=debug > /tmp/mokey.log 2>&1 &
 
 sleep 2
-curl -fs http://localhost:8080/healthz && echo && echo "mokey is up: http://localhost:8080 (from your Mac: http://localhost:8080)"
+curl -fs http://localhost:8866/healthz && echo && echo "mokey is up: http://localhost:8866 (from your Mac: http://localhost:8866)"
 echo "logs: docker exec mokeyipaclient tail -f /tmp/mokey.log"
 echo "emails: docker exec mokeyipaclient tail -f /tmp/smtp.log"
 echo "users: testuser / testadmin, password: Secret123!"
