@@ -31,13 +31,15 @@ func NotFoundHandler(c *fiber.Ctx) error {
 		"ip":   RemoteIP(c),
 	}).Info("Requested path not found")
 
+	c.Status(fiber.StatusNotFound)
+
 	if c.Get("HX-Request", "false") == "true" {
 		err := c.Render("404-partial.html", nil)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("Failed to render custom error partial")
-			return c.Status(fiber.StatusNotFound).SendString("")
+			return c.SendString("")
 		}
 		return nil
 	}
@@ -61,8 +63,10 @@ func HTTPErrorHandler(c *fiber.Ctx, err error) error {
 		"ip":       RemoteIP(c),
 	}).Error(err)
 
+	c.Status(code)
+
 	if c.Locals("NoErrorTemplate") == "true" {
-		return c.Status(code).SendString("")
+		return c.SendString("")
 	}
 
 	if c.Get("HX-Request", "false") == "true" {
