@@ -22,8 +22,14 @@ Priorities may shift based on feedback. Open an
 - [x] Publish container image to ghcr.io + production docker-compose example
 - [x] Helm chart for Kubernetes (uses the `/healthz` endpoint)
 - [x] Complete configuration reference for every option (ubccr#119)
-- [ ] Investigate bugs: password reset with expired password (ubccr#127),
-      policy error on reset (ubccr#170), login issue since v0.6.5 (ubccr#150)
+- [x] Investigate bugs: ubccr#127 (fixed — expired-password flow re-used a
+      single-use TOTP code for auto-login; OTP users are now sent to the
+      login page after a successful change), ubccr#170 (fixed — password
+      class counting now matches FreeIPA's util/ipa_pwd.c: 5 categories and
+      a repeat penalty only for 3+ consecutive chars; plus README setup
+      fixes for the role member alias and UPG Definition permission),
+      ubccr#150 (diagnosed — stale templates_dir overrides after upgrade;
+      documented in the configuration reference)
 - [x] Get listed on freeipa.org Self-Service Password Reset page (ubccr#51 —
       PR [freeipa.github.io#70](https://github.com/freeipa/freeipa.github.io/pull/70) submitted, awaiting review)
 

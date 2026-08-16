@@ -19,8 +19,8 @@ Addresses upstream request
 | `favicon` | string | built-in | Path to a custom `favicon.ico`. |
 | `logo` | string | built-in | Path to a custom logo image shown on the pages. |
 | `css` | string | built-in | Path to a custom CSS file to override styles. |
-| `templates_dir` | string | — | Directory with local template overrides. Any template file placed there overrides the embedded one. |
-| `static_assets_dir` | string | — | Directory to serve all css/js/image assets from. Advanced customization only. |
+| `templates_dir` | string | — | Directory with local template overrides. Any template file placed there overrides the embedded one. **Overridden templates must be refreshed after every mokey upgrade** — stale copies reference old asset paths and break pages (see ubccr/mokey#150). |
+| `static_assets_dir` | string | — | Directory to serve all css/js/image assets from. Advanced customization only; must be refreshed after every upgrade. |
 | `ktuser` | string | `"mokeyapp"` | FreeIPA service account used by mokey. |
 | `keytab` | string | — | **Required.** Path to the keytab file for `ktuser`. |
 | `default_language` | string | `"english"` | Interface and email language. Built-in: `english`, `dutch`. |

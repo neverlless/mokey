@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/dchest/captcha"
@@ -11,13 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	ipa "github.com/ubccr/goipa"
-)
-
-var (
-	PasswordCheckLower  = regexp.MustCompile(`[a-z]`)
-	PasswordCheckUpper  = regexp.MustCompile(`[A-Z]`)
-	PasswordCheckNumber = regexp.MustCompile(`[0-9]`)
-	PasswordCheckMarks  = regexp.MustCompile(`[^0-9a-zA-Z]`)
 )
 
 // Simple password checker to validate passwords before creating an account
@@ -30,37 +22,45 @@ func checkPassword(pass string) error {
 		return fmt.Errorf(T("password.min_length"), minLength)
 	}
 
-	numCategories := 0
+	// Category counting mirrors FreeIPA's util/ipa_pwd.c: five classes
+	// (digits, uppercase, lowercase, ASCII specials, other non-ASCII), and
+	// a one-class penalty only for characters repeated three or more times
+	// in a row (max_repeated counts adjacent equal PAIRS; the penalty
+	// applies when it exceeds one). See ubccr/mokey#170.
+	var hasDigit, hasUpper, hasLower, hasSpecial, has8bit bool
+	runes := []rune(pass)
+	numRepeated, maxRepeated := 0, 0
+	for i, r := range runes {
+		switch {
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		case r >= 'a' && r <= 'z':
+			hasLower = true
+		case r >= 'A' && r <= 'Z':
+			hasUpper = true
+		case r < 128:
+			hasSpecial = true
+		default:
+			has8bit = true
+		}
 
-	if PasswordCheckLower.MatchString(pass) {
-		numCategories++
-	}
-	if PasswordCheckUpper.MatchString(pass) {
-		numCategories++
-	}
-	if PasswordCheckNumber.MatchString(pass) {
-		numCategories++
-	}
-	if PasswordCheckMarks.MatchString(pass) {
-		numCategories++
-	}
-
-	repeated := 0
-	for i := 0; i < l; i++ {
-		count := 1
-		for j := i + 1; j < l; j++ {
-			if pass[i] != pass[j] {
-				break
+		if i > 0 && runes[i-1] == r {
+			numRepeated++
+			if numRepeated > maxRepeated {
+				maxRepeated = numRepeated
 			}
-			count++
-		}
-
-		if count > repeated {
-			repeated = count
+		} else {
+			numRepeated = 0
 		}
 	}
 
-	if repeated > 1 {
+	numCategories := 0
+	for _, has := range []bool{hasDigit, hasUpper, hasLower, hasSpecial, has8bit} {
+		if has {
+			numCategories++
+		}
+	}
+	if maxRepeated > 1 {
 		numCategories--
 	}
 
@@ -393,6 +393,20 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 			"username": user.Username,
 			"email":    user.Email,
 		}).Error("Failed to send password changed email")
+	}
+
+	// A TOTP code is single-use and was just consumed by SetPassword.
+	// Re-using it for the automatic login below would be rejected by
+	// FreeIPA as a replay, showing the user an error even though the
+	// password was changed (ubccr/mokey#127). Skip auto-login for OTP
+	// users and ask them to log in with a fresh code instead.
+	if user.OTPOnly() {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+		}).Info("AUDIT User changed expired password successfully")
+		r.metrics.totalPasswordResets.Inc()
+		c.Set("HX-Redirect", "/auth/login")
+		return c.Status(fiber.StatusNoContent).SendString("")
 	}
 
 	client := ipa.NewDefaultClient()

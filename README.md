@@ -128,8 +128,11 @@ $ ipa role-add 'Mokey User Manager' --desc='Mokey User management'
 $ ipa role-add-privilege 'Mokey User Manager' --privilege='User Administrators'
 $ ipa service-add mokey/$(hostname -f)
 $ ipa service-add-principal mokey/$(hostname -f) mokey/mokey
-$ ipa role-add-member 'Mokey User Manager' --service=mokey/mokey
+$ ipa role-add-member 'Mokey User Manager' --services=mokey/$(hostname -f)
 $ ipa permission-mod 'System: Modify Users' --includedattrs=ipauserauthtype
+$ ipa privilege-add 'Mokey UPG Read' --desc='Read UPG definition'
+$ ipa privilege-add-permission 'Mokey UPG Read' --permissions='System: Read UPG Definition'
+$ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey UPG Read'
 $ ipa-getkeytab -s [your.ipa-master.server] -p mokey/mokey -k /etc/mokey/private/mokeyapp.keytab
 $ chmod 640 /etc/mokey/private/mokeyapp.keytab
 $ chgrp mokey /etc/mokey/private/mokeyapp.keytab
