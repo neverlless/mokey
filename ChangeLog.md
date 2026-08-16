@@ -1,5 +1,22 @@
 # Mokey ChangeLog
 
+## [v1.5.0] - 2026-08-16
+
+- Add admin panel (`admin.enabled`, access via FreeIPA group `admin.group`
+  or `admin.users` list, enforced server-side)
+- Admin invites: send an invite link by email; the invited user completes
+  their own profile and the account is enabled immediately — works with
+  self-signup disabled
+- Admin user management: searchable user list with block/unblock and
+  password-reset-email actions
+- Admin audit log: last 1000 AUDIT events (logins, password/email changes,
+  key/token/passkey changes, admin actions) kept in the existing storage
+  backend, 90-day retention
+- Email change now goes through the regular Update button on account
+  settings; the separate Change control is removed
+- One-command local dev environment (`scripts/dev/setup-mokey.sh`) with
+  test users and an SMTP debug sink
+
 ## [v1.4.0] - 2026-08-16
 
 - Add self-service passkey registration and removal (FreeIPA 4.11+); passkeys
