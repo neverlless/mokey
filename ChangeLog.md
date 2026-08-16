@@ -1,5 +1,21 @@
 # Mokey ChangeLog
 
+## [v1.5.1] - 2026-08-16
+
+- Fix password class counting to match FreeIPA's `util/ipa_pwd.c`: five
+  character categories and a repeat penalty only for 3+ identical
+  consecutive characters — passwords FreeIPA accepts are no longer
+  rejected [ubccr#170](https://github.com/ubccr/mokey/issues/170)
+- Fix expired-password change for OTP users: the single-use TOTP code is
+  no longer re-used for auto-login (FreeIPA rejected it as a replay and
+  showed an error although the password was changed); OTP users are
+  redirected to the login page instead [ubccr#127](https://github.com/ubccr/mokey/issues/127)
+- README FreeIPA setup: use the canonical service principal in
+  `role-add-member` and grant the `System: Read UPG Definition`
+  permission required by signup/invites
+- Document that `templates_dir`/`static_assets_dir` overrides must be
+  refreshed after upgrades [ubccr#150](https://github.com/ubccr/mokey/issues/150)
+
 ## [v1.5.0] - 2026-08-16
 
 - Add admin panel (`admin.enabled`, access via FreeIPA group `admin.group`
