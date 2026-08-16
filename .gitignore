@@ -8,3 +8,4 @@ key.gpg
 mokey-*.tar.gz
 *.swp
 .ansible
+.planning/
