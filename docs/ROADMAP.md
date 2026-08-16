@@ -35,12 +35,50 @@ Priorities may shift based on feedback. Open an
 - [x] Hydra logout endpoint — full OIDC logout flow (ubccr#75)
 - [x] Documentation guide: mokey + Keycloak (ubccr#136)
 
-## v2.0 — Ideas
+## v1.4 — Passkeys and foundations
 
-- WebAuthn / passkeys support (FreeIPA supports them; no self-service portal
-  does yet)
-- User avatars (ubccr#123)
-- Kerberos TGT option (ubccr#133)
+- [ ] Passkey API spike: confirm FreeIPA (4.11+) passkey enrollment is
+      possible via the JSON RPC API, and settle the research gate on
+      passkey web login (expected outcome: enrollment only — FreeIPA
+      authenticates passkeys via Kerberos FIDO2 preauth, which the JSON
+      API does not expose)
+- [ ] Invalidate active sessions on password change (security fix pulled
+      forward from the reliability package)
+- [ ] Hydra v2 support: upgrade client SDK from v1.10.6, plus a migration
+      guide for existing Hydra v1.x deployments
+- [ ] Self-service passkey enrollment and removal from the account page.
+      FreeIPA is the single credential store — no WebAuthn state in mokey;
+      if the API can't support web login the feature ships as
+      enrollment/removal only
+
+## v1.5 — Admin panel
+
+Ordered by unique value:
+
+- [ ] Admin access via configurable FreeIPA group (default: `admins`) plus
+      config-file username override list — enforced server-side on every
+      admin route
+- [ ] Invite links: admin sends an invite, the invited user completes
+      their own profile — self-service onboarding without open signup
+- [ ] User management: list, block, unblock, trigger password reset
+- [ ] Audit view over a minimal persistent event store (logins, password
+      changes, key/token changes) — only what the view requires, not a
+      compliance-grade trail; last, it is the first mokey component with
+      its own persistent schema
+
+## Deliberately not planned
+
+- Multiple email addresses per account and user avatars (ubccr#123) — low
+  demand, cut
+- WebAuthn credentials stored in mokey's own database — FreeIPA stays the
+  single credential store
+- Built-in OIDC provider replacing Hydra — too large; Hydra v2 client
+  upgrade is the pragmatic step
+- Full reliability package (test coverage, CONCERNS-driven security audit,
+  compliance-grade audit trail, dropping the "alpha" label) — next
+  milestone, except session invalidation which moved into v1.4
+- Marketing work (demo instance, docs site, announcements) — code first
+- Homelab-specific features — enterprise is the target audience for now
 
 ## Already done in this fork
 
