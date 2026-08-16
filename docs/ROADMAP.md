@@ -37,11 +37,16 @@ Priorities may shift based on feedback. Open an
 
 ## v1.4 — Passkeys and foundations
 
-- [ ] Passkey API spike: confirm FreeIPA (4.11+) passkey enrollment is
-      possible via the JSON RPC API, and settle the research gate on
-      passkey web login (expected outcome: enrollment only — FreeIPA
-      authenticates passkeys via Kerberos FIDO2 preauth, which the JSON
-      API does not expose)
+- [x] Passkey API spike — verdict: **enrollment/removal only**.
+      `user_add_passkey`/`user_remove_passkey` JSON RPC commands exist
+      (args: uid + mapping `passkey:<credId b64>,<pubkey SPKI b64>[,<userid b64>]`,
+      validated in `ipaserver/plugins/baseuser.py`); the mapping is
+      constructible from a browser WebAuthn ceremony (credentialId +
+      COSE-to-SPKI key conversion). Web login is impossible: FreeIPA's
+      session API only exposes `login_password`, `login_kerberos`,
+      `login_x509` — no FIDO2 assertion endpoint. goipa lacks passkey
+      methods; call the RPC directly from mokey reusing goipa's session
+      (Host/Realm/SessionID are public) — no goipa fork needed
 - [ ] Invalidate active sessions on password change (security fix pulled
       forward from the reliability package)
 - [ ] Hydra v2 support: upgrade client SDK from v1.10.6, plus a migration
