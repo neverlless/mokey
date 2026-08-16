@@ -35,6 +35,12 @@
 						<i class="fa fa-user-shield text-center me-1"></i>
 						{{ T "profile.passkeys" }}
 					</a>
+					{{ if $.is_admin }}
+					<a class="nav-link{{ if eq $.path "admin" }} active{{end}}" id="admin-tab" href="/admin" role="tab">
+						<i class="fa fa-users-gear text-center me-1"></i>
+						{{ T "admin.tab" }}
+					</a>
+					{{ end }}
 					<a class="nav-link" id="logout" href="/auth/logout" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-post="/auth/logout" role="tab">
 						<i class="fa fa-arrow-right-from-bracket text-center me-1"></i> 
 						{{ T "profile.logout" }}
@@ -65,6 +71,10 @@
                 {{ else if eq $.path "passkey" }}
 				<div class="tab-pane fade show active" id="passkey" role="tabpanel" aria-labelledby="passkey-tab">
                     {{ template "passkey-list.html" . }}
+                </div>
+                {{ else if eq $.path "admin" }}
+				<div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">
+                    {{ template "admin.html" . }}
                 </div>
                 {{ end }}
 			</div>

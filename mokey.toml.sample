@@ -236,3 +236,16 @@ driver = "memory"
 #------------------------------------------------------------------------------
 [slack]
 token = "your-slack-bot-token"
+
+#------------------------------------------------------------------------------
+# Admin panel
+#------------------------------------------------------------------------------
+[admin]
+# Enable the admin panel (Admin tab for authorized users)
+# enabled = false
+
+# FreeIPA group whose members get admin access
+# group = "admins"
+
+# Additional usernames with admin access regardless of group membership
+# users = ["jdoe"]

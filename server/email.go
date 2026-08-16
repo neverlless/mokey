@@ -137,6 +137,24 @@ func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, 
 	return e.sendEmail(&recipient, ctx, T("email_template.email_changed_event"), "account-updated", vars)
 }
 
+// SendInviteEmail sends an account invitation to an email address. The
+// recipient completes their profile via the /auth/invite/:token link.
+func (e *Emailer) SendInviteEmail(email string, ctx *fiber.Ctx) error {
+	token, err := NewToken(email, email, TokenInvite, e.storage)
+	if err != nil {
+		return err
+	}
+
+	vars := map[string]interface{}{
+		"link":         fmt.Sprintf("%s/auth/invite/%s", BaseURL(ctx), token),
+		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+	}
+
+	recipient := &ipa.User{Email: email}
+
+	return e.sendEmail(recipient, ctx, T("email_template.invite_subject"), "invite", vars)
+}
+
 func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	vars := map[string]interface{}{
 		"getting_started_url": viper.GetString("site.getting_started_url"),

@@ -1,0 +1,36 @@
+{{  with $.message }}
+<div class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
+  {{ . }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+{{  with $.invite_sent }}
+<div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
+  {{ T "admin.invite_sent" }} <strong>{{ . }}</strong>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+<div id="admin-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
+</div>
+
+<h3 class="mb-4">{{ T "admin.title" }}</h3>
+
+<h5>{{ T "admin.invite_title" }}</h5>
+<p class="text-muted">{{ T "admin.invite_help" }}</p>
+<form>
+<div class="row">
+	<div class="col-md-8">
+		<div class="mb-3">
+			<div class="input-group">
+				<input type="email" class="form-control" name="email" id="invite-email" placeholder="user@example.com">
+				<button class="btn btn-primary" type="button" hx-target-error="admin-failed"
+						hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+						data-hx-include="#invite-email"
+						data-hx-target="#admin" data-hx-post="/admin/invite">
+					<i class="fa fa-envelope"></i> {{ T "admin.invite_button" }}
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+</form>

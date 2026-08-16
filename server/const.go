@@ -14,6 +14,7 @@ const (
 	TokenAccountVerify      = "verify"
 	TokenPasswordReset      = "reset"
 	TokenEmailChange        = "emailchange"
+	TokenInvite             = "invite"
 	TokenUsedPrefix         = "used-"
 	TokenIssuedPrefix       = "issued-"
 	SessionKeyLoginTime     = "login_time"

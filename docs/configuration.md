@@ -111,6 +111,14 @@ OAuth2/OIDC. All options unset = disabled.
 | `login_timeout` | int | `0` | How long (seconds) Hydra remembers the login session (`remember_for`). |
 | `fake_tls_termination` | bool | `false` | Send `X-Forwarded-Proto: https` to Hydra when TLS is terminated elsewhere. |
 
+## `[admin]`
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | bool | `false` | Enable the admin panel. Admin routes are always enforced server-side. |
+| `group` | string | `"admins"` | FreeIPA group whose members get admin access. |
+| `users` | list | — | Additional usernames granted admin access regardless of group membership. |
+
 ## `[slack]`
 
 | Option | Type | Default | Description |

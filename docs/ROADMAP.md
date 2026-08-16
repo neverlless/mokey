@@ -59,10 +59,10 @@ Priorities may shift based on feedback. Open an
 
 Ordered by unique value:
 
-- [ ] Admin access via configurable FreeIPA group (default: `admins`) plus
+- [x] Admin access via configurable FreeIPA group (default: `admins`) plus
       config-file username override list — enforced server-side on every
       admin route
-- [ ] Invite links: admin sends an invite, the invited user completes
+- [x] Invite links: admin sends an invite, the invited user completes
       their own profile — self-service onboarding without open signup
 - [ ] User management: list, block, unblock, trigger password reset
 - [ ] Audit view over a minimal persistent event store (logins, password

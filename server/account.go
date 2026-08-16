@@ -83,7 +83,10 @@ func (r *Router) AccountCreate(c *fiber.Ctx) error {
 	captchaID := c.FormValue("captcha_id")
 	captchaSol := c.FormValue("captcha_sol")
 
-	err := r.accountCreate(user, password, passwordConfirm, captchaID, captchaSol)
+	err := r.verifyCaptcha(captchaID, captchaSol)
+	if err == nil {
+		err = r.accountCreate(user, password, passwordConfirm, false)
+	}
 	if err != nil {
 		c.Append("HX-Trigger", "{\"reloadCaptcha\":\""+captcha.New()+"\"}")
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
@@ -117,8 +120,10 @@ func (r *Router) AccountCreate(c *fiber.Ctx) error {
 	return c.Render("signup-success.html", vars)
 }
 
-// accountCreate does the work of validation and creating the account in FreeIPA
-func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm, captchaID, captchaSol string) error {
+// accountCreate does the work of validation and creating the account in
+// FreeIPA. When verified is true (invited users whose email is already
+// proven) the account is enabled immediately and skips email verification.
+func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string, verified bool) error {
 	if err := validateUsername(user); err != nil {
 		return err
 	}
@@ -139,13 +144,11 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm, captch
 		return err
 	}
 
-	if err := r.verifyCaptcha(captchaID, captchaSol); err != nil {
-		return err
-	}
-
 	user.HomeDir = filepath.Join(viper.GetString("accounts.default_homedir"), user.Username)
 	user.Shell = viper.GetString("accounts.default_shell")
-	user.Category = UserCategoryUnverified
+	if !verified {
+		user.Category = UserCategoryUnverified
+	}
 
 	userRec, err := r.adminClient.UserAddWithPassword(user, password)
 	if err != nil {
@@ -172,6 +175,10 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm, captch
 		"last":     userRec.Last,
 		"homedir":  userRec.HomeDir,
 	}).Debug("New user account created")
+
+	if verified {
+		return nil
+	}
 
 	// Disable new users until they have verified their email address
 	err = r.adminClient.UserDisable(userRec.Username)

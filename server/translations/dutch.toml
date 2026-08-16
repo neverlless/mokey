@@ -61,6 +61,15 @@ system_error = "Systeemfout, neem contact op met de beheerder"
 weak_password = "Je wachtwoord is te zwak. Zorg ervoor dat je wachtwoord een cijfer en zowel kleine als hoofdletters bevat"
 
 [email_template]
+invite_subject = "U bent uitgenodigd om een account aan te maken"
+invite_preheader = "Gebruik deze link om uw account aan te maken. De link is slechts geldig voor"
+invite_greeting = "Hallo"
+invite_body_part1 = "U bent uitgenodigd om een account aan te maken bij "
+invite_body_part2 = ". "
+invite_body_part3 = "Gebruik de knop hieronder om uw profiel te voltooien. "
+invite_body_part4 = "Deze uitnodiging is geldig voor de komende "
+invite_button = "Account aanmaken"
+invite_title = "Account aanmaken"
 passkey_event = "Passkey "
 passkey_added = "toegevoegd"
 passkey_removed = "verwijderd"
@@ -333,3 +342,16 @@ registration_failed = "Passkey-registratie mislukt. Probeer het opnieuw."
 freeipa_add_failed = "Opslaan van de passkey in FreeIPA is mislukt. Uw account heeft mogelijk geen rechten om passkey-toewijzingen te beheren."
 freeipa_remove_failed = "Verwijderen van de passkey uit FreeIPA is mislukt."
 rp_display_name = "Identity Management"
+
+[admin]
+tab = "Beheer"
+title = "Beheer"
+invite_title = "Gebruiker uitnodigen"
+invite_help = "Stuur een uitnodigingslink per e-mail. De uitgenodigde gebruiker voltooit zelf het profiel en het account wordt direct geactiveerd — open registratie is niet nodig."
+invite_button = "Uitnodiging versturen"
+invite_sent = "Uitnodiging verzonden naar"
+
+[invite]
+title = "Account voltooien"
+intro = "U maakt een account aan voor"
+create_button = "Account aanmaken"

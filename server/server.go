@@ -43,6 +43,8 @@ func SetDefaults() {
 	viper.SetDefault("site.default_language", "english")
 	viper.SetDefault("site.ktuser", "mokeyapp")
 	viper.SetDefault("accounts.enable_signup", true)
+	viper.SetDefault("admin.enabled", false)
+	viper.SetDefault("admin.group", "admins")
 	viper.SetDefault("accounts.single_page_login", false)
 	viper.SetDefault("accounts.hide_invalid_username_error", false)
 	viper.SetDefault("accounts.default_homedir", "/home")

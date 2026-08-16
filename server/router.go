@@ -141,6 +141,12 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Post("/security/mfa/disable", r.RequireLogin, r.RequireHTMX, r.TwoFactorDisable)
 
 	// SSH Keys
+	// Admin
+	app.Get("/admin", r.RequireLogin, r.Index)
+	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
+	app.Get("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
+	app.Post("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
+
 	// Passkeys
 	app.Post("/passkey/begin", r.RequireLogin, r.PasskeyBegin)
 	app.Post("/passkey/finish", r.RequireLogin, r.PasskeyFinish)
@@ -201,8 +207,13 @@ func (r *Router) Index(c *fiber.Ctx) error {
 	}
 
 	vars := fiber.Map{
-		"user": user,
-		"path": path,
+		"user":     user,
+		"path":     path,
+		"is_admin": isAdmin(user),
+	}
+
+	if path == "admin" && !isAdmin(user) {
+		return c.Status(fiber.StatusForbidden).SendString("")
 	}
 
 	if path == "sshkey" {

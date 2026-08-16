@@ -61,6 +61,15 @@ system_error = "System error please contact administrator"
 weak_password = "Your password is too weak. Please ensure your password includes a number and lower/upper case character"
 
 [email_template]
+invite_subject = "You have been invited to create an account"
+invite_preheader = "Use this link to create your account. The link is only valid for"
+invite_greeting = "Hi"
+invite_body_part1 = "You have been invited to create an account at "
+invite_body_part2 = ". " 
+invite_body_part3 = "Use the button below to complete your profile. "
+invite_body_part4 = "This invitation is valid for the next "
+invite_button = "Create your account"
+invite_title = "Create your account"
 passkey_event = "Passkey "
 passkey_added = "added"
 passkey_removed = "removed"
@@ -333,3 +342,16 @@ registration_failed = "Passkey registration failed. Please try again."
 freeipa_add_failed = "Failed to store the passkey in FreeIPA. Your account may lack permission to manage passkey mappings."
 freeipa_remove_failed = "Failed to remove the passkey from FreeIPA."
 rp_display_name = "Identity Management"
+
+[admin]
+tab = "Admin"
+title = "Administration"
+invite_title = "Invite a user"
+invite_help = "Send an invitation link by email. The invited user completes their own profile and the account is enabled immediately — no open signup required."
+invite_button = "Send Invite"
+invite_sent = "Invitation sent to"
+
+[invite]
+title = "Complete Your Account"
+intro = "You are creating an account for"
+create_button = "Create Account"
