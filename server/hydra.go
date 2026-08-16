@@ -1,11 +1,11 @@
 package server
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/ory/hydra-client-go/client/admin"
-	"github.com/ory/hydra-client-go/models"
+	hydra "github.com/ory/hydra-client-go/v26"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -30,10 +30,8 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(T("hydra.consent_without_challenge"))
 	}
 
-	cparams := admin.NewGetConsentRequestParams()
-	cparams.SetConsentChallenge(challenge)
-	cparams.SetHTTPClient(r.hydraAdminHTTPClient)
-	cresponse, err := r.hydraClient.Admin.GetConsentRequest(cparams)
+	consent, _, err := r.hydraClient.OAuth2API.GetOAuth2ConsentRequest(context.Background()).
+		ConsentChallenge(challenge).Execute()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -42,13 +40,13 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_consent"))
 	}
 
-	consent := cresponse.Payload
+	subject := consent.GetSubject()
 
-	user, err := r.adminClient.UserShow(consent.Subject)
+	user, err := r.adminClient.UserShow(subject)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":    err,
-			"username": consent.Subject,
+			"username": subject,
 		}).Warn("Failed to find User record for consent")
 		r.metrics.totalHydraFailedLogins.Inc()
 		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_consent"))
@@ -59,26 +57,24 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).SendString(T("hydra.access_denied"))
 	}
 
-	params := admin.NewAcceptConsentRequestParams()
-	params.SetConsentChallenge(challenge)
-	params.SetHTTPClient(r.hydraAdminHTTPClient)
-	params.SetBody(&models.AcceptConsentRequest{
-		GrantScope: consent.RequestedScope,
-		Session: &models.ConsentRequestSession{
-			IDToken: map[string]interface{}{
-				"uid":                string(user.Username),
-				"preferred_username": string(user.Username),
-				"name":               string(user.DisplayName),
-				"first":              string(user.First),
-				"last":               string(user.Last),
-				"given_name":         string(user.First),
-				"family_name":        string(user.Last),
-				"groups":             user.Groups,
-				"email":              string(user.Email),
-			},
-		}})
+	acceptBody := hydra.NewAcceptOAuth2ConsentRequest()
+	acceptBody.SetGrantScope(consent.GetRequestedScope())
+	session := hydra.NewAcceptOAuth2ConsentRequestSession()
+	session.SetIdToken(map[string]interface{}{
+		"uid":                user.Username,
+		"preferred_username": user.Username,
+		"name":               user.DisplayName,
+		"first":              user.First,
+		"last":               user.Last,
+		"given_name":         user.First,
+		"family_name":        user.Last,
+		"groups":             user.Groups,
+		"email":              user.Email,
+	})
+	acceptBody.SetSession(*session)
 
-	response, err := r.hydraClient.Admin.AcceptConsentRequest(params)
+	redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2ConsentRequest(context.Background()).
+		ConsentChallenge(challenge).AcceptOAuth2ConsentRequest(*acceptBody).Execute()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -88,12 +84,12 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 	}
 
 	log.WithFields(log.Fields{
-		"username": consent.Subject,
+		"username": subject,
 	}).Info("AUDIT User logged in via Hydra OAuth2 successfully")
 	r.metrics.totalHydraLogins.Inc()
 
-	c.Set("HX-Redirect", *response.Payload.RedirectTo)
-	return c.Redirect(*response.Payload.RedirectTo)
+	c.Set("HX-Redirect", redirect.GetRedirectTo())
+	return c.Redirect(redirect.GetRedirectTo())
 }
 
 func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
@@ -106,10 +102,8 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(T("hydra.login_without_challenge"))
 	}
 
-	getparams := admin.NewGetLoginRequestParams()
-	getparams.SetLoginChallenge(challenge)
-	getparams.SetHTTPClient(r.hydraAdminHTTPClient)
-	response, err := r.hydraClient.Admin.GetLoginRequest(getparams)
+	login, _, err := r.hydraClient.OAuth2API.GetOAuth2LoginRequest(context.Background()).
+		LoginChallenge(challenge).Execute()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -117,19 +111,19 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_login"))
 	}
 
-	login := response.Payload
+	if login.GetSkip() {
+		subject := login.GetSubject()
 
-	if *login.Skip {
 		log.WithFields(log.Fields{
-			"user": *login.Subject,
+			"user": subject,
 		}).Debug("Hydra requested we skip login")
 
 		// Check to make sure we have a valid user id
-		user, err := r.adminClient.UserShow(*login.Subject)
+		user, err := r.adminClient.UserShow(subject)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error":    err,
-				"username": *login.Subject,
+				"username": subject,
 			}).Warn("Failed to find User record for login")
 			r.metrics.totalHydraFailedLogins.Inc()
 			return c.Status(fiber.StatusInternalServerError).SendString(T("hydra.failed_to_validate_login"))
@@ -140,14 +134,9 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusUnauthorized).SendString(T("hydra.access_denied"))
 		}
 
-		acceptparams := admin.NewAcceptLoginRequestParams()
-		acceptparams.SetLoginChallenge(challenge)
-		acceptparams.SetHTTPClient(r.hydraAdminHTTPClient)
-		acceptparams.SetBody(&models.AcceptLoginRequest{
-			Subject: login.Subject,
-		})
-
-		completedResponse, err := r.hydraClient.Admin.AcceptLoginRequest(acceptparams)
+		redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2LoginRequest(context.Background()).
+			LoginChallenge(challenge).
+			AcceptOAuth2LoginRequest(*hydra.NewAcceptOAuth2LoginRequest(subject)).Execute()
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -157,11 +146,11 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 		}
 
 		log.WithFields(log.Fields{
-			"username": *login.Subject,
+			"username": subject,
 		}).Debug("Hydra OAuth login GET challenge signed successfully")
 
-		c.Set("HX-Redirect", *completedResponse.Payload.RedirectTo)
-		return c.Redirect(*completedResponse.Payload.RedirectTo)
+		c.Set("HX-Redirect", redirect.GetRedirectTo())
+		return c.Redirect(redirect.GetRedirectTo())
 	}
 
 	if ok, _ := r.isLoggedIn(c); ok {
@@ -176,16 +165,12 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 }
 
 func (r *Router) LoginOAuthPost(username, challenge string, c *fiber.Ctx) error {
-	acceptparams := admin.NewAcceptLoginRequestParams()
-	acceptparams.SetLoginChallenge(challenge)
-	acceptparams.SetHTTPClient(r.hydraAdminHTTPClient)
-	acceptparams.SetBody(&models.AcceptLoginRequest{
-		Subject:     &username,
-		Remember:    true, // TODO: make this configurable
-		RememberFor: viper.GetInt64("hydra.login_timeout"),
-	})
+	acceptBody := hydra.NewAcceptOAuth2LoginRequest(username)
+	acceptBody.SetRemember(true) // TODO: make this configurable
+	acceptBody.SetRememberFor(viper.GetInt64("hydra.login_timeout"))
 
-	completedResponse, err := r.hydraClient.Admin.AcceptLoginRequest(acceptparams)
+	redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2LoginRequest(context.Background()).
+		LoginChallenge(challenge).AcceptOAuth2LoginRequest(*acceptBody).Execute()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"username": username,
@@ -199,11 +184,11 @@ func (r *Router) LoginOAuthPost(username, challenge string, c *fiber.Ctx) error 
 	}).Debug("Hydra OAuth2 login POST challenge signed successfully")
 
 	if c.Get("HX-Request", "false") == "true" {
-		c.Set("HX-Redirect", *completedResponse.Payload.RedirectTo)
+		c.Set("HX-Redirect", redirect.GetRedirectTo())
 		return c.Status(fiber.StatusNoContent).SendString("")
 	}
 
-	return c.Redirect(*completedResponse.Payload.RedirectTo)
+	return c.Redirect(redirect.GetRedirectTo())
 }
 
 func (r *Router) HydraError(c *fiber.Ctx) error {
@@ -227,10 +212,8 @@ func (r *Router) HydraError(c *fiber.Ctx) error {
 func (r *Router) HydraLogout(c *fiber.Ctx) error {
 	challenge := c.Query("logout_challenge")
 
-	getparams := admin.NewGetLogoutRequestParams()
-	getparams.SetLogoutChallenge(challenge)
-	getparams.SetHTTPClient(r.hydraAdminHTTPClient)
-	getResponse, err := r.hydraClient.Admin.GetLogoutRequest(getparams)
+	logoutRequest, _, err := r.hydraClient.OAuth2API.GetOAuth2LogoutRequest(context.Background()).
+		LogoutChallenge(challenge).Execute()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -243,10 +226,8 @@ func (r *Router) HydraLogout(c *fiber.Ctx) error {
 	// authentication sessions when a session cookie is present)
 	r.logout(c)
 
-	acceptparams := admin.NewAcceptLogoutRequestParams()
-	acceptparams.SetLogoutChallenge(challenge)
-	acceptparams.SetHTTPClient(r.hydraAdminHTTPClient)
-	completedResponse, err := r.hydraClient.Admin.AcceptLogoutRequest(acceptparams)
+	redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2LogoutRequest(context.Background()).
+		LogoutChallenge(challenge).Execute()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -256,18 +237,16 @@ func (r *Router) HydraLogout(c *fiber.Ctx) error {
 	}
 
 	log.WithFields(log.Fields{
-		"subject": getResponse.Payload.Subject,
+		"subject": logoutRequest.GetSubject(),
 		"ip":      RemoteIP(c),
 	}).Info("Completed hydra logout flow")
 
-	return c.Redirect(*completedResponse.Payload.RedirectTo)
+	return c.Redirect(redirect.GetRedirectTo())
 }
 
-func (r *Router) revokeHydraAuthenticationSession(username string, c *fiber.Ctx) error {
-	params := admin.NewRevokeAuthenticationSessionParams()
-	params.SetSubject(username)
-	params.SetHTTPClient(r.hydraAdminHTTPClient)
-	_, err := r.hydraClient.Admin.RevokeAuthenticationSession(params)
+func (r *Router) revokeHydraAuthenticationSession(username string) error {
+	_, err := r.hydraClient.OAuth2API.RevokeOAuth2LoginSessions(context.Background()).
+		Subject(username).Execute()
 	if err != nil {
 		return err
 	}

@@ -176,8 +176,9 @@ mokey implements the login/consent flow for handling challenge requests from
 Hydra. This serves as the bridge between Hydra and FreeIPA identity provider.
 For more information on Hydra and the login/consent flow see [here](https://www.ory.sh/docs/hydra/oauth2).
 
-To configure the Hydra login/consent flow set the following variables in
-`/etc/mokey/mokey.toml`:
+mokey targets Hydra v2.x — upgrading from v1.x? See the
+[migration guide](docs/hydra-v2-migration.md). To configure the Hydra
+login/consent flow set the following variables in `/etc/mokey/mokey.toml`:
 
 ```
 [hydra]

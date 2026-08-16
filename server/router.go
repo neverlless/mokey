@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
-	hydra "github.com/ory/hydra-client-go/client"
+	hydra "github.com/ory/hydra-client-go/v26"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	ipa "github.com/ubccr/goipa"
@@ -21,8 +21,7 @@ type Router struct {
 	storage      fiber.Storage
 
 	// Hydra consent app support
-	hydraClient          *hydra.OryHydra
-	hydraAdminHTTPClient *http.Client
+	hydraClient *hydra.APIClient
 
 	// Prometheus metrics
 	metrics *Metrics
@@ -61,21 +60,15 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 			log.Fatal(err)
 		}
 
-		r.hydraClient = hydra.NewHTTPClientWithConfig(
-			nil,
-			&hydra.TransportConfig{
-				Schemes:  []string{adminURL.Scheme},
-				Host:     adminURL.Host,
-				BasePath: adminURL.Path,
-			})
-
+		cfg := hydra.NewConfiguration()
+		cfg.Servers = hydra.ServerConfigurations{{URL: adminURL.String()}}
 		if viper.GetBool("hydra.fake_tls_termination") {
-			r.hydraAdminHTTPClient = &http.Client{
+			cfg.HTTPClient = &http.Client{
 				Transport: &FakeTLSTransport{T: http.DefaultTransport},
 			}
-		} else {
-			r.hydraAdminHTTPClient = http.DefaultClient
 		}
+
+		r.hydraClient = hydra.NewAPIClient(cfg)
 	}
 
 	r.metrics = NewMetrics()

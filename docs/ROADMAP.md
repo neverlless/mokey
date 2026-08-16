@@ -49,7 +49,7 @@ Priorities may shift based on feedback. Open an
       (Host/Realm/SessionID are public) — no goipa fork needed
 - [x] Invalidate active sessions on password change (security fix pulled
       forward from the reliability package)
-- [ ] Hydra v2 support: upgrade client SDK from v1.10.6, plus a migration
+- [x] Hydra v2 support: upgrade client SDK from v1.10.6, plus a migration
       guide for existing Hydra v1.x deployments
 - [ ] Self-service passkey enrollment and removal from the account page.
       FreeIPA is the single credential store — no WebAuthn state in mokey;

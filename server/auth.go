@@ -136,7 +136,7 @@ func (r *Router) logout(c *fiber.Ctx) {
 
 	if viper.IsSet("hydra.admin_url") {
 		if _, ok := username.(string); ok {
-			err := r.revokeHydraAuthenticationSession(username.(string), c)
+			err := r.revokeHydraAuthenticationSession(username.(string))
 			if err != nil {
 				log.WithFields(log.Fields{
 					"error": err,
