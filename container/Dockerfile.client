@@ -1,6 +1,6 @@
 FROM rockylinux:9
 RUN dnf upgrade -y
-RUN dnf install systemd ipa-client openssh-server openssh-clients sudo vim wget perl 'perl(Data::Dumper)' 'perl(Time::HiRes)' -y
+RUN dnf install systemd ipa-client openssh-server openssh-clients sudo vim wget perl 'perl(Data::Dumper)' 'perl(Time::HiRes)' gcc -y
 COPY init-data ipa-client-enroll populate-data-volume /usr/sbin/
 RUN sed -i 's/^#AddressFamily any/AddressFamily inet/' /etc/ssh/sshd_config
 COPY ipa-client-enroll.service populate-data-volume.service /usr/lib/systemd/system/
@@ -22,8 +22,9 @@ RUN useradd -m --uid=${USER_ID} ${USER} \
 	&& chown -R ${USER}:${USER} /home/${USER}
 
 RUN install -o ${USER_ID} -g ${USER_ID} -m 0755 -d /app
-RUN wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
+ARG TARGETARCH
+RUN wget -q https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz
+RUN tar -C /usr/local -xzf go${GO_VERSION}.linux-${TARGETARCH}.tar.gz
 
 RUN echo "${USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-dev-user \
 	&& chmod 440 /etc/sudoers.d/90-dev-user
