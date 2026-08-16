@@ -65,10 +65,10 @@ Ordered by unique value:
 - [x] Invite links: admin sends an invite, the invited user completes
       their own profile — self-service onboarding without open signup
 - [x] User management: list, block, unblock, trigger password reset
-- [ ] Audit view over a minimal persistent event store (logins, password
-      changes, key/token changes) — only what the view requires, not a
-      compliance-grade trail; last, it is the first mokey component with
-      its own persistent schema
+- [x] Audit view over a minimal persistent event store (logins, password
+      changes, key/token changes, admin actions) — implemented as a ring
+      buffer of AUDIT log events in the existing session storage backend
+      via a logrus hook: no new schema, works on memory/sqlite3/redis
 
 ## Deliberately not planned
 

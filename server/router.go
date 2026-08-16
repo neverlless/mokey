@@ -32,6 +32,8 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 		storage: storage,
 	}
 
+	log.AddHook(NewAuditHook(storage))
+
 	r.adminClient = ipa.NewDefaultClient()
 
 	err := r.adminClient.LoginWithKeytab(viper.GetString("site.keytab"), viper.GetString("site.ktuser"))
@@ -144,6 +146,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/admin", r.RequireLogin, r.Index)
 	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
 	app.Get("/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
+	app.Get("/admin/audit", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAuditList)
 	app.Post("/admin/user/:action", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserAction)
 	app.Get("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
 	app.Post("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)

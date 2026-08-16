@@ -340,6 +340,12 @@ freeipa_remove_failed = "Verwijderen van de passkey uit FreeIPA is mislukt."
 rp_display_name = "Identity Management"
 
 [admin]
+audit_title = "Auditlogboek"
+audit_time = "Wanneer"
+audit_event = "Gebeurtenis"
+audit_ip = "IP"
+audit_by = "door"
+audit_empty = "Nog geen auditgebeurtenissen"
 users_title = "Gebruikers"
 search_placeholder = "Zoek op gebruikersnaam, naam of e-mail"
 active = "Actief"

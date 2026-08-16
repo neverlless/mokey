@@ -210,6 +210,11 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("")
 	}
 
+	// already enabled (4009) / already disabled (4010) — treat as success
+	if ierr, ok := err.(*ipa.IpaError); ok && (ierr.Code == 4009 || ierr.Code == 4010) {
+		err = nil
+	}
+
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":      err,
@@ -232,4 +237,11 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 		vars["reset_sent"] = username
 	}
 	return c.Render("admin-users.html", vars)
+}
+
+func (r *Router) AdminAuditList(c *fiber.Ctx) error {
+	return c.Render("admin-audit.html", fiber.Map{
+		"user":   r.user(c),
+		"events": auditRecent(r.storage, 50),
+	})
 }

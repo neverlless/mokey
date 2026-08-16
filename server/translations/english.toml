@@ -340,6 +340,12 @@ freeipa_remove_failed = "Failed to remove the passkey from FreeIPA."
 rp_display_name = "Identity Management"
 
 [admin]
+audit_title = "Audit log"
+audit_time = "When"
+audit_event = "Event"
+audit_ip = "IP"
+audit_by = "by"
+audit_empty = "No audit events yet"
 users_title = "Users"
 search_placeholder = "Search by username, name, or email"
 active = "Active"

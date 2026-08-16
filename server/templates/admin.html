@@ -46,3 +46,7 @@
 </div>
 <div id="admin-users" hx-get="/admin/users" hx-trigger="load"
      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
+
+<h5 class="mt-4">{{ T "admin.audit_title" }}</h5>
+<div id="admin-audit" hx-get="/admin/audit" hx-trigger="load"
+     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
