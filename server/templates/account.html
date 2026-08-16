@@ -40,27 +40,8 @@
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label d-flex justify-content-between align-items-baseline">
-				{{ T "common.email" }}
-				<a href="#" id="email-edit-link" class="small text-decoration-none"
-				   _="on click toggle .d-none on #email-view then toggle .d-none on #email-edit then add .d-none to me then call #email.focus() halt">
-					{{ T "account.email_change_button" }}
-				</a>
-			</label>
-			<input type="text" id="email-view" class="form-control" value="{{ .user.Email }}" disabled readonly>
-			<div id="email-edit" class="d-none">
-				<div class="input-group">
-					<input type="email" class="form-control" name="email" id="email" value="{{ .user.Email }}">
-					<button class="btn btn-primary" type="button" hx-target-error="account-failed"
-							hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-							data-hx-vals='{"csrf": "{{ $.csrf }}"}'
-							data-hx-include="#email"
-							data-hx-target="#account" data-hx-post="/account/email">
-						{{ T "account.email_send_confirmation" }}
-					</button>
-				</div>
-				<div class="form-text">{{ T "account.email_change_help" }}</div>
-			</div>
+		  	<label class="form-label">{{ T "common.email" }}</label>
+			<input type="email" class="form-control" name="email" id="email" value="{{ .user.Email }}">
 		</div>
 	</div>
 	<div class="col-md-6">

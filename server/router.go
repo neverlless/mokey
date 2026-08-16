@@ -127,7 +127,6 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	// Account Settings
 	app.Get("/account/settings", r.RequireLogin, r.RequireHTMX, r.AccountSettings)
 	app.Post("/account/settings", r.RequireLogin, r.RequireHTMX, r.AccountSettings)
-	app.Post("/account/email", r.RequireLogin, r.RequireHTMX, r.EmailChange)
 	app.Get("/auth/email/confirm/:token", r.EmailChangeConfirm)
 	app.Post("/auth/email/confirm/:token", r.EmailChangeConfirm)
 

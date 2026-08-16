@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	valid "github.com/asaskevich/govalidator"
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +39,18 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 		return c.Render("account.html", vars)
 	}
 
+	// Email changes are not applied directly: a confirmation link is sent
+	// to the new address and the change happens in EmailChangeConfirm
+	newEmail := strings.TrimSpace(strings.ToLower(c.FormValue("email")))
+	emailChangeRequested := newEmail != "" && !strings.EqualFold(newEmail, user.Email)
+	if emailChangeRequested {
+		check := &ipa.User{Email: newEmail}
+		if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
+			vars["message"] = T("account.email_invalid")
+			return c.Render("account.html", vars)
+		}
+	}
+
 	userUpdated, err := r.adminClient.UserMod(user)
 	if err != nil {
 		if ierr, ok := err.(*ipa.IpaError); ok {
@@ -59,6 +70,24 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 	} else {
 		vars["user"] = userUpdated
 		vars["success"] = true
+
+		if emailChangeRequested {
+			if err := r.emailer.SendEmailChangeConfirmEmail(user, newEmail, c); err != nil {
+				log.WithFields(log.Fields{
+					"username": user.Username,
+					"email":    newEmail,
+					"err":      err,
+				}).Error("Failed to send email change confirmation email")
+				vars["message"] = T("account.fatal_system_error")
+			} else {
+				log.WithFields(log.Fields{
+					"username":  user.Username,
+					"new_email": newEmail,
+					"ip":        RemoteIP(c),
+				}).Info("AUDIT email change requested")
+				vars["email_change_sent"] = true
+			}
+		}
 	}
 	return c.Render("account.html", vars)
 }
@@ -334,54 +363,6 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 	}
 
 	return c.Render("account-verify-forgot-success.html", fiber.Map{})
-}
-
-// EmailChange handles a logged-in user's request to change their email
-// address. A confirmation link is sent to the new address; the change is
-// applied only after the link is visited (see EmailChangeConfirm).
-func (r *Router) EmailChange(c *fiber.Ctx) error {
-	user := r.user(c)
-
-	vars := fiber.Map{
-		"user": user,
-	}
-
-	newEmail := strings.TrimSpace(strings.ToLower(c.FormValue("email")))
-
-	if newEmail == "" || !valid.IsEmail(newEmail) {
-		vars["message"] = T("account.email_invalid")
-		return c.Render("account.html", vars)
-	}
-
-	if strings.EqualFold(newEmail, user.Email) {
-		vars["message"] = T("account.email_same_as_current")
-		return c.Render("account.html", vars)
-	}
-
-	check := &ipa.User{Email: newEmail}
-	if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
-		vars["message"] = T("account.email_invalid")
-		return c.Render("account.html", vars)
-	}
-
-	if err := r.emailer.SendEmailChangeConfirmEmail(user, newEmail, c); err != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"email":    newEmail,
-			"err":      err,
-		}).Error("Failed to send email change confirmation email")
-		vars["message"] = T("account.fatal_system_error")
-		return c.Render("account.html", vars)
-	}
-
-	log.WithFields(log.Fields{
-		"username":  user.Username,
-		"new_email": newEmail,
-		"ip":        RemoteIP(c),
-	}).Info("AUDIT email change requested")
-
-	vars["email_change_sent"] = true
-	return c.Render("account.html", vars)
 }
 
 // EmailChangeConfirm applies a pending email change. GET renders a
