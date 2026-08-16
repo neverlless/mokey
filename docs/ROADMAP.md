@@ -47,7 +47,7 @@ Priorities may shift based on feedback. Open an
       `login_x509` — no FIDO2 assertion endpoint. goipa lacks passkey
       methods; call the RPC directly from mokey reusing goipa's session
       (Host/Realm/SessionID are public) — no goipa fork needed
-- [ ] Invalidate active sessions on password change (security fix pulled
+- [x] Invalidate active sessions on password change (security fix pulled
       forward from the reliability package)
 - [ ] Hydra v2 support: upgrade client SDK from v1.10.6, plus a migration
       guide for existing Hydra v1.x deployments
