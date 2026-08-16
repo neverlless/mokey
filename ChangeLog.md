@@ -1,5 +1,14 @@
 # Mokey ChangeLog
 
+## [v1.4.0] - 2026-08-16
+
+- Add self-service passkey registration and removal (FreeIPA 4.11+); passkeys
+  are stored only in FreeIPA via `user_add_passkey`/`user_remove_passkey`
+- Invalidate active sessions on password change
+- Upgrade Hydra integration to the v2 admin API (hydra-client-go v26); see
+  `docs/hydra-v2-migration.md` for upgrading Hydra v1.x deployments
+- Build container image only on version tags and manual dispatch
+
 ## [v1.3.0] - 2026-08-15
 
 - Implement Hydra OIDC logout flow — users are redirected back to the
