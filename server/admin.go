@@ -138,3 +138,98 @@ func (r *Router) InviteAccept(c *fiber.Ctx) error {
 		"invited": true,
 	})
 }
+
+const adminUserListLimit = 50
+
+// adminUserVars builds the template vars for the admin user table.
+// ponytail: fetches up to 500 users and filters substring in Go — fine for
+// typical directories; server-side criteria search if this becomes slow.
+func (r *Router) adminUserVars(c *fiber.Ctx, search string) fiber.Map {
+	vars := fiber.Map{
+		"user":   r.user(c),
+		"search": search,
+	}
+
+	users, err := r.adminClient.UserFind(ipa.Options{"sizelimit": 500})
+	if err != nil {
+		log.WithFields(log.Fields{"err": err}).Error("Failed to list users from FreeIPA")
+		vars["users_message"] = T("account.fatal_system_error")
+		return vars
+	}
+
+	needle := strings.ToLower(strings.TrimSpace(search))
+	matched := make([]*ipa.User, 0, len(users))
+	for _, u := range users {
+		if needle == "" ||
+			strings.Contains(strings.ToLower(u.Username), needle) ||
+			strings.Contains(strings.ToLower(u.Email), needle) ||
+			strings.Contains(strings.ToLower(u.First+" "+u.Last), needle) {
+			matched = append(matched, u)
+		}
+	}
+
+	vars["total"] = len(matched)
+	if len(matched) > adminUserListLimit {
+		matched = matched[:adminUserListLimit]
+	}
+	vars["users"] = matched
+
+	return vars
+}
+
+func (r *Router) AdminUserList(c *fiber.Ctx) error {
+	return c.Render("admin-users.html", r.adminUserVars(c, c.Query("search")))
+}
+
+func (r *Router) AdminUserAction(c *fiber.Ctx) error {
+	username := strings.TrimSpace(c.FormValue("username"))
+	action := c.Params("action")
+	search := c.FormValue("search")
+
+	if username == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("")
+	}
+
+	if username == r.username(c) && action != "reset" {
+		return c.Status(fiber.StatusBadRequest).SendString(T("admin.cannot_block_self"))
+	}
+
+	var err error
+	switch action {
+	case "block":
+		err = r.adminClient.UserDisable(username)
+	case "unblock":
+		err = r.adminClient.UserEnable(username)
+	case "reset":
+		var target *ipa.User
+		target, err = r.adminClient.UserShow(username)
+		if err == nil {
+			err = r.emailer.SendPasswordResetEmail(target, c)
+		}
+	default:
+		return c.Status(fiber.StatusBadRequest).SendString("")
+	}
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":      err,
+			"username": username,
+			"action":   action,
+			"admin":    r.username(c),
+		}).Error("Admin user action failed")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+	}
+
+	log.WithFields(log.Fields{
+		"username": username,
+		"action":   action,
+		"admin":    r.username(c),
+		"ip":       RemoteIP(c),
+	}).Info("AUDIT admin user action")
+
+	vars := r.adminUserVars(c, search)
+	if action == "reset" {
+		vars["reset_sent"] = username
+	}
+	return c.Render("admin-users.html", vars)
+}

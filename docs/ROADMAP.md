@@ -64,7 +64,7 @@ Ordered by unique value:
       admin route
 - [x] Invite links: admin sends an invite, the invited user completes
       their own profile — self-service onboarding without open signup
-- [ ] User management: list, block, unblock, trigger password reset
+- [x] User management: list, block, unblock, trigger password reset
 - [ ] Audit view over a minimal persistent event store (logins, password
       changes, key/token changes) — only what the view requires, not a
       compliance-grade trail; last, it is the first mokey component with

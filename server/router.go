@@ -143,6 +143,8 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	// Admin
 	app.Get("/admin", r.RequireLogin, r.Index)
 	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
+	app.Get("/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
+	app.Post("/admin/user/:action", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserAction)
 	app.Get("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
 	app.Post("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
 

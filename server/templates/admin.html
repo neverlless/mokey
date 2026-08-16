@@ -33,3 +33,16 @@
 	</div>
 </div>
 </form>
+
+<h5 class="mt-4">{{ T "admin.users_title" }}</h5>
+<div class="row">
+	<div class="col-md-8">
+		<input type="search" class="form-control mb-3" name="search" id="user-search"
+		       placeholder="{{ T "admin.search_placeholder" }}"
+		       hx-get="/admin/users" hx-target="#admin-users"
+		       hx-trigger="input changed delay:300ms, search"
+		       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+	</div>
+</div>
+<div id="admin-users" hx-get="/admin/users" hx-trigger="load"
+     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>

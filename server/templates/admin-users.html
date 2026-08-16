@@ -1,0 +1,68 @@
+{{ with $.users_message }}
+<div class="alert alert-danger mx-auto fade show" role="alert">{{ . }}</div>
+{{ end }}
+{{ with $.reset_sent }}
+<div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
+  {{ T "admin.reset_sent" }} <strong>{{ . }}</strong>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+
+<table class="table align-middle">
+  <thead>
+    <tr>
+      <th>{{ T "common.username" }}</th>
+      <th>{{ T "common.email" }}</th>
+      <th></th>
+      <th class="text-end"></th>
+    </tr>
+  </thead>
+  <tbody>
+  {{ range $u := $.users }}
+    <tr>
+      <td>
+        <strong>{{ $u.Username }}</strong>
+        <div class="small text-muted">{{ $u.First }} {{ $u.Last }}</div>
+      </td>
+      <td>{{ $u.Email }}</td>
+      <td>
+        {{ if $u.Locked }}
+        <span class="badge bg-danger">{{ T "admin.blocked" }}</span>
+        {{ else }}
+        <span class="badge bg-success">{{ T "admin.active" }}</span>
+        {{ end }}
+      </td>
+      <td class="text-end">
+        {{ if $u.Locked }}
+        <button type="button" class="btn btn-outline-success btn-sm"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-post="/admin/user/unblock" hx-target="#admin-users">
+          {{ T "admin.unblock" }}
+        </button>
+        {{ else }}
+        <button type="button" class="btn btn-outline-danger btn-sm"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-post="/admin/user/block" hx-target="#admin-users"
+                hx-confirm="{{ T "admin.block_confirm" }}">
+          {{ T "admin.block" }}
+        </button>
+        {{ end }}
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-post="/admin/user/reset" hx-target="#admin-users"
+                hx-confirm="{{ T "admin.reset_confirm" }}">
+          {{ T "admin.reset_password" }}
+        </button>
+      </td>
+    </tr>
+  {{ else }}
+    <tr><td colspan="4" class="text-center text-muted">{{ T "admin.no_users" }}</td></tr>
+  {{ end }}
+  </tbody>
+</table>
+{{ if gt $.total 50 }}
+<p class="small text-muted">{{ T "admin.showing_first" }} 50 / {{ $.total }}</p>
+{{ end }}
