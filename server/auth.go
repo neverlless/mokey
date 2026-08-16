@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -47,6 +48,16 @@ func (r *Router) isLoggedIn(c *fiber.Ctx) (bool, error) {
 		return false, errors.New("User is not authenticated in session")
 	}
 
+	// Sessions established before the user's last password change are
+	// invalid. ponytail: 1-second resolution — a session created within
+	// the same second as the change survives; sessions carrying no
+	// login_time (pre-upgrade) are treated as older than any marker.
+	marker, _ := r.storage.Get(PasswordChangedPrefix + username.(string))
+	loginTime, _ := sess.Get(SessionKeyLoginTime).(int64)
+	if sessionInvalidatedByPasswordChange(loginTime, marker) {
+		return false, errors.New("Session invalidated by password change")
+	}
+
 	client := ipa.NewDefaultClientWithSession(sid.(string))
 	user, err := client.UserShow(username.(string))
 	if err != nil {
@@ -63,6 +74,27 @@ func (r *Router) isLoggedIn(c *fiber.Ctx) (bool, error) {
 	sess.Save()
 
 	return true, nil
+}
+
+// invalidateUserSessions marks all of username's existing sessions invalid
+// via a password-change marker checked in isLoggedIn. A caller that wants
+// its own session to survive must set SessionKeyLoginTime to time.Now()
+// after calling this. Marker TTL slightly exceeds the session idle timeout:
+// any older session either hits the marker on its next request or expires.
+func sessionInvalidatedByPasswordChange(loginTime int64, marker []byte) bool {
+	if marker == nil {
+		return false
+	}
+	changedAt, err := strconv.ParseInt(string(marker), 10, 64)
+	if err != nil {
+		return false
+	}
+	return loginTime < changedAt
+}
+
+func (r *Router) invalidateUserSessions(username string) {
+	ttl := time.Duration(viper.GetInt("server.session_idle_timeout"))*time.Second + time.Minute
+	r.storage.Set(PasswordChangedPrefix+username, []byte(strconv.FormatInt(time.Now().Unix(), 10)), ttl)
 }
 
 func (r *Router) Login(c *fiber.Ctx) error {
@@ -317,6 +349,7 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 	sess.Set(SessionKeyAuthenticated, true)
 	sess.Set(SessionKeyUsername, username)
 	sess.Set(SessionKeySID, client.SessionID())
+	sess.Set(SessionKeyLoginTime, time.Now().Unix())
 
 	if err := r.sessionSave(c, sess); err != nil {
 		return err

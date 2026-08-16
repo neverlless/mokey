@@ -16,4 +16,6 @@ const (
 	TokenEmailChange        = "emailchange"
 	TokenUsedPrefix         = "used-"
 	TokenIssuedPrefix       = "issued-"
+	SessionKeyLoginTime     = "login_time"
+	PasswordChangedPrefix   = "pwchanged-"
 )

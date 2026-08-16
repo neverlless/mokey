@@ -147,6 +147,19 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 			vars["message"] = T("account.fatal_system_error")
 		}
 	} else {
+		// Kill other active sessions; keep this one by refreshing its
+		// login time past the invalidation marker
+		r.invalidateUserSessions(user.Username)
+		if sess, serr := r.session(c); serr == nil {
+			sess.Set(SessionKeyLoginTime, time.Now().Unix())
+			if serr := r.sessionSave(c, sess); serr != nil {
+				log.WithFields(log.Fields{
+					"username": user.Username,
+					"err":      serr,
+				}).Error("Failed to refresh session after password change")
+			}
+		}
+
 		err = r.emailer.SendPasswordChangedEmail(user, c)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -297,6 +310,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 	}
 
 	r.storage.Set(TokenPasswordReset+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+	r.invalidateUserSessions(user.Username)
 
 	err = r.emailer.SendPasswordChangedEmail(user, c)
 	if err != nil {
@@ -370,6 +384,8 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("")
 	}
 
+	r.invalidateUserSessions(user.Username)
+
 	err = r.emailer.SendPasswordChangedEmail(user, c)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -401,6 +417,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	sess.Set(SessionKeyAuthenticated, true)
 	sess.Set(SessionKeyUsername, user.Username)
 	sess.Set(SessionKeySID, client.SessionID())
+	sess.Set(SessionKeyLoginTime, time.Now().Unix())
 
 	if err := r.sessionSave(c, sess); err != nil {
 		return err
