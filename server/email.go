@@ -161,6 +161,20 @@ func (e *Emailer) SendMFAChangedEmail(enabled bool, user *ipa.User, ctx *fiber.C
 	return e.sendEmail(user, ctx, event, "account-updated", vars)
 }
 
+func (e *Emailer) SendPasskeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
+	verb := T("email_template.passkey_removed")
+	if added {
+		verb = T("email_template.passkey_added")
+	}
+	event := T("email_template.passkey_event") + verb
+
+	vars := map[string]interface{}{
+		"event": event,
+	}
+
+	return e.sendEmail(user, ctx, event, "account-updated", vars)
+}
+
 func (e *Emailer) SendSSHKeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
 	verb := T("email_template.ssh_key_removed")
 	if added {

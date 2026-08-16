@@ -30,6 +30,7 @@ and can make your systems vulnerable to abuse.
 - Forgot/Change Password
 - Add/Remove SSH Public Keys
 - Add/Remove TOTP Tokens
+- Register/Remove Passkeys (stored in FreeIPA 4.11+)
 - Enable/Disable Two-Factor Authentication
 - Hydra Consent/Login Endpoint for OAuth/OpenID Connect
 - Easy to install and configure (requires no FreeIPA/LDAP schema changes)
@@ -44,6 +45,10 @@ following on top of it:
   `[slack]` section in `mokey.toml.sample`)
 - **Unauthenticated `/healthz` endpoint** — for load balancer and Kubernetes
   liveness/readiness probes
+- **Passkey self-service** — users can register and remove FreeIPA passkeys
+  (FreeIPA 4.11+) from their account page via WebAuthn; credentials are
+  stored only in FreeIPA. Managing own passkey mappings requires the
+  corresponding FreeIPA self-service permission
 - **Multiple languages** — the interface and emails are translatable; English
   and Dutch are built in (translations contributed by
   [@tubby1981](https://github.com/tubby1981) in

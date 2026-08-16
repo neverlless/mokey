@@ -1,0 +1,81 @@
+<div id="passkey-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
+</div>
+
+<div class="d-flex w-100 justify-content-between mb-4">
+    <h3 class="mb-1">{{ T "passkey.title" }}</h3>
+    <button type="button" id="passkey-register" class="btn btn-primary end">
+      <i class="fa fa-plus"></i> {{ T "passkey.new_passkey" }}
+    </button>
+</div>
+
+<p class="text-muted">{{ T "passkey.description" }}</p>
+
+{{ range $i, $pk := $.passkeys }}
+<div class="row">
+    <div class="d-flex flex-items-center justify-content-between mb-3">
+        <div>
+            <i class="fa fa-user-shield me-2"></i>
+            <span class="font-monospace">{{ $pk.shortid }}</span>
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"mapping": "{{ $pk.mapping }}"}'
+                hx-post="/passkey/remove"
+                hx-target="#passkey"
+                hx-confirm="{{ T "passkey.delete_confirm" }}">
+            <i class="fa fa-trash"></i> {{ T "common.delete" }}
+        </button>
+    </div>
+</div>
+{{ else }}
+<p class="text-center text-muted">{{ T "passkey.no_passkeys" }}</p>
+{{ end }}
+
+<script>
+(function() {
+    const b64urlToBuf = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    const bufToB64url = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    document.getElementById('passkey-register').addEventListener('click', async function() {
+        const fail = (msg) => {
+            const el = document.getElementById('passkey-failed');
+            el.textContent = msg;
+            el.style.display = 'block';
+        };
+        try {
+            const beginResp = await fetch('/passkey/begin', {
+                method: 'POST',
+                headers: {'X-CSRF-Token': '{{ $.csrf }}'}
+            });
+            if (!beginResp.ok) { fail(await beginResp.text()); return; }
+            const options = (await beginResp.json()).publicKey;
+
+            options.challenge = b64urlToBuf(options.challenge);
+            options.user.id = b64urlToBuf(options.user.id);
+            if (options.excludeCredentials) {
+                options.excludeCredentials = options.excludeCredentials.map(c => ({...c, id: b64urlToBuf(c.id)}));
+            }
+
+            const cred = await navigator.credentials.create({publicKey: options});
+
+            const finishResp = await fetch('/passkey/finish', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': '{{ $.csrf }}'},
+                body: JSON.stringify({
+                    id: cred.id,
+                    rawId: bufToB64url(cred.rawId),
+                    type: cred.type,
+                    response: {
+                        attestationObject: bufToB64url(cred.response.attestationObject),
+                        clientDataJSON: bufToB64url(cred.response.clientDataJSON)
+                    }
+                })
+            });
+            if (!finishResp.ok) { fail(await finishResp.text()); return; }
+            window.location.reload();
+        } catch (e) {
+            fail(e.message || '{{ T "passkey.registration_failed" }}');
+        }
+    });
+})();
+</script>

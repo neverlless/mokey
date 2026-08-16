@@ -61,6 +61,9 @@ system_error = "Systeemfout, neem contact op met de beheerder"
 weak_password = "Je wachtwoord is te zwak. Zorg ervoor dat je wachtwoord een cijfer en zowel kleine als hoofdletters bevat"
 
 [email_template]
+passkey_event = "Passkey "
+passkey_added = "toegevoegd"
+passkey_removed = "verwijderd"
 email_change_subject = "Bevestig uw nieuwe e-mailadres"
 email_change_preheader = "Gebruik deze link om uw nieuwe e-mailadres te bevestigen. De link is slechts geldig voor"
 email_change_greeting = "Hallo"
@@ -246,6 +249,7 @@ success_message = "Je wachtwoord is succesvol hersteld"
 failed = "Het wachtwoord kon niet worden gewijzigd. Controleer of het voldoet aan het wachtwoordbeleid en probeer het opnieuw."
 
 [profile]
+passkeys = "Passkeys"
 title = "Profielinstellingen"
 account = "Account"
 avatar_alt = "Gebruikersavatar"
@@ -318,3 +322,14 @@ message = "Bevestig het wijzigen van het e-mailadres van uw account naar"
 instruction = "Klik hieronder op Bevestigen om de wijziging toe te passen."
 confirm_button = "Bevestigen"
 success_message = "Uw e-mailadres is succesvol gewijzigd."
+
+[passkey]
+title = "Passkeys"
+new_passkey = "Passkey registreren"
+description = "Hier geregistreerde passkeys worden opgeslagen in FreeIPA en kunnen worden gebruikt voor wachtwoordloze authenticatie op aangesloten systemen (FreeIPA 4.11+). Registratie gebruikt de beveiligingssleutel of platform-authenticator van dit apparaat."
+no_passkeys = "Geen passkeys gevonden"
+delete_confirm = "Deze passkey verwijderen? Deze actie kan niet ongedaan worden gemaakt."
+registration_failed = "Passkey-registratie mislukt. Probeer het opnieuw."
+freeipa_add_failed = "Opslaan van de passkey in FreeIPA is mislukt. Uw account heeft mogelijk geen rechten om passkey-toewijzingen te beheren."
+freeipa_remove_failed = "Verwijderen van de passkey uit FreeIPA is mislukt."
+rp_display_name = "Identity Management"

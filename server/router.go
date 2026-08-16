@@ -97,6 +97,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/password", r.RequireLogin, r.Index)
 	app.Get("/security", r.RequireLogin, r.Index)
 	app.Get("/sshkey", r.RequireLogin, r.Index)
+	app.Get("/passkey", r.RequireLogin, r.Index)
 	app.Get("/otp", r.RequireLogin, r.Index)
 
 	// Account Create
@@ -140,6 +141,11 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Post("/security/mfa/disable", r.RequireLogin, r.RequireHTMX, r.TwoFactorDisable)
 
 	// SSH Keys
+	// Passkeys
+	app.Post("/passkey/begin", r.RequireLogin, r.PasskeyBegin)
+	app.Post("/passkey/finish", r.RequireLogin, r.PasskeyFinish)
+	app.Post("/passkey/remove", r.RequireLogin, r.RequireHTMX, r.PasskeyRemove)
+
 	app.Get("/sshkey/list", r.RequireLogin, r.RequireHTMX, r.SSHKeyList)
 	app.Get("/sshkey/modal", r.RequireLogin, r.RequireHTMX, r.SSHKeyModal)
 	app.Post("/sshkey/add", r.RequireLogin, r.RequireMFA, r.RequireHTMX, r.SSHKeyAdd)
@@ -201,6 +207,15 @@ func (r *Router) Index(c *fiber.Ctx) error {
 
 	if path == "sshkey" {
 		vars["keys"] = user.SSHAuthKeys
+	} else if path == "passkey" {
+		passkeys, err := r.passkeyList(c)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"username": r.username(c),
+				"err":      err,
+			}).Error("Failed to fetch passkeys from FreeIPA")
+		}
+		vars["passkeys"] = passkeys
 	} else if path == "otp" {
 		username := r.username(c)
 		client := r.userClient(c)

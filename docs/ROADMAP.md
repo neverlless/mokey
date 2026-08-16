@@ -51,10 +51,9 @@ Priorities may shift based on feedback. Open an
       forward from the reliability package)
 - [x] Hydra v2 support: upgrade client SDK from v1.10.6, plus a migration
       guide for existing Hydra v1.x deployments
-- [ ] Self-service passkey enrollment and removal from the account page.
+- [x] Self-service passkey enrollment and removal from the account page.
       FreeIPA is the single credential store — no WebAuthn state in mokey;
-      if the API can't support web login the feature ships as
-      enrollment/removal only
+      shipped as enrollment/removal only per the spike verdict
 
 ## v1.5 — Admin panel
 

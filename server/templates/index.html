@@ -28,8 +28,12 @@
 						{{ T "profile.ssh_keys" }}
 					</a>
 					<a class="nav-link{{ if eq $.path "otp" }} active{{end}}" id="otp-tab" href="/otp" role="tab">
-						<i class="fa fa-fingerprint text-center me-1"></i> 
+						<i class="fa fa-fingerprint text-center me-1"></i>
 						{{ T "profile.otp_tokens" }}
+					</a>
+					<a class="nav-link{{ if eq $.path "passkey" }} active{{end}}" id="passkey-tab" href="/passkey" role="tab">
+						<i class="fa fa-user-shield text-center me-1"></i>
+						{{ T "profile.passkeys" }}
 					</a>
 					<a class="nav-link" id="logout" href="/auth/logout" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-post="/auth/logout" role="tab">
 						<i class="fa fa-arrow-right-from-bracket text-center me-1"></i> 
@@ -57,6 +61,10 @@
                 {{ else if eq $.path "otp" }}
 				<div class="tab-pane fade show active" id="otp" role="tabpanel" aria-labelledby="otp-tab">
                     {{ template "otptoken-list.html" . }}
+                </div>
+                {{ else if eq $.path "passkey" }}
+				<div class="tab-pane fade show active" id="passkey" role="tabpanel" aria-labelledby="passkey-tab">
+                    {{ template "passkey-list.html" . }}
                 </div>
                 {{ end }}
 			</div>
