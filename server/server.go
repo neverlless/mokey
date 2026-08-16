@@ -76,7 +76,7 @@ func NewServer(address string) (*Server, error) {
 	s := &Server{}
 	s.ListenAddress = address
 
-	app, err := newFiber()
+	app, _, err := newFiber()
 	if err != nil {
 		return nil, err
 	}
@@ -134,9 +134,9 @@ func newStorage() fiber.Storage {
 	return storage
 }
 
-func newFiber() (*fiber.App, error) {
+func newFiber() (*fiber.App, *Router, error) {
 	if err := LoadTranslations(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	engine, err := NewTemplateRenderer()
@@ -146,7 +146,7 @@ func newFiber() (*fiber.App, error) {
 
 	storage := newStorage()
 	if storage == nil {
-		return nil, errors.New("Failed to open mokey storage database")
+		return nil, nil, errors.New("Failed to open mokey storage database")
 	}
 
 	app := fiber.New(fiber.Config{
@@ -200,7 +200,7 @@ func newFiber() (*fiber.App, error) {
 
 	router, err := NewRouter(storage)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	router.SetupRoutes(app)
@@ -226,7 +226,7 @@ func newFiber() (*fiber.App, error) {
 	// This must be last
 	app.Use(NotFoundHandler)
 
-	return app, nil
+	return app, router, nil
 }
 
 func (s *Server) Serve() error {

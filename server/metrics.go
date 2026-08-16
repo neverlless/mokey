@@ -1,6 +1,8 @@
 package server
 
 import (
+	"sync"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -22,7 +24,22 @@ type Metrics struct {
 	totalAccountVerificationsSent prometheus.Counter
 }
 
+var (
+	metricsOnce      sync.Once
+	metricsSingleton *Metrics
+)
+
+// NewMetrics returns the process-wide metrics instance. Counters register
+// with the global prometheus registry, which panics on duplicate
+// registration — so this must be a singleton.
 func NewMetrics() *Metrics {
+	metricsOnce.Do(func() {
+		metricsSingleton = newMetrics()
+	})
+	return metricsSingleton
+}
+
+func newMetrics() *Metrics {
 	m := &Metrics{
 		totalLogins: promauto.NewCounter(prometheus.CounterOpts{
 			Name: "mokey_logins_total",

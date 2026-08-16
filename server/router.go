@@ -34,9 +34,9 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 
 	log.AddHook(NewAuditHook(storage))
 
-	r.adminClient = ipa.NewDefaultClient()
+	r.adminClient = newIPAClient()
 
-	err := r.adminClient.LoginWithKeytab(viper.GetString("site.keytab"), viper.GetString("site.ktuser"))
+	err := ipaKeytabLogin(r.adminClient, viper.GetString("site.keytab"), viper.GetString("site.ktuser"))
 	if err != nil {
 		return nil, err
 	}

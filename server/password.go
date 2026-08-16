@@ -409,7 +409,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNoContent).SendString("")
 	}
 
-	client := ipa.NewDefaultClient()
+	client := newIPAClient()
 	err = client.RemoteLogin(user.Username, newpass+otp)
 	if err != nil {
 		log.WithFields(log.Fields{
