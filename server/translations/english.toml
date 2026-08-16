@@ -342,7 +342,6 @@ rp_display_name = "Identity Management"
 tab = "Admin"
 title = "Administration"
 invite_title = "Invite a user"
-invite_help = "Send an invitation link by email. The invited user completes their own profile and the account is enabled immediately — no open signup required."
 invite_button = "Send Invite"
 invite_sent = "Invitation sent to"
 

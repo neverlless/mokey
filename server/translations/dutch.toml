@@ -342,7 +342,6 @@ rp_display_name = "Identity Management"
 tab = "Beheer"
 title = "Beheer"
 invite_title = "Gebruiker uitnodigen"
-invite_help = "Stuur een uitnodigingslink per e-mail. De uitgenodigde gebruiker voltooit zelf het profiel en het account wordt direct geactiveerd — open registratie is niet nodig."
 invite_button = "Uitnodiging versturen"
 invite_sent = "Uitnodiging verzonden naar"
 
