@@ -100,8 +100,74 @@ Ordered by unique value:
       consent (claims + MFA gate), front-channel logout, session
       revocation; server coverage 61.6%
 
+## v1.8 — Account lifecycle
+
+Driven by the strongest cross-source demand signals (upstream tracker,
+freeipa-users list, competitor gaps) found in the Aug 2026 research sweep.
+
+- [ ] Password expiry package: "your password expires in N days" banner
+      (`krbpasswordexpiration` is self-readable by default), show the
+      effective password policy rules on the change form
+      (`pwpolicy_show` via the service bind), and a background reminder
+      emailer — replaces the ecosystem of standalone cron tools
+      (freeipa-pen, ipa-notify)
+- [ ] Account lockout: failed-attempt counter and unlock button in the
+      admin panel (`user_status`/`user_unlock`), plus a "your account is
+      locked, try again in N minutes" hint on login
+- [ ] Signup with admin approval: pending-accounts queue in the admin
+      panel with approve/deny and email notifications (ubccr#121,
+      ubccr#76; the auri project exists solely for this)
+- [ ] Quick wins from upstream demand: captcha toggle on forgot-password
+      (ubccr#155), read-only OTP token page per group (ubccr#146),
+      forgotten-username recovery by email (ubccr#134), profile
+      self-editing beyond email — shell, address, preferred language
+      (self-writable by default ACI), publish the release GPG signing key
+      (ubccr#135)
+- [ ] Investigate ubccr#159: TOTP tokens created via mokey are named
+      `USERNAME-random` instead of FreeIPA's `USERNAME@DOMAIN` convention
+      and reportedly misbehave
+
+## v1.9 — Sessions and notifications
+
+Table-stakes features of Keycloak/Authentik/Zitadel account consoles.
+
+- [ ] Active session/device list with per-device revoke and
+      "sign out everywhere" — needs a user-to-sessions index in the
+      storage backend (the invalidation-marker infrastructure from v1.4
+      is the foundation)
+- [ ] Per-user login history page — expose the user's own slice of the
+      existing admin audit log; almost no competitor gives end users this
+- [ ] Consistent security-change notification emails: password changed,
+      OTP token added/removed, passkey added/removed, new session — audit
+      which flows already send and fill the gaps
+
+## v2.0 — Differentiators
+
+Nobody in the niche has these; each needs real demand before building.
+
+- [ ] "What can I access" page: my groups, HBAC-permitted hosts, sudo
+      rules, and an `hbactest` "can I log into host X" simulator — all
+      readable with default permissions
+- [ ] Self-service user certificates (S/MIME / mTLS client certs) via
+      `cert_request` with a documented CA ACL + certprofile setup —
+      flagship feature, requires an operator setup guide
+- [ ] Subordinate ID self-service (`subid_generate`) for rootless
+      podman/docker on IPA-joined hosts — one `role-add-member` away
+- [ ] Group self-management with sponsor approval (noggin model) on top
+      of FreeIPA member managers
+- [ ] Staged-users backend for signup (`stageuser_add`/`activate`) —
+      unapproved signups never become real accounts; cleaner than the
+      current disabled-until-verified flow
+
 ## Deliberately not planned
 
+- MFA recovery/backup codes — FreeIPA has no static-token type, so codes
+  would have to live in mokey's own storage; violates the
+  FreeIPA-as-single-credential-store principle
+- User vault (KRA) — the archive/retrieve transport-crypto handshake is
+  client-side and goipa doesn't implement it; niche
+- Kerberos SPNEGO SSO login (ubccr#133) — intranet niche, zero reactions
+  in 3 years
 - Multiple email addresses per account and user avatars (ubccr#123) — low
   demand, cut
 - WebAuthn credentials stored in mokey's own database — FreeIPA stays the
