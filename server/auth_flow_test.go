@@ -69,15 +69,33 @@ func TestLoginUnknownUser(t *testing.T) {
 
 func TestLoginHideInvalidUsername(t *testing.T) {
 	assert := assert.New(t)
-	app, _, _ := newTestApp(t)
+	app, _, fake := newTestApp(t)
 	viper.Set("accounts.hide_invalid_username_error", true)
+	viper.Set("accounts.block_users", []string{"gus"})
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!", Locked: true})
+	fake.addUser("gus", &fakeUser{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
 
-	// unknown user still gets the password form — no user enumeration
-	resp := tc.postForm("/auth/login", url.Values{"username": {"nosuch"}}, nil)
-	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	// unknown, locked, and blocked users all get the same password form —
+	// no user enumeration on the username step
+	for _, username := range []string{"nosuch", "skyler", "gus"} {
+		resp := tc.postForm("/auth/login", url.Values{"username": {username}}, nil)
+		assert.Equal(fiber.StatusOK, resp.StatusCode, username)
+		assert.NotContains(readBody(t, resp), "locked", username)
+	}
+
+	// and the authenticate step rejects them uniformly even with the right
+	// password
+	for _, username := range []string{"skyler", "gus"} {
+		resp := tc.postForm("/auth/authenticate", url.Values{
+			"username": {username},
+			"password": {"Secret123!"},
+		}, nil)
+		assert.Equal(fiber.StatusUnauthorized, resp.StatusCode, username)
+		assert.Equal(readBody(t, resp), T("account.invalid_credentials"), username)
+	}
 }
 
 func TestLoginBlockedUser(t *testing.T) {

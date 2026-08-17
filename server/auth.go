@@ -215,7 +215,17 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 			"username": username,
 		}).Warn("AUDIT User account is blocked from logging in")
 		r.metrics.totalFailedLogins.Inc()
-		return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_username"))
+		// With hidden username errors, show the password form anyway —
+		// Authenticate rejects blocked users with the generic message
+		if !viper.GetBool("accounts.hide_invalid_username_error") {
+			return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_username"))
+		}
+		userRec := new(ipa.User)
+		userRec.Username = username
+		return c.Render("login-form.html", fiber.Map{
+			"user":      userRec,
+			"challenge": c.FormValue("challenge"),
+		})
 	}
 
 	userRec, err := r.adminClient.UserShow(username)
@@ -247,7 +257,12 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 			"username": username,
 		}).Warn("AUDIT User account is locked in FreeIPA")
 		r.metrics.totalFailedLogins.Inc()
-		return c.Status(fiber.StatusUnauthorized).SendString(T("account.user_account_is_locked"))
+		// With hidden username errors, the locked state must not be
+		// distinguishable either — FreeIPA rejects the login attempt with
+		// the same error as a bad password
+		if !viper.GetBool("accounts.hide_invalid_username_error") {
+			return c.Status(fiber.StatusUnauthorized).SendString(T("account.user_account_is_locked"))
+		}
 	}
 
 	log.WithFields(log.Fields{
