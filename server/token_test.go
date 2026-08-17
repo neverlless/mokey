@@ -5,8 +5,11 @@
 package server
 
 import (
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
 
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/spf13/viper"
@@ -52,5 +55,34 @@ func TestToken(t *testing.T) {
 	time.Sleep(time.Second * 3)
 
 	_, err = ParseToken(expToken, TokenPasswordReset, storage)
+	assert.Error(err)
+}
+
+// failingStorage errors on Get — simulates an unhealthy storage backend
+type failingStorage struct{ fiber.Storage }
+
+func (s *failingStorage) Get(key string) ([]byte, error) {
+	return nil, errors.New("storage backend down")
+}
+
+func TestTokenFailsClosedOnStorageError(t *testing.T) {
+	assert := assert.New(t)
+
+	secret, _ := GenerateSecret(32)
+	viper.Set("email.token_secret", secret)
+	viper.Set("email.token_max_age", uint32(3600))
+
+	healthy := memory.New()
+	token, err := NewToken("walter", "walter@example.com", TokenPasswordReset, healthy)
+	assert.NoError(err)
+
+	broken := &failingStorage{healthy}
+
+	// an unparseable used-marker must reject the token, not accept it
+	_, err = ParseToken(token, TokenPasswordReset, broken)
+	assert.Error(err)
+
+	// issuance must also fail closed
+	_, err = NewToken("jesse", "jesse@example.com", TokenPasswordReset, broken)
 	assert.Error(err)
 }

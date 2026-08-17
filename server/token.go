@@ -48,7 +48,12 @@ func GenerateSecretString(n int) (string, error) {
 }
 
 func NewToken(username, email, prefix string, storage fiber.Storage) (string, error) {
+	// A storage error means we can't prove no token is outstanding — fail
+	// closed, don't issue another one
 	tokenIssued, err := storage.Get(prefix + TokenIssuedPrefix + username)
+	if err != nil {
+		return "", err
+	}
 	if tokenIssued != nil {
 		return "", errors.New("token already issued")
 	}
@@ -84,7 +89,13 @@ func NewToken(username, email, prefix string, storage fiber.Storage) (string, er
 }
 
 func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
+	// A storage error means we can't prove the token is unused — fail
+	// closed, treat it as spent (single-use enforcement must not silently
+	// disappear when the storage backend is unhealthy)
 	tokenUsed, err := storage.Get(prefix + TokenUsedPrefix + token)
+	if err != nil {
+		return nil, err
+	}
 	if tokenUsed != nil {
 		return nil, errors.New("token already used")
 	}
