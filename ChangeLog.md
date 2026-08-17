@@ -1,5 +1,38 @@
 # Mokey ChangeLog
 
+## [v1.8.0] - 2026-08-17
+
+Account lifecycle release, driven by upstream demand and community pain
+points (see `docs/ROADMAP.md` for the research trail).
+
+- Password expiry package:
+  - "your password expires in N days" banner in the portal
+    (`accounts.password_expiry_warning_days`, default 14)
+  - the change/reset/expired-password forms show the effective FreeIPA
+    password policy (min length, character classes, history, lifetime)
+  - optional expiry reminder emails (`email.password_expiry_reminders`,
+    e.g. `[14, 7, 3, 1]`) from a built-in background sweep — replaces
+    standalone cron tools like freeipa-pen/ipa-notify
+  - **the mokey service account needs the built-in "Password Policy
+    Readers" privilege** — see the README setup section
+- Account lockout: Unlock action in the admin user list, and users who
+  hit the FreeIPA failure-lockout threshold are told the account is
+  temporarily locked instead of the generic error
+- Admin approval for signups: with `accounts.require_admin_verify`,
+  email-verified registrations land in a "Pending approval" queue in
+  the admin panel with approve (enables + welcome email) and deny
+  (deletes) actions (ubccr#121, ubccr#76)
+- Forgotten-username recovery by email at `/auth/forgotuser` —
+  enumeration-safe, linked from the login pages (ubccr#134)
+- `accounts.enable_captcha` toggle for deployments behind another
+  anti-abuse layer (ubccr#155)
+- `accounts.otp_readonly_groups`: members see their OTP tokens
+  view-only — for orgs issuing hardware tokens centrally (ubccr#146)
+- Richer profile editing: display name, work phone, and opt-in login
+  shell selection (`accounts.allow_change_shell` + `allowed_shells`)
+- Fix: OTP tokens created via mokey were invalid for hours on non-UTC
+  servers — notBefore was sent in local time as UTC (ubccr#159)
+
 ## [v1.7.0] - 2026-08-17
 
 Upkeep release: the v1.6 audit tooling becomes a permanent CI gate, and

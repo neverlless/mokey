@@ -105,27 +105,25 @@ Ordered by unique value:
 Driven by the strongest cross-source demand signals (upstream tracker,
 freeipa-users list, competitor gaps) found in the Aug 2026 research sweep.
 
-- [ ] Password expiry package: "your password expires in N days" banner
-      (`krbpasswordexpiration` is self-readable by default), show the
-      effective password policy rules on the change form
-      (`pwpolicy_show` via the service bind), and a background reminder
-      emailer — replaces the ecosystem of standalone cron tools
-      (freeipa-pen, ipa-notify)
-- [ ] Account lockout: failed-attempt counter and unlock button in the
-      admin panel (`user_status`/`user_unlock`), plus a "your account is
-      locked, try again in N minutes" hint on login
-- [ ] Signup with admin approval: pending-accounts queue in the admin
-      panel with approve/deny and email notifications (ubccr#121,
-      ubccr#76; the auri project exists solely for this)
-- [ ] Quick wins from upstream demand: captcha toggle on forgot-password
-      (ubccr#155), read-only OTP token page per group (ubccr#146),
-      forgotten-username recovery by email (ubccr#134), profile
-      self-editing beyond email — shell, address, preferred language
-      (self-writable by default ACI), publish the release GPG signing key
-      (ubccr#135)
-- [ ] Investigate ubccr#159: TOTP tokens created via mokey are named
-      `USERNAME-random` instead of FreeIPA's `USERNAME@DOMAIN` convention
-      and reportedly misbehave
+- [x] Password expiry package: portal banner, effective policy rules on
+      the password forms (`pwpolicy_show` via the service bind — needs
+      the "Password Policy Readers" privilege), and an optional
+      background reminder emailer — replaces the ecosystem of standalone
+      cron tools (freeipa-pen, ipa-notify)
+- [x] Account lockout: Unlock action in the admin user list
+      (`user_status`/`user_unlock`) and a clear "temporarily locked"
+      message on login after the failure threshold
+- [x] Signup with admin approval: pending-accounts queue in the admin
+      panel with approve/deny (ubccr#121, ubccr#76)
+- [x] Quick wins from upstream demand: captcha toggle (ubccr#155),
+      read-only OTP token page per group (ubccr#146), forgotten-username
+      recovery by email (ubccr#134), profile self-editing — display
+      name, work phone, opt-in shell (address/preferred language not
+      mapped by goipa; deferred)
+- [x] ubccr#159 root-caused and fixed: notBefore was sent in local time
+      as UTC, making fresh tokens invalid for hours on non-UTC servers
+- [ ] Publish the release GPG signing key (ubccr#135) — needs a project
+      signing key decision
 
 ## v1.9 — Sessions and notifications
 
