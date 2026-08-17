@@ -132,7 +132,7 @@ fingerprint `8898 9195 DE87 B333 6A09 E09F 7DD4 FC45 4196 AE11`):
 
 ```
 $ gpg --import mokey-release-signing-key.asc
-$ gpg --verify checksums.txt.asc checksums.txt
+$ gpg --verify checksums.txt.sig checksums.txt
 $ sha256sum --check --ignore-missing checksums.txt
 ```
 

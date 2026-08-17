@@ -30,7 +30,7 @@ points (see `docs/ROADMAP.md` for the research trail).
   view-only — for orgs issuing hardware tokens centrally (ubccr#146)
 - Richer profile editing: display name, work phone, and opt-in login
   shell selection (`accounts.allow_change_shell` + `allowed_shells`)
-- Release artifacts are now GPG-signed: `checksums.txt.asc` in every
+- Release artifacts are now GPG-signed: `checksums.txt.sig` in every
   release, public key in `docs/mokey-release-signing-key.asc`
   (fingerprint `8898 9195 DE87 B333 6A09 E09F 7DD4 FC45 4196 AE11`) —
   see the README "Verifying releases" section (ubccr#135)
