@@ -122,8 +122,8 @@ freeipa-users list, competitor gaps) found in the Aug 2026 research sweep.
       mapped by goipa; deferred)
 - [x] ubccr#159 root-caused and fixed: notBefore was sent in local time
       as UTC, making fresh tokens invalid for hours on non-UTC servers
-- [ ] Publish the release GPG signing key (ubccr#135) — needs a project
-      signing key decision
+- [x] GPG-signed releases: checksums.txt is signed in CI, public key
+      published in `docs/mokey-release-signing-key.asc` (ubccr#135)
 
 ## v1.9 — Sessions and notifications
 

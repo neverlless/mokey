@@ -75,6 +75,20 @@ nfpms:
         dst: /usr/lib/systemd/system/mokey.service
 checksum:
   name_template: 'checksums.txt'
+signs:
+  - artifacts: checksum
+    cmd: gpg
+    args:
+      - "--batch"
+      - "--pinentry-mode"
+      - "loopback"
+      - "-u"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "--armor"
+      - "${artifact}"
 snapshot:
   version_template: "{{ incpatch .Version }}-SNAPSHOT-{{.ShortCommit}}"
 changelog:

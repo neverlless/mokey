@@ -124,6 +124,18 @@ $ sudo dpkg -i mokey_VERSION_amd64.deb
 $ sudo rpm -ivh mokey-VERSION-amd64.rpm
 ```
 
+### Verifying releases
+
+`checksums.txt` in every release is signed with the project's GPG key
+([docs/mokey-release-signing-key.asc](docs/mokey-release-signing-key.asc),
+fingerprint `8898 9195 DE87 B333 6A09 E09F 7DD4 FC45 4196 AE11`):
+
+```
+$ gpg --import mokey-release-signing-key.asc
+$ gpg --verify checksums.txt.asc checksums.txt
+$ sha256sum --check --ignore-missing checksums.txt
+```
+
 ## Setup and configuration
 
 Create a service account and role in FreeIPA with the "Modify users and Reset
