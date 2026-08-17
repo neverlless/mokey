@@ -28,6 +28,19 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 	user.First = strings.TrimSpace(c.FormValue("first"))
 	user.Last = strings.TrimSpace(c.FormValue("last"))
 	user.Mobile = strings.TrimSpace(c.FormValue("phone"))
+	user.DisplayName = strings.TrimSpace(c.FormValue("displayname"))
+	user.TelephoneNumber = strings.TrimSpace(c.FormValue("telephone"))
+
+	// Shell changes are opt-in and restricted to the configured allowlist
+	if viper.GetBool("accounts.allow_change_shell") {
+		shell := strings.TrimSpace(c.FormValue("shell"))
+		for _, allowed := range viper.GetStringSlice("accounts.allowed_shells") {
+			if shell == allowed {
+				user.Shell = shell
+				break
+			}
+		}
+	}
 
 	if user.First == "" || user.Last == "" {
 		vars["message"] = "Please provide a first and last name"

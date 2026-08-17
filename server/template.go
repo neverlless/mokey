@@ -18,13 +18,14 @@ var templateFiles embed.FS
 
 // Template functions
 var funcMap = template.FuncMap{
-	"SplitSSHFP":        SplitSSHFP,
-	"TimeAgo":           TimeAgo,
-	"ConfigValueString": ConfigValueString,
-	"ConfigValueBool":   ConfigValueBool,
-	"AllowedDomains":    AllowedDomains,
-	"BreakNewlines":     BreakNewlines,
-	"T":                 T,
+	"SplitSSHFP":             SplitSSHFP,
+	"TimeAgo":                TimeAgo,
+	"ConfigValueString":      ConfigValueString,
+	"ConfigValueBool":        ConfigValueBool,
+	"ConfigValueStringSlice": ConfigValueStringSlice,
+	"AllowedDomains":         AllowedDomains,
+	"BreakNewlines":          BreakNewlines,
+	"T":                      T,
 }
 
 type TemplateRenderer struct {
@@ -93,6 +94,10 @@ func ConfigValueString(key string) string {
 
 func ConfigValueBool(key string) bool {
 	return viper.GetBool(key)
+}
+
+func ConfigValueStringSlice(key string) []string {
+	return viper.GetStringSlice(key)
 }
 
 func TimeAgo(t time.Time) string {

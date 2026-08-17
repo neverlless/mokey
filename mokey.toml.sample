@@ -76,6 +76,11 @@ default_homedir = "/home"
 # Default login shell
 default_shell = "/bin/bash"
 
+# Let users change their login shell on the account page, restricted to
+# allowed_shells (enforced server-side).
+# allow_change_shell = false
+# allowed_shells = ["/bin/bash", "/bin/sh", "/bin/zsh", "/usr/bin/fish", "/sbin/nologin"]
+
 # Minimum password length. Used for validating new passwords. Should match your
 # password policy set in FreeIPA
 min_passwd_len = 8

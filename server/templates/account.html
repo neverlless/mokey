@@ -52,6 +52,18 @@
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
+		  	<label class="form-label" for="displayname">{{ T "account.display_name" }}</label>
+		  	<input type="text" class="form-control" name="displayname" id="displayname" value="{{ .user.DisplayName }}">
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="mb-3">
+		  	<label class="form-label" for="telephone">{{ T "account.work_phone" }}</label>
+		  	<input type="text" class="form-control" name="telephone" id="telephone" value="{{ .user.TelephoneNumber }}">
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="mb-3">
 		  	<label class="form-label">{{ T "common.username" }}</label>
 		  	<input type="text" class="form-control" value="{{ .user.Username }}" disabled readonly>
 		</div>
@@ -68,6 +80,19 @@
 		  	<input type="text" class="form-control" value="{{ .user.HomeDir }}" disabled readonly>
 		</div>
 	</div>
+	{{ if ConfigValueBool "accounts.allow_change_shell" }}
+	<div class="col-md-6">
+		<div class="mb-3">
+		  	<label class="form-label" for="shell">{{ T "account.shell" }}</label>
+			<select class="form-select" name="shell" id="shell">
+				{{ $current := .user.Shell }}
+				{{ range ConfigValueStringSlice "accounts.allowed_shells" }}
+				<option value="{{ . }}" {{ if eq . $current }}selected{{ end }}>{{ . }}</option>
+				{{ end }}
+			</select>
+		</div>
+	</div>
+	{{ end }}
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label class="form-label">{{ T "account.password_expires" }}</label>

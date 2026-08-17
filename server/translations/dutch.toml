@@ -30,6 +30,9 @@ verify_account = "Verifieer Account"
 too_many_requests = "Te veel verzoeken. Probeer het later opnieuw."
 
 [account]
+display_name = "Weergavenaam"
+work_phone = "Telefoon werk"
+shell = "Login-shell"
 email_invalid = "Geef een geldig e-mailadres op"
 email_change_sent = "Er is een bevestigingsmail naar het nieuwe adres gestuurd. De wijziging gaat in nadat u deze bevestigt."
 title = "Accountinstellingen"

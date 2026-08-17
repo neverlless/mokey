@@ -20,15 +20,19 @@ import (
 )
 
 type fakeUser struct {
-	Password  string
-	Expired   bool // password expired: login fails, change_password required
-	Locked    bool
-	Groups    []string
-	AuthTypes []string
-	Email     string
-	First     string
-	Last      string
-	Category  string
+	Password    string
+	Expired     bool // password expired: login fails, change_password required
+	Locked      bool
+	Groups      []string
+	AuthTypes   []string
+	Email       string
+	First       string
+	Last        string
+	Category    string
+	DisplayName string
+	Telephone   string
+	Mobile      string
+	Shell       string
 }
 
 type fakeOTPToken struct {
@@ -301,6 +305,18 @@ func (f *fakeIPA) userJSON(username string, u *fakeUser) map[string]interface{} 
 	if u.Category != "" {
 		rec["userclass"] = []string{u.Category}
 	}
+	if u.DisplayName != "" {
+		rec["displayname"] = []string{u.DisplayName}
+	}
+	if u.Telephone != "" {
+		rec["telephonenumber"] = []string{u.Telephone}
+	}
+	if u.Mobile != "" {
+		rec["mobile"] = []string{u.Mobile}
+	}
+	if u.Shell != "" {
+		rec["loginshell"] = []string{u.Shell}
+	}
 	if p, ok := f.randomPasswords[username]; ok {
 		rec["randompassword"] = p
 	}
@@ -382,6 +398,18 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		}
 		if v, ok := opts["userclass"].(string); ok {
 			u.Category = v
+		}
+		if v, ok := opts["displayname"].(string); ok {
+			u.DisplayName = v
+		}
+		if v, ok := opts["telephonenumber"].(string); ok {
+			u.Telephone = v
+		}
+		if v, ok := opts["mobile"].(string); ok {
+			u.Mobile = v
+		}
+		if v, ok := opts["loginshell"].(string); ok {
+			u.Shell = v
 		}
 		if v, ok := opts["ipauserauthtype"]; ok {
 			types := []string{}

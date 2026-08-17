@@ -30,6 +30,9 @@ verify_account = "Verify Account"
 too_many_requests = "Too many requests. Please try again later."
 
 [account]
+display_name = "Display Name"
+work_phone = "Work Phone"
+shell = "Login Shell"
 email_invalid = "Please provide a valid email address"
 email_change_sent = "A confirmation email has been sent to the new address. The change takes effect after you confirm it."
 title = "Account Settings"

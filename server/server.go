@@ -50,6 +50,8 @@ func SetDefaults() {
 	viper.SetDefault("accounts.hide_invalid_username_error", false)
 	viper.SetDefault("accounts.default_homedir", "/home")
 	viper.SetDefault("accounts.default_shell", "/bin/bash")
+	viper.SetDefault("accounts.allow_change_shell", false)
+	viper.SetDefault("accounts.allowed_shells", []string{"/bin/bash", "/bin/sh", "/bin/zsh", "/usr/bin/fish", "/sbin/nologin"})
 	viper.SetDefault("accounts.min_passwd_len", 8)
 	viper.SetDefault("accounts.min_passwd_classes", 2)
 	viper.SetDefault("accounts.otp_hash_algorithm", "sha1")

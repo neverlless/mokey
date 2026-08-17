@@ -115,6 +115,59 @@ func TestAccountSettingsEmailNotChangedDirectly(t *testing.T) {
 	assert.Equal("Walter", fake.users["walter"].First)
 }
 
+func TestAccountSettingsProfileFields(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.allow_change_shell", true)
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Shell: "/bin/bash"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.postForm("/account/settings", url.Values{
+		"first":       {"Walter"},
+		"last":        {"White"},
+		"phone":       {"+1 505 555 0100"},
+		"displayname": {"Heisenberg"},
+		"telephone":   {"+1 505 555 0199"},
+		"shell":       {"/bin/zsh"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+
+	u := fake.users["walter"]
+	assert.Equal("Heisenberg", u.DisplayName)
+	assert.Equal("+1 505 555 0199", u.Telephone)
+	assert.Equal("+1 505 555 0100", u.Mobile)
+	assert.Equal("/bin/zsh", u.Shell)
+
+	// a shell outside the allowlist is ignored
+	resp = tc.postForm("/account/settings", url.Values{
+		"first": {"Walter"},
+		"last":  {"White"},
+		"shell": {"/bin/evil"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal("/bin/zsh", fake.users["walter"].Shell)
+}
+
+func TestAccountSettingsShellChangeDisabledByDefault(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Shell: "/bin/bash"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.postForm("/account/settings", url.Values{
+		"first": {"Walter"},
+		"last":  {"White"},
+		"shell": {"/bin/zsh"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal("/bin/bash", fake.users["walter"].Shell)
+}
+
 func TestSSHKeyAddRequiresMFA(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestAppWith(t, func() {

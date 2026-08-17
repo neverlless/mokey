@@ -38,6 +38,8 @@ Addresses upstream request
 | `require_mfa` | bool | `false` | Require Two-Factor Authentication on all accounts. Users without an OTP token cannot manage SSH keys and are prompted to enroll. |
 | `default_homedir` | string | `"/home"` | Base home directory for accounts created via signup (`<default_homedir>/<username>`). |
 | `default_shell` | string | `"/bin/bash"` | Login shell for accounts created via signup. |
+| `allow_change_shell` | bool | `false` | Let users change their login shell on the account page, restricted to `allowed_shells`. |
+| `allowed_shells` | list | bash, sh, zsh, fish, nologin | Shell choices offered when `allow_change_shell` is on. Enforced server-side. |
 | `min_passwd_len` | int | `8` | Minimum password length for new passwords. Should match your FreeIPA password policy. |
 | `min_passwd_classes` | int | `2` | Minimum number of character classes (lower, upper, digit, other) in new passwords. Should match your FreeIPA password policy. |
 | `otp_readonly_groups` | list | *(empty)* | FreeIPA groups whose members see their OTP tokens read-only — no self-enrollment, removal, or enable/disable (for orgs issuing hardware tokens centrally). Enforced server-side. |
