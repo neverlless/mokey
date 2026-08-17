@@ -1,5 +1,37 @@
 # Mokey ChangeLog
 
+## [v1.6.0] - 2026-08-17
+
+Reliability release: test coverage for the core flows, a security audit,
+and the fixes it produced. The "alpha" label is removed from the README.
+
+- Add a handler test suite driving the real application against a fake
+  FreeIPA server: login (all outcomes), CSRF, rate limiting, expired
+  password, password change/reset with session invalidation, signup and
+  email verification, invites, email change confirmation, OTP token
+  lifecycle, admin gating — server package coverage 10.7% → 57%
+- Security audit (gosec, govulncheck, staticcheck, manual review) —
+  report in `docs/security-audit-v1.6.md`; all high/medium findings fixed:
+  - **Security**: `X-Forwarded-For` is no longer trusted by default; new
+    `server.trusted_proxies` option (IPs/CIDRs) controls which proxies may
+    supply forwarded headers. Previously the header could bypass login
+    rate limiting and forge audit-log IPs. **Deployments behind a reverse
+    proxy should set `trusted_proxies` to keep real client IPs in logs.**
+  - **Security**: email tokens (password reset, invite, verify, email
+    change) fail closed when the storage backend errors — a broken
+    backend no longer disables single-use enforcement
+  - **Security**: dependency and toolchain CVE patches — fiber v2.52.12,
+    x/net v0.55.0, Go toolchain 1.25.13 (`govulncheck`: 27 reachable
+    vulnerabilities → 0)
+  - **Security**: `GET /auth/logout` no longer destroys the session
+    (logout CSRF); the Hydra front-channel logout path is unaffected
+  - Session id is regenerated when an expired-password change logs the
+    user in
+  - `Strict-Transport-Security` is sent on https responses
+- Fix error pages returning HTTP 200 instead of 403/404/500
+- Document the username-enumeration trade-off of
+  `hide_invalid_username_error` (default unchanged)
+
 ## [v1.5.1] - 2026-08-16
 
 - Fix password class counting to match FreeIPA's `util/ipa_pwd.c`: five

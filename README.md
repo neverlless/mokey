@@ -13,16 +13,27 @@ missing in FreeIPA.  This feature is not provided by default in FreeIPA, see
 [here](https://www.freeipa.org/page/Self-Service_Password_Reset) for more info
 and the rationale behind this decision. mokey is not a FreeIPA plugin but a
 complete standalone application that uses the FreeIPA JSON API.  mokey requires
-no changes to the underlying LDAP schema and uses a MariaDB database to store
-access tokens. The user experience and web interface can be customized to fit
+no changes to the underlying LDAP schema and stores sessions and tokens in a
+pluggable backend (in-memory, SQLite, or Redis — no separate database server
+required). The user experience and web interface can be customized to fit
 the requirements of an organization's look and feel. mokey is written in Go and
 released under a modified BSD license.
 
 ## Project status
 
-mokey should be considered alpha software and used at your own risk. There are
-inherent security risks in providing features like self-service password resets
-and can make your systems vulnerable to abuse.
+mokey is actively maintained and used in production. The core flows — login,
+password change/reset, signup and email verification, invites, OTP tokens,
+and the admin panel — are covered by an automated test suite that drives the
+real application against a simulated FreeIPA server, and the code base has
+been through a security audit (`gosec`, `govulncheck`, `staticcheck`, plus a
+manual review of the auth/session/token paths) with all high- and
+medium-severity findings fixed — see
+[docs/security-audit-v1.6.md](docs/security-audit-v1.6.md).
+
+Keep in mind that self-service password reset inherently widens your attack
+surface: review the [configuration reference](docs/configuration.md)
+(`trusted_proxies`, `hide_invalid_username_error`, rate limits) before
+exposing mokey to the internet.
 
 ## Features
 
