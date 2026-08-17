@@ -1,0 +1,55 @@
+- generic [active] [ref=f12e1]:
+  - navigation [ref=f12e2]:
+    - link "Mokey Dev" [ref=f12e5] [cursor=pointer]:
+      - /url: /
+  - generic [ref=f12e8]:
+    - generic [ref=f12e9]:
+      - generic [ref=f12e10]:
+        - img "User Avatar" [ref=f12e12]
+        - heading "testadmin" [level=4] [ref=f12e13]
+      - tablist [ref=f12e14]:
+        - tab " Account" [ref=f12e15] [cursor=pointer]:
+          - generic [ref=f12e16]: 
+          - text: Account
+        - tab " Password" [ref=f12e17] [cursor=pointer]:
+          - generic [ref=f12e18]: 
+          - text: Password
+        - tab " Security" [ref=f12e19] [cursor=pointer]:
+          - generic [ref=f12e20]: 
+          - text: Security
+        - tab " SSH Keys" [ref=f12e21] [cursor=pointer]:
+          - generic [ref=f12e22]: 
+          - text: SSH Keys
+        - tab " OTP Tokens" [ref=f12e23] [cursor=pointer]:
+          - generic [ref=f12e24]: 
+          - text: OTP Tokens
+        - tab " Passkeys" [ref=f12e25] [cursor=pointer]:
+          - generic [ref=f12e26]: 
+          - text: Passkeys
+        - tab " Admin" [ref=f12e27] [cursor=pointer]:
+          - generic [ref=f12e28]: 
+          - text: Admin
+        - tab " Logout" [ref=f12e29] [cursor=pointer]:
+          - generic [ref=f12e30]: 
+          - text: Logout
+    - tabpanel " Password" [ref=f12e32]:
+      - heading "Change Password" [level=3] [ref=f12e33]
+      - generic [ref=f12e34]:
+        - generic [ref=f12e37]:
+          - generic [ref=f12e38]: Current Password
+          - textbox [ref=f12e39]
+        - generic [ref=f12e40]:
+          - generic [ref=f12e42]:
+            - generic [ref=f12e43]: New Password
+            - textbox [ref=f12e44]
+          - generic [ref=f12e46]:
+            - generic [ref=f12e47]: Confirm New Password
+            - textbox [ref=f12e48]
+        - button "Update" [ref=f12e50] [cursor=pointer]
+  - contentinfo [ref=f12e52]:
+    - paragraph [ref=f12e53]:
+      - text: Powered by
+      - link "mokey" [ref=f12e54] [cursor=pointer]:
+        - /url: https://github.com/neverlless/mokey
+        - generic [ref=f12e55]: 
+        - text: mokey

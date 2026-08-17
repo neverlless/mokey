@@ -19,6 +19,7 @@ echo "$IPA_ADMIN_PASS" | kinit admin
 
 ipa role-show 'Mokey User Manager' &>/dev/null || ipa role-add 'Mokey User Manager' --desc='Mokey User management'
 ipa role-add-privilege 'Mokey User Manager' --privilege='User Administrators' 2>/dev/null || true
+ipa role-add-privilege 'Mokey User Manager' --privilege='Password Policy Readers' 2>/dev/null || true
 ipa service-show "mokey/$HOST" &>/dev/null || ipa service-add "mokey/$HOST" --force
 ipa service-add-principal "mokey/$HOST" mokey/mokey 2>/dev/null || true
 ipa role-add-member 'Mokey User Manager' --services="mokey/$HOST" 2>/dev/null || true

@@ -114,6 +114,11 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		if policy, err := pwPolicyShow(r.adminClient, user.Username); err == nil {
 			vars["pwpolicy"] = policy
+		} else {
+			log.WithFields(log.Fields{
+				"username": user.Username,
+				"err":      err,
+			}).Warn("Failed to fetch password policy for display")
 		}
 		return c.Render("password.html", vars)
 	}

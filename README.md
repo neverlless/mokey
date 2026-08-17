@@ -137,6 +137,7 @@ $ mkdir /etc/mokey/private
 $ kinit adminuser
 $ ipa role-add 'Mokey User Manager' --desc='Mokey User management'
 $ ipa role-add-privilege 'Mokey User Manager' --privilege='User Administrators'
+$ ipa role-add-privilege 'Mokey User Manager' --privilege='Password Policy Readers'
 $ ipa service-add mokey/$(hostname -f)
 $ ipa service-add-principal mokey/$(hostname -f) mokey/mokey
 $ ipa role-add-member 'Mokey User Manager' --services=mokey/$(hostname -f)

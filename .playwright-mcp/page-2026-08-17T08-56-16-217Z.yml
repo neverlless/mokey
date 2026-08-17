@@ -1,0 +1,26 @@
+- generic [ref=f10e1]:
+  - navigation [ref=f10e2]:
+    - link "Mokey Dev" [ref=f10e5] [cursor=pointer]:
+      - /url: /
+  - generic [ref=f10e8]:
+    - heading "Login" [level=3] [ref=f10e10]
+    - generic [ref=f10e12]:
+      - generic [ref=f10e13]:
+        - generic [ref=f10e14]:
+          - generic [ref=f10e15]: Username
+          - textbox "Username" [active] [ref=f10e16]:
+            - /placeholder: ""
+        - button "Next" [ref=f10e18] [cursor=pointer]:
+          - status [ref=f10e19]
+          - text: Next
+      - paragraph [ref=f10e20]:
+        - text: New User?
+        - link "Create Account" [ref=f10e21] [cursor=pointer]:
+          - /url: /signup
+  - contentinfo [ref=f10e23]:
+    - paragraph [ref=f10e24]:
+      - text: Powered by
+      - link "mokey" [ref=f10e25] [cursor=pointer]:
+        - /url: https://github.com/neverlless/mokey
+        - generic [ref=f10e26]: 
+        - text: mokey
