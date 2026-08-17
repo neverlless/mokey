@@ -7,22 +7,22 @@ plus a manual review of the auth, session, token, CSRF, and rate-limit paths.
 The new handler flow tests (fake FreeIPA harness, `server/*_flow_test.go`)
 were used to confirm behavior where practical.
 
-Findings are ordered by severity. Status column: **open** until a fix is
-agreed and merged.
+Findings are ordered by severity. Status reflects the fixes merged on
+2026-08-17; `govulncheck` reports 0 reachable vulnerabilities after them.
 
 ## Summary
 
 | # | Severity | Finding | Status |
 |---|----------|---------|--------|
-| 1 | High | Client-controlled `X-Forwarded-For` bypasses login rate limiting and forges audit-log IPs | open |
-| 2 | Medium | Email-token single-use and issuance checks fail open on storage errors | open |
-| 3 | Medium | Known CVEs in Go stdlib 1.25.5, fiber v2.52.10, x/net v0.54.0 | open |
-| 4 | Low | Username enumeration on the login form in the default configuration | open (config exists) |
-| 5 | Low | `GET /auth/logout` destroys the session without CSRF protection | open |
-| 6 | Low | Expired-password flow elevates the session to authenticated without regenerating the session ID | open |
-| 7 | Low | CSP allows `unsafe-inline` for scripts and styles | accepted for now |
-| 8 | Low | No `Strict-Transport-Security` header in TLS mode | open |
-| 9 | Info | Ignored-error cluster (gosec G104), template var shadowing, deprecated `io/ioutil`, deprecated `X-XSS-Protection` | open |
+| 1 | High | Client-controlled `X-Forwarded-For` bypasses login rate limiting and forges audit-log IPs | fixed (b64ac3f) |
+| 2 | Medium | Email-token single-use and issuance checks fail open on storage errors | fixed (44590c9) |
+| 3 | Medium | Known CVEs in Go stdlib 1.25.5, fiber v2.52.10, x/net v0.54.0 | fixed (c355324) |
+| 4 | Low | Username enumeration on the login form in the default configuration | documented (1b9349c); default unchanged |
+| 5 | Low | `GET /auth/logout` destroys the session without CSRF protection | fixed (c02b4a1) |
+| 6 | Low | Expired-password flow elevates the session to authenticated without regenerating the session ID | fixed (49b8860) |
+| 7 | Low | CSP allows `unsafe-inline` for scripts and styles | accepted (nonce-based CSP tracked as future work) |
+| 8 | Low | No `Strict-Transport-Security` header in TLS mode | fixed (5384d8e) |
+| 9 | Info | Ignored-error cluster (gosec G104), template var shadowing, deprecated `io/ioutil`, deprecated `X-XSS-Protection` | partly fixed (1b9349c); G104 log-and-continue sites and X-XSS-Protection left as is |
 
 ## 1. High — `X-Forwarded-For` spoofing: rate-limit bypass and audit-log forgery
 
