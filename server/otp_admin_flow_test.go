@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -105,10 +106,12 @@ func TestOTPRemoveLastActiveTokenBlocked(t *testing.T) {
 		Password:  "Secret123!",
 		AuthTypes: []string{"otp"},
 	})
+	// Secret is never validated on the remove path; a low-entropy
+	// placeholder keeps secret scanners quiet
 	fake.tokens = append(fake.tokens, &fakeOTPToken{
 		UUID:   "11111111-2222-3333-4444-555555555555",
 		Owner:  "walter",
-		Secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+		Secret: strings.Repeat("A", 32),
 	})
 
 	tc := newTestClient(t, app)
