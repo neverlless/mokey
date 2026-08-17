@@ -56,6 +56,12 @@
                 hx-confirm="{{ T "admin.reset_confirm" }}">
           {{ T "admin.reset_password" }}
         </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" title="{{ T "admin.unlock_help" }}"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-post="/admin/user/unlock" hx-target="#admin-users">
+          <i class="fa fa-unlock" aria-hidden="true"></i> {{ T "admin.unlock" }}
+        </button>
       </td>
     </tr>
   {{ else }}

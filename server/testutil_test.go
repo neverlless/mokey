@@ -96,11 +96,14 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *fakeI
 	origNew := newIPAClient
 	origNewWithSession := newIPAClientWithSession
 	origKeytabLogin := ipaKeytabLogin
+	origRPCClient := ipaRPCHTTPClient
 	t.Cleanup(func() {
 		newIPAClient = origNew
 		newIPAClientWithSession = origNewWithSession
 		ipaKeytabLogin = origKeytabLogin
+		ipaRPCHTTPClient = origRPCClient
 	})
+	ipaRPCHTTPClient = fake.srv.Client()
 
 	newIPAClient = fake.client
 	newIPAClientWithSession = func(sid string) *ipa.Client {

@@ -189,6 +189,7 @@ oauth2_error = "OAuth2 Error"
 
 [login]
 failed = "Login failed"
+account_locked_temporarily = "Your account is temporarily locked after too many failed login attempts. Wait a few minutes and try again, or contact your administrator."
 title = "Login"
 submit_button = "Log in now"
 create_account = "Create Account"
@@ -354,6 +355,8 @@ freeipa_remove_failed = "Failed to remove the passkey from FreeIPA."
 rp_display_name = "Identity Management"
 
 [admin]
+unlock = "Unlock"
+unlock_help = "Clear the failed-login lockout so the user can sign in again"
 audit_title = "Audit log"
 audit_time = "When"
 audit_event = "Event"

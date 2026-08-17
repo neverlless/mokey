@@ -206,6 +206,8 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 		if err == nil {
 			err = r.emailer.SendPasswordResetEmail(target, c)
 		}
+	case "unlock":
+		err = userUnlock(r.adminClient, username)
 	default:
 		return c.Status(fiber.StatusBadRequest).SendString("")
 	}

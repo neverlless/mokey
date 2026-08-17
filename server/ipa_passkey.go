@@ -57,7 +57,7 @@ func ipaPasskeyRPC(client *ipa.Client, method string, params []string, options m
 	req.Header.Set("Referer", fmt.Sprintf("https://%s/ipa/xml", client.Host()))
 	req.Header.Set("Cookie", fmt.Sprintf("ipa_session=%s", client.SessionID()))
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := ipaRPCHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

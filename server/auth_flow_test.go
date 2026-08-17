@@ -195,6 +195,46 @@ func TestLogoutGETDoesNotDestroySession(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 }
 
+func TestLockoutMessageAndAdminUnlock(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("admin.enabled", true)
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+
+	tc := newTestClient(t, app)
+	tc.getCSRF("/auth/login")
+
+	// burn through the failure threshold
+	for i := 0; i < fakeLockoutThreshold; i++ {
+		resp := tc.postForm("/auth/authenticate", url.Values{
+			"username": {"walter"},
+			"password": {"wrong"},
+		}, nil)
+		assert.Equal(fiber.StatusUnauthorized, resp.StatusCode)
+	}
+
+	// correct password is now rejected — and the user is told why
+	resp := tc.postForm("/auth/authenticate", url.Values{
+		"username": {"walter"},
+		"password": {"Secret123!"},
+	}, nil)
+	assert.Equal(fiber.StatusUnauthorized, resp.StatusCode)
+	assert.Contains(readBody(t, resp), "temporarily locked")
+
+	// admin unlocks the account
+	tcAdmin := newTestClient(t, app)
+	tcAdmin.login("skyler", "Secret123!")
+	resp = tcAdmin.postForm("/admin/user/unlock", url.Values{"username": {"walter"}}, htmx)
+	assert.NotEqual(fiber.StatusForbidden, resp.StatusCode)
+	assert.Equal(0, fake.users["walter"].FailedLogins)
+
+	// user can log in again
+	tc2 := newTestClient(t, app)
+	tc2.login("walter", "Secret123!")
+}
+
 func TestExpiredPasswordFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)

@@ -33,7 +33,13 @@ type fakeUser struct {
 	Telephone   string
 	Mobile      string
 	Shell       string
+	// FailedLogins simulates FreeIPA's krbloginfailedcount; at
+	// fakeLockoutThreshold the account rejects even correct passwords
+	FailedLogins int
 }
+
+// mirrors FreeIPA's default krbpwdmaxfailure
+const fakeLockoutThreshold = 6
 
 type fakeOTPToken struct {
 	UUID        string
@@ -140,10 +146,19 @@ func (f *fakeIPA) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	u, ok := f.users[username]
 	if !ok || u.Password != password {
+		if ok {
+			u.FailedLogins++
+		}
 		w.Header().Set("X-IPA-Rejection-Reason", "invalid-password")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
+	if u.FailedLogins >= fakeLockoutThreshold {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	u.FailedLogins = 0
 
 	if u.Expired {
 		w.Header().Set("X-IPA-Rejection-Reason", "password-expired")
@@ -482,6 +497,39 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		}
 		u.Password = newpass
 		rpcResult(w, map[string]interface{}{})
+
+	case "user_status":
+		username := args[0]
+		u, ok := f.users[username]
+		if !ok {
+			rpcError(w, 4001, username+": user not found")
+			return
+		}
+		rpcResult(w, []map[string]interface{}{{
+			"server":              []string{"ipa.test.local"},
+			"krbloginfailedcount": []string{fmt.Sprintf("%d", u.FailedLogins)},
+		}})
+
+	case "user_unlock":
+		username := args[0]
+		u, ok := f.users[username]
+		if !ok {
+			rpcError(w, 4001, username+": user not found")
+			return
+		}
+		u.FailedLogins = 0
+		rpcResult(w, map[string]interface{}{})
+
+	case "pwpolicy_show":
+		rpcResult(w, map[string]interface{}{
+			"krbpwdmaxfailure":      []string{fmt.Sprintf("%d", fakeLockoutThreshold)},
+			"krbpwdlockoutduration": []string{"600"},
+			"krbminpwdlife":         []string{"1"},
+			"krbmaxpwdlife":         []string{"90"},
+			"krbpwdminlength":       []string{"8"},
+			"krbpwdmindiffchars":    []string{"2"},
+			"krbpwdhistorylength":   []string{"5"},
+		})
 
 	case "otptoken_add":
 		secret := base32.StdEncoding.EncodeToString([]byte(newSID()[:20]))

@@ -344,6 +344,18 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 				"err":      err,
 			}).Error("AUDIT Failed login attempt")
 			r.metrics.totalFailedLogins.Inc()
+
+			// Tell users who hit the FreeIPA failure-lockout threshold why
+			// their (possibly correct) password is rejected. Only shown
+			// after credentials were presented — no pre-auth state leak.
+			if userLockedOut(r.adminClient, username) {
+				log.WithFields(log.Fields{
+					"username": username,
+					"ip":       RemoteIP(c),
+				}).Warn("AUDIT Login attempt for locked-out account")
+				return c.Status(fiber.StatusUnauthorized).SendString(T("login.account_locked_temporarily"))
+			}
+
 			return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
 		}
 	}

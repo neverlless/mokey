@@ -189,6 +189,7 @@ oauth2_error = "OAuth2 Fout"
 
 [login]
 failed = "Inloggen mislukt"
+account_locked_temporarily = "Uw account is tijdelijk vergrendeld na te veel mislukte inlogpogingen. Wacht enkele minuten en probeer het opnieuw, of neem contact op met uw beheerder."
 title = "Inloggen"
 submit_button = "Nu inloggen"
 create_account = "Account aanmaken"
@@ -354,6 +355,8 @@ freeipa_remove_failed = "Verwijderen van de passkey uit FreeIPA is mislukt."
 rp_display_name = "Identity Management"
 
 [admin]
+unlock = "Ontgrendelen"
+unlock_help = "Wis de vergrendeling na mislukte inlogpogingen zodat de gebruiker weer kan inloggen"
 audit_title = "Auditlogboek"
 audit_time = "Wanneer"
 audit_event = "Gebeurtenis"
