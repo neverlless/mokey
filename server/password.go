@@ -428,6 +428,11 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
 	}
 
+	// Rotate the session id on privilege elevation, mirroring Authenticate
+	if err := sess.Regenerate(); err != nil {
+		return err
+	}
+
 	sess.Set(SessionKeyAuthenticated, true)
 	sess.Set(SessionKeyUsername, user.Username)
 	sess.Set(SessionKeySID, client.SessionID())
