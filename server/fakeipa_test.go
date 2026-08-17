@@ -56,6 +56,13 @@ type fakeSubid struct {
 	SubGID int64
 }
 
+type fakeGroup struct {
+	Description   string
+	Members       []string
+	ManagerUsers  []string
+	ManagerGroups []string
+}
+
 type fakeIPA struct {
 	srv *httptest.Server
 
@@ -64,6 +71,7 @@ type fakeIPA struct {
 	stageusers map[string]*fakeUser
 	subids     map[string]*fakeSubid // owner uid -> range
 	sessions   map[string]string     // ipa_session sid -> username
+	groups     map[string]*fakeGroup
 	// randomPasswords holds the last user_mod random:true password per user
 	randomPasswords map[string]string
 	tokens          []*fakeOTPToken
@@ -77,6 +85,7 @@ func newFakeIPA() *fakeIPA {
 		stageusers:      make(map[string]*fakeUser),
 		subids:          make(map[string]*fakeSubid),
 		sessions:        make(map[string]string),
+		groups:          make(map[string]*fakeGroup),
 		randomPasswords: make(map[string]string),
 	}
 
@@ -116,6 +125,12 @@ func (f *fakeIPA) addUser(username string, u *fakeUser) {
 		u.Last = "User"
 	}
 	f.users[username] = u
+}
+
+func (f *fakeIPA) addGroup(cn string, g *fakeGroup) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.groups[cn] = g
 }
 
 func newSID() string {
@@ -324,6 +339,46 @@ func (f *fakeIPA) subidJSON(owner string, sub *fakeSubid) map[string]interface{}
 	}
 }
 
+func (f *fakeIPA) groupJSON(cn string, g *fakeGroup) map[string]interface{} {
+	rec := map[string]interface{}{
+		"cn":          []string{cn},
+		"member_user": g.Members,
+	}
+	if g.Description != "" {
+		rec["description"] = []string{g.Description}
+	}
+	if len(g.ManagerUsers) > 0 {
+		rec["membermanager_user"] = g.ManagerUsers
+	}
+	if len(g.ManagerGroups) > 0 {
+		rec["membermanager_group"] = g.ManagerGroups
+	}
+	return rec
+}
+
+// isGroupManager: caller manages g directly or via a manager group.
+// Deliberately false for "__admin__" — mutations must come from a user
+// session, the design forbids admin-side group writes.
+func (f *fakeIPA) isGroupManager(caller string, g *fakeGroup) bool {
+	for _, m := range g.ManagerUsers {
+		if m == caller {
+			return true
+		}
+	}
+	u, ok := f.users[caller]
+	if !ok {
+		return false
+	}
+	for _, mg := range g.ManagerGroups {
+		for _, ug := range u.Groups {
+			if mg == ug {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // userJSON renders a user in FreeIPA's attribute-list form consumed by
 // goipa's User.fromJSON
 func (f *fakeIPA) userJSON(username string, u *fakeUser) map[string]interface{} {
@@ -526,6 +581,43 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rpcResult(w, results)
+
+	case "group_find":
+		results := []map[string]interface{}{}
+		for cn, g := range f.groups {
+			results = append(results, f.groupJSON(cn, g))
+		}
+		rpcResult(w, results)
+
+	case "group_show":
+		cn := args[0]
+		g, ok := f.groups[cn]
+		if !ok {
+			rpcError(w, 4001, cn+": group not found")
+			return
+		}
+		rpcResult(w, f.groupJSON(cn, g))
+
+	case "group_add_member":
+		cn := args[0]
+		g, ok := f.groups[cn]
+		if !ok {
+			rpcError(w, 4001, cn+": group not found")
+			return
+		}
+		if !f.isGroupManager(caller, g) {
+			rpcError(w, 2100, "Insufficient access: not a member manager")
+			return
+		}
+		uid, _ := opts["user"].(string)
+		for _, m := range g.Members {
+			if m == uid {
+				rpcResult(w, f.groupJSON(cn, g))
+				return
+			}
+		}
+		g.Members = append(g.Members, uid)
+		rpcResult(w, f.groupJSON(cn, g))
 
 	case "stageuser_add":
 		username := args[0]
