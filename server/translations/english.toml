@@ -58,6 +58,10 @@ system_error = "System error please contact administrator"
 weak_password = "Your password is too weak. Please ensure your password includes a number and lower/upper case character"
 
 [email_template]
+username_reminder_subject = "Your username"
+username_reminder_greeting = "Hello,"
+username_reminder_intro = "A username reminder was requested for this email address at "
+username_reminder_list = "The following username(s) belong to this address"
 invite_subject = "You have been invited to create an account"
 invite_preheader = "Use this link to create your account. The link is only valid for"
 invite_greeting = "Hi"
@@ -186,6 +190,7 @@ title = "Login"
 submit_button = "Log in now"
 create_account = "Create Account"
 forgot_password = "Forgot Password?"
+forgot_username = "Forgot Username?"
 new_user = "New User?"
 next_button = "Next"
 not_you = "Not You?"
@@ -242,6 +247,11 @@ title = "Password Expired"
 change_password_button = "Change Password"
 help = "You signed in with your expired password. Choose a new password below (at least 16 characters per policy)."
 otp_help = "You have already signed in with your expired password. Choose a new password and enter a fresh OTP code from your authenticator app."
+
+[username_forgot]
+title = "Forgot Username"
+intro = "Enter your account email address and we will send your username to it."
+email_sent = "If that address matches an account, an email with the username is on its way."
 
 [password_forgot]
 title = "Forgot Password"

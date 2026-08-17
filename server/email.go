@@ -222,6 +222,18 @@ func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx *fibe
 	return e.sendEmail(user, ctx, event, "account-updated", vars)
 }
 
+// SendUsernameReminderEmail mails the username(s) associated with an address.
+// The recipient is identified only by email — no account context is leaked in
+// the delivery metadata.
+func (e *Emailer) SendUsernameReminderEmail(email string, usernames []string, ctx *fiber.Ctx) error {
+	recipient := &ipa.User{Email: email}
+	vars := map[string]interface{}{
+		"usernames": usernames,
+	}
+
+	return e.sendEmail(recipient, ctx, T("email_template.username_reminder_subject"), "username-reminder", vars)
+}
+
 func (e *Emailer) SendPasswordChangedEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	vars := map[string]interface{}{
 		"event": T("email_template.password_changed_event"),

@@ -148,6 +148,8 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Post("/auth/expiredpw", r.RequireNoLogin, r.PasswordExpired)
 	app.Get("/auth/forgotpw", r.RequireNoLogin, r.PasswordForgot)
 	app.Post("/auth/forgotpw", r.RequireNoLogin, r.PasswordForgot)
+	app.Get("/auth/forgotuser", r.RequireNoLogin, r.UsernameForgot)
+	app.Post("/auth/forgotuser", r.RequireNoLogin, r.UsernameForgot)
 	app.Get("/auth/verify", r.RequireNoLogin, r.AccountVerifyResend)
 	app.Post("/auth/verify", r.RequireNoLogin, r.AccountVerifyResend)
 	app.Get("/auth/resetpw/:token", r.PasswordReset)

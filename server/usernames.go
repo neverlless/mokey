@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	valid "github.com/asaskevich/govalidator"
+	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/ubccr/goipa"
 )
@@ -104,4 +106,61 @@ func validateUsername(user *ipa.User) error {
 	user.Username = strings.ToLower(user.Username)
 
 	return nil
+}
+
+// UsernameForgot emails the username(s) tied to an address. The response is
+// identical whether or not the address matches an account — no enumeration.
+func (r *Router) UsernameForgot(c *fiber.Ctx) error {
+	if c.Method() == fiber.MethodGet {
+		return c.Render("username-forgot.html", fiber.Map{
+			"captchaID": newCaptchaID(),
+		})
+	}
+
+	if err := r.verifyCaptcha(c.FormValue("captcha_id"), c.FormValue("captcha_sol")); err != nil {
+		c.Append("HX-Trigger", "{\"reloadCaptcha\":\""+newCaptchaID()+"\"}")
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+
+	email := strings.TrimSpace(strings.ToLower(c.FormValue("email")))
+	if email == "" || !valid.IsEmail(email) {
+		return c.Render("username-forgot-success.html", fiber.Map{})
+	}
+
+	users, err := r.adminClient.UserFind(ipa.Options{"mail": email})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"email": email,
+			"err":   err,
+		}).Error("Forgot username failed to search FreeIPA")
+		return c.Render("username-forgot-success.html", fiber.Map{})
+	}
+
+	usernames := []string{}
+	for _, u := range users {
+		// user_find matches substrings — require the exact address, and
+		// skip accounts that can't log in anyway
+		if strings.EqualFold(u.Email, email) && !u.Locked && !isBlocked(u.Username) {
+			usernames = append(usernames, u.Username)
+		}
+	}
+
+	if len(usernames) > 0 {
+		if err := r.emailer.SendUsernameReminderEmail(email, usernames, c); err != nil {
+			log.WithFields(log.Fields{
+				"email": email,
+				"err":   err,
+			}).Error("Failed to send username reminder email")
+		} else {
+			log.WithFields(log.Fields{
+				"email": email,
+			}).Info("AUDIT Username reminder email sent")
+		}
+	} else {
+		log.WithFields(log.Fields{
+			"email": email,
+		}).Info("Forgot username request for unknown email")
+	}
+
+	return c.Render("username-forgot-success.html", fiber.Map{})
 }

@@ -58,6 +58,10 @@ system_error = "Systeemfout, neem contact op met de beheerder"
 weak_password = "Je wachtwoord is te zwak. Zorg ervoor dat je wachtwoord een cijfer en zowel kleine als hoofdletters bevat"
 
 [email_template]
+username_reminder_subject = "Uw gebruikersnaam"
+username_reminder_greeting = "Hallo,"
+username_reminder_intro = "Er is een gebruikersnaamherinnering aangevraagd voor dit e-mailadres bij "
+username_reminder_list = "De volgende gebruikersnaam(en) horen bij dit adres"
 invite_subject = "U bent uitgenodigd om een account aan te maken"
 invite_preheader = "Gebruik deze link om uw account aan te maken. De link is slechts geldig voor"
 invite_greeting = "Hallo"
@@ -186,6 +190,7 @@ title = "Inloggen"
 submit_button = "Nu inloggen"
 create_account = "Account aanmaken"
 forgot_password = "Wachtwoord vergeten?"
+forgot_username = "Gebruikersnaam vergeten?"
 new_user = "Nieuwe gebruiker?"
 next_button = "Volgende"
 not_you = "Niet jij?"
@@ -242,6 +247,11 @@ title = "Wachtwoord Verlopen"
 change_password_button = "Wachtwoord Wijzigen"
 help = "Je bent ingelogd met je verlopen wachtwoord. Kies hieronder een nieuw wachtwoord (minimaal 16 tekens volgens het beleid)."
 otp_help = "Je bent al ingelogd met je verlopen wachtwoord. Kies een nieuw wachtwoord en voer een nieuwe OTP-code in van je authenticator-app."
+
+[username_forgot]
+title = "Gebruikersnaam vergeten"
+intro = "Voer het e-mailadres van uw account in; wij sturen uw gebruikersnaam ernaartoe."
+email_sent = "Als dat adres bij een account hoort, is er een e-mail met de gebruikersnaam onderweg."
 
 [password_forgot]
 title = "Wachtwoord vergeten"

@@ -215,6 +215,31 @@ func TestPasswordForgotUnknownUserSameResponse(t *testing.T) {
 	assert.Nil(issued)
 }
 
+func TestUsernameForgotUniformResponse(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.enable_captcha", false)
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Email: "walter@example.com"})
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!", Email: "skyler@example.com", Locked: true})
+
+	tc := newTestClient(t, app)
+	resp := tc.get("/auth/forgotuser")
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	tc.getCSRF("/auth/forgotuser")
+
+	// known, unknown, and locked-account addresses get the same page —
+	// no enumeration via the response
+	bodies := map[string]string{}
+	for _, email := range []string{"walter@example.com", "nobody@example.com", "skyler@example.com"} {
+		resp := tc.postForm("/auth/forgotuser", url.Values{"email": {email}}, nil)
+		assert.Equal(fiber.StatusOK, resp.StatusCode, email)
+		bodies[email] = readBody(t, resp)
+	}
+	assert.Equal(bodies["walter@example.com"], bodies["nobody@example.com"])
+	assert.Equal(bodies["walter@example.com"], bodies["skyler@example.com"])
+}
+
 func TestAdminRouteGating(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestAppWith(t, func() {
