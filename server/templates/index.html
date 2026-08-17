@@ -44,6 +44,10 @@
 						<i class="fa fa-user-shield text-center me-1"></i>
 						{{ T "profile.passkeys" }}
 					</a>
+					<a class="nav-link{{ if eq $.path "groups" }} active{{end}}" id="groups-tab" href="/groups" role="tab">
+						<i class="fa fa-users text-center me-1"></i>
+						{{ T "groups.tab" }}
+					</a>
 					{{ if $.is_admin }}
 					<a class="nav-link{{ if eq $.path "admin" }} active{{end}}" id="admin-tab" href="/admin" role="tab">
 						<i class="fa fa-users-gear text-center me-1"></i>
@@ -80,6 +84,10 @@
                 {{ else if eq $.path "passkey" }}
 				<div class="tab-pane fade show active" id="passkey" role="tabpanel" aria-labelledby="passkey-tab">
                     {{ template "passkey-list.html" . }}
+                </div>
+                {{ else if eq $.path "groups" }}
+				<div class="tab-pane fade show active" id="groups" role="tabpanel" aria-labelledby="groups-tab">
+                    {{ template "groups-list.html" . }}
                 </div>
                 {{ else if eq $.path "admin" }}
 				<div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">

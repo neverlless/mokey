@@ -134,6 +134,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/sshkey", r.RequireLogin, r.Index)
 	app.Get("/passkey", r.RequireLogin, r.Index)
 	app.Get("/otp", r.RequireLogin, r.Index)
+	app.Get("/groups", r.RequireLogin, r.Index)
 
 	// Subordinate IDs
 	if viper.GetBool("accounts.enable_subid") {
@@ -266,6 +267,10 @@ func (r *Router) Index(c *fiber.Ctx) error {
 
 	if path == "account" && viper.GetBool("accounts.enable_subid") {
 		r.subidVars(user.Username, vars)
+	}
+
+	if path == "groups" {
+		r.groupsVars(c, vars)
 	}
 
 	if path == "sshkey" {
