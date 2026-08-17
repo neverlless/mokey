@@ -246,6 +246,11 @@ func (e *Emailer) SendUsernameReminderEmail(email string, usernames []string, ct
 }
 
 func (e *Emailer) SendPasswordChangedEmail(user *ipa.User, ctx *fiber.Ctx) error {
+	// Opt-in: password-change notification emails are off by default
+	if !viper.GetBool("email.notify_password_change") {
+		return nil
+	}
+
 	vars := map[string]interface{}{
 		"event": T("email_template.password_changed_event"),
 	}

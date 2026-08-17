@@ -30,6 +30,8 @@ points (see `docs/ROADMAP.md` for the research trail).
   view-only — for orgs issuing hardware tokens centrally (ubccr#146)
 - Richer profile editing: display name, work phone, and opt-in login
   shell selection (`accounts.allow_change_shell` + `allowed_shells`)
+- Password-changed notification emails are now opt-in
+  (`email.notify_password_change`, default off)
 - Fix: OTP tokens created via mokey were invalid for hours on non-UTC
   servers — notBefore was sent in local time as UTC (ubccr#159)
 

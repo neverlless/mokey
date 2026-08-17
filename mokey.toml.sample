@@ -157,6 +157,9 @@ token_max_age = 3600
 #    openssl rand -hex 32 
 token_secret = ""
 
+# Email the user when their password is changed or reset (off by default).
+# notify_password_change = false
+
 # Days-before-expiry thresholds for password expiry reminder emails.
 # A background sweep emails each user once per threshold; empty/unset
 # disables reminders.

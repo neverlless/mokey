@@ -1,10 +1,12 @@
 package server
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -41,6 +43,33 @@ func TestExpiryBannerAndPolicyDisplay(t *testing.T) {
 	tc2.login("jesse", "Secret123!")
 	resp = tc2.get("/")
 	assert.NotContains(readBody(t, resp), "Your password expires in ")
+}
+
+func TestPasswordChangedEmailOptIn(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	sink := newFakeSMTP(t)
+	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+
+	change := func(oldPw, newPw string) {
+		tc := newTestClient(t, app)
+		tc.login("walter", oldPw)
+		resp := tc.postForm("/password/change", url.Values{
+			"password":     {oldPw},
+			"newpassword":  {newPw},
+			"newpassword2": {newPw},
+		}, htmx)
+		assert.Equal(fiber.StatusOK, resp.StatusCode)
+	}
+
+	// default: no notification email
+	change("OldSecret123!", "NewSecret456!")
+	assert.Equal(0, sink.count())
+
+	// opt-in: notification sent
+	viper.Set("email.notify_password_change", true)
+	change("NewSecret456!", "NewSecret789!")
+	assert.Equal(1, sink.count())
 }
 
 func TestPasswordExpiryReminderSweep(t *testing.T) {
