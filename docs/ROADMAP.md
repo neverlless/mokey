@@ -129,15 +129,16 @@ freeipa-users list, competitor gaps) found in the Aug 2026 research sweep.
 
 Table-stakes features of Keycloak/Authentik/Zitadel account consoles.
 
-- [ ] Active session/device list with per-device revoke and
-      "sign out everywhere" — needs a user-to-sessions index in the
-      storage backend (the invalidation-marker infrastructure from v1.4
-      is the foundation)
-- [ ] Per-user login history page — expose the user's own slice of the
-      existing admin audit log; almost no competitor gives end users this
-- [ ] Consistent security-change notification emails: password changed,
-      OTP token added/removed, passkey added/removed, new session — audit
-      which flows already send and fill the gaps
+- [x] Active session/device list with per-device revoke and "sign out
+      other sessions" — per-user session index in the storage backend,
+      revocation deletes session data server-side
+- [x] Per-user activity history on the Security page — own slice of the
+      audit ring; failed logins now recorded (audit hook previously
+      dropped error-level events, hiding them from the admin view too)
+- [x] Notification email audit: credential changes were already covered
+      (OTP/passkey/SSH-key/MFA/email change; password change opt-in
+      since v1.8); the one gap — new sign-in notification — added as
+      opt-in `email.notify_new_login`
 
 ## v2.0 — Differentiators
 

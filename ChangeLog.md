@@ -1,5 +1,22 @@
 # Mokey ChangeLog
 
+## [v1.9.0] - 2026-08-17
+
+Sessions and notifications release — the account-console features users
+expect from Keycloak/Authentik-class portals.
+
+- Active session list on the Security page: browser, OS, IP, and
+  sign-in time for every device, with per-session revocation and a
+  "Sign out other sessions" action. Revoking deletes the session
+  server-side; ownership is enforced through a per-user index
+- Recent account activity on the Security page: the user's own slice
+  of the audit trail (logins, failed attempts, password/key changes),
+  newest first
+- Failed logins now appear in the audit trail (admin view included) —
+  the audit hook previously ignored error-level events
+- Optional new sign-in notification emails (`email.notify_new_login`,
+  default off): browser, OS, and IP, sent asynchronously
+
 ## [v1.8.0] - 2026-08-17
 
 Account lifecycle release, driven by upstream demand and community pain
