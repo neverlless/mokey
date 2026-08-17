@@ -1,0 +1,81 @@
+- generic [active] [ref=f17e1]:
+  - navigation [ref=f17e2]:
+    - link "Mokey Dev" [ref=f17e5] [cursor=pointer]:
+      - /url: /
+  - generic [ref=f17e8]:
+    - generic [ref=f17e9]:
+      - generic [ref=f17e10]:
+        - img "User Avatar" [ref=f17e12]
+        - heading "testadmin" [level=4] [ref=f17e13]
+      - tablist [ref=f17e14]:
+        - tab " Account" [ref=f17e15] [cursor=pointer]:
+          - generic [ref=f17e16]: 
+          - text: Account
+        - tab " Password" [ref=f17e17] [cursor=pointer]:
+          - generic [ref=f17e18]: 
+          - text: Password
+        - tab " Security" [ref=f17e19] [cursor=pointer]:
+          - generic [ref=f17e20]: 
+          - text: Security
+        - tab " SSH Keys" [ref=f17e21] [cursor=pointer]:
+          - generic [ref=f17e22]: 
+          - text: SSH Keys
+        - tab " OTP Tokens" [ref=f17e23] [cursor=pointer]:
+          - generic [ref=f17e24]: 
+          - text: OTP Tokens
+        - tab " Passkeys" [ref=f17e25] [cursor=pointer]:
+          - generic [ref=f17e26]: 
+          - text: Passkeys
+        - tab " Admin" [ref=f17e27] [cursor=pointer]:
+          - generic [ref=f17e28]: 
+          - text: Admin
+        - tab " Logout" [ref=f17e29] [cursor=pointer]:
+          - generic [ref=f17e30]: 
+          - text: Logout
+    - tabpanel " Account" [ref=f17e32]:
+      - heading "Account Settings" [level=3] [ref=f17e33]
+      - generic [ref=f17e34]:
+        - generic [ref=f17e35]:
+          - generic [ref=f17e37]:
+            - generic [ref=f17e38]: First Name
+            - textbox [ref=f17e39]: Test
+          - generic [ref=f17e41]:
+            - generic [ref=f17e42]: Last Name
+            - textbox [ref=f17e43]: admin
+          - generic [ref=f17e45]:
+            - generic [ref=f17e46]: Email
+            - textbox [ref=f17e47]: testadmin@mokey.local
+          - generic [ref=f17e49]:
+            - generic [ref=f17e50]: Phone Number
+            - textbox [ref=f17e51]
+          - generic [ref=f17e53]:
+            - generic [ref=f17e54]: Display Name
+            - textbox "Display Name" [ref=f17e55]: Test admin
+          - generic [ref=f17e57]:
+            - generic [ref=f17e58]: Work Phone
+            - textbox "Work Phone" [ref=f17e59]
+          - generic [ref=f17e61]:
+            - generic [ref=f17e62]: Username
+            - textbox [disabled] [ref=f17e63]: testadmin
+          - generic [ref=f17e65]:
+            - generic [ref=f17e66]: Last Password Change
+            - textbox [disabled] [ref=f17e67]: 1 day ago
+          - generic [ref=f17e69]:
+            - generic [ref=f17e70]: Home Directory
+            - textbox [disabled] [ref=f17e71]: /home/testadmin
+          - generic [ref=f17e73]:
+            - generic [ref=f17e74]: Password Expires
+            - textbox [disabled] [ref=f17e75]: 2 months from now
+          - generic [ref=f17e77]:
+            - generic [ref=f17e78]: Groups
+            - generic [ref=f17e79]:
+              - generic [ref=f17e80]: ipausers
+              - generic [ref=f17e81]: admins
+        - button "Update" [ref=f17e83] [cursor=pointer]
+  - contentinfo [ref=f17e85]:
+    - paragraph [ref=f17e86]:
+      - text: Powered by
+      - link "mokey" [ref=f17e87] [cursor=pointer]:
+        - /url: https://github.com/neverlless/mokey
+        - generic [ref=f17e88]: 
+        - text: mokey

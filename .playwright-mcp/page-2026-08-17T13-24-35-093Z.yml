@@ -1,0 +1,66 @@
+- generic [active] [ref=f18e1]:
+  - navigation [ref=f18e2]:
+    - link "Mokey Dev" [ref=f18e5] [cursor=pointer]:
+      - /url: /
+  - generic [ref=f18e8]:
+    - generic [ref=f18e9]:
+      - generic [ref=f18e10]:
+        - img "User Avatar" [ref=f18e12]
+        - heading "testadmin" [level=4] [ref=f18e13]
+      - tablist [ref=f18e14]:
+        - tab " Account" [ref=f18e15] [cursor=pointer]:
+          - generic [ref=f18e16]: 
+          - text: Account
+        - tab " Password" [ref=f18e17] [cursor=pointer]:
+          - generic [ref=f18e18]: 
+          - text: Password
+        - tab " Security" [ref=f18e19] [cursor=pointer]:
+          - generic [ref=f18e20]: 
+          - text: Security
+        - tab " SSH Keys" [ref=f18e21] [cursor=pointer]:
+          - generic [ref=f18e22]: 
+          - text: SSH Keys
+        - tab " OTP Tokens" [ref=f18e23] [cursor=pointer]:
+          - generic [ref=f18e24]: 
+          - text: OTP Tokens
+        - tab " Passkeys" [ref=f18e25] [cursor=pointer]:
+          - generic [ref=f18e26]: 
+          - text: Passkeys
+        - tab " Admin" [ref=f18e27] [cursor=pointer]:
+          - generic [ref=f18e28]: 
+          - text: Admin
+        - tab " Logout" [ref=f18e29] [cursor=pointer]:
+          - generic [ref=f18e30]: 
+          - text: Logout
+    - tabpanel " Security" [ref=f18e32]:
+      - heading "Security Settings" [level=3] [ref=f18e33]
+      - generic [ref=f18e34]:
+        - generic [ref=f18e35]: Authentication Methods
+        - list [ref=f18e36]:
+          - listitem [ref=f18e37]:
+            - generic [ref=f18e38]:
+              - heading "Two-Factor Authentication" [level=5] [ref=f18e39]
+              - button " Disabled" [ref=f18e40] [cursor=pointer]:
+                - generic [ref=f18e41]: 
+                - text: Disabled
+      - generic [ref=f18e42]:
+        - generic [ref=f18e43]: Active sessions
+        - list [ref=f18e45]:
+          - listitem [ref=f18e46]:
+            - generic [ref=f18e47]:
+              - strong [ref=f18e48]: Chrome · macOS
+              - generic [ref=f18e49]: This device
+              - generic [ref=f18e50]: 192.168.107.1 · signed in 4 seconds ago
+      - generic [ref=f18e51]:
+        - generic [ref=f18e52]: Recent account activity
+        - list [ref=f18e53]:
+          - listitem [ref=f18e54]:
+            - text: User logged in successfully
+            - generic [ref=f18e55]: 192.168.107.1 · 4 seconds ago
+  - contentinfo [ref=f18e57]:
+    - paragraph [ref=f18e58]:
+      - text: Powered by
+      - link "mokey" [ref=f18e59] [cursor=pointer]:
+        - /url: https://github.com/neverlless/mokey
+        - generic [ref=f18e60]: 
+        - text: mokey

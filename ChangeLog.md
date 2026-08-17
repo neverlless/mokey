@@ -1,5 +1,11 @@
 # Mokey ChangeLog
 
+## [v1.9.1] - 2026-08-17
+
+- Fix: opening `/security` as a full page returned 500 — the page
+  template was missing the session/activity variables that the
+  htmx-loaded variant received (regression in v1.9.0)
+
 ## [v1.9.0] - 2026-08-17
 
 Sessions and notifications release — the account-console features users

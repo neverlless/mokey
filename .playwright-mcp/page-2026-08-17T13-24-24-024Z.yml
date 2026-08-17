@@ -1,0 +1,35 @@
+- generic [ref=f16e1]:
+  - navigation [ref=f16e2]:
+    - link "Mokey Dev" [ref=f16e5] [cursor=pointer]:
+      - /url: /
+  - generic [ref=f16e27]:
+    - heading "Password" [level=3] [ref=f16e29]
+    - generic [ref=f16e31]:
+      - generic [ref=f16e32]:
+        - generic [ref=f16e33]:
+          - generic [ref=f16e34]: Username
+          - textbox [disabled] [ref=f16e35]: testadmin
+          - generic [ref=f16e36]:
+            - text: Not You?
+            - link "Switch Account" [ref=f16e37] [cursor=pointer]:
+              - /url: /auth/login
+        - generic [ref=f16e38]:
+          - generic [ref=f16e39]: Password
+          - textbox "Password" [active] [ref=f16e40]:
+            - /placeholder: ""
+        - button "Login" [ref=f16e42] [cursor=pointer]:
+          - status [ref=f16e43]
+          - text: Login
+      - paragraph [ref=f16e44]:
+        - link "Forgot Password?" [ref=f16e45] [cursor=pointer]:
+          - /url: /auth/forgotpw
+        - text: ·
+        - link "Forgot Username?" [ref=f16e46] [cursor=pointer]:
+          - /url: /auth/forgotuser
+  - contentinfo [ref=f16e23]:
+    - paragraph [ref=f16e24]:
+      - text: Powered by
+      - link "mokey" [ref=f16e25] [cursor=pointer]:
+        - /url: https://github.com/neverlless/mokey
+        - generic [ref=f16e26]: 
+        - text: mokey
