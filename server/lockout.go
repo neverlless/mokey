@@ -8,10 +8,33 @@ import (
 	ipa "github.com/ubccr/goipa"
 )
 
+// ipaAdminRPC runs a direct JSON-RPC call with the keytab-bound admin
+// client. That client authenticates per-request via SPNEGO and normally has
+// no session cookie (StickySession(false)), which the direct-RPC helper
+// requires — so grab a fresh session with a Ping first and drop it after.
+// ponytail: the sticky/session toggling races with concurrent requests on
+// the shared client; worst case is a rare 401 on an admin RPC, which every
+// caller already handles as an error.
+func ipaAdminRPC(admin *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, error) {
+	admin.StickySession(true)
+	defer func() {
+		admin.ClearSession()
+		admin.StickySession(false)
+	}()
+
+	if admin.SessionID() == "" {
+		if _, err := admin.Ping(); err != nil {
+			return nil, err
+		}
+	}
+
+	return ipaPasskeyRPC(admin, method, params, options)
+}
+
 // userFailedLogins returns the highest krbloginfailedcount reported by any
 // replica for the user
 func userFailedLogins(client *ipa.Client, username string) (int, error) {
-	res, err := ipaPasskeyRPC(client, "user_status", []string{username}, map[string]interface{}{
+	res, err := ipaAdminRPC(client, "user_status", []string{username}, map[string]interface{}{
 		"all": true,
 	})
 	if err != nil {
@@ -32,7 +55,7 @@ func userFailedLogins(client *ipa.Client, username string) (int, error) {
 // userUnlock clears the failed-login lockout state for the user on all
 // replicas (FreeIPA user_unlock)
 func userUnlock(client *ipa.Client, username string) error {
-	_, err := ipaPasskeyRPC(client, "user_unlock", []string{username}, nil)
+	_, err := ipaAdminRPC(client, "user_unlock", []string{username}, nil)
 	return err
 }
 
@@ -50,7 +73,7 @@ type PwPolicy struct {
 // pwPolicyShow fetches the effective password policy for the user via the
 // service bind (plain users lack the Password Policy Readers privilege)
 func pwPolicyShow(client *ipa.Client, username string) (*PwPolicy, error) {
-	res, err := ipaPasskeyRPC(client, "pwpolicy_show", []string{}, map[string]interface{}{
+	res, err := ipaAdminRPC(client, "pwpolicy_show", []string{}, map[string]interface{}{
 		"user": username,
 	})
 	if err != nil {

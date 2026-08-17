@@ -362,6 +362,17 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		caller = username
 	}
 
+	// Non-session endpoint (/ipa/json, SPNEGO in real FreeIPA): issue a
+	// session cookie like the real server does, so goipa's sticky-session
+	// capture works for the keytab-bound admin client
+	if !strings.HasPrefix(r.URL.Path, "/ipa/session/") {
+		f.mu.Lock()
+		sid := newSID()
+		f.sessions[sid] = "__admin__"
+		f.mu.Unlock()
+		setSessionCookie(w, sid)
+	}
+
 	var req rpcRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)

@@ -1,0 +1,33 @@
+- generic [ref=f6e1]:
+  - navigation [ref=f6e2]:
+    - link "Mokey Dev" [ref=f6e5] [cursor=pointer]:
+      - /url: /
+  - generic [ref=f6e8]:
+    - heading "Forgot Username" [level=3] [ref=f6e10]
+    - generic [ref=f6e12]:
+      - paragraph [ref=f6e13]: Enter your account email address and we will send your username to it.
+      - generic [ref=f6e14]:
+        - generic [ref=f6e15]:
+          - generic [ref=f6e16]: Email
+          - textbox "Email" [active] [ref=f6e17]:
+            - /placeholder: ""
+        - generic [ref=f6e18]:
+          - generic [ref=f6e19]:
+            - text: "Enter the numbers you see in the image below:"
+            - button "Reload" [ref=f6e20] [cursor=pointer]
+          - textbox [ref=f6e21]
+          - paragraph [ref=f6e22]:
+            - img "Captcha Image" [ref=f6e23]
+        - button "Submit" [ref=f6e25] [cursor=pointer]:
+          - status [ref=f6e26]
+          - text: Submit
+      - paragraph [ref=f6e27]:
+        - link "Forgot Password?" [ref=f6e28] [cursor=pointer]:
+          - /url: /auth/forgotpw
+  - contentinfo [ref=f6e30]:
+    - paragraph [ref=f6e31]:
+      - text: Powered by
+      - link "mokey" [ref=f6e32] [cursor=pointer]:
+        - /url: https://github.com/neverlless/mokey
+        - generic [ref=f6e33]: 
+        - text: mokey
