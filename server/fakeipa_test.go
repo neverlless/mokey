@@ -467,6 +467,15 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		rpcResult(w, f.userJSON(username, u))
 		delete(f.randomPasswords, username)
 
+	case "user_del":
+		username := args[0]
+		if _, ok := f.users[username]; !ok {
+			rpcError(w, 4001, username+": user not found")
+			return
+		}
+		delete(f.users, username)
+		rpcResult(w, map[string]interface{}{})
+
 	case "user_disable":
 		username := args[0]
 		u, ok := f.users[username]

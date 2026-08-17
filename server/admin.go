@@ -5,6 +5,7 @@
 package server
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -208,6 +209,36 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 		}
 	case "unlock":
 		err = userUnlock(r.adminClient, username)
+	case "approve":
+		var target *ipa.User
+		target, err = r.adminClient.UserShow(username)
+		if err == nil && target.Category != UserCategoryPending {
+			err = errors.New("user is not pending approval")
+		}
+		if err == nil {
+			err = r.adminClient.UserEnable(username)
+		}
+		if err == nil {
+			target.Category = ""
+			_, err = r.adminClient.UserMod(target)
+		}
+		if err == nil {
+			if werr := r.emailer.SendWelcomeEmail(target, c); werr != nil {
+				log.WithFields(log.Fields{
+					"username": username,
+					"err":      werr,
+				}).Error("Failed to send welcome email to approved user")
+			}
+		}
+	case "deny":
+		var target *ipa.User
+		target, err = r.adminClient.UserShow(username)
+		if err == nil && target.Category != UserCategoryPending {
+			err = errors.New("user is not pending approval")
+		}
+		if err == nil {
+			err = r.adminClient.UserDelete(false, true, username)
+		}
 	default:
 		return c.Status(fiber.StatusBadRequest).SendString("")
 	}
@@ -234,11 +265,43 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 		"ip":       RemoteIP(c),
 	}).Info("AUDIT admin user action")
 
+	// approve/deny buttons live in the pending queue; re-render it
+	if action == "approve" || action == "deny" {
+		return r.AdminPendingList(c)
+	}
+
 	vars := r.adminUserVars(c, search)
 	if action == "reset" {
 		vars["reset_sent"] = username
 	}
 	return c.Render("admin-users.html", vars)
+}
+
+// AdminPendingList renders signups that confirmed their email and now wait
+// for admin approval (require_admin_verify)
+func (r *Router) AdminPendingList(c *fiber.Ctx) error {
+	users, err := r.adminClient.UserFind(ipa.Options{
+		"userclass": UserCategoryPending,
+	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("Failed to list pending users")
+		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+	}
+
+	// user_find matches loosely; keep only exact pending accounts
+	pending := []*ipa.User{}
+	for _, u := range users {
+		if u.Category == UserCategoryPending {
+			pending = append(pending, u)
+		}
+	}
+
+	return c.Render("admin-pending.html", fiber.Map{
+		"user":    r.user(c),
+		"pending": pending,
+	})
 }
 
 func (r *Router) AdminAuditList(c *fiber.Ctx) error {

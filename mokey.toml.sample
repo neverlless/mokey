@@ -124,8 +124,10 @@ username_from_email = false
 # Two-Factor authentication.
 require_mfa = false
 
-# Require FreeIPA admin to activate the account. With this option enabled new
-# accounts are disabled by default until a FreeIPA admin activates them.
+# Require admin approval for self-service registrations. After the user
+# verifies their email the account is marked pending and stays locked;
+# admins approve or deny it from the "Pending approval" queue in the
+# admin panel (admin.enabled must be on to see the queue).
 require_admin_verify = false
 
 # By default, login attempts for non-existent user accounts will be shown an

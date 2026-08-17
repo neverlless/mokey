@@ -354,6 +354,8 @@ instruction = "Klik hieronder op verifiëren om je account in te stellen."
 message = "Verifieer je e-mail"
 
 [verify_success]
+pending_admin = "E-mail bevestigd — wacht op goedkeuring van de beheerder"
+pending_admin_help = "Een beheerder beoordeelt uw registratie. U kunt inloggen zodra uw account is goedgekeurd."
 title = "Account Verifiëren"
 message = "Je account is succesvol geverifieerd. Dank je wel"
 
@@ -376,6 +378,13 @@ rp_display_name = "Identity Management"
 
 [admin]
 unlock = "Ontgrendelen"
+pending_title = "Wacht op goedkeuring"
+pending_name = "Naam"
+pending_actions = "Acties"
+approve = "Goedkeuren"
+deny = "Afwijzen"
+deny_confirm = "Deze registratie afwijzen en verwijderen? De aanvrager moet zich opnieuw registreren."
+no_pending = "Geen registraties die op goedkeuring wachten."
 unlock_help = "Wis de vergrendeling na mislukte inlogpogingen zodat de gebruiker weer kan inloggen"
 audit_title = "Auditlogboek"
 audit_time = "Wanneer"

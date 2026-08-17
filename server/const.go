@@ -11,6 +11,7 @@ const (
 	ContextKeyUsername      = "username"
 	ContextKeyIPAClient     = "ipa"
 	UserCategoryUnverified  = "mokey-user-unverified"
+	UserCategoryPending     = "mokey-user-pending"
 	TokenAccountVerify      = "verify"
 	TokenPasswordReset      = "reset"
 	TokenEmailChange        = "emailchange"

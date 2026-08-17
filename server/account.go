@@ -277,9 +277,13 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 		}
 	}
 
-	// User is now verified so unset category
+	// Email is verified: clear the category, or mark the account pending
+	// admin approval when require_admin_verify is on
 	if user.Category == UserCategoryUnverified {
 		user.Category = ""
+		if viper.GetBool("accounts.require_admin_verify") {
+			user.Category = UserCategoryPending
+		}
 
 		_, err = r.adminClient.UserMod(user)
 		if err != nil {
@@ -309,6 +313,7 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 	}).Info("AUDIT user account verified successfully")
 	r.metrics.totalAccountVerifications.Inc()
 
+	vars["pending_admin"] = viper.GetBool("accounts.require_admin_verify")
 	return c.Render("verify-success.html", vars)
 }
 

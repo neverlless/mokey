@@ -240,6 +240,71 @@ func TestUsernameForgotUniformResponse(t *testing.T) {
 	assert.Equal(bodies["walter@example.com"], bodies["skyler@example.com"])
 }
 
+func TestSignupAdminApprovalFlow(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.require_admin_verify", true)
+		viper.Set("accounts.enable_captcha", false)
+		viper.Set("admin.enabled", true)
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+
+	signup := func(username, email string) {
+		tc := newTestClient(t, app)
+		tc.getCSRF("/signup")
+		resp := tc.postForm("/signup", url.Values{
+			"username":  {username},
+			"email":     {email},
+			"first":     {"New"},
+			"last":      {"User"},
+			"password":  {"NewSecret456!"},
+			"password2": {"NewSecret456!"},
+		}, nil)
+		assert.Equal(fiber.StatusOK, resp.StatusCode)
+
+		router.storage.Delete(TokenAccountVerify + TokenIssuedPrefix + username)
+		token, err := NewToken(username, email, TokenAccountVerify, router.storage)
+		assert.NoError(err)
+		tc.getCSRF("/auth/verify/" + token)
+		resp = tc.postForm("/auth/verify/"+token, url.Values{}, nil)
+		assert.Equal(fiber.StatusOK, resp.StatusCode)
+		assert.Contains(readBody(t, resp), "awaiting administrator approval")
+	}
+
+	signup("jesse", "jesse@example.com")
+	signup("kim", "kim@example.com")
+
+	// email verified but still locked and marked pending
+	assert.True(fake.users["jesse"].Locked)
+	assert.Equal(UserCategoryPending, fake.users["jesse"].Category)
+
+	// admin sees both in the pending queue
+	tcAdmin := newTestClient(t, app)
+	tcAdmin.login("walter", "Secret123!")
+	resp := tcAdmin.get("/admin/pending", htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	body := readBody(t, resp)
+	assert.Contains(body, "jesse")
+	assert.Contains(body, "kim")
+
+	// approve jesse: enabled, category cleared, can log in
+	resp = tcAdmin.postForm("/admin/user/approve", url.Values{"username": {"jesse"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.False(fake.users["jesse"].Locked)
+	assert.Equal("", fake.users["jesse"].Category)
+	tcJesse := newTestClient(t, app)
+	tcJesse.login("jesse", "NewSecret456!")
+
+	// deny kim: registration is deleted
+	resp = tcAdmin.postForm("/admin/user/deny", url.Values{"username": {"kim"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Nil(fake.users["kim"])
+
+	// approve is refused for accounts that are not pending
+	resp = tcAdmin.postForm("/admin/user/approve", url.Values{"username": {"jesse"}}, htmx)
+	assert.Equal(fiber.StatusInternalServerError, resp.StatusCode)
+}
+
 func TestAdminRouteGating(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestAppWith(t, func() {

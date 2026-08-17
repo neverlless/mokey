@@ -34,7 +34,7 @@ Addresses upstream request
 | `single_page_login` | bool | `false` | Show username and password on one login page instead of the two-step flow. Users with Two-Factor Authentication append the OTP code to their password (FreeIPA style `password+otp`). |
 | `enable_captcha` | bool | `true` | Show and verify a CAPTCHA on signup, forgot-password, and verification-resend forms. Disable when mokey sits behind another anti-abuse layer. |
 | `hide_invalid_username_error` | bool | `false` | On login, don't reveal account state — unknown, locked, and blocked usernames all proceed to the password step and fail with the same generic error. The default favors clearer error messages at the cost of allowing username enumeration on the login form; enable this on internet-facing deployments. |
-| `require_admin_verify` | bool | `false` | Keep newly registered accounts locked until an admin enables them in FreeIPA. |
+| `require_admin_verify` | bool | `false` | Registrations need admin approval: after email verification the account is marked pending and stays locked; admins approve or deny it from the panel's "Pending approval" queue. Approval sends the welcome email, denial deletes the registration. |
 | `require_mfa` | bool | `false` | Require Two-Factor Authentication on all accounts. Users without an OTP token cannot manage SSH keys and are prompted to enroll. |
 | `default_homedir` | string | `"/home"` | Base home directory for accounts created via signup (`<default_homedir>/<username>`). |
 | `default_shell` | string | `"/bin/bash"` | Login shell for accounts created via signup. |

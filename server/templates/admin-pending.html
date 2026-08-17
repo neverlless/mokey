@@ -1,0 +1,40 @@
+{{ if $.pending }}
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead>
+      <tr>
+        <th scope="col">{{ T "common.username" }}</th>
+        <th scope="col">{{ T "common.email" }}</th>
+        <th scope="col">{{ T "admin.pending_name" }}</th>
+        <th scope="col" class="text-end">{{ T "admin.pending_actions" }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range $u := $.pending }}
+      <tr>
+        <td><strong>{{ $u.Username }}</strong></td>
+        <td>{{ $u.Email }}</td>
+        <td>{{ $u.First }} {{ $u.Last }}</td>
+        <td class="text-end">
+          <button type="button" class="btn btn-outline-success btn-sm"
+                  hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                  hx-vals='{"username": "{{ $u.Username }}"}'
+                  hx-post="/admin/user/approve" hx-target="#admin-pending">
+            <i class="fa fa-check" aria-hidden="true"></i> {{ T "admin.approve" }}
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm"
+                  hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                  hx-vals='{"username": "{{ $u.Username }}"}'
+                  hx-post="/admin/user/deny" hx-target="#admin-pending"
+                  hx-confirm="{{ T "admin.deny_confirm" }}">
+            <i class="fa fa-xmark" aria-hidden="true"></i> {{ T "admin.deny" }}
+          </button>
+        </td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+</div>
+{{ else }}
+<p class="text-muted">{{ T "admin.no_pending" }}</p>
+{{ end }}

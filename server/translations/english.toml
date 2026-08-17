@@ -354,6 +354,8 @@ instruction = "Click Verify below to set up your account."
 message = "Verify Your Email"
 
 [verify_success]
+pending_admin = "Email confirmed — awaiting administrator approval"
+pending_admin_help = "An administrator will review your registration. You will be able to log in once your account is approved."
 title = "Verify Account"
 message = "Your account has been successfully verified. Thank you"
 
@@ -376,6 +378,13 @@ rp_display_name = "Identity Management"
 
 [admin]
 unlock = "Unlock"
+pending_title = "Pending approval"
+pending_name = "Name"
+pending_actions = "Actions"
+approve = "Approve"
+deny = "Deny"
+deny_confirm = "Deny and delete this registration? The applicant will have to sign up again."
+no_pending = "No registrations waiting for approval."
 unlock_help = "Clear the failed-login lockout so the user can sign in again"
 audit_title = "Audit log"
 audit_time = "When"

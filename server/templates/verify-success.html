@@ -5,8 +5,13 @@
     <div class="login-body p-4 p-md-5">
         <div class="login-body-wrapper mx-auto">
             <div class="text-center">
+            {{ if $.pending_admin }}
+            <p><span class="badge bg-warning text-dark"><i class="fa-regular fa-clock"></i> {{ T "verify_success.pending_admin" }}</span></p>
+            <p>{{ T "verify_success.pending_admin_help" }}</p>
+            {{ else }}
             <p><span class="badge bg-success"><i class="fa-regular fa-circle-check"></i> {{ T "verify_success.message" }}</span></p>
             <p><a href="/auth/login">{{ T "common.login" }}</a></p>
+            {{ end }}
             </div>
         </div>
     </div>
