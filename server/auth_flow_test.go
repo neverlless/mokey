@@ -159,6 +159,23 @@ func TestLogout(t *testing.T) {
 	assert.Equal("/auth/login", resp.Header.Get("Location"))
 }
 
+func TestLogoutGETDoesNotDestroySession(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	// CSRF-exempt GET (e.g. <img src="/auth/logout"> on a hostile page)
+	// must not log the user out; only the Hydra logout_challenge path may
+	resp := tc.get("/auth/logout")
+	assert.Equal(fiber.StatusFound, resp.StatusCode)
+
+	resp = tc.get("/")
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+}
+
 func TestExpiredPasswordFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)

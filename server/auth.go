@@ -107,6 +107,13 @@ func (r *Router) Logout(c *fiber.Ctx) error {
 		return r.HydraLogout(c)
 	}
 
+	// The GET route exists only for Hydra's front-channel logout. GETs skip
+	// CSRF, so without a challenge they must not destroy the session — a
+	// third-party page could force-logout users otherwise
+	if c.Method() == fiber.MethodGet {
+		return c.Redirect("/auth/login")
+	}
+
 	return r.redirectLogin(c)
 }
 
