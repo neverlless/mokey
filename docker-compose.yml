@@ -1,4 +1,3 @@
-
 services:
   ipaserver:
     image: ipaserver
