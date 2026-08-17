@@ -46,6 +46,16 @@ exposing mokey to the internet.
 - Hydra Consent/Login Endpoint for OAuth/OpenID Connect
 - Easy to install and configure (requires no FreeIPA/LDAP schema changes)
 
+## Screenshots
+
+| Account | Security |
+| --- | --- |
+| ![Account settings](docs/mokey-screenshot-home.png) | ![Security: sessions and activity](docs/mokey-screenshot-security.png) |
+
+| Login | Admin panel |
+| --- | --- |
+| ![Login](docs/mokey-screenshot-login.png) | ![Admin panel](docs/mokey-screenshot-admin.png) |
+
 ## Differences from upstream
 
 This project tracks [ubccr/mokey](https://github.com/ubccr/mokey) and adds the
