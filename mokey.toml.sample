@@ -203,6 +203,11 @@ rate_limit_expiration = 60
 # Max number of recent connections during rate_limit_expiration seconds before sending a 429 response
 rate_limit_max = 25
 
+# Reverse proxies (IPs or CIDRs) allowed to set X-Forwarded-* headers. When
+# empty, forwarded headers are ignored and the TCP peer address is used for
+# rate limiting and audit logs. Set this when mokey runs behind a proxy.
+# trusted_proxies = ["10.0.0.0/8"]
+
 # Enable prometheus metrics endpoint. WARNING: there is no authentication
 # required for this endpoint and it's recommended to proxy this behind
 # something like nginx and enable appropriate access controls.

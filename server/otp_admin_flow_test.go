@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -198,5 +199,31 @@ func TestRateLimitOnAuthPosts(t *testing.T) {
 	}
 
 	resp := tc.postForm("/auth/authenticate", form, nil)
+	assert.Equal(fiber.StatusTooManyRequests, resp.StatusCode)
+}
+
+func TestRateLimitNotBypassedBySpoofedXFF(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("server.rate_limit_max", 3)
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.getCSRF("/auth/login")
+
+	// rotating X-Forwarded-For must not reset the limiter: without a
+	// configured trusted proxy the header is ignored
+	form := url.Values{"username": {"walter"}, "password": {"wrong"}}
+	for i := 0; i < 3; i++ {
+		resp := tc.postForm("/auth/authenticate", form, map[string]string{
+			"X-Forwarded-For": fmt.Sprintf("1.2.3.%d", i),
+		})
+		assert.Equal(fiber.StatusUnauthorized, resp.StatusCode)
+	}
+
+	resp := tc.postForm("/auth/authenticate", form, map[string]string{
+		"X-Forwarded-For": "9.9.9.9",
+	})
 	assert.Equal(fiber.StatusTooManyRequests, resp.StatusCode)
 }

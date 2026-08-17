@@ -162,6 +162,10 @@ func newFiber() (*fiber.App, *Router, error) {
 		PassLocalsToViews:     true,
 		ErrorHandler:          HTTPErrorHandler,
 		Views:                 engine,
+		// Only honor X-Forwarded-* headers (c.Protocol, c.Hostname) when
+		// the request comes from a configured trusted proxy
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          viper.GetStringSlice("server.trusted_proxies"),
 	})
 
 	app.Use(frecover.New())
@@ -173,14 +177,9 @@ func newFiber() (*fiber.App, *Router, error) {
 		SkipSuccessfulRequests: true,
 		Storage:                storage,
 		LimitReached:           LimitReachedHandler,
-		KeyGenerator: func(c *fiber.Ctx) string {
-			ips := c.IPs()
-			if len(ips) > 0 {
-				return ips[0]
-			}
-
-			return c.IP()
-		},
+		// Key on the non-forgeable client address — X-Forwarded-For is
+		// only honored behind a configured trusted proxy (see RemoteIP)
+		KeyGenerator: RemoteIP,
 		Next: func(c *fiber.Ctx) bool {
 			if c.Method() != fiber.MethodPost {
 				return true

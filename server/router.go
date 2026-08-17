@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -78,13 +79,45 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	return r, nil
 }
 
+func trustedProxyContains(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	for _, t := range viper.GetStringSlice("server.trusted_proxies") {
+		if strings.Contains(t, "/") {
+			if _, ipnet, err := net.ParseCIDR(t); err == nil && ipnet.Contains(ip) {
+				return true
+			}
+		} else if p := net.ParseIP(t); p != nil && p.Equal(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoteIP returns the client address used for rate limiting and audit
+// logging. X-Forwarded-For is only consulted when the direct peer is a
+// configured trusted proxy (server.trusted_proxies), and entries are walked
+// right to left skipping further trusted proxies — the leftmost values are
+// client-supplied and forgeable.
 func RemoteIP(c *fiber.Ctx) string {
-	ips := c.IPs()
-	if len(ips) > 0 {
-		return strings.Join(ips, ",")
+	peer := c.Context().RemoteIP()
+	if !trustedProxyContains(peer) {
+		return peer.String()
 	}
 
-	return c.IP()
+	ips := c.IPs()
+	for i := len(ips) - 1; i >= 0; i-- {
+		ip := net.ParseIP(strings.TrimSpace(ips[i]))
+		if ip == nil {
+			continue
+		}
+		if !trustedProxyContains(ip) {
+			return ip.String()
+		}
+	}
+
+	return peer.String()
 }
 
 func (r *Router) SetupRoutes(app *fiber.App) {

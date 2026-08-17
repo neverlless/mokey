@@ -78,6 +78,7 @@ Addresses upstream request
 | `read_buffer_size` | int | `16384` | Max size (bytes) of request headers. Increase if clients send large cookies and requests fail with `431 Request Header Fields Too Large`. |
 | `rate_limit_expiration` | int | `3600` | Rate limiter window (seconds). The limiter applies to all requests but only failed (non-2xx) requests are counted. |
 | `rate_limit_max` | int | `10` | Max counted requests per window before responding `429 Too Many Requests`. |
+| `trusted_proxies` | list | *(empty)* | IPs/CIDRs of reverse proxies allowed to set `X-Forwarded-*` headers (e.g. `["10.0.0.0/8"]`). When empty, forwarded headers are ignored and the TCP peer address is used for rate limiting and audit logs. Set this when running behind a proxy, otherwise all requests appear to come from the proxy's address. |
 | `enable_metrics` | bool | `false` | Expose Prometheus metrics on `/metrics`. **No authentication** — protect it with your proxy. |
 
 The unauthenticated health check endpoint `/healthz` is always enabled.
