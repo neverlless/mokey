@@ -112,6 +112,9 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 	}
 
 	if c.Method() == fiber.MethodGet {
+		if policy, err := pwPolicyShow(r.adminClient, user.Username); err == nil {
+			vars["pwpolicy"] = policy
+		}
 		return c.Render("password.html", vars)
 	}
 
@@ -263,6 +266,9 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 		vars := fiber.Map{
 			"claims": claims,
 			"user":   user,
+		}
+		if policy, err := pwPolicyShow(r.adminClient, user.Username); err == nil {
+			vars["pwpolicy"] = policy
 		}
 
 		return c.Render("password-reset.html", vars)

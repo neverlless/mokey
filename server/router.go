@@ -250,6 +250,7 @@ func (r *Router) Index(c *fiber.Ctx) error {
 		"path":     path,
 		"is_admin": isAdmin(user),
 	}
+	expiryWarningVars(user, vars)
 
 	if path == "admin" && !isAdmin(user) {
 		return c.Status(fiber.StatusForbidden).SendString("")

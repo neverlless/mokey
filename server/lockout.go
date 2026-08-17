@@ -36,26 +36,46 @@ func userUnlock(client *ipa.Client, username string) error {
 	return err
 }
 
-// pwPolicyMaxFailure returns the krbpwdmaxfailure of the password policy in
-// effect for the user; 0 means lockout is disabled or unknown
-func pwPolicyMaxFailure(client *ipa.Client, username string) int {
+// PwPolicy is the password policy in effect for a user (pwpolicy_show).
+// Zero values mean the attribute is unset in FreeIPA.
+type PwPolicy struct {
+	MinLength    int
+	MinClasses   int
+	HistorySize  int
+	MaxLifeDays  int // pwpolicy_show reports max lifetime in days
+	MinLifeHours int // ...and min lifetime in hours
+	MaxFailure   int
+}
+
+// pwPolicyShow fetches the effective password policy for the user via the
+// service bind (plain users lack the Password Policy Readers privilege)
+func pwPolicyShow(client *ipa.Client, username string) (*PwPolicy, error) {
 	res, err := ipaPasskeyRPC(client, "pwpolicy_show", []string{}, map[string]interface{}{
 		"user": username,
 	})
 	if err != nil {
-		return 0
+		return nil, err
 	}
 
-	return int(gjson.ParseBytes(res.Result.Data).Get("krbpwdmaxfailure.0").Int())
+	data := gjson.ParseBytes(res.Result.Data)
+	return &PwPolicy{
+		MinLength:    int(data.Get("krbpwdminlength.0").Int()),
+		MinClasses:   int(data.Get("krbpwdmindiffchars.0").Int()),
+		HistorySize:  int(data.Get("krbpwdhistorylength.0").Int()),
+		MaxLifeDays:  int(data.Get("krbmaxpwdlife.0").Int()),
+		MinLifeHours: int(data.Get("krbminpwdlife.0").Int()),
+		MaxFailure:   int(data.Get("krbpwdmaxfailure.0").Int()),
+	}, nil
 }
 
 // userLockedOut reports whether the user has hit the failure lockout
 // threshold of their password policy
 func userLockedOut(client *ipa.Client, username string) bool {
-	maxFail := pwPolicyMaxFailure(client, username)
-	if maxFail <= 0 {
+	policy, err := pwPolicyShow(client, username)
+	if err != nil || policy.MaxFailure <= 0 {
 		return false
 	}
+	maxFail := policy.MaxFailure
 
 	failed, err := userFailedLogins(client, username)
 	if err != nil {

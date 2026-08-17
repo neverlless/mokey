@@ -90,6 +90,10 @@ min_passwd_len = 8
 # password policy set in FreeIPA
 min_passwd_classes = 2
 
+# Show a "password expires in N days" banner in the portal when expiry is
+# this close. 0 disables the banner.
+# password_expiry_warning_days = 14
+
 # Hash algorithm for generating OTP tokens: sha1, sha256, or sha512
 otp_hash_algorithm = "sha1"
 

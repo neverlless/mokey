@@ -38,6 +38,7 @@ Addresses upstream request
 | `require_mfa` | bool | `false` | Require Two-Factor Authentication on all accounts. Users without an OTP token cannot manage SSH keys and are prompted to enroll. |
 | `default_homedir` | string | `"/home"` | Base home directory for accounts created via signup (`<default_homedir>/<username>`). |
 | `default_shell` | string | `"/bin/bash"` | Login shell for accounts created via signup. |
+| `password_expiry_warning_days` | int | `14` | Show a "password expires in N days" banner in the portal when expiry is this close. `0` disables the banner. |
 | `allow_change_shell` | bool | `false` | Let users change their login shell on the account page, restricted to `allowed_shells`. |
 | `allowed_shells` | list | bash, sh, zsh, fish, nologin | Shell choices offered when `allow_change_shell` is on. Enforced server-side. |
 | `min_passwd_len` | int | `8` | Minimum password length for new passwords. Should match your FreeIPA password policy. |

@@ -2,6 +2,15 @@
 
 <section class="col-lg-8 mx-auto p-3 py-md-5">
 	<div class="container">
+		{{ if $.password_expiry_warning }}
+		<div class="alert alert-warning d-flex align-items-center" role="alert">
+			<i class="fa fa-triangle-exclamation me-2" aria-hidden="true"></i>
+			<div>
+				{{ if eq $.password_expiry_days 0 }}{{ T "password.expires_today" }}{{ else }}{{ T "password.expires_in_part1" }}{{ $.password_expiry_days }}{{ T "password.expires_in_part2" }}{{ end }}
+				<a href="/password" class="alert-link">{{ T "password.change_now" }}</a>
+			</div>
+		</div>
+		{{ end }}
 		<div class="bg-white shadow rounded-3 d-block d-sm-flex">
 			<div class="profile-tab-nav border-end">
 				<div class="p-4">

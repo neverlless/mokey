@@ -139,6 +139,7 @@ func expiryWarningVars(user *ipa.User, vars fiber.Map) {
 
 	days := passwordExpiresInDays(user)
 	if days >= 0 && days <= warnDays {
+		vars["password_expiry_warning"] = true
 		vars["password_expiry_days"] = days
 	}
 }

@@ -9,6 +9,40 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestExpiryBannerAndPolicyDisplay(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{
+		Password:     "Secret123!",
+		PasswdExpire: time.Now().Add(5 * 24 * time.Hour),
+	})
+	fake.addUser("jesse", &fakeUser{
+		Password:     "Secret123!",
+		PasswdExpire: time.Now().Add(60 * 24 * time.Hour),
+	})
+
+	// expiring within the warning window: banner on every portal page
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	resp := tc.get("/")
+	body := readBody(t, resp)
+	assert.Contains(body, "Your password expires in ")
+	assert.Contains(body, "Change it now")
+
+	// password change form shows the effective FreeIPA policy
+	resp = tc.get("/password/change", htmx)
+	body = readBody(t, resp)
+	assert.Contains(body, "Password requirements")
+	assert.Contains(body, "at least 8 characters")
+	assert.Contains(body, "expires every 90 days")
+
+	// far from expiry: no banner
+	tc2 := newTestClient(t, app)
+	tc2.login("jesse", "Secret123!")
+	resp = tc2.get("/")
+	assert.NotContains(readBody(t, resp), "Your password expires in ")
+}
+
 func TestPasswordExpiryReminderSweep(t *testing.T) {
 	assert := assert.New(t)
 	_, router, fake := newTestApp(t)

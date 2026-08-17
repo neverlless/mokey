@@ -336,6 +336,9 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 				"username": username,
 				"user":     userRec,
 			}
+			if policy, perr := pwPolicyShow(r.adminClient, username); perr == nil {
+				vars["pwpolicy"] = policy
+			}
 			return c.Render("login-password-expired.html", vars)
 		default:
 			log.WithFields(log.Fields{
