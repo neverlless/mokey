@@ -88,6 +88,18 @@ Ordered by unique value:
       X-Forwarded-For no longer trusted by default
 - [x] Drop the "alpha" label from the README
 
+## v1.7 — Upkeep
+
+- [x] CI security gates: govulncheck, gosec, and staticcheck run on every
+      push/PR; Dependabot watches gomod, GitHub Actions, and the Docker
+      base image
+- [x] Nonce-based CSP: `script-src` drops `unsafe-inline` (audit finding 7)
+- [x] `hide_invalid_username_error` also hides locked/blocked account
+      state (audit finding 4 leftover)
+- [x] OIDC flow tests against a fake Hydra admin API — login, skip,
+      consent (claims + MFA gate), front-channel logout, session
+      revocation; server coverage 61.6%
+
 ## Deliberately not planned
 
 - Multiple email addresses per account and user avatars (ubccr#123) — low

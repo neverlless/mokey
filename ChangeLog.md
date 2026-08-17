@@ -1,5 +1,24 @@
 # Mokey ChangeLog
 
+## [v1.7.0] - 2026-08-17
+
+Upkeep release: the v1.6 audit tooling becomes a permanent CI gate, and
+the remaining audit items are closed.
+
+- CI now runs govulncheck, gosec, and staticcheck on every push and PR;
+  Dependabot watches Go modules, GitHub Actions, and the Docker base image
+- **Security**: nonce-based Content-Security-Policy — `script-src` no
+  longer allows `unsafe-inline`; every inline script carries a
+  per-request nonce. If you override templates (`site.templates_dir`),
+  add `nonce="{{ .cspNonce }}"` to your inline `<script>` tags and
+  replace `onclick=` handlers (hyperscript `_=` attributes work)
+- **Security**: `hide_invalid_username_error = true` now also hides
+  locked and blocked account state on the login form — unknown, locked,
+  and blocked usernames are indistinguishable
+- OIDC flow tests against a fake Hydra admin API (login, skip, consent
+  claims, MFA gate, front-channel logout, session revocation) — server
+  package coverage 61.6%
+
 ## [v1.6.0] - 2026-08-17
 
 Reliability release: test coverage for the core flows, a security audit,

@@ -20,7 +20,7 @@ Findings are ordered by severity. Status reflects the fixes merged on
 | 4 | Low | Username enumeration on the login form in the default configuration | documented (1b9349c); default unchanged |
 | 5 | Low | `GET /auth/logout` destroys the session without CSRF protection | fixed (c02b4a1) |
 | 6 | Low | Expired-password flow elevates the session to authenticated without regenerating the session ID | fixed (49b8860) |
-| 7 | Low | CSP allows `unsafe-inline` for scripts and styles | accepted (nonce-based CSP tracked as future work) |
+| 7 | Low | CSP allows `unsafe-inline` for scripts and styles | fixed in v1.7 (nonce-based script-src; style-src still allows inline styles) |
 | 8 | Low | No `Strict-Transport-Security` header in TLS mode | fixed (5384d8e) |
 | 9 | Info | Ignored-error cluster (gosec G104), template var shadowing, deprecated `io/ioutil`, deprecated `X-XSS-Protection` | partly fixed (1b9349c); G104 log-and-continue sites and X-XSS-Protection left as is |
 
