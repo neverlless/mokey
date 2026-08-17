@@ -65,3 +65,52 @@
     </li>
   </ul>
 </div>
+
+<div class="card mt-4">
+  <div class="card-header d-flex w-100 justify-content-between align-items-center">
+    <span>{{ T "security.sessions_title" }}</span>
+    {{ if gt (len $.sessions) 1 }}
+    <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
+            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+            hx-post="/security/sessions/revoke-others" hx-target="#security"
+            hx-confirm="{{ T "security.sign_out_others_confirm" }}">
+      {{ T "security.sign_out_others" }}
+    </button>
+    {{ end }}
+  </div>
+  <ul class="list-group list-group-flush">
+    {{ range $s := $.sessions }}
+    <li class="list-group-item d-flex w-100 justify-content-between align-items-center">
+      <div>
+        <strong>{{ if $s.Browser }}{{ $s.Browser }}{{ else }}{{ T "security.unknown_client" }}{{ end }}{{ with $s.OS }} · {{ . }}{{ end }}</strong>
+        {{ if $s.Current }}<span class="badge bg-success ms-1">{{ T "security.current_session" }}</span>{{ end }}
+        <div class="text-muted small">{{ $s.IP }} · {{ T "security.signed_in" }} {{ TimeAgo $s.LoginTime }}</div>
+      </div>
+      {{ if not $s.Current }}
+      <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
+              hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+              hx-vals='{"sid": "{{ $s.SID }}"}'
+              hx-post="/security/session/revoke" hx-target="#security">
+        {{ T "security.revoke" }}
+      </button>
+      {{ end }}
+    </li>
+    {{ else }}
+    <li class="list-group-item text-muted">{{ T "security.no_sessions" }}</li>
+    {{ end }}
+  </ul>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">{{ T "security.activity_title" }}</div>
+  <ul class="list-group list-group-flush">
+    {{ range $e := $.activity }}
+    <li class="list-group-item">
+      {{ $e.Message }}
+      <div class="text-muted small">{{ with $e.IP }}{{ . }} · {{ end }}{{ TimeAgo $e.Time }}</div>
+    </li>
+    {{ else }}
+    <li class="list-group-item text-muted">{{ T "security.no_activity" }}</li>
+    {{ end }}
+  </ul>
+</div>

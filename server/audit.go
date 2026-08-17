@@ -46,7 +46,9 @@ func NewAuditHook(storage fiber.Storage) *AuditHook {
 }
 
 func (h *AuditHook) Levels() []log.Level {
-	return []log.Level{log.InfoLevel, log.WarnLevel}
+	// ErrorLevel included: failed logins are logged as AUDIT errors and
+	// belong in the trail
+	return []log.Level{log.InfoLevel, log.WarnLevel, log.ErrorLevel}
 }
 
 func (h *AuditHook) Fire(entry *log.Entry) error {
@@ -108,6 +110,32 @@ func auditRecent(storage fiber.Storage, n int) []AuditEvent {
 		}
 		var e AuditEvent
 		if json.Unmarshal(raw, &e) == nil {
+			events = append(events, e)
+		}
+	}
+
+	return events
+}
+
+// auditUserRecent returns up to n most recent audit events involving the
+// given user (as subject or actor), newest first. Scans the whole ring.
+func auditUserRecent(storage fiber.Storage, username string, n int) []AuditEvent {
+	seq := int64(0)
+	if raw, _ := storage.Get(auditSeqKey); raw != nil {
+		seq, _ = strconv.ParseInt(string(raw), 10, 64)
+	}
+
+	events := make([]AuditEvent, 0, n)
+	for i := seq; i > 0 && i > seq-int64(auditRingSize) && len(events) < n; i-- {
+		raw, _ := storage.Get(fmt.Sprintf("%s%d", auditEntryKey, i%auditRingSize))
+		if raw == nil {
+			continue
+		}
+		var e AuditEvent
+		if json.Unmarshal(raw, &e) != nil {
+			continue
+		}
+		if e.Username == username || e.Actor == username {
 			events = append(events, e)
 		}
 	}

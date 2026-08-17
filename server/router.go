@@ -173,6 +173,8 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 
 	// Security
 	app.Get("/security/settings", r.RequireLogin, r.RequireHTMX, r.SecurityList)
+	app.Post("/security/session/revoke", r.RequireLogin, r.RequireHTMX, r.SessionRevoke)
+	app.Post("/security/sessions/revoke-others", r.RequireLogin, r.RequireHTMX, r.SessionRevokeOthers)
 	app.Post("/security/mfa/enable", r.RequireLogin, r.RequireHTMX, r.TwoFactorEnable)
 	app.Post("/security/mfa/disable", r.RequireLogin, r.RequireHTMX, r.TwoFactorDisable)
 

@@ -222,6 +222,19 @@ func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx *fibe
 	return e.sendEmail(user, ctx, event, "account-updated", vars)
 }
 
+// SendNewLoginEmail notifies about a fresh sign-in. Called from a
+// goroutine after the login response — no request context.
+func (e *Emailer) SendNewLoginEmail(user *ipa.User, browser, os, ip string) error {
+	event := T("email_template.new_login_event_part1") + browser + " (" + os + ")" +
+		T("email_template.new_login_event_part2") + ip
+
+	vars := map[string]interface{}{
+		"event": event,
+	}
+
+	return e.sendEmail(user, nil, T("email_template.new_login_subject"), "account-updated", vars)
+}
+
 // SendPasswordExpiryReminderEmail warns a user their password expires in
 // the given number of days. Sent from the background sweep — no request
 // context.

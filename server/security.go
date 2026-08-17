@@ -6,7 +6,14 @@ import (
 )
 
 func (r *Router) securityList(c *fiber.Ctx, vars fiber.Map) error {
-	vars["user"] = r.user(c)
+	user := r.user(c)
+	vars["user"] = user
+
+	if sess, err := r.session(c); err == nil {
+		vars["sessions"] = r.userSessions(user.Username, sess.ID())
+	}
+	vars["activity"] = auditUserRecent(r.storage, user.Username, 15)
+
 	return c.Render("security.html", vars)
 }
 

@@ -160,6 +160,9 @@ token_secret = ""
 # Email the user when their password is changed or reset (off by default).
 # notify_password_change = false
 
+# Email the user on every fresh sign-in: browser, OS, and IP (off by default).
+# notify_new_login = false
+
 # Days-before-expiry thresholds for password expiry reminder emails.
 # A background sweep emails each user once per threshold; empty/unset
 # disables reminders.

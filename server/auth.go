@@ -130,6 +130,10 @@ func (r *Router) logout(c *fiber.Ctx) {
 			"ip":       RemoteIP(c),
 			"path":     c.Path(),
 		}).Info("User logging out")
+
+		if name, ok := username.(string); ok {
+			r.dropSessionFromIndex(name, sess.ID())
+		}
 	}
 
 	if err := sess.Destroy(); err != nil {
@@ -388,9 +392,15 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 	sess.Set(SessionKeySID, client.SessionID())
 	sess.Set(SessionKeyLoginTime, time.Now().Unix())
 
+	// capture before Save — fiber releases the session object on Save
+	sid := sess.ID()
+
 	if err := r.sessionSave(c, sess); err != nil {
 		return err
 	}
+
+	r.recordUserSession(c, username, sid)
+	r.notifyNewLogin(c, username)
 
 	if viper.IsSet("hydra.admin_url") && challenge != "" {
 		return r.LoginOAuthPost(username, challenge, c)

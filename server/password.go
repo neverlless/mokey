@@ -449,9 +449,15 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	sess.Set(SessionKeySID, client.SessionID())
 	sess.Set(SessionKeyLoginTime, time.Now().Unix())
 
+	// capture before Save — fiber releases the session object on Save
+	sid := sess.ID()
+
 	if err := r.sessionSave(c, sess); err != nil {
 		return err
 	}
+
+	r.recordUserSession(c, user.Username, sid)
+	r.notifyNewLogin(c, user.Username)
 
 	log.WithFields(log.Fields{
 		"username": user.Username,
