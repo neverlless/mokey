@@ -203,19 +203,15 @@ func (r *Router) OTPTokenAdd(c *fiber.Ctx) error {
 
 	desc := c.FormValue("desc")
 
-	token := &ipa.OTPToken{
-		Type:        ipa.TokenTypeTOTP,
-		Algorithm:   strings.ToLower(getHashAlgorithm().String()),
-		Description: desc,
-		NotBefore:   time.Now(),
-	}
-
+	// NotBefore must be UTC: goipa formats it as LDAP generalized time
+	// with a literal Z, so a local timestamp lands in the future and the
+	// token rejects codes until the offset elapses (ubccr#159)
 	token, err := client.AddOTPToken(
 		&ipa.OTPToken{
 			Type:        ipa.TokenTypeTOTP,
 			Algorithm:   strings.ToLower(getHashAlgorithm().String()),
 			Description: desc,
-			NotBefore:   time.Now(),
+			NotBefore:   time.Now().UTC(),
 		})
 
 	if err != nil {

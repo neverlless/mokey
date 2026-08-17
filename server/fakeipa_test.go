@@ -48,6 +48,8 @@ type fakeIPA struct {
 	// randomPasswords holds the last user_mod random:true password per user
 	randomPasswords map[string]string
 	tokens          []*fakeOTPToken
+	// last ipatokennotbefore value received by otptoken_add (raw string)
+	lastNotBefore string
 }
 
 func newFakeIPA() *fakeIPA {
@@ -457,6 +459,9 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		secret := base32.StdEncoding.EncodeToString([]byte(newSID()[:20]))
 		s := newSID() + newSID()
 		desc, _ := opts["description"].(string)
+		if nb, ok := opts["ipatokennotbefore"].(map[string]interface{}); ok {
+			f.lastNotBefore, _ = nb["__datetime__"].(string)
+		}
 		tok := &fakeOTPToken{
 			UUID:        s[0:8] + "-" + s[8:12] + "-" + s[12:16] + "-" + s[16:20] + "-" + s[20:32],
 			Owner:       caller,

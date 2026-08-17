@@ -30,6 +30,12 @@ func TestOTPTokenLifecycle(t *testing.T) {
 	tok := fake.tokens[0]
 	assert.Equal("walter", tok.Owner)
 
+	// notBefore must be sent as UTC — a local timestamp makes the token
+	// reject codes until the timezone offset elapses (ubccr#159)
+	nb, err := time.Parse("20060102150405Z", fake.lastNotBefore)
+	assert.NoError(err)
+	assert.WithinDuration(time.Now().UTC(), nb, time.Minute)
+
 	// verify with a real TOTP code computed from the secret
 	code, err := totp.GenerateCode(tok.Secret, time.Now())
 	assert.NoError(err)
