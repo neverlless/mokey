@@ -125,6 +125,101 @@ func (r *Router) GroupRequestJoin(c *fiber.Ctx) error {
 	return c.Render("groups-list.html", vars)
 }
 
+// groupDecision validates that the caller sponsors the group and the
+// target is queued; shared by approve and deny
+func (r *Router) groupDecision(c *fiber.Ctx) (*ipaGroup, string, error) {
+	user := r.user(c)
+	groupName := c.FormValue("group")
+	target := c.FormValue("username")
+
+	g, err := groupShow(r.userClient(c), groupName)
+	if err != nil {
+		return nil, "", fiber.NewError(fiber.StatusBadRequest, T("groups.not_joinable"))
+	}
+	if !isManagerOf(user.Username, user.Groups, g) {
+		return nil, "", fiber.NewError(fiber.StatusForbidden, T("groups.not_a_manager"))
+	}
+	queued := false
+	for _, req := range r.loadGroupRequests(g.Name) {
+		if req.Username == target {
+			queued = true
+			break
+		}
+	}
+	if !queued {
+		return nil, "", fiber.NewError(fiber.StatusBadRequest, T("groups.no_such_request"))
+	}
+	return g, target, nil
+}
+
+func (r *Router) GroupApprove(c *fiber.Ctx) error {
+	g, target, err := r.groupDecision(c)
+	if err != nil {
+		ferr := err.(*fiber.Error)
+		return c.Status(ferr.Code).SendString(ferr.Message)
+	}
+
+	// the sponsor's own session performs the change; FreeIPA enforces
+	// member-manager rights even if mokey's check were bypassed
+	if err := groupAddMember(r.userClient(c), g.Name, target); err != nil {
+		log.WithFields(log.Fields{
+			"group":    g.Name,
+			"username": target,
+			"sponsor":  r.username(c),
+			"err":      err,
+		}).Error("Group approve failed in FreeIPA")
+		return c.Status(fiber.StatusForbidden).SendString(T("groups.approve_failed"))
+	}
+
+	r.removeGroupRequest(g.Name, target)
+	log.WithFields(log.Fields{
+		"group":    g.Name,
+		"username": target,
+		"sponsor":  r.username(c),
+		"ip":       RemoteIP(c),
+	}).Info("AUDIT group join approved")
+
+	r.sendGroupDecision(target, g.Name, true)
+
+	vars := fiber.Map{"user": r.user(c)}
+	r.groupsVars(c, vars)
+	return c.Render("groups-list.html", vars)
+}
+
+func (r *Router) GroupDeny(c *fiber.Ctx) error {
+	g, target, err := r.groupDecision(c)
+	if err != nil {
+		ferr := err.(*fiber.Error)
+		return c.Status(ferr.Code).SendString(ferr.Message)
+	}
+
+	r.removeGroupRequest(g.Name, target)
+	log.WithFields(log.Fields{
+		"group":    g.Name,
+		"username": target,
+		"sponsor":  r.username(c),
+		"ip":       RemoteIP(c),
+	}).Info("AUDIT group join denied")
+
+	r.sendGroupDecision(target, g.Name, false)
+
+	vars := fiber.Map{"user": r.user(c)}
+	r.groupsVars(c, vars)
+	return c.Render("groups-list.html", vars)
+}
+
+// sendGroupDecision emails the requester about the outcome (fire and log)
+func (r *Router) sendGroupDecision(username, group string, approved bool) {
+	target, err := r.adminClient.UserShow(username)
+	if err != nil {
+		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to fetch requester for decision email")
+		return
+	}
+	if err := r.emailer.SendGroupDecisionEmail(target, group, approved); err != nil {
+		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to send group decision email")
+	}
+}
+
 // notifyGroupSponsors emails every direct member manager of the group.
 // Runs in a goroutine after the handler returns, so it must not touch the
 // fiber ctx (fiber recycles it) — SendGroupRequestEmail takes no ctx,

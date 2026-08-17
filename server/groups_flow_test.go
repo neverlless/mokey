@@ -75,3 +75,62 @@ func TestGroupRequestJoinFlow(t *testing.T) {
 	resp = tc.postForm("/groups/request", url.Values{"group": {"nope"}}, htmx)
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
 }
+
+func TestGroupApproveDenyFlow(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+
+	router.addGroupRequest("chemists", "walter")
+	router.addGroupRequest("chemists", "jesse")
+
+	tcSponsor := newTestClient(t, app)
+	tcSponsor.login("skyler", "Secret123!")
+
+	// approve: member added via the sponsor session, request cleared
+	resp := tcSponsor.postForm("/groups/approve", url.Values{
+		"group": {"chemists"}, "username": {"walter"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(fake.groups["chemists"].Members, "walter")
+	assert.Len(router.loadGroupRequests("chemists"), 1)
+
+	// deny: request cleared, membership unchanged
+	resp = tcSponsor.postForm("/groups/deny", url.Values{
+		"group": {"chemists"}, "username": {"jesse"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotContains(fake.groups["chemists"].Members, "jesse")
+	assert.Empty(router.loadGroupRequests("chemists"))
+
+	// approving a non-queued user is refused
+	resp = tcSponsor.postForm("/groups/approve", url.Values{
+		"group": {"chemists"}, "username": {"jesse"},
+	}, htmx)
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+}
+
+func TestGroupApproveNonManager(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
+	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+	router.addGroupRequest("chemists", "jesse")
+
+	// jesse is not a manager; both mokey's check and the fake's
+	// group_add_member enforcement refuse
+	tc := newTestClient(t, app)
+	tc.login("jesse", "Secret123!")
+	resp := tc.postForm("/groups/approve", url.Values{
+		"group": {"chemists"}, "username": {"jesse"},
+	}, htmx)
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+	assert.NotContains(fake.groups["chemists"].Members, "jesse")
+	assert.Len(router.loadGroupRequests("chemists"), 1)
+}

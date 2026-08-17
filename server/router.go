@@ -142,6 +142,8 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	}
 
 	app.Post("/groups/request", r.RequireLogin, r.RequireHTMX, r.GroupRequestJoin)
+	app.Post("/groups/approve", r.RequireLogin, r.RequireHTMX, r.GroupApprove)
+	app.Post("/groups/deny", r.RequireLogin, r.RequireHTMX, r.GroupDeny)
 
 	// Account Create
 	if viper.GetBool("accounts.enable_signup") {

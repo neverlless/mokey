@@ -258,6 +258,21 @@ func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group stri
 	return e.sendEmail(manager, nil, T("email_template.group_request_subject")+group, "group-request", vars)
 }
 
+// SendGroupDecisionEmail notifies the requester that a sponsor approved
+// or denied their join request. Called from a goroutine after the handler
+// returns — no request context, mirrors SendNewLoginEmail.
+func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved bool) error {
+	vars := map[string]interface{}{
+		"group":    group,
+		"approved": approved,
+	}
+	subject := T("email_template.group_denied_subject")
+	if approved {
+		subject = T("email_template.group_approved_subject")
+	}
+	return e.sendEmail(user, nil, subject+group, "group-decision", vars)
+}
+
 // SendUsernameReminderEmail mails the username(s) associated with an address.
 // The recipient is identified only by email — no account context is leaked in
 // the delivery metadata.
