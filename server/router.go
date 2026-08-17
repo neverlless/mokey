@@ -135,6 +135,11 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/passkey", r.RequireLogin, r.Index)
 	app.Get("/otp", r.RequireLogin, r.Index)
 
+	// Subordinate IDs
+	if viper.GetBool("accounts.enable_subid") {
+		app.Post("/subid/generate", r.RequireLogin, r.RequireHTMX, r.SubidGenerate)
+	}
+
 	// Account Create
 	if viper.GetBool("accounts.enable_signup") {
 		app.Get("/signup", r.RequireNoLogin, r.AccountCreate)
@@ -257,6 +262,10 @@ func (r *Router) Index(c *fiber.Ctx) error {
 
 	if path == "admin" && !isAdmin(user) {
 		return c.Status(fiber.StatusForbidden).SendString("")
+	}
+
+	if path == "account" && viper.GetBool("accounts.enable_subid") {
+		r.subidVars(user.Username, vars)
 	}
 
 	if path == "sshkey" {

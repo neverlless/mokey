@@ -139,6 +139,13 @@ require_admin_verify = false
 # asks the user to change it.
 staged_signup = false
 
+# Show a "Subordinate IDs" section on the account page: users can view
+# or generate their subordinate id range for rootless containers
+# (podman, docker) on IPA-enrolled hosts. One range per user, cannot be
+# undone. The service account needs the "Subordinate ID Administrators"
+# privilege.
+enable_subid = false
+
 # By default, login attempts for non-existent user accounts will be shown an
 # error message indicating that the username is not found in the system. If
 # your site is concerned about the potential for username enumeration attacks,

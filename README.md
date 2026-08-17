@@ -169,6 +169,8 @@ $ ipa privilege-add-permission 'Mokey UPG Read' --permissions='System: Read UPG 
 $ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey UPG Read'
 # Only needed with accounts.staged_signup enabled:
 $ ipa role-add-privilege 'Mokey User Manager' --privilege='Stage User Administrators'
+# Only needed with accounts.enable_subid enabled:
+$ ipa role-add-privilege 'Mokey User Manager' --privilege='Subordinate ID Administrators'
 $ ipa-getkeytab -s [your.ipa-master.server] -p mokey/mokey -k /etc/mokey/private/mokeyapp.keytab
 $ chmod 640 /etc/mokey/private/mokeyapp.keytab
 $ chgrp mokey /etc/mokey/private/mokeyapp.keytab

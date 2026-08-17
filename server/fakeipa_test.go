@@ -51,13 +51,19 @@ type fakeOTPToken struct {
 	Description string
 }
 
+type fakeSubid struct {
+	SubUID int64
+	SubGID int64
+}
+
 type fakeIPA struct {
 	srv *httptest.Server
 
 	mu         sync.Mutex
 	users      map[string]*fakeUser
 	stageusers map[string]*fakeUser
-	sessions   map[string]string // ipa_session sid -> username
+	subids     map[string]*fakeSubid // owner uid -> range
+	sessions   map[string]string     // ipa_session sid -> username
 	// randomPasswords holds the last user_mod random:true password per user
 	randomPasswords map[string]string
 	tokens          []*fakeOTPToken
@@ -69,6 +75,7 @@ func newFakeIPA() *fakeIPA {
 	f := &fakeIPA{
 		users:           make(map[string]*fakeUser),
 		stageusers:      make(map[string]*fakeUser),
+		subids:          make(map[string]*fakeSubid),
 		sessions:        make(map[string]string),
 		randomPasswords: make(map[string]string),
 	}
@@ -305,6 +312,18 @@ func (f *fakeIPA) tokenJSON(tok *fakeOTPToken) map[string]interface{} {
 	return rec
 }
 
+// subidJSON renders a subordinate id range in FreeIPA's attribute-list form
+func (f *fakeIPA) subidJSON(owner string, sub *fakeSubid) map[string]interface{} {
+	return map[string]interface{}{
+		"ipauniqueid":     []string{"fake-" + owner},
+		"ipaowner":        []string{owner},
+		"ipasubuidnumber": []string{fmt.Sprintf("%d", sub.SubUID)},
+		"ipasubuidcount":  []string{"65536"},
+		"ipasubgidnumber": []string{fmt.Sprintf("%d", sub.SubGID)},
+		"ipasubgidcount":  []string{"65536"},
+	}
+}
+
 // userJSON renders a user in FreeIPA's attribute-list form consumed by
 // goipa's User.fromJSON
 func (f *fakeIPA) userJSON(username string, u *fakeUser) map[string]interface{} {
@@ -479,6 +498,34 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		f.users[username] = u
 		rpcResult(w, f.userJSON(username, u))
 		delete(f.randomPasswords, username)
+
+	case "subid_generate":
+		owner, _ := opts["ipaowner"].(string)
+		if owner == "" {
+			rpcError(w, 3007, "'ipaowner' is required")
+			return
+		}
+		if _, exists := f.subids[owner]; exists {
+			rpcError(w, 4002, "subid already exists for user \""+owner+"\"")
+			return
+		}
+		// mirrors FreeIPA's sequential allocation from 2^31 up
+		sub := &fakeSubid{
+			SubUID: 2147483648 + int64(len(f.subids))*65536,
+			SubGID: 2147483648 + int64(len(f.subids))*65536,
+		}
+		f.subids[owner] = sub
+		rpcResult(w, f.subidJSON(owner, sub))
+
+	case "subid_find":
+		owner, _ := opts["ipaowner"].(string)
+		results := []map[string]interface{}{}
+		for name, sub := range f.subids {
+			if owner == "" || name == owner {
+				results = append(results, f.subidJSON(name, sub))
+			}
+		}
+		rpcResult(w, results)
 
 	case "stageuser_add":
 		username := args[0]

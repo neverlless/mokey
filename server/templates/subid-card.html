@@ -1,0 +1,36 @@
+{{ if $.subid_enabled }}
+<div id="subid-card">
+	<hr class="my-4">
+	<h5>{{ T "subid.title" }}</h5>
+	{{ if $.subid }}
+	<p class="text-muted mb-2">{{ T "subid.hint" }}</p>
+	<div class="row">
+		<div class="col-md-4">
+			<div class="mb-3">
+				<label class="form-label">{{ T "subid.subuid_start" }}</label>
+				<input type="text" class="form-control" value="{{ .subid.SubUID }}" disabled readonly>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="mb-3">
+				<label class="form-label">{{ T "subid.subgid_start" }}</label>
+				<input type="text" class="form-control" value="{{ .subid.SubGID }}" disabled readonly>
+			</div>
+		</div>
+		<div class="col-md-4">
+			<div class="mb-3">
+				<label class="form-label">{{ T "subid.count" }}</label>
+				<input type="text" class="form-control" value="{{ .subid.Count }}" disabled readonly>
+			</div>
+		</div>
+	</div>
+	{{ else }}
+	<p class="text-muted mb-2">{{ T "subid.description" }}</p>
+	<button class="btn btn-primary" hx-post="/subid/generate"
+	        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+	        hx-target="#subid-card" hx-swap="outerHTML">
+		{{ T "subid.generate" }}
+	</button>
+	{{ end }}
+</div>
+{{ end }}

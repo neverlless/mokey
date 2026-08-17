@@ -156,11 +156,13 @@ Keycloak / Authentik / Zitadel / FreeIPA Web UI):
       Shipped opt-in as `accounts.staged_signup` (default off — the
       service account needs the "Stage User Administrators" privilege);
       default flip considered for a later release
-- [ ] Subordinate ID self-service (`subid_generate`) for rootless
-      podman/docker on IPA-joined hosts — one `role-add-member` away.
-      Freshest demand: steady freeipa-users threads 2022–2025 (latest
-      Aug 2025) driven by rootless containers; today the only UI is a
-      buried admin Web UI action
+- [x] Subordinate ID self-service (`subid_generate`) for rootless
+      podman/docker on IPA-joined hosts. Freshest demand: steady
+      freeipa-users threads 2022–2025 (latest Aug 2025) driven by
+      rootless containers; before this the only UI was a buried admin
+      Web UI action. Shipped opt-in as `accounts.enable_subid`
+      (default off — needs the "Subordinate ID Administrators"
+      privilege on the service account)
 - [ ] Group self-management with sponsor approval (noggin model) on top
       of FreeIPA member managers — proven at scale by Fedora/CentOS
       accounts; even noggin lacks an in-app join-request/approval queue

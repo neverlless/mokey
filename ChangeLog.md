@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Subordinate ID self-service (`accounts.enable_subid`, default off):
+  a "Subordinate IDs" section on the account page shows the user's
+  subid range or generates one with a click (`subid_generate`) — for
+  rootless podman/docker on IPA-enrolled hosts. One range per user,
+  allocation is permanent. Requires the "Subordinate ID
+  Administrators" privilege on the service account
+
 - Staged-users signup backend (`accounts.staged_signup`, default off):
   registrations are created as FreeIPA *stage users* instead of
   disabled active accounts, so unapproved signups never appear in the
