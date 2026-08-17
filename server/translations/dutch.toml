@@ -199,6 +199,7 @@ switch_account = "Account wisselen"
 login_failed = "Inloggen mislukt"
 
 [otptoken]
+readonly_notice = "OTP-tokens voor uw account worden beheerd door uw beheerder."
 verifying_token = "Token verifiëren..."
 title = "OTP-tokens"
 6_digit_code_label = "6-cijferige code"

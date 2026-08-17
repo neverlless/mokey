@@ -24,6 +24,27 @@ func getHashAlgorithm() otp.Algorithm {
 	}
 }
 
+// otpReadonly reports whether the user's OTP tokens are admin-managed:
+// membership in any accounts.otp_readonly_groups group makes the OTP page
+// view-only (e.g. orgs issuing hardware tokens centrally)
+func otpReadonly(user *ipa.User) bool {
+	for _, group := range viper.GetStringSlice("accounts.otp_readonly_groups") {
+		if user.HasGroup(group) {
+			return true
+		}
+	}
+	return false
+}
+
+// RequireOTPSelfService blocks OTP mutations for read-only users. The
+// buttons are hidden in the UI, but enforcement lives here.
+func (r *Router) RequireOTPSelfService(c *fiber.Ctx) error {
+	if otpReadonly(r.user(c)) {
+		return c.Status(fiber.StatusForbidden).SendString(T("otptoken.readonly_notice"))
+	}
+	return c.Next()
+}
+
 func (r *Router) tokenList(c *fiber.Ctx, vars fiber.Map) error {
 	client := r.userClient(c)
 	user := r.user(c)
@@ -35,6 +56,7 @@ func (r *Router) tokenList(c *fiber.Ctx, vars fiber.Map) error {
 
 	vars["otptokens"] = tokens
 	vars["user"] = user
+	vars["otp_readonly"] = otpReadonly(user)
 	return c.Render("otptoken-list.html", vars)
 }
 

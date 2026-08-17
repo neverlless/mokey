@@ -198,12 +198,12 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 
 	// OTP Tokens
 	app.Get("/otptoken/list", r.RequireLogin, r.RequireHTMX, r.OTPTokenList)
-	app.Get("/otptoken/modal", r.RequireLogin, r.RequireHTMX, r.OTPTokenModal)
-	app.Post("/otptoken/add", r.RequireLogin, r.RequireHTMX, r.OTPTokenAdd)
-	app.Post("/otptoken/verify", r.RequireLogin, r.RequireHTMX, r.OTPTokenVerify)
-	app.Post("/otptoken/remove", r.RequireLogin, r.RequireHTMX, r.OTPTokenRemove)
-	app.Post("/otptoken/enable", r.RequireLogin, r.RequireHTMX, r.OTPTokenEnable)
-	app.Post("/otptoken/disable", r.RequireLogin, r.RequireHTMX, r.OTPTokenDisable)
+	app.Get("/otptoken/modal", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenModal)
+	app.Post("/otptoken/add", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenAdd)
+	app.Post("/otptoken/verify", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenVerify)
+	app.Post("/otptoken/remove", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenRemove)
+	app.Post("/otptoken/enable", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenEnable)
+	app.Post("/otptoken/disable", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenDisable)
 
 	if viper.IsSet("site.logo") {
 		app.Get("/images/logo", r.Logo)

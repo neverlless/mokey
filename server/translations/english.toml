@@ -199,6 +199,7 @@ switch_account = "Switch Account"
 login_failed = "Login failed"
 
 [otptoken]
+readonly_notice = "OTP tokens for your account are managed by your administrator."
 verifying_token = "Verifying token..."
 title = "OTP Tokens"
 6_digit_code_label = "6-digit Code"

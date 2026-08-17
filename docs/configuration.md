@@ -40,6 +40,7 @@ Addresses upstream request
 | `default_shell` | string | `"/bin/bash"` | Login shell for accounts created via signup. |
 | `min_passwd_len` | int | `8` | Minimum password length for new passwords. Should match your FreeIPA password policy. |
 | `min_passwd_classes` | int | `2` | Minimum number of character classes (lower, upper, digit, other) in new passwords. Should match your FreeIPA password policy. |
+| `otp_readonly_groups` | list | *(empty)* | FreeIPA groups whose members see their OTP tokens read-only — no self-enrollment, removal, or enable/disable (for orgs issuing hardware tokens centrally). Enforced server-side. |
 | `otp_hash_algorithm` | string | `"sha1"` | Hash algorithm for generated OTP tokens: `sha1`, `sha256`, or `sha512`. |
 | `otp_issuer` | string | FreeIPA default | Custom issuer name embedded in OTP token QR codes for a nicer display in authenticator apps. |
 | `username_from_email` | bool | `false` | On signup, derive the username from the email address instead of asking for one. |

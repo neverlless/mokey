@@ -159,6 +159,37 @@ func TestOTPAutoMFAEnable(t *testing.T) {
 	assert.Equal([]string{"otp"}, fake.users["walter"].AuthTypes)
 }
 
+func TestOTPReadonlyGroup(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.otp_readonly_groups", []string{"hw-token-users"})
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"hw-token-users"}})
+	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+
+	// read-only user: list works, shows the notice, mutations are 403
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.get("/otptoken/list", htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), "managed by your administrator")
+
+	resp = tc.postForm("/otptoken/add", url.Values{}, htmx)
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+	assert.Len(fake.tokens, 0)
+
+	resp = tc.get("/otptoken/modal", htmx)
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+
+	// user outside the group is unaffected
+	tc2 := newTestClient(t, app)
+	tc2.login("jesse", "Secret123!")
+	resp = tc2.postForm("/otptoken/add", url.Values{}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Len(fake.tokens, 1)
+}
+
 func TestAdminUserList(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestAppWith(t, func() {
