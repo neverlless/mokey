@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -298,8 +299,37 @@ func TestSecureHeadersPresent(t *testing.T) {
 
 	assert.Equal("DENY", resp.Header.Get("X-Frame-Options"))
 	assert.Equal("nosniff", resp.Header.Get("X-Content-Type-Options"))
-	assert.True(strings.Contains(resp.Header.Get("Content-Security-Policy"), "default-src 'self'"))
+	csp := resp.Header.Get("Content-Security-Policy")
+	assert.True(strings.Contains(csp, "default-src 'self'"))
+	assert.NotContains(csp, "script-src 'self' 'unsafe-inline'")
+	assert.Contains(csp, "script-src 'self' 'nonce-")
 	assert.Equal("no-store", resp.Header.Get("Cache-Control"))
+}
+
+var cspNoncePattern = regexp.MustCompile(`'nonce-([^']+)'`)
+
+func TestCSPNonceMatchesInlineScripts(t *testing.T) {
+	assert := assert.New(t)
+	app, _, _ := newTestApp(t)
+
+	tc := newTestClient(t, app)
+	resp := tc.get("/signup")
+
+	m := cspNoncePattern.FindStringSubmatch(resp.Header.Get("Content-Security-Policy"))
+	if !assert.NotNil(m, "no nonce in CSP header") {
+		return
+	}
+	nonce := m[1]
+
+	body := readBody(t, resp)
+	assert.Contains(body, `<script nonce="`+nonce+`">`)
+	// every inline script on the page must carry the nonce
+	assert.NotContains(body, "<script>")
+
+	// nonce is fresh per request
+	resp = tc.get("/signup")
+	m2 := cspNoncePattern.FindStringSubmatch(resp.Header.Get("Content-Security-Policy"))
+	assert.NotEqual(nonce, m2[1])
 }
 
 func TestHSTSOnHTTPS(t *testing.T) {

@@ -5,6 +5,8 @@
 package server
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -13,10 +15,22 @@ import (
 )
 
 func SecureHeaders(c *fiber.Ctx) error {
-	c.Set(fiber.HeaderXXSSProtection, "1; mode=block")
+	// Per-request CSP nonce; templates stamp it on inline <script> tags via
+	// nonce="{{ .cspNonce }}" (PassLocalsToViews). Inline styles stay
+	// allowed — the templates rely on style attributes throughout.
+	nonceBytes := make([]byte, 16)
+	if _, err := rand.Read(nonceBytes); err != nil {
+		return err
+	}
+	// URL-safe alphabet: html/template would entity-escape '+' inside the
+	// nonce attribute
+	nonce := base64.RawURLEncoding.EncodeToString(nonceBytes)
+	c.Locals("cspNonce", nonce)
+
 	c.Set(fiber.HeaderXContentTypeOptions, "nosniff")
 	c.Set(fiber.HeaderXFrameOptions, "DENY")
-	c.Set(fiber.HeaderContentSecurityPolicy, "default-src 'self' 'unsafe-inline'; img-src 'self' data:;script-src 'self' 'unsafe-inline'")
+	c.Set(fiber.HeaderContentSecurityPolicy,
+		"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-"+nonce+"'")
 
 	// Direct TLS or an X-Forwarded-Proto from a trusted proxy
 	if c.Protocol() == "https" {

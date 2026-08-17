@@ -29,7 +29,7 @@
 <p class="text-center text-muted">{{ T "passkey.no_passkeys" }}</p>
 {{ end }}
 
-<script>
+<script nonce="{{ $.cspNonce }}">
 (function() {
     const b64urlToBuf = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
     const bufToB64url = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

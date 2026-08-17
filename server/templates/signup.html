@@ -44,7 +44,7 @@
                         {{ with $.captchaID }}
                         <div class="mb-3">
                             <div id="captchaHelpBlock" class="form-text">
-                                {{ T "common.captcha_instruction" }}</em> <button type="button" tabindex="-1" class="btn btn-link" onclick="reloadCaptcha()">{{ T "common.reload" }}</button>
+                                {{ T "common.captcha_instruction" }}</em> <button type="button" tabindex="-1" class="btn btn-link" _="on click call reloadCaptcha()">{{ T "common.reload" }}</button>
                             </div>
                             <input name="captcha_sol" id="captcha_sol" class="form-control form-control-lg" size="10" type="text" autocomplete="off">
                             <input name="captcha_id" id="captcha_id" type="hidden" value="{{ . }}">
@@ -73,7 +73,7 @@
         </div>
     </section>
 
-<script>
+<script nonce="{{ $.cspNonce }}">
 document.body.addEventListener('htmx:afterRequest', function (evt) {
     if(evt.detail.xhr.status == 400 || evt.detail.xhr.status == 401) {
         document.getElementById('password2').value = "";
@@ -81,7 +81,7 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
 });
 </script>
 {{ with $.captchaID }}
-<script>
+<script nonce="{{ $.cspNonce }}">
 document.body.addEventListener("reloadCaptcha", function(evt){
     el = document.getElementById('captcha')
     document.getElementById('captcha_sol').value = "";
