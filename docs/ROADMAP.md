@@ -142,21 +142,43 @@ Table-stakes features of Keycloak/Authentik/Zitadel account consoles.
 
 ## v2.0 — Differentiators
 
-Nobody in the niche has these; each needs real demand before building.
+Ordered by demand strength from the Aug 2026 demand sweep (upstream
+trackers, freeipa-users archives, competitor gap analysis of noggin /
+Keycloak / Authentik / Zitadel / FreeIPA Web UI):
 
-- [ ] "What can I access" page: my groups, HBAC-permitted hosts, sudo
-      rules, and an `hbactest` "can I log into host X" simulator — all
-      readable with default permissions
-- [ ] Self-service user certificates (S/MIME / mTLS client certs) via
-      `cert_request` with a documented CA ACL + certprofile setup —
-      flagship feature, requires an operator setup guide
-- [ ] Subordinate ID self-service (`subid_generate`) for rootless
-      podman/docker on IPA-joined hosts — one `role-add-member` away
-- [ ] Group self-management with sponsor approval (noggin model) on top
-      of FreeIPA member managers
 - [ ] Staged-users backend for signup (`stageuser_add`/`activate`) —
       unapproved signups never become real accounts; cleaner than the
-      current disabled-until-verified flow
+      current disabled-until-verified flow. Strongest combined demand:
+      recurring upstream asks (ubccr#156 — top-reacted open issue,
+      ubccr#121, ubccr#76, merged ubccr#58) plus a vacuum for vanilla
+      IPA — the official freeipa-community-portal is abandoned and
+      noggin's signup requires the freeipa-fas server extensions
+- [ ] Subordinate ID self-service (`subid_generate`) for rootless
+      podman/docker on IPA-joined hosts — one `role-add-member` away.
+      Freshest demand: steady freeipa-users threads 2022–2025 (latest
+      Aug 2025) driven by rootless containers; today the only UI is a
+      buried admin Web UI action
+- [ ] Group self-management with sponsor approval (noggin model) on top
+      of FreeIPA member managers — proven at scale by Fedora/CentOS
+      accounts; even noggin lacks an in-app join-request/approval queue
+      (noggin#626 still open), so mokey can do it better, and without
+      server-side schema extensions
+- [ ] "What can I access" page: my groups, HBAC-permitted hosts, sudo
+      rules, and an `hbactest` "can I log into host X" simulator — all
+      readable with default permissions. Zero tracker asks, but a true
+      differentiator: no portal (including FreeIPA's own Web UI)
+      answers this for a normal user, and generic IdPs structurally
+      can't follow
+- [ ] Self-service user certificates (S/MIME / mTLS client certs) via
+      `cert_request` with a documented CA ACL + certprofile setup —
+      requires an operator setup guide. Weakest demand (a mechanics
+      thread every 1–2 years); the one documented unmet ask is CentOS
+      asking noggin for it (noggin#33/#34, declined) — build last, on
+      renewed demand
+- [ ] README positioning: document the "keep users out of the IPA Web
+      UI" story — the loudest recent freeipa-users theme (2024) is
+      hiding the user list from non-admins; mokey answers it by
+      existing, say so explicitly
 
 ## Deliberately not planned
 
