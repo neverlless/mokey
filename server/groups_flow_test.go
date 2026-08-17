@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
@@ -37,4 +38,40 @@ func TestGroupsPageSections(t *testing.T) {
 	assert.NotContains(body, "secret")
 	// nav tab present
 	assert.Contains(body, "groups-tab")
+}
+
+func TestGroupRequestJoinFlow(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
+	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+	fake.addGroup("secret", &fakeGroup{}) // unmanaged
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	// request lands in the queue and the page re-renders it as pending
+	resp := tc.postForm("/groups/request", url.Values{"group": {"chemists"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	reqs := router.loadGroupRequests("chemists")
+	if assert.Len(reqs, 1) {
+		assert.Equal("walter", reqs[0].Username)
+	}
+	assert.Contains(readBody(t, resp), "chemists")
+
+	// duplicate request keeps a single entry
+	resp = tc.postForm("/groups/request", url.Values{"group": {"chemists"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Len(router.loadGroupRequests("chemists"), 1)
+
+	// unmanaged group is not requestable
+	resp = tc.postForm("/groups/request", url.Values{"group": {"secret"}}, htmx)
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Empty(router.loadGroupRequests("secret"))
+
+	// unknown group
+	resp = tc.postForm("/groups/request", url.Values{"group": {"nope"}}, htmx)
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
 }

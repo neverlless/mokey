@@ -95,3 +95,52 @@ func (r *Router) groupsVars(c *fiber.Ctx, vars fiber.Map) {
 	vars["my_requests"] = myRequests
 	vars["managed"] = managed
 }
+
+// GroupRequestJoin queues a join request for a managed group and notifies
+// its sponsors
+func (r *Router) GroupRequestJoin(c *fiber.Ctx) error {
+	user := r.user(c)
+	groupName := c.FormValue("group")
+
+	g, err := groupShow(r.userClient(c), groupName)
+	if err != nil || !g.Managed() {
+		return c.Status(fiber.StatusBadRequest).SendString(T("groups.not_joinable"))
+	}
+	if user.HasGroup(g.Name) {
+		return c.Status(fiber.StatusBadRequest).SendString(T("groups.already_member"))
+	}
+
+	if r.addGroupRequest(g.Name, user.Username) {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+			"group":    g.Name,
+			"ip":       RemoteIP(c),
+		}).Info("AUDIT group join requested")
+
+		go r.notifyGroupSponsors(g, user.Username)
+	}
+
+	vars := fiber.Map{"user": user}
+	r.groupsVars(c, vars)
+	return c.Render("groups-list.html", vars)
+}
+
+// notifyGroupSponsors emails every direct member manager of the group.
+// Runs in a goroutine after the handler returns, so it must not touch the
+// fiber ctx (fiber recycles it) — SendGroupRequestEmail takes no ctx,
+// mirroring SendNewLoginEmail.
+// ponytail: manager groups are not expanded to individual recipients —
+// direct managers only; expand if a deployment actually runs on
+// manager-groups alone.
+func (r *Router) notifyGroupSponsors(g *ipaGroup, requester string) {
+	for _, m := range g.ManagerUsers {
+		manager, err := r.adminClient.UserShow(m)
+		if err != nil {
+			log.WithFields(log.Fields{"manager": m, "err": err}).Error("Failed to fetch group manager for notification")
+			continue
+		}
+		if err := r.emailer.SendGroupRequestEmail(manager, requester, g.Name); err != nil {
+			log.WithFields(log.Fields{"manager": m, "err": err}).Error("Failed to send group request email")
+		}
+	}
+}

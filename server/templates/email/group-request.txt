@@ -1,0 +1,13 @@
+[{{ $.site_name }}] ( {{ $.homepage }} )
+
+****************
+{{ T "email_template.password_expiry_greeting" }} {{ $.user.First }},
+****************
+
+{{ T "email_template.group_request_body_part1" }}{{ $.requester }}{{ T "email_template.group_request_body_part2" }}{{ $.group }}{{ T "email_template.group_request_body_part3" }}
+
+{{ $.base_url }}/groups
+
+{{ T "email_template.closing_part1" }}[{{ $.site_name }}]{{ T "email_template.closing_part2" }}
+
+{{ $.sig }}

@@ -246,6 +246,18 @@ func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) erro
 	return e.sendEmail(user, nil, T("email_template.password_expiry_subject"), "password-expiry", vars)
 }
 
+// SendGroupRequestEmail notifies a group sponsor about a pending join
+// request. Called from a goroutine after the handler returns — no request
+// context, mirrors SendNewLoginEmail.
+func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group string) error {
+	vars := map[string]interface{}{
+		"requester": requester,
+		"group":     group,
+	}
+
+	return e.sendEmail(manager, nil, T("email_template.group_request_subject")+group, "group-request", vars)
+}
+
 // SendUsernameReminderEmail mails the username(s) associated with an address.
 // The recipient is identified only by email — no account context is leaked in
 // the delivery metadata.
