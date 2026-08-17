@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	golog "log"
 	"os"
 	"strings"
@@ -59,7 +59,7 @@ func SetupLogging() error {
 		return fmt.Errorf("Unknown log level: %s", logLevel)
 	}
 
-	golog.SetOutput(ioutil.Discard)
+	golog.SetOutput(io.Discard)
 
 	if cfgFileUsed != "" {
 		logrus.Infof("Using config file: %s", cfgFileUsed)

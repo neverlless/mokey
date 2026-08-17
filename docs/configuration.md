@@ -32,7 +32,7 @@ Addresses upstream request
 | --- | --- | --- | --- |
 | `enable_signup` | bool | `true` | Enable self-service registration (`/signup`). When `false` the signup routes are disabled and the "Create Account" link is hidden. |
 | `single_page_login` | bool | `false` | Show username and password on one login page instead of the two-step flow. Users with Two-Factor Authentication append the OTP code to their password (FreeIPA style `password+otp`). |
-| `hide_invalid_username_error` | bool | `false` | On login, don't reveal whether a username exists — proceed to the password step for unknown users too. |
+| `hide_invalid_username_error` | bool | `false` | On login, don't reveal whether a username exists — proceed to the password step for unknown users too. The default favors clearer error messages at the cost of allowing username enumeration on the login form; enable this on internet-facing deployments. |
 | `require_admin_verify` | bool | `false` | Keep newly registered accounts locked until an admin enables them in FreeIPA. |
 | `require_mfa` | bool | `false` | Require Two-Factor Authentication on all accounts. Users without an OTP token cannot manage SSH keys and are prompted to enroll. |
 | `default_homedir` | string | `"/home"` | Base home directory for accounts created via signup (`<default_homedir>/<username>`). |

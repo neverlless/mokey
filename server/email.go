@@ -49,7 +49,8 @@ func NewEmailer(storage fiber.Storage) (*Emailer, error) {
 	tmpl.Funcs(funcMap)
 
 	for _, ext := range []string{"txt", "html"} {
-		tmpl, err := tmpl.ParseFS(templateFiles, "templates/email/*."+ext)
+		var err error
+		tmpl, err = tmpl.ParseFS(templateFiles, "templates/email/*."+ext)
 		if err != nil {
 			return nil, err
 		}
