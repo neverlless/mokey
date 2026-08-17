@@ -43,6 +43,7 @@ func SetDefaults() {
 	viper.SetDefault("site.default_language", "english")
 	viper.SetDefault("site.ktuser", "mokeyapp")
 	viper.SetDefault("accounts.enable_signup", true)
+	viper.SetDefault("accounts.staged_signup", false)
 	viper.SetDefault("accounts.enable_captcha", true)
 	viper.SetDefault("admin.enabled", false)
 	viper.SetDefault("admin.group", "admins")

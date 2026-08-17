@@ -54,9 +54,10 @@ type fakeOTPToken struct {
 type fakeIPA struct {
 	srv *httptest.Server
 
-	mu       sync.Mutex
-	users    map[string]*fakeUser
-	sessions map[string]string // ipa_session sid -> username
+	mu         sync.Mutex
+	users      map[string]*fakeUser
+	stageusers map[string]*fakeUser
+	sessions   map[string]string // ipa_session sid -> username
 	// randomPasswords holds the last user_mod random:true password per user
 	randomPasswords map[string]string
 	tokens          []*fakeOTPToken
@@ -67,6 +68,7 @@ type fakeIPA struct {
 func newFakeIPA() *fakeIPA {
 	f := &fakeIPA{
 		users:           make(map[string]*fakeUser),
+		stageusers:      make(map[string]*fakeUser),
 		sessions:        make(map[string]string),
 		randomPasswords: make(map[string]string),
 	}
@@ -477,6 +479,77 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		f.users[username] = u
 		rpcResult(w, f.userJSON(username, u))
 		delete(f.randomPasswords, username)
+
+	case "stageuser_add":
+		username := args[0]
+		if _, exists := f.stageusers[username]; exists {
+			rpcError(w, 4002, username+": stage user already exists")
+			return
+		}
+		str := func(key string) string { s, _ := opts[key].(string); return s }
+		u := &fakeUser{
+			First:    str("givenname"),
+			Last:     str("sn"),
+			Email:    str("mail"),
+			Category: str("userclass"),
+			Password: str("userpassword"),
+			Shell:    str("loginshell"),
+		}
+		f.stageusers[username] = u
+		rpcResult(w, f.userJSON(username, u))
+
+	case "stageuser_show":
+		username := args[0]
+		u, ok := f.stageusers[username]
+		if !ok {
+			rpcError(w, 4001, username+": stage user not found")
+			return
+		}
+		rpcResult(w, f.userJSON(username, u))
+
+	case "stageuser_find":
+		users := []map[string]interface{}{}
+		for name, u := range f.stageusers {
+			users = append(users, f.userJSON(name, u))
+		}
+		rpcResult(w, users)
+
+	case "stageuser_mod":
+		username := args[0]
+		u, ok := f.stageusers[username]
+		if !ok {
+			rpcError(w, 4001, username+": stage user not found")
+			return
+		}
+		if v, ok := opts["userclass"].(string); ok {
+			u.Category = v
+		}
+		rpcResult(w, f.userJSON(username, u))
+
+	case "stageuser_del":
+		username := args[0]
+		if _, ok := f.stageusers[username]; !ok {
+			rpcError(w, 4001, username+": stage user not found")
+			return
+		}
+		delete(f.stageusers, username)
+		rpcResult(w, map[string]interface{}{})
+
+	case "stageuser_activate":
+		username := args[0]
+		u, ok := f.stageusers[username]
+		if !ok {
+			rpcError(w, 4001, username+": stage user not found")
+			return
+		}
+		if _, exists := f.users[username]; exists {
+			rpcError(w, 4002, username+": user already exists")
+			return
+		}
+		delete(f.stageusers, username)
+		u.Expired = true // FreeIPA expires the password on activation
+		f.users[username] = u
+		rpcResult(w, f.userJSON(username, u))
 
 	case "user_del":
 		username := args[0]

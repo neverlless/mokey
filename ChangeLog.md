@@ -1,5 +1,18 @@
 # Mokey ChangeLog
 
+## Unreleased
+
+- Staged-users signup backend (`accounts.staged_signup`, default off):
+  registrations are created as FreeIPA *stage users* instead of
+  disabled active accounts, so unapproved signups never appear in the
+  active user tree. Email verification (and admin approval with
+  `require_admin_verify`) activates the account via
+  `stageuser_activate`; denying a registration deletes the staged
+  entry. FreeIPA expires the password on activation, so the first
+  login goes through the password-change flow. Requires the service
+  account to have the "Stage User Administrators" privilege (see
+  README). Signups from before the switch finish through the old flow
+
 ## [v1.9.1] - 2026-08-17
 
 - Fix: opening `/security` as a full page returned 500 — the page

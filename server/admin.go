@@ -210,6 +210,33 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 	case "unlock":
 		err = userUnlock(r.adminClient, username)
 	case "approve":
+		// staged signups live in the staging tree; legacy pending users
+		// (from before staged_signup) are handled below
+		var staged *ipa.User
+		if viper.GetBool("accounts.staged_signup") {
+			staged, _ = stageUserShow(r.adminClient, username)
+		}
+		if staged != nil {
+			if staged.Category != UserCategoryPending {
+				err = errors.New("user is not pending approval")
+				break
+			}
+			// clear the pending marker before activation copies it over
+			err = stageUserSetCategory(r.adminClient, username, "")
+			if err == nil {
+				err = stageUserActivate(r.adminClient, username)
+			}
+			if err == nil {
+				staged.Category = ""
+				if werr := r.emailer.SendWelcomeEmail(staged, c); werr != nil {
+					log.WithFields(log.Fields{
+						"username": username,
+						"err":      werr,
+					}).Error("Failed to send welcome email to approved user")
+				}
+			}
+			break
+		}
 		var target *ipa.User
 		target, err = r.adminClient.UserShow(username)
 		if err == nil && target.Category != UserCategoryPending {
@@ -231,6 +258,18 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 			}
 		}
 	case "deny":
+		var staged *ipa.User
+		if viper.GetBool("accounts.staged_signup") {
+			staged, _ = stageUserShow(r.adminClient, username)
+		}
+		if staged != nil {
+			if staged.Category != UserCategoryPending {
+				err = errors.New("user is not pending approval")
+				break
+			}
+			err = stageUserDel(r.adminClient, username)
+			break
+		}
 		var target *ipa.User
 		target, err = r.adminClient.UserShow(username)
 		if err == nil && target.Category != UserCategoryPending {
@@ -292,6 +331,19 @@ func (r *Router) AdminPendingList(c *fiber.Ctx) error {
 
 	// user_find matches loosely; keep only exact pending accounts
 	pending := []*ipa.User{}
+
+	// staged signups awaiting approval live in the staging tree; legacy
+	// pending users below still surface during a backend transition
+	if viper.GetBool("accounts.staged_signup") {
+		staged, serr := stageUserFindPending(r.adminClient)
+		if serr != nil {
+			log.WithFields(log.Fields{
+				"err": serr,
+			}).Error("Failed to list pending staged users")
+		} else {
+			pending = append(pending, staged...)
+		}
+	}
 	for _, u := range users {
 		if u.Category == UserCategoryPending {
 			pending = append(pending, u)

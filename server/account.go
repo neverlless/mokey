@@ -192,6 +192,10 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string,
 		user.Category = UserCategoryUnverified
 	}
 
+	if !verified && viper.GetBool("accounts.staged_signup") {
+		return r.stagedAccountCreate(user, password)
+	}
+
 	userRec, err := r.adminClient.UserAddWithPassword(user, password)
 	if err != nil {
 		switch {
@@ -236,6 +240,53 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string,
 	return nil
 }
 
+// stagedAccountCreate creates the signup as a FreeIPA stage user instead of
+// a disabled active account. stageuser_add only checks the staging tree for
+// conflicts, so the active tree is checked first — otherwise the collision
+// would only surface at activation.
+func (r *Router) stagedAccountCreate(user *ipa.User, password string) error {
+	if _, err := r.adminClient.UserShow(user.Username); err == nil {
+		return fmt.Errorf("Username already exists: %s", user.Username)
+	}
+
+	if err := stageUserAdd(r.adminClient, user, password); err != nil {
+		if ierr, ok := err.(*ipa.IpaError); ok && ierr.Code == 4002 {
+			return fmt.Errorf("Username already exists: %s", user.Username)
+		}
+		log.WithFields(log.Fields{
+			"err":      err,
+			"username": user.Username,
+			"email":    user.Email,
+		}).Error("Failed to create staged user account")
+		return errors.New("Failed to create account. Please contact system administrator")
+	}
+
+	log.WithFields(log.Fields{
+		"username": user.Username,
+		"email":    user.Email,
+	}).Debug("New staged user account created")
+
+	return nil
+}
+
+// verifyStagedUser finishes email verification for a staged signup: marks it
+// pending admin approval, or activates it directly when approval is off
+func (r *Router) verifyStagedUser(username string, su *ipa.User) error {
+	if viper.GetBool("accounts.require_admin_verify") {
+		if su.Category == UserCategoryUnverified {
+			return stageUserSetCategory(r.adminClient, username, UserCategoryPending)
+		}
+		return nil
+	}
+
+	// clear the unverified marker before activation copies it over
+	if err := stageUserSetCategory(r.adminClient, username, ""); err != nil {
+		return err
+	}
+	su.Category = ""
+	return stageUserActivate(r.adminClient, username)
+}
+
 func (r *Router) AccountVerify(c *fiber.Ctx) error {
 	token := c.Params("token")
 
@@ -255,6 +306,33 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 		return c.Render("verify-account.html", vars)
 	}
 
+	// Staged signups live in the staging tree; missing there falls through
+	// to the legacy path (signups from before staged_signup was enabled)
+	var user *ipa.User
+	if viper.GetBool("accounts.staged_signup") {
+		if su, serr := stageUserShow(r.adminClient, claims.Username); serr == nil {
+			if verr := r.verifyStagedUser(claims.Username, su); verr != nil {
+				log.WithFields(log.Fields{
+					"username": claims.Username,
+					"email":    claims.Email,
+					"error":    verr,
+				}).Error("Verify account failed to update staged user in FreeIPA")
+				return c.Status(fiber.StatusInternalServerError).SendString(T("account.failed_to_verify_account"))
+			}
+			user = su
+		}
+	}
+
+	if user == nil {
+		return r.verifyLegacyUser(c, claims, token)
+	}
+
+	return r.finishAccountVerify(c, claims, user, token)
+}
+
+// verifyLegacyUser finishes email verification for a disabled-until-verified
+// signup (the pre-staged_signup backend)
+func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) error {
 	user, err := r.adminClient.UserShow(claims.Username)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -296,9 +374,15 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 		}
 	}
 
+	return r.finishAccountVerify(c, claims, user, token)
+}
+
+// finishAccountVerify marks the verify token used, sends the welcome email
+// and renders the success page — shared by the staged and legacy paths
+func (r *Router) finishAccountVerify(c *fiber.Ctx, claims *Token, user *ipa.User, token string) error {
 	r.storage.Set(TokenAccountVerify+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
 
-	err = r.emailer.SendWelcomeEmail(user, c)
+	err := r.emailer.SendWelcomeEmail(user, c)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":      err,
@@ -313,8 +397,10 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 	}).Info("AUDIT user account verified successfully")
 	r.metrics.totalAccountVerifications.Inc()
 
-	vars["pending_admin"] = viper.GetBool("accounts.require_admin_verify")
-	return c.Render("verify-success.html", vars)
+	return c.Render("verify-success.html", fiber.Map{
+		"claims":        claims,
+		"pending_admin": viper.GetBool("accounts.require_admin_verify"),
+	})
 }
 
 func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
@@ -342,6 +428,20 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 	}
 
 	user, err := r.adminClient.UserShow(username)
+	if err != nil && viper.GetBool("accounts.staged_signup") {
+		// staged signups are invisible to user_show; resend is allowed
+		// while they still carry the unverified marker
+		if su, serr := stageUserShow(r.adminClient, username); serr == nil {
+			if su.Category == UserCategoryUnverified {
+				r.sendVerifyResendEmail(su, c)
+			} else {
+				log.WithFields(log.Fields{
+					"username": username,
+				}).Warnf("Refusing to send account verify email. Invalid staged user category")
+			}
+			return c.Render("account-verify-forgot-success.html", fiber.Map{})
+		}
+	}
 	if err != nil {
 		log.WithFields(log.Fields{
 			"username": username,
@@ -364,8 +464,14 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 		return c.Render("account-verify-forgot-success.html", fiber.Map{})
 	}
 
-	// Resend user an email to verify their account
-	err = r.emailer.SendAccountVerifyEmail(user, c)
+	r.sendVerifyResendEmail(user, c)
+
+	return c.Render("account-verify-forgot-success.html", fiber.Map{})
+}
+
+// sendVerifyResendEmail re-sends the account verification email
+func (r *Router) sendVerifyResendEmail(user *ipa.User, c *fiber.Ctx) {
+	err := r.emailer.SendAccountVerifyEmail(user, c)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":      err,
@@ -379,8 +485,6 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 		}).Info("Verify user account email sent successfully")
 		r.metrics.totalAccountVerificationsSent.Inc()
 	}
-
-	return c.Render("account-verify-forgot-success.html", fiber.Map{})
 }
 
 // EmailChangeConfirm applies a pending email change. GET renders a

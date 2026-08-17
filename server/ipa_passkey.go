@@ -28,7 +28,7 @@ import (
 // directly, reusing the FreeIPA session of an already authenticated goipa
 // client. Managing your own passkey mappings requires the FreeIPA
 // self-service permission introduced with passkey support in FreeIPA 4.11.
-func ipaPasskeyRPC(client *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, error) {
+func ipaSessionRPC(client *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, error) {
 	if client.SessionID() == "" {
 		return nil, fmt.Errorf("passkey rpc requires an authenticated FreeIPA session")
 	}
@@ -84,17 +84,17 @@ func ipaPasskeyRPC(client *ipa.Client, method string, params []string, options m
 }
 
 func userAddPasskey(client *ipa.Client, uid, mapping string) error {
-	_, err := ipaPasskeyRPC(client, "user_add_passkey", []string{uid, mapping}, nil)
+	_, err := ipaSessionRPC(client, "user_add_passkey", []string{uid, mapping}, nil)
 	return err
 }
 
 func userRemovePasskey(client *ipa.Client, uid, mapping string) error {
-	_, err := ipaPasskeyRPC(client, "user_remove_passkey", []string{uid, mapping}, nil)
+	_, err := ipaSessionRPC(client, "user_remove_passkey", []string{uid, mapping}, nil)
 	return err
 }
 
 func userPasskeys(client *ipa.Client, uid string) ([]string, error) {
-	res, err := ipaPasskeyRPC(client, "user_show", []string{uid}, map[string]interface{}{"all": true})
+	res, err := ipaSessionRPC(client, "user_show", []string{uid}, map[string]interface{}{"all": true})
 	if err != nil {
 		return nil, err
 	}

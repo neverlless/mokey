@@ -28,7 +28,7 @@ func ipaAdminRPC(admin *ipa.Client, method string, params []string, options map[
 		}
 	}
 
-	return ipaPasskeyRPC(admin, method, params, options)
+	return ipaSessionRPC(admin, method, params, options)
 }
 
 // userFailedLogins returns the highest krbloginfailedcount reported by any

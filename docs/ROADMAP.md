@@ -146,13 +146,16 @@ Ordered by demand strength from the Aug 2026 demand sweep (upstream
 trackers, freeipa-users archives, competitor gap analysis of noggin /
 Keycloak / Authentik / Zitadel / FreeIPA Web UI):
 
-- [ ] Staged-users backend for signup (`stageuser_add`/`activate`) —
+- [x] Staged-users backend for signup (`stageuser_add`/`activate`) —
       unapproved signups never become real accounts; cleaner than the
       current disabled-until-verified flow. Strongest combined demand:
       recurring upstream asks (ubccr#156 — top-reacted open issue,
       ubccr#121, ubccr#76, merged ubccr#58) plus a vacuum for vanilla
       IPA — the official freeipa-community-portal is abandoned and
-      noggin's signup requires the freeipa-fas server extensions
+      noggin's signup requires the freeipa-fas server extensions.
+      Shipped opt-in as `accounts.staged_signup` (default off — the
+      service account needs the "Stage User Administrators" privilege);
+      default flip considered for a later release
 - [ ] Subordinate ID self-service (`subid_generate`) for rootless
       podman/docker on IPA-joined hosts — one `role-add-member` away.
       Freshest demand: steady freeipa-users threads 2022–2025 (latest
