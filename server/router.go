@@ -261,6 +261,11 @@ func (r *Router) Index(c *fiber.Ctx) error {
 
 	if path == "sshkey" {
 		vars["keys"] = user.SSHAuthKeys
+	} else if path == "security" {
+		if sess, err := r.session(c); err == nil {
+			vars["sessions"] = r.userSessions(user.Username, sess.ID())
+		}
+		vars["activity"] = auditUserRecent(r.storage, user.Username, 15)
 	} else if path == "passkey" {
 		passkeys, err := r.passkeyList(c)
 		if err != nil {

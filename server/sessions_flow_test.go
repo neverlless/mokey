@@ -128,6 +128,22 @@ func TestLogoutDropsSessionFromIndex(t *testing.T) {
 	assert.Contains(body, "This device")
 }
 
+func TestFullPageTabsRender(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	// every full-page tab must render — /security regressed once because
+	// Index didn't pass the vars the included partial needs
+	for _, path := range []string{"/", "/account", "/password", "/security", "/sshkey", "/otp", "/passkey"} {
+		resp := tc.get(path)
+		assert.Equal(fiber.StatusOK, resp.StatusCode, path)
+	}
+}
+
 func TestLoginHistoryOnSecurityPage(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
