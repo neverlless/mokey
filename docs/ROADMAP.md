@@ -163,11 +163,12 @@ Keycloak / Authentik / Zitadel / FreeIPA Web UI):
       Web UI action. Shipped opt-in as `accounts.enable_subid`
       (default off — needs the "Subordinate ID Administrators"
       privilege on the service account)
-- [ ] Group self-management with sponsor approval (noggin model) on top
+- [x] Group self-management with sponsor approval (noggin model) on top
       of FreeIPA member managers — proven at scale by Fedora/CentOS
       accounts; even noggin lacks an in-app join-request/approval queue
       (noggin#626 still open), so mokey can do it better, and without
-      server-side schema extensions
+      server-side schema extensions. Shipped: joinable = has member managers
+      (zero config); in-app request queue noggin lacks (noggin#626)
 - [ ] "What can I access" page: my groups, HBAC-permitted hosts, sudo
       rules, and an `hbactest` "can I log into host X" simulator — all
       readable with default permissions. Zero tracker asks, but a true

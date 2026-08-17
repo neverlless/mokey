@@ -52,6 +52,19 @@ Addresses upstream request
 | `allowed_domains` | map | — | Allowed email domains for signup, with a username generator per domain: `default` (local part of the email) or `flast` (first letter of the first name + last name). Example: `allowed_domains = {"example.edu" = "default", "example.com" = "flast"}` |
 | `block_users` | list | — | Usernames that are never allowed to log in. Example: `block_users = ["root", "admin"]` |
 
+### Group self-service
+
+Any group with at least one FreeIPA *member manager* automatically appears
+as joinable on the portal's Groups tab. Users request to join; the group's
+member managers (sponsors) approve or deny the request from the same tab —
+approval is executed with the sponsor's own FreeIPA session, so server-side
+member-manager rights are always enforced. Make a group joinable with:
+
+    ipa group-add-member-manager <group> --users=<sponsor>
+
+There is nothing to configure in mokey and no extra service-account
+privilege — remove the member managers to make a group private again.
+
 ## `[email]`
 
 | Option | Type | Default | Description |

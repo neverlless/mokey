@@ -12,3 +12,4 @@ mokey-*.tar.gz
 
 # local key material (release signing key backup) — never commit
 private/
+docs/superpowers/

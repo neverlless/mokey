@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Group self-service: any group with FreeIPA member managers shows up as
+  joinable on the new Groups tab; users request to join, sponsors approve
+  or deny in-app (approval runs with the sponsor's own session — vanilla
+  FreeIPA, no server-side extensions). Sponsors get an email on new
+  requests, requesters on the decision
+
 - Subordinate ID self-service (`accounts.enable_subid`, default off):
   a "Subordinate IDs" section on the account page shows the user's
   subid range or generates one with a click (`subid_generate`) — for

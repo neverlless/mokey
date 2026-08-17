@@ -44,6 +44,7 @@ exposing mokey to the internet.
 - Register/Remove Passkeys (stored in FreeIPA 4.11+)
 - Enable/Disable Two-Factor Authentication
 - Hydra Consent/Login Endpoint for OAuth/OpenID Connect
+- Group self-service with sponsor approval (vanilla FreeIPA member managers)
 - Easy to install and configure (requires no FreeIPA/LDAP schema changes)
 
 ## Screenshots
