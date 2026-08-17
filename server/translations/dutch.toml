@@ -61,6 +61,13 @@ system_error = "Systeemfout, neem contact op met de beheerder"
 weak_password = "Je wachtwoord is te zwak. Zorg ervoor dat je wachtwoord een cijfer en zowel kleine als hoofdletters bevat"
 
 [email_template]
+password_expiry_subject = "Uw wachtwoord verloopt binnenkort"
+password_expiry_greeting = "Hallo"
+password_expiry_body_part1 = "Dit is een herinnering van ["
+password_expiry_body_part2 = "] dat het wachtwoord van uw account bijna verloopt. Wijzig het voordat het verloopt om toegang te behouden."
+password_expiry_days_part1 = "Uw wachtwoord verloopt over "
+password_expiry_days_part2 = " dag(en)."
+password_expiry_action = "Wijzig uw wachtwoord hier"
 username_reminder_subject = "Uw gebruikersnaam"
 username_reminder_greeting = "Hallo,"
 username_reminder_intro = "Er is een gebruikersnaamherinnering aangevraagd voor dit e-mailadres bij "

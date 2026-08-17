@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"time"
 
 	ipa "github.com/ubccr/goipa"
 )
@@ -36,6 +37,7 @@ type fakeUser struct {
 	// FailedLogins simulates FreeIPA's krbloginfailedcount; at
 	// fakeLockoutThreshold the account rejects even correct passwords
 	FailedLogins int
+	PasswdExpire time.Time
 }
 
 // mirrors FreeIPA's default krbpwdmaxfailure
@@ -331,6 +333,9 @@ func (f *fakeIPA) userJSON(username string, u *fakeUser) map[string]interface{} 
 	}
 	if u.Shell != "" {
 		rec["loginshell"] = []string{u.Shell}
+	}
+	if !u.PasswdExpire.IsZero() {
+		rec["krbpasswordexpiration"] = []map[string]string{{"__datetime__": u.PasswdExpire.UTC().Format(ipa.IpaDatetimeFormat)}}
 	}
 	if p, ok := f.randomPasswords[username]; ok {
 		rec["randompassword"] = p

@@ -37,7 +37,7 @@ type Emailer struct {
 
 func BaseURL(ctx *fiber.Ctx) string {
 	baseURL := viper.GetString("email.base_url")
-	if baseURL == "" {
+	if baseURL == "" && ctx != nil {
 		baseURL = ctx.BaseURL()
 	}
 
@@ -222,6 +222,17 @@ func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx *fibe
 	return e.sendEmail(user, ctx, event, "account-updated", vars)
 }
 
+// SendPasswordExpiryReminderEmail warns a user their password expires in
+// the given number of days. Sent from the background sweep — no request
+// context.
+func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) error {
+	vars := map[string]interface{}{
+		"days": days,
+	}
+
+	return e.sendEmail(user, nil, T("email_template.password_expiry_subject"), "password-expiry", vars)
+}
+
 // SendUsernameReminderEmail mails the username(s) associated with an address.
 // The recipient is identified only by email — no account context is leaked in
 // the delivery metadata.
@@ -268,10 +279,15 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 		data = make(map[string]interface{})
 	}
 
-	ua := useragent.Parse(ctx.Get(fiber.HeaderUserAgent))
-
-	data["os"] = ua.OS
-	data["browser"] = ua.Name
+	// ctx is nil for emails sent from background jobs (expiry reminders)
+	if ctx != nil {
+		ua := useragent.Parse(ctx.Get(fiber.HeaderUserAgent))
+		data["os"] = ua.OS
+		data["browser"] = ua.Name
+	} else {
+		data["os"] = ""
+		data["browser"] = ""
+	}
 	data["user"] = user
 	data["date"] = time.Now()
 	data["contact"] = viper.GetString("email.from")

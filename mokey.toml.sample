@@ -151,6 +151,11 @@ token_max_age = 3600
 #    openssl rand -hex 32 
 token_secret = ""
 
+# Days-before-expiry thresholds for password expiry reminder emails.
+# A background sweep emails each user once per threshold; empty/unset
+# disables reminders.
+# password_expiry_reminders = [14, 7, 3, 1]
+
 # Hostname for smtp server
 smtp_host = "localhost"
 

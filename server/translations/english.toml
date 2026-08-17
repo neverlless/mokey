@@ -61,6 +61,13 @@ system_error = "System error please contact administrator"
 weak_password = "Your password is too weak. Please ensure your password includes a number and lower/upper case character"
 
 [email_template]
+password_expiry_subject = "Your password expires soon"
+password_expiry_greeting = "Hi"
+password_expiry_body_part1 = "This is a reminder from ["
+password_expiry_body_part2 = "] that your account password is about to expire. Change it before it expires to avoid losing access."
+password_expiry_days_part1 = "Your password expires in "
+password_expiry_days_part2 = " day(s)."
+password_expiry_action = "Change your password here"
 username_reminder_subject = "Your username"
 username_reminder_greeting = "Hello,"
 username_reminder_intro = "A username reminder was requested for this email address at "

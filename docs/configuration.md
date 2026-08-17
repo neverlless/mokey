@@ -58,6 +58,7 @@ Addresses upstream request
 | `signature` | string | — | Signature appended to all emails. |
 | `token_max_age` | int | `3600` | Lifetime (seconds) of password-reset and account-verify links. |
 | `token_secret` | string | auto-generated | 32-byte hex secret for signing email tokens (`openssl rand -hex 32`). Auto-generated at startup when blank — set it so links survive restarts. |
+| `password_expiry_reminders` | list | *(empty — disabled)* | Days-before-expiry thresholds for password expiry reminder emails, e.g. `[14, 7, 3, 1]`. A background sweep (every 6h) emails each user once per threshold; a password change re-arms all thresholds. Empty disables reminders. |
 | `smtp_host` | string | `"localhost"` | SMTP server hostname. |
 | `smtp_port` | int | `25` | SMTP server port. |
 | `smtp_tls` | string | `"off"` | SMTP TLS mode: `off`, `on` (implicit TLS), or `starttls`. |
