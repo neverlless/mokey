@@ -95,7 +95,7 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 func (r *Router) AccountCreate(c *fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
-			"captchaID":         captcha.New(),
+			"captchaID":         newCaptchaID(),
 			"usernameFromEmail": viper.GetBool("accounts.username_from_email"),
 		}
 
@@ -302,7 +302,7 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
-			"captchaID": captcha.New(),
+			"captchaID": newCaptchaID(),
 		}
 
 		return c.Render("account-verify-forgot.html", vars)

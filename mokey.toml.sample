@@ -120,6 +120,11 @@ require_admin_verify = false
 # you could hide this error message by setting this to true.
 hide_invalid_username_error = false
 
+# Show and verify a CAPTCHA on the signup, forgot-password, and
+# verification-resend forms. Disable when mokey sits behind another
+# anti-abuse layer (e.g. an SSO gateway or WAF).
+enable_captcha = true
+
 #------------------------------------------------------------------------------
 # Email
 #------------------------------------------------------------------------------

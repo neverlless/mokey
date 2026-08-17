@@ -7,7 +7,18 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
+
+// newCaptchaID returns a fresh captcha id, or "" when captchas are disabled
+// (accounts.enable_captcha=false) — templates hide the captcha block for an
+// empty id
+func newCaptchaID() string {
+	if !viper.GetBool("accounts.enable_captcha") {
+		return ""
+	}
+	return captcha.New()
+}
 
 // Captcha handler displays captcha image
 func (r *Router) Captcha(c *fiber.Ctx) error {
@@ -40,6 +51,10 @@ func (r *Router) Captcha(c *fiber.Ctx) error {
 // Checks and verifies captcha
 
 func (r *Router) verifyCaptcha(id, sol string) error {
+	if !viper.GetBool("accounts.enable_captcha") {
+		return nil
+	}
+
 	if len(id) == 0 {
 		return errors.New("Invalid captcha provided")
 	}

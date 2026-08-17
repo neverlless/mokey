@@ -178,7 +178,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
-			"captchaID": captcha.New(),
+			"captchaID": newCaptchaID(),
 		}
 
 		return c.Render("password-forgot.html", vars)

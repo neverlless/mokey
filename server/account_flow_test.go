@@ -128,6 +128,40 @@ func TestSignupWrongCaptcha(t *testing.T) {
 	assert.Nil(fake.users["jesse"])
 }
 
+func TestCaptchaDisabled(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.enable_captcha", false)
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	// signup page renders no captcha block
+	tc := newTestClient(t, app)
+	tc.getCSRF("/signup")
+	resp := tc.get("/signup")
+	assert.NotContains(readBody(t, resp), "captcha_id")
+
+	// signup succeeds without captcha fields
+	resp = tc.postForm("/signup", url.Values{
+		"username":  {"jesse"},
+		"email":     {"jesse@example.com"},
+		"first":     {"Jesse"},
+		"last":      {"Pinkman"},
+		"password":  {"NewSecret456!"},
+		"password2": {"NewSecret456!"},
+	}, nil)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(fake.users["jesse"])
+
+	// forgot-password works without captcha fields
+	tc2 := newTestClient(t, app)
+	tc2.getCSRF("/auth/forgotpw")
+	resp = tc2.postForm("/auth/forgotpw", url.Values{"username": {"walter"}}, nil)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	issued, _ := router.storage.Get(TokenPasswordReset + TokenIssuedPrefix + "walter")
+	assert.NotNil(issued)
+}
+
 func TestSignupDisabled(t *testing.T) {
 	assert := assert.New(t)
 	// enable_signup=false must be set before routes are built
