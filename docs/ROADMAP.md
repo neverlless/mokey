@@ -76,6 +76,18 @@ Ordered by unique value:
       buffer of AUDIT log events in the existing session storage backend
       via a logrus hook: no new schema, works on memory/sqlite3/redis
 
+## v1.6 — Reliability
+
+- [x] Handler test suite against a fake FreeIPA server: login, CSRF, rate
+      limiting, expired password, password change/reset, signup/verify,
+      invites, email change, OTP lifecycle, admin gating — server package
+      coverage 10.7% → 57%
+- [x] Security audit (gosec, govulncheck, staticcheck + manual review of
+      auth/session/token paths) with all high/medium findings fixed — see
+      `docs/security-audit-v1.6.md`; `trusted_proxies` option added,
+      X-Forwarded-For no longer trusted by default
+- [x] Drop the "alpha" label from the README
+
 ## Deliberately not planned
 
 - Multiple email addresses per account and user avatars (ubccr#123) — low
@@ -84,9 +96,8 @@ Ordered by unique value:
   single credential store
 - Built-in OIDC provider replacing Hydra — too large; Hydra v2 client
   upgrade is the pragmatic step
-- Full reliability package (test coverage, CONCERNS-driven security audit,
-  compliance-grade audit trail, dropping the "alpha" label) — next
-  milestone, except session invalidation which moved into v1.4
+- Compliance-grade audit trail — the ring-buffer audit log shipped in v1.5
+  and the rest of the reliability package landed in v1.6
 - Marketing work (demo instance, docs site, announcements) — code first
 - Homelab-specific features — enterprise is the target audience for now
 
