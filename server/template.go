@@ -119,5 +119,6 @@ func SplitSSHFP(fp string) []string {
 }
 
 func BreakNewlines(s string) template.HTML {
+	// #nosec G203 -- input is HTML-escaped before the <br/> tags are inserted
 	return template.HTML(strings.Replace(template.HTMLEscapeString(s), "\n", "<br />", -1))
 }

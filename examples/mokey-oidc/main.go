@@ -43,7 +43,7 @@ func main() {
 	n.UseHandler(r)
 
 	http.ListenAndServeTLS(fmt.Sprintf(":%s", os.Getenv("MOKEY_OIDC_PORT")), cert, key, n)
-	fmt.Println(fmt.Sprintf("Listening on :%s", os.Getenv("MOKEY_OIDC_PORT")))
+	fmt.Printf("Listening on :%s\n", os.Getenv("MOKEY_OIDC_PORT"))
 }
 
 func handleHome(w http.ResponseWriter, _ *http.Request) {
