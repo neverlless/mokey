@@ -284,6 +284,23 @@ func TestSecureHeadersPresent(t *testing.T) {
 	assert.Equal("no-store", resp.Header.Get("Cache-Control"))
 }
 
+func TestHSTSOnHTTPS(t *testing.T) {
+	assert := assert.New(t)
+	app, _, _ := newTestAppWith(t, func() {
+		viper.Set("server.trusted_proxies", []string{"0.0.0.0"})
+	})
+
+	tc := newTestClient(t, app)
+
+	// plain http: no HSTS
+	resp := tc.get("/auth/login")
+	assert.Empty(resp.Header.Get("Strict-Transport-Security"))
+
+	// https via trusted proxy: HSTS present
+	resp = tc.get("/auth/login", map[string]string{"X-Forwarded-Proto": "https"})
+	assert.Equal("max-age=31536000", resp.Header.Get("Strict-Transport-Security"))
+}
+
 func TestHealthzNoAuth(t *testing.T) {
 	assert := assert.New(t)
 	app, _, _ := newTestApp(t)

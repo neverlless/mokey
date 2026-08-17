@@ -18,6 +18,11 @@ func SecureHeaders(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderXFrameOptions, "DENY")
 	c.Set(fiber.HeaderContentSecurityPolicy, "default-src 'self' 'unsafe-inline'; img-src 'self' data:;script-src 'self' 'unsafe-inline'")
 
+	// Direct TLS or an X-Forwarded-Proto from a trusted proxy
+	if c.Protocol() == "https" {
+		c.Set(fiber.HeaderStrictTransportSecurity, "max-age=31536000")
+	}
+
 	if !strings.HasPrefix(c.Path(), "/static") {
 		c.Set("Cache-Control", "no-store")
 		c.Set("Pragma", "no-cache")
