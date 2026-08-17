@@ -134,3 +134,22 @@ func TestGroupApproveNonManager(t *testing.T) {
 	assert.NotContains(fake.groups["chemists"].Members, "jesse")
 	assert.Len(router.loadGroupRequests("chemists"), 1)
 }
+
+func TestGroupStaleRequestCleanup(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	// walter is already a member but a stale request lingers in the queue
+	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
+	router.addGroupRequest("chemists", "walter")
+
+	tc := newTestClient(t, app)
+	tc.login("skyler", "Secret123!")
+	resp := tc.get("/groups")
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+
+	// rendering the sponsor queue dropped the stale request from storage
+	assert.Empty(router.loadGroupRequests("chemists"))
+}

@@ -259,8 +259,10 @@ func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group stri
 }
 
 // SendGroupDecisionEmail notifies the requester that a sponsor approved
-// or denied their join request. Called from a goroutine after the handler
-// returns — no request context, mirrors SendNewLoginEmail.
+// or denied their join request. Called synchronously from GroupApprove/
+// GroupDeny in the request path with a nil ctx, so the base URL comes from
+// config rather than the request — mirrors SendNewLoginEmail's nil-ctx
+// mechanism.
 func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved bool) error {
 	vars := map[string]interface{}{
 		"group":    group,

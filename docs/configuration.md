@@ -65,6 +65,10 @@ member-manager rights are always enforced. Make a group joinable with:
 There is nothing to configure in mokey and no extra service-account
 privilege — remove the member managers to make a group private again.
 
+Request notification emails go to the group's *direct* member managers;
+sponsors who manage via a manager group see the queue in the portal but are
+not emailed.
+
 ## `[email]`
 
 | Option | Type | Default | Description |
