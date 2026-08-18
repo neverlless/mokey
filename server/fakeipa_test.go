@@ -63,6 +63,35 @@ type fakeGroup struct {
 	ManagerGroups []string
 }
 
+type fakeHBACRule struct {
+	Description      string
+	Enabled          bool
+	UserCategory     string
+	HostCategory     string
+	ServiceCategory  string
+	MemberUsers      []string
+	MemberGroups     []string
+	MemberHosts      []string
+	MemberHostgroups []string
+	MemberServices   []string
+}
+
+type fakeSudoRule struct {
+	Description      string
+	Enabled          bool
+	UserCategory     string
+	HostCategory     string
+	CmdCategory      string
+	MemberUsers      []string
+	MemberGroups     []string
+	MemberHosts      []string
+	MemberHostgroups []string
+	AllowCommands    []string
+	DenyCommands     []string
+	RunAsUsers       []string
+	RunAsGroups      []string
+}
+
 type fakeIPA struct {
 	srv *httptest.Server
 
@@ -72,6 +101,8 @@ type fakeIPA struct {
 	subids     map[string]*fakeSubid // owner uid -> range
 	sessions   map[string]string     // ipa_session sid -> username
 	groups     map[string]*fakeGroup
+	hbacRules  map[string]*fakeHBACRule
+	sudoRules  map[string]*fakeSudoRule
 	// randomPasswords holds the last user_mod random:true password per user
 	randomPasswords map[string]string
 	tokens          []*fakeOTPToken
@@ -86,6 +117,8 @@ func newFakeIPA() *fakeIPA {
 		subids:          make(map[string]*fakeSubid),
 		sessions:        make(map[string]string),
 		groups:          make(map[string]*fakeGroup),
+		hbacRules:       make(map[string]*fakeHBACRule),
+		sudoRules:       make(map[string]*fakeSudoRule),
 		randomPasswords: make(map[string]string),
 	}
 
@@ -131,6 +164,18 @@ func (f *fakeIPA) addGroup(cn string, g *fakeGroup) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.groups[cn] = g
+}
+
+func (f *fakeIPA) addHBACRule(cn string, r *fakeHBACRule) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.hbacRules[cn] = r
+}
+
+func (f *fakeIPA) addSudoRule(cn string, r *fakeSudoRule) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sudoRules[cn] = r
 }
 
 func newSID() string {
@@ -337,6 +382,66 @@ func (f *fakeIPA) subidJSON(owner string, sub *fakeSubid) map[string]interface{}
 		"ipasubgidnumber": []string{fmt.Sprintf("%d", sub.SubGID)},
 		"ipasubgidcount":  []string{"65536"},
 	}
+}
+
+func boolFlag(b bool) []string {
+	if b {
+		return []string{"TRUE"}
+	}
+	return []string{"FALSE"}
+}
+
+func (f *fakeIPA) hbacRuleJSON(cn string, r *fakeHBACRule) map[string]interface{} {
+	rec := map[string]interface{}{
+		"cn":             []string{cn},
+		"ipaenabledflag": boolFlag(r.Enabled),
+	}
+	if r.Description != "" {
+		rec["description"] = []string{r.Description}
+	}
+	if r.UserCategory != "" {
+		rec["usercategory"] = []string{r.UserCategory}
+	}
+	if r.HostCategory != "" {
+		rec["hostcategory"] = []string{r.HostCategory}
+	}
+	if r.ServiceCategory != "" {
+		rec["servicecategory"] = []string{r.ServiceCategory}
+	}
+	rec["memberuser_user"] = r.MemberUsers
+	rec["memberuser_group"] = r.MemberGroups
+	rec["memberhost_host"] = r.MemberHosts
+	rec["memberhost_hostgroup"] = r.MemberHostgroups
+	rec["memberservice_hbacsvc"] = r.MemberServices
+	return rec
+}
+
+func (f *fakeIPA) sudoRuleJSON(cn string, r *fakeSudoRule) map[string]interface{} {
+	rec := map[string]interface{}{
+		"cn":             []string{cn},
+		"ipaenabledflag": boolFlag(r.Enabled),
+	}
+	if r.Description != "" {
+		rec["description"] = []string{r.Description}
+	}
+	if r.UserCategory != "" {
+		rec["usercategory"] = []string{r.UserCategory}
+	}
+	if r.HostCategory != "" {
+		rec["hostcategory"] = []string{r.HostCategory}
+	}
+	if r.CmdCategory != "" {
+		rec["cmdcategory"] = []string{r.CmdCategory}
+	}
+	rec["memberuser_user"] = r.MemberUsers
+	rec["memberuser_group"] = r.MemberGroups
+	rec["memberhost_host"] = r.MemberHosts
+	rec["memberhost_hostgroup"] = r.MemberHostgroups
+	rec["memberallowcmd_sudocmd"] = r.AllowCommands
+	rec["memberdenycmd_sudocmd"] = r.DenyCommands
+	rec["ipasudorunas_user"] = r.RunAsUsers
+	rec["ipasudorunasgroup_group"] = r.RunAsGroups
+	return rec
 }
 
 func (f *fakeIPA) groupJSON(cn string, g *fakeGroup) map[string]interface{} {
@@ -581,6 +686,70 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rpcResult(w, results)
+
+	case "hbacrule_find":
+		results := []map[string]interface{}{}
+		for cn, r := range f.hbacRules {
+			results = append(results, f.hbacRuleJSON(cn, r))
+		}
+		rpcResult(w, results)
+
+	case "sudorule_find":
+		results := []map[string]interface{}{}
+		for cn, r := range f.sudoRules {
+			results = append(results, f.sudoRuleJSON(cn, r))
+		}
+		rpcResult(w, results)
+
+	case "hbactest":
+		user, _ := opts["user"].(string)
+		host, _ := opts["targethost"].(string)
+		service, _ := opts["service"].(string)
+		u := f.users[user]
+		matched := []string{}
+		notmatched := []string{}
+		for cn, r := range f.hbacRules {
+			if !r.Enabled {
+				continue
+			}
+			userOK := r.UserCategory == "all"
+			for _, m := range r.MemberUsers {
+				if m == user {
+					userOK = true
+				}
+			}
+			if u != nil {
+				for _, g := range r.MemberGroups {
+					for _, ug := range u.Groups {
+						if g == ug {
+							userOK = true
+						}
+					}
+				}
+			}
+			hostOK := r.HostCategory == "all"
+			for _, h := range r.MemberHosts {
+				if h == host {
+					hostOK = true
+				}
+			}
+			svcOK := r.ServiceCategory == "all"
+			for _, s := range r.MemberServices {
+				if s == service {
+					svcOK = true
+				}
+			}
+			if userOK && hostOK && svcOK {
+				matched = append(matched, cn)
+			} else {
+				notmatched = append(notmatched, cn)
+			}
+		}
+		rpcResult(w, map[string]interface{}{
+			"value":      len(matched) > 0,
+			"matched":    matched,
+			"notmatched": notmatched,
+		})
 
 	case "group_find":
 		results := []map[string]interface{}{}
