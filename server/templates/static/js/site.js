@@ -37,3 +37,15 @@ function closeModal(ele) {
         container.removeChild(modal)
     }, 200)
 }
+
+// dark/light toggle; the pre-paint init lives inline in header.html
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var root = document.documentElement;
+    var next = root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-bs-theme', next);
+    localStorage.setItem('mokey-theme', next);
+  });
+})();

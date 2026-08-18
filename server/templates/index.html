@@ -13,11 +13,8 @@
 		{{ end }}
 		<div class="bg-white shadow rounded-3 d-block d-sm-flex">
 			<div class="profile-tab-nav border-end">
-				<div class="p-4">
-					<div class="img-circle text-center mb-3">
-						<img src="/static/images/user-circle.png" alt="{{ T "profile.avatar_alt" }}" class="shadow">
-					</div>
-					<h4 class="text-center">{{ .user.Username }}</h4>
+				<div class="p-4 text-center">
+					<span class="mokey-id mokey-user-chip">{{ .user.Username }}</span>
 				</div>
 				<div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
 					<a class="nav-link{{ if eq $.path "account" }} active{{end}}" id="account-tab" href="/account" role="tab">

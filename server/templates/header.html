@@ -2,24 +2,35 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
+	<script nonce="{{ $.cspNonce }}">
+		// set the theme before first paint to avoid a flash; mirrors site.js's toggle
+		(function () {
+			var t = localStorage.getItem("mokey-theme");
+			if (!t) { t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+			document.documentElement.setAttribute("data-bs-theme", t);
+		})();
+	</script>
 	<title>{{ ConfigValueString "site.name" }} - Identity Management</title>
 	<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png"/>
     <link rel="shortcut icon" href="/static/images/favicon.ico">
-    <link href="/static/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 	<link rel="stylesheet" href="/static/css/fontawesome.all.min.css" integrity="sha384-3B6NwesSXE7YJlcLI9RpRqGf2p/EgVH8BgoKTaUrmKNDkHPStTQ3EyoYjCGXaOTS" crossorigin="anonymous">
 	<link rel="stylesheet" href="/static/css/sweetalert2.min.css" integrity="sha384-SUNIgQeCps0CoAVRrheRnQztaghCAffXsWBNCCUvia+XNEh7IZg6RvTKpovgqBrc" crossorigin="anonymous">
-	<link rel="stylesheet" type="text/css" href="/static/css/fonts.css" integrity="sha384-Jpsdvq5DEdKkd/HiMVlSqMMcQswi3Qs0n8RS8hxIhXwCm7rjfdp2SuqOhWG7RnZD" crossorigin="anonymous">
-	<link rel="stylesheet" type="text/css" href="/static/css/style.css" integrity="sha384-rxG7TcLJ49tk1uHJgHsvprSZLo/3vOWqvMhKgmQBLxd5Z3TZ0MPMgOiSBXaHqaKn" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="/static/css/fonts.css" integrity="sha384-zzo40lkWHjwFRdOCjLSbD5A9ldvpVA1P9TP7oIXVVqRoyAFy17XdtmusH4DOIaJf" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="/static/css/style.css" integrity="sha384-sG0fKWYmVf3bKiaSNTKoh/xe9GbFddqB/KTgXjIafAtBJNunHXKAIk7eDIc1sVMh" crossorigin="anonymous">
     {{ with ConfigValueString "site.css" }}
 	<link rel="stylesheet" type="text/css" href="/css/styles">
     {{ end }}
 </head>
 <body>
     <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container">
+      <div class="container d-flex align-items-center">
         <div class="navbar-header">
-          <a class="navbar-brand text-light" href="/">{{ with ConfigValueString "site.logo" }}<img id="site-logo" src="/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ ConfigValueString "site.name" }}{{ end }}</a>
+          <a class="navbar-brand" href="/">{{ with ConfigValueString "site.logo" }}<img id="site-logo" src="/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ ConfigValueString "site.name" }}{{ end }}</a>
         </div>
+        <button type="button" class="theme-toggle ms-auto" id="theme-toggle" aria-label="Toggle dark mode">
+          <i class="fa fa-circle-half-stroke" aria-hidden="true"></i>
+        </button>
       </div>
     </nav>

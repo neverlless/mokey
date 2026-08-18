@@ -1,5 +1,16 @@
 # Mokey ChangeLog
 
+## Unreleased
+
+- Visual refresh: Bootstrap 5.3, IBM Plex Sans/Mono (self-hosted,
+  latin + cyrillic), a calmer console look — 1px borders instead of
+  shadows, tighter radius, steel-blue accent, monospace for
+  identifiers (usernames, IPs, ranges, groups) — and a first-class
+  dark mode: toggle in the top bar, follows the system preference by
+  default. Custom `site.css` overrides keep working; deployments that
+  override templates should re-sync `header.html` (theme init script
+  and updated SRI hashes)
+
 ## [v2.0.0] - 2026-08-18
 
 Differentiators release: features no other FreeIPA portal has, driven by
