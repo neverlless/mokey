@@ -399,7 +399,7 @@ freeipa_remove_failed = "Failed to remove the passkey from FreeIPA."
 rp_display_name = "Identity Management"
 
 [admin]
-unlock = "Unlock"
+unlock = "Clear lockout"
 pending_title = "Pending approval"
 pending_name = "Name"
 pending_actions = "Actions"
