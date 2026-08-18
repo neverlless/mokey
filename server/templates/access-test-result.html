@@ -1,0 +1,16 @@
+{{ if $.granted }}
+<div class="alert alert-success access-granted">
+	<i class="fa fa-check me-1"></i>
+	{{ T "access.granted_part1" }}{{ $.host }}{{ T "access.granted_part2" }}{{ $.service }}{{ T "access.granted_part3" }}
+	{{ if $.matched }}
+	<div class="small mt-1">{{ T "access.matched_rules" }}:
+		{{ range $m := $.matched }}<span class="badge bg-success">{{ $m }}</span> {{ end }}
+	</div>
+	{{ end }}
+</div>
+{{ else }}
+<div class="alert alert-danger access-denied">
+	<i class="fa fa-xmark me-1"></i>
+	{{ T "access.denied_part1" }}{{ $.host }}{{ T "access.denied_part2" }}{{ $.service }}{{ T "access.denied_part3" }}
+</div>
+{{ end }}

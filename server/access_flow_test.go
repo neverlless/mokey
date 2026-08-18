@@ -5,6 +5,7 @@
 package server
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
@@ -62,4 +63,62 @@ func TestAccessPageSections(t *testing.T) {
 	assert.Contains(body, "/access/test")
 	// nav tab present
 	assert.Contains(body, "access-tab")
+}
+
+func TestAccessSimulator(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"chemists"}})
+	fake.addHBACRule("lab-access", &fakeHBACRule{
+		Enabled: true, MemberGroups: []string{"chemists"},
+		MemberHosts: []string{"lab.test.local"}, MemberServices: []string{"sshd"},
+	})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	// allow: matched rule is named
+	resp := tc.postForm("/access/test", url.Values{"host": {"lab.test.local"}, "service": {"sshd"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	body := readBody(t, resp)
+	assert.Contains(body, "lab-access")
+	assert.Contains(body, "access-granted")
+
+	// deny
+	resp = tc.postForm("/access/test", url.Values{"host": {"dea.test.local"}, "service": {"sshd"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), "access-denied")
+
+	// service defaults to sshd when empty
+	resp = tc.postForm("/access/test", url.Values{"host": {"lab.test.local"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), "access-granted")
+
+	// empty host → 400
+	resp = tc.postForm("/access/test", url.Values{"service": {"sshd"}}, htmx)
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+}
+
+func TestAccessSimulatorIgnoresUserField(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+
+	// hank has access, walter does not; walter must not be able to test as hank
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.addUser("hank", &fakeUser{Password: "Secret123!"})
+	fake.addHBACRule("dea-only", &fakeHBACRule{
+		Enabled: true, MemberUsers: []string{"hank"},
+		MemberHosts: []string{"dea.test.local"}, MemberServices: []string{"sshd"},
+	})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.postForm("/access/test", url.Values{
+		"host": {"dea.test.local"}, "service": {"sshd"}, "user": {"hank"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	// the session user (walter) is tested, not the form's "user" value
+	assert.Contains(readBody(t, resp), "access-denied")
 }

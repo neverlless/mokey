@@ -136,6 +136,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/otp", r.RequireLogin, r.Index)
 	app.Get("/groups", r.RequireLogin, r.Index)
 	app.Get("/access", r.RequireLogin, r.Index)
+	app.Post("/access/test", r.RequireLogin, r.RequireHTMX, r.AccessTest)
 
 	// Subordinate IDs
 	if viper.GetBool("accounts.enable_subid") {
