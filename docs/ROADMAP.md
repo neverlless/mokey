@@ -187,6 +187,32 @@ Keycloak / Authentik / Zitadel / FreeIPA Web UI):
       existing, say so explicitly. Shipped: "Keeping users out of the
       FreeIPA Web UI" section in the README
 
+## v2.1 — Recovery and account hygiene
+
+Ordered by demand strength from the Aug 2026 (post-v2.0) sweep:
+
+- [ ] OTP lockout self-recovery: a "lost my token" flow — email-verified
+      request lands in an admin queue; approval disables the user's OTP
+      tokens and restores password auth. Closes the structural FreeIPA
+      catch-22 (lost token blocks both password reset and token
+      management; today only `ipa user-mod --user-auth-type=password`
+      by an admin unsticks the user) — recurring freeipa-users pain
+      across years
+- [ ] Connected apps: list OAuth clients the user has granted access
+      to, with per-app revoke — Hydra admin API already integrated
+      (`ListOAuth2ConsentSessions`/`RevokeOAuth2ConsentSessions`);
+      table stakes in Keycloak/Zitadel account consoles
+- [ ] Leave group: the mirror of the v2.0 join flow — leave requests
+      through the same sponsor queue, plus a member-removal action for
+      sponsors on the groups they manage (noggin parity)
+
+Deferred pending demand: username self-rename (noggin#105 is the
+ecosystem's top ask, but renames are operationally risky — revisit if
+asked for mokey specifically), terms-of-service acceptance at signup,
+self-service certmap management (lighter slice of the user-certs item).
+Passkey login to the portal stays blocked upstream: FreeIPA 4.12/4.13
+still ship no FIDO2 assertion endpoint in the session API.
+
 ## Deliberately not planned
 
 - MFA recovery/backup codes — FreeIPA has no static-token type, so codes
