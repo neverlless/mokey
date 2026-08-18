@@ -19,6 +19,19 @@ required). The user experience and web interface can be customized to fit
 the requirements of an organization's look and feel. mokey is written in Go and
 released under a modified BSD license.
 
+## Keeping users out of the FreeIPA Web UI
+
+A recurring ask on the freeipa-users list is how to stop regular users
+from browsing the directory in the FreeIPA Web UI — by default any
+authenticated user can list every account, and locking that down means
+hand-editing ACIs that the Web UI was built to rely on. mokey is the
+practical answer: give users a portal scoped to *their own* account —
+password changes and resets, SSH keys, OTP tokens and passkeys, active
+sessions, group join requests, and a "what can I access" view — and
+keep the FreeIPA Web UI for administrators. Users never need to touch
+the directory browser, and mokey never shows them other people's
+accounts.
+
 ## Project status
 
 mokey is actively maintained and used in production. The core flows — login,

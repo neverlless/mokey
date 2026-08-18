@@ -181,10 +181,11 @@ Keycloak / Authentik / Zitadel / FreeIPA Web UI):
       thread every 1–2 years); the one documented unmet ask is CentOS
       asking noggin for it (noggin#33/#34, declined) — build last, on
       renewed demand
-- [ ] README positioning: document the "keep users out of the IPA Web
+- [x] README positioning: document the "keep users out of the IPA Web
       UI" story — the loudest recent freeipa-users theme (2024) is
       hiding the user list from non-admins; mokey answers it by
-      existing, say so explicitly
+      existing, say so explicitly. Shipped: "Keeping users out of the
+      FreeIPA Web UI" section in the README
 
 ## Deliberately not planned
 
