@@ -154,6 +154,11 @@ body {
 	color: var(--bs-body-color);
 }
 
+.tab-content {
+	flex: 1;
+	min-width: 0;
+}
+
 /* headings: tighter console scale */
 .tab-content h3,
 .login-head h3 {

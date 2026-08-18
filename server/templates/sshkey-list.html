@@ -13,14 +13,14 @@
 </div>
 <div id="sshkey-modal"></div>
 
-<div class="d-flex w-100 justify-content-between mb-4">
+<div class="d-flex w-100 justify-content-between align-items-center mb-4">
     <h3 class="mb-1">{{ T "sshkey_list.title" }}</h3>
     <button type="button" 
             hx-get="/sshkey/modal" 
             hx-target="#sshkey-modal" 
             hx-trigger="click"
             _="on htmx:afterOnLoad wait 10ms then add .show to #modal then add .show to #modal-backdrop"
-            class="btn btn-primary end">
+            class="btn btn-sm btn-primary end">
       <i class="fa fa-plus"></i> {{ T "sshkey_list.new_key" }}
     </button>
 </div>

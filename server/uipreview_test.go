@@ -29,7 +29,7 @@ func TestUIPreviewServe(t *testing.T) {
 		Password: "Secret123!",
 		First:    "Walter", Last: "White",
 		Email:  "wwhite@acme.local",
-		Groups: []string{"ipausers", "chemists", "lab-admins"},
+		Groups: []string{"ipausers", "chemists", "lab-admins", "admins"},
 	})
 	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
 	fake.addGroup("chemists", &fakeGroup{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter"}})

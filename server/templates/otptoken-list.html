@@ -16,7 +16,7 @@
 <div id="otptoken-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
 <div id="otptoken-modal"></div>
-<div class="d-flex w-100 justify-content-between mb-4">
+<div class="d-flex w-100 justify-content-between align-items-center mb-4">
     <h3 class="mb-1">{{ T "otptoken.header" }}</h3>
     {{ if not $.otp_readonly }}
     <button type="button" 
@@ -24,7 +24,7 @@
             hx-target="#otptoken-modal" 
             hx-trigger="click"
             _="on htmx:afterOnLoad wait 10ms then add .show to #modal then add .show to #modal-backdrop"
-            class="btn btn-primary end">
+            class="btn btn-sm btn-primary end">
       <i class="fa fa-plus"></i> {{ T "otptoken.new_token_button" }}
     </button>
     {{ end }}

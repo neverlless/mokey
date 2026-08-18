@@ -441,7 +441,6 @@ create_button = "Create Account"
 [subid]
 title = "Subordinate IDs"
 description = "Allocate a subordinate id range for rootless containers (podman, docker) on IPA-enrolled hosts. A range cannot be removed once allocated."
-hint = 'Range for rootless containers. Clients resolve it via SSSD ("subid: sss" in /etc/nsswitch.conf).'
 subuid_start = "SubUID range start"
 subgid_start = "SubGID range start"
 count = "Range size"

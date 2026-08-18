@@ -40,7 +40,7 @@
           <i class="fa fa-toggle-on fa-lg"></i> {{ T "common.enabled" }}
         </button>
     {{ else }}
-        <button class="btn btn-sm btn-secondary ml-1" title="{{ T "security.enable" }}" hx-target-error="security-failed"
+        <button class="btn btn-sm btn-outline-secondary ml-1" title="{{ T "security.enable" }}" hx-target-error="security-failed"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 data-hx-trigger="mfaenable"
                 data-hx-vals='{"csrf": "{{ $.csrf }}"}'
