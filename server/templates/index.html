@@ -48,6 +48,10 @@
 						<i class="fa fa-users text-center me-1"></i>
 						{{ T "groups.tab" }}
 					</a>
+					<a class="nav-link{{ if eq $.path "access" }} active{{end}}" id="access-tab" href="/access" role="tab">
+						<i class="fa fa-door-open text-center me-1"></i>
+						{{ T "access.tab" }}
+					</a>
 					{{ if $.is_admin }}
 					<a class="nav-link{{ if eq $.path "admin" }} active{{end}}" id="admin-tab" href="/admin" role="tab">
 						<i class="fa fa-users-gear text-center me-1"></i>
@@ -88,6 +92,10 @@
                 {{ else if eq $.path "groups" }}
 				<div class="tab-pane fade show active" id="groups" role="tabpanel" aria-labelledby="groups-tab">
                     {{ template "groups-list.html" . }}
+                </div>
+                {{ else if eq $.path "access" }}
+				<div class="tab-pane fade show active" id="access" role="tabpanel" aria-labelledby="access-tab">
+                    {{ template "access-list.html" . }}
                 </div>
                 {{ else if eq $.path "admin" }}
 				<div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">

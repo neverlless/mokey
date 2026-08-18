@@ -1,0 +1,101 @@
+<div id="access-pane">
+<h3 class="mb-4">{{ T "access.title" }}</h3>
+
+{{ if $.access_error }}
+<div class="alert alert-danger">{{ T "account.fatal_system_error" }}</div>
+{{ else }}
+
+<h5>{{ T "access.hbac_title" }}</h5>
+{{ if $.hbac_rules }}
+<table class="table align-middle mb-4">
+	<thead>
+	<tr>
+		<th scope="col">{{ T "access.rule" }}</th>
+		<th scope="col">{{ T "access.hosts" }}</th>
+		<th scope="col">{{ T "access.services" }}</th>
+	</tr>
+	</thead>
+	<tbody>
+	{{ range $r := $.hbac_rules }}
+	<tr>
+		<td><strong>{{ $r.Name }}</strong>
+			{{ if $r.Description }}<div class="text-muted small">{{ $r.Description }}</div>{{ end }}
+		</td>
+		<td>
+			{{ if eq $r.HostCategory "all" }}<span class="badge bg-success">{{ T "access.all_hosts" }}</span>{{ end }}
+			{{ range $h := $r.MemberHosts }}<span class="badge bg-dark">{{ $h }}</span> {{ end }}
+			{{ range $hg := $r.MemberHostgroups }}<span class="badge bg-secondary">{{ $hg }}</span> {{ end }}
+		</td>
+		<td>
+			{{ if eq $r.ServiceCategory "all" }}<span class="badge bg-success">{{ T "access.all_services" }}</span>{{ end }}
+			{{ range $s := $r.MemberServices }}<span class="badge bg-dark">{{ $s }}</span> {{ end }}
+		</td>
+	</tr>
+	{{ end }}
+	</tbody>
+</table>
+{{ else }}
+<p class="text-muted">{{ T "access.no_hbac" }}</p>
+{{ end }}
+
+<h5>{{ T "access.sudo_title" }}</h5>
+{{ if $.sudo_rules }}
+<table class="table align-middle mb-4">
+	<thead>
+	<tr>
+		<th scope="col">{{ T "access.rule" }}</th>
+		<th scope="col">{{ T "access.hosts" }}</th>
+		<th scope="col">{{ T "access.commands" }}</th>
+		<th scope="col">{{ T "access.runas" }}</th>
+	</tr>
+	</thead>
+	<tbody>
+	{{ range $r := $.sudo_rules }}
+	<tr>
+		<td><strong>{{ $r.Name }}</strong>
+			{{ if $r.Description }}<div class="text-muted small">{{ $r.Description }}</div>{{ end }}
+		</td>
+		<td>
+			{{ if eq $r.HostCategory "all" }}<span class="badge bg-success">{{ T "access.all_hosts" }}</span>{{ end }}
+			{{ range $h := $r.MemberHosts }}<span class="badge bg-dark">{{ $h }}</span> {{ end }}
+			{{ range $hg := $r.MemberHostgroups }}<span class="badge bg-secondary">{{ $hg }}</span> {{ end }}
+		</td>
+		<td>
+			{{ if eq $r.CmdCategory "all" }}<span class="badge bg-success">{{ T "access.all_commands" }}</span>{{ end }}
+			{{ range $cmd := $r.AllowCommands }}<span class="badge bg-dark">{{ $cmd }}</span> {{ end }}
+			{{ range $cmd := $r.DenyCommands }}<span class="badge bg-danger">{{ $cmd }}</span> {{ end }}
+		</td>
+		<td>
+			{{ range $u := $r.RunAsUsers }}<span class="badge bg-dark">{{ $u }}</span> {{ end }}
+			{{ range $g := $r.RunAsGroups }}<span class="badge bg-secondary">{{ $g }}</span> {{ end }}
+		</td>
+	</tr>
+	{{ end }}
+	</tbody>
+</table>
+{{ else }}
+<p class="text-muted">{{ T "access.no_sudo" }}</p>
+{{ end }}
+
+<h5>{{ T "access.test_title" }}</h5>
+<p class="text-muted small">{{ T "access.test_hint" }}</p>
+<form class="row g-2 mb-3">
+	<div class="col-md-5">
+		<input type="text" class="form-control" name="host" placeholder="{{ T "access.test_host_placeholder" }}">
+	</div>
+	<div class="col-md-3">
+		<input type="text" class="form-control" name="service" value="sshd">
+	</div>
+	<div class="col-md-4">
+		<button class="btn btn-primary" hx-post="/access/test"
+		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+		        hx-include="closest form"
+		        hx-target="#access-test-result" hx-swap="innerHTML">
+			{{ T "access.test_button" }}
+		</button>
+	</div>
+</form>
+<div id="access-test-result"></div>
+
+{{ end }}
+</div>
