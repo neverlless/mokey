@@ -45,6 +45,7 @@ exposing mokey to the internet.
 - Enable/Disable Two-Factor Authentication
 - Hydra Consent/Login Endpoint for OAuth/OpenID Connect
 - Group self-service with sponsor approval (vanilla FreeIPA member managers)
+- "What can I access" page — applicable HBAC/sudo rules and an hbactest simulator
 - Easy to install and configure (requires no FreeIPA/LDAP schema changes)
 
 ## Screenshots

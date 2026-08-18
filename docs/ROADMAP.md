@@ -169,12 +169,12 @@ Keycloak / Authentik / Zitadel / FreeIPA Web UI):
       (noggin#626 still open), so mokey can do it better, and without
       server-side schema extensions. Shipped: joinable = has member managers
       (zero config); in-app request queue noggin lacks (noggin#626)
-- [ ] "What can I access" page: my groups, HBAC-permitted hosts, sudo
+- [x] "What can I access" page: my groups, HBAC-permitted hosts, sudo
       rules, and an `hbactest` "can I log into host X" simulator — all
       readable with default permissions. Zero tracker asks, but a true
       differentiator: no portal (including FreeIPA's own Web UI)
       answers this for a normal user, and generic IdPs structurally
-      can't follow
+      can't follow. Shipped: Access tab, user-session reads (HBAC/sudo read ACIs are bind-rule "all"), hbactest simulator; host-group expansion deliberately out.
 - [ ] Self-service user certificates (S/MIME / mTLS client certs) via
       `cert_request` with a documented CA ACL + certprofile setup —
       requires an operator setup guide. Weakest demand (a mechanics

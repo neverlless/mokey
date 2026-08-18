@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- "What can I access" page: a new Access tab lists the HBAC rules
+  (hosts, services) and sudo rules (hosts, commands, run-as) that apply
+  to the logged-in user, with a "can I log into host X?" simulator
+  backed by FreeIPA's hbactest. Read-only, runs entirely with the
+  user's own session — no configuration or extra privileges needed
+
 - Group self-service: any group with FreeIPA member managers shows up as
   joinable on the new Groups tab; users request to join, sponsors approve
   or deny in-app (approval runs with the sponsor's own session — vanilla

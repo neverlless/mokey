@@ -69,6 +69,17 @@ Request notification emails go to the group's *direct* member managers;
 sponsors who manage via a manager group see the queue in the portal but are
 not emailed.
 
+### Access page
+
+The Access tab shows every HBAC and sudo rule that applies to the
+logged-in user and includes a "can I log into host X?" simulator backed
+by FreeIPA's `hbactest`. Everything runs with the user's own FreeIPA
+session: HBAC and sudo rules are readable by any authenticated user in a
+default FreeIPA install, so there is nothing to configure and no extra
+service-account privilege. Host groups are shown as named badges without
+expanding them to individual hosts — use the simulator for a
+concrete-host answer.
+
 ## `[email]`
 
 | Option | Type | Default | Description |
