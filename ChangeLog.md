@@ -1,6 +1,10 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.0.0] - 2026-08-18
+
+Differentiators release: features no other FreeIPA portal has, driven by
+the Aug 2026 demand sweep (see `docs/ROADMAP.md`). All new behavior is
+opt-in or permission-free; no breaking changes for existing deployments.
 
 - "What can I access" page: a new Access tab lists the HBAC rules
   (hosts, services) and sudo rules (hosts, commands, run-as) that apply
