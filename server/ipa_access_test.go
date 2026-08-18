@@ -30,9 +30,10 @@ func TestAccessRPCLayer(t *testing.T) {
 
 	client := userSession(t, fake, "walter", "Secret123!")
 
-	hbac, err := hbacRuleFind(client)
+	hbac, hbacTruncated, err := hbacRuleFind(client)
 	assert.NoError(err)
 	assert.Len(hbac, 2)
+	assert.False(hbacTruncated)
 	byName := map[string]*hbacRule{}
 	for _, r := range hbac {
 		byName[r.Name] = r
@@ -42,8 +43,9 @@ func TestAccessRPCLayer(t *testing.T) {
 	assert.Equal([]string{"chemists"}, byName["lab-access"].MemberGroups)
 	assert.Equal([]string{"sshd"}, byName["lab-access"].MemberServices)
 
-	sudo, err := sudoRuleFind(client)
+	sudo, sudoTruncated, err := sudoRuleFind(client)
 	assert.NoError(err)
+	assert.False(sudoTruncated)
 	if assert.Len(sudo, 1) {
 		assert.Equal("run-all", sudo[0].Name)
 		assert.Equal("all", sudo[0].CmdCategory)

@@ -111,34 +111,43 @@ func sudoRuleFromRecord(rec gjson.Result) *sudoRule {
 	}
 }
 
-func hbacRuleFind(client *ipa.Client) ([]*hbacRule, error) {
+// ruleSizeLimit caps hbacrule_find/sudorule_find result sets. FreeIPA's
+// "truncated" flag lives at result.truncated, but goipa's Result struct
+// (ipa.go) only exposes Summary/Value/Data (=result.result) and drops it,
+// so truncation is detected below by a count heuristic instead.
+const ruleSizeLimit = 500
+
+func hbacRuleFind(client *ipa.Client) ([]*hbacRule, bool, error) {
 	res, err := ipaSessionRPC(client, "hbacrule_find", []string{}, map[string]interface{}{
 		"all":       true,
-		"sizelimit": 500,
+		"sizelimit": ruleSizeLimit,
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	rules := []*hbacRule{}
 	for _, rec := range gjson.ParseBytes(res.Result.Data).Array() {
 		rules = append(rules, hbacRuleFromRecord(rec))
 	}
-	return rules, nil
+	// ponytail: count heuristic, not the real truncated flag (goipa drops
+	// it) — exact-limit hits are assumed truncated. Upgrade to parsing
+	// result.truncated directly if goipa ever surfaces it.
+	return rules, len(rules) >= ruleSizeLimit, nil
 }
 
-func sudoRuleFind(client *ipa.Client) ([]*sudoRule, error) {
+func sudoRuleFind(client *ipa.Client) ([]*sudoRule, bool, error) {
 	res, err := ipaSessionRPC(client, "sudorule_find", []string{}, map[string]interface{}{
 		"all":       true,
-		"sizelimit": 500,
+		"sizelimit": ruleSizeLimit,
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	rules := []*sudoRule{}
 	for _, rec := range gjson.ParseBytes(res.Result.Data).Array() {
 		rules = append(rules, sudoRuleFromRecord(rec))
 	}
-	return rules, nil
+	return rules, len(rules) >= ruleSizeLimit, nil
 }
 
 // hbacTest runs FreeIPA's server-side HBAC simulation over enabled rules

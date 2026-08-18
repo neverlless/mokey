@@ -5,6 +5,8 @@
 <div class="alert alert-danger">{{ T "account.fatal_system_error" }}</div>
 {{ else }}
 
+{{ if $.access_truncated }}<div class="alert alert-warning">{{ T "access.truncated" }}</div>{{ end }}
+
 <h5>{{ T "access.hbac_title" }}</h5>
 {{ if $.hbac_rules }}
 <table class="table align-middle mb-4">
@@ -79,7 +81,9 @@
 
 <h5>{{ T "access.test_title" }}</h5>
 <p class="text-muted small">{{ T "access.test_hint" }}</p>
-<form class="row g-2 mb-3">
+<form class="row g-2 mb-3" hx-post="/access/test"
+      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+      hx-target="#access-test-result" hx-swap="innerHTML">
 	<div class="col-md-5">
 		<input type="text" class="form-control" name="host" placeholder="{{ T "access.test_host_placeholder" }}">
 	</div>
@@ -87,10 +91,7 @@
 		<input type="text" class="form-control" name="service" value="sshd">
 	</div>
 	<div class="col-md-4">
-		<button class="btn btn-primary" hx-post="/access/test"
-		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-		        hx-include="closest form"
-		        hx-target="#access-test-result" hx-swap="innerHTML">
+		<button class="btn btn-primary" type="submit">
 			{{ T "access.test_button" }}
 		</button>
 	</div>

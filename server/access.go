@@ -19,7 +19,7 @@ func (r *Router) accessVars(c *fiber.Ctx, vars fiber.Map) {
 	user := r.user(c)
 	client := r.userClient(c)
 
-	hbac, err := hbacRuleFind(client)
+	hbac, hbacTruncated, err := hbacRuleFind(client)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"username": user.Username,
@@ -28,7 +28,7 @@ func (r *Router) accessVars(c *fiber.Ctx, vars fiber.Map) {
 		vars["access_error"] = true
 		return
 	}
-	sudo, err := sudoRuleFind(client)
+	sudo, sudoTruncated, err := sudoRuleFind(client)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"username": user.Username,
@@ -36,6 +36,9 @@ func (r *Router) accessVars(c *fiber.Ctx, vars fiber.Map) {
 		}).Error("Failed to list sudo rules")
 		vars["access_error"] = true
 		return
+	}
+	if hbacTruncated || sudoTruncated {
+		vars["access_truncated"] = true
 	}
 
 	myHBAC := []*hbacRule{}

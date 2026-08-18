@@ -468,6 +468,7 @@ approve_failed = "FreeIPA refused the change — your sponsor rights may have be
 [access]
 tab = "Access"
 title = "What can I access"
+truncated = "Rule list is truncated (more than 500 rules) — the simulator below remains accurate."
 hbac_title = "Host access rules (HBAC)"
 sudo_title = "Sudo rules"
 rule = "Rule"
