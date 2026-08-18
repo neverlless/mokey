@@ -1,6 +1,8 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.0.1] - 2026-08-18
+
+Visual refresh release.
 
 - Visual refresh: Bootstrap 5.3, IBM Plex Sans/Mono (self-hosted,
   latin + cyrillic), a calmer console look — 1px borders instead of
@@ -10,6 +12,11 @@
   default. Custom `site.css` overrides keep working; deployments that
   override templates should re-sync `header.html` (theme init script
   and updated SRI hashes)
+- Static asset URLs are versioned (`?v=`) so browsers can no longer pin
+  stale CSS against fresh SRI hashes after an upgrade
+- Wider console shell; compact list-page action buttons; the admin
+  "Unlock" action is now labeled "Clear lockout" to distinguish it from
+  Block/Unblock; dropped the subid SSSD hint line
 
 ## [v2.0.0] - 2026-08-18
 
