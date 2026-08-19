@@ -278,6 +278,29 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 		if err == nil {
 			err = r.adminClient.UserDelete(false, true, username)
 		}
+	case "otprecovery-approve":
+		queued := false
+		for _, req := range r.loadOTPRecoveryRequests() {
+			if req.Username == username {
+				queued = true
+				break
+			}
+		}
+		if !queued {
+			err = errors.New("no pending OTP recovery request")
+			break
+		}
+		err = r.adminClient.SetAuthTypes(username, []string{"password"})
+		if err == nil {
+			r.removeOTPRecoveryRequest(username)
+			r.sendOTPRecoveryDecision(username, true)
+		}
+	case "otprecovery-deny":
+		if !r.removeOTPRecoveryRequest(username) {
+			err = errors.New("no pending OTP recovery request")
+			break
+		}
+		r.sendOTPRecoveryDecision(username, false)
 	default:
 		return c.Status(fiber.StatusBadRequest).SendString("")
 	}
@@ -307,6 +330,10 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 	// approve/deny buttons live in the pending queue; re-render it
 	if action == "approve" || action == "deny" {
 		return r.AdminPendingList(c)
+	}
+	// otprecovery approve/deny buttons live in the recovery queue
+	if action == "otprecovery-approve" || action == "otprecovery-deny" {
+		return r.AdminOTPRecoveryList(c)
 	}
 
 	vars := r.adminUserVars(c, search)
@@ -354,6 +381,47 @@ func (r *Router) AdminPendingList(c *fiber.Ctx) error {
 		"user":    r.user(c),
 		"pending": pending,
 	})
+}
+
+// otpRecoveryView pairs a queued request's user with its RequestedAt for
+// the admin-otprecovery.html table.
+type otpRecoveryView struct {
+	User        *ipa.User
+	RequestedAt time.Time
+}
+
+// AdminOTPRecoveryList renders the OTP recovery queue for admin review.
+// Always visible (unlike the pending-signup queue, which is gated by
+// accounts.require_admin_verify).
+func (r *Router) AdminOTPRecoveryList(c *fiber.Ctx) error {
+	requests := []otpRecoveryView{}
+	for _, req := range r.loadOTPRecoveryRequests() {
+		user, err := r.adminClient.UserShow(req.Username)
+		if err != nil || !user.OTPOnly() {
+			// stale: user gone, or no longer OTP-only (recovered through
+			// another path) — drop, mirroring stale group request cleanup
+			r.removeOTPRecoveryRequest(req.Username)
+			continue
+		}
+		requests = append(requests, otpRecoveryView{User: user, RequestedAt: req.RequestedAt})
+	}
+
+	return c.Render("admin-otprecovery.html", fiber.Map{
+		"user":     r.user(c),
+		"requests": requests,
+	})
+}
+
+// sendOTPRecoveryDecision emails the requester about the outcome (fire and log)
+func (r *Router) sendOTPRecoveryDecision(username string, approved bool) {
+	target, err := r.adminClient.UserShow(username)
+	if err != nil {
+		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to fetch requester for OTP recovery decision email")
+		return
+	}
+	if err := r.emailer.SendOTPRecoveryDecisionEmail(target, approved); err != nil {
+		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to send OTP recovery decision email")
+	}
 }
 
 func (r *Router) AdminAuditList(c *fiber.Ctx) error {

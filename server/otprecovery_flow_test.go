@@ -69,3 +69,57 @@ func TestOTPRecoveryRequestFlow(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Len(router.loadOTPRecoveryRequests(), 1)
 }
+
+func TestOTPRecoveryAdminFlow(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestAppWith(t, func() {
+		viper.Set("admin.enabled", true)
+	})
+	fake.addUser("boss", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", AuthTypes: []string{"otp"}})
+	fake.addUser("jesse", &fakeUser{Password: "Secret123!", AuthTypes: []string{"otp"}})
+	router.addOTPRecoveryRequest("walter")
+	router.addOTPRecoveryRequest("jesse")
+
+	tcAdmin := newTestClient(t, app)
+	tcAdmin.login("boss", "Secret123!")
+
+	// queue renders both
+	resp := tcAdmin.get("/admin/otprecovery", htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	body := readBody(t, resp)
+	assert.Contains(body, "walter")
+	assert.Contains(body, "jesse")
+
+	// approve: auth types become password-only, queue entry gone
+	resp = tcAdmin.postForm("/admin/user/otprecovery-approve", url.Values{"username": {"walter"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal([]string{"password"}, fake.users["walter"].AuthTypes)
+	assert.Len(router.loadOTPRecoveryRequests(), 1)
+
+	// deny: queue entry gone, auth types unchanged
+	resp = tcAdmin.postForm("/admin/user/otprecovery-deny", url.Values{"username": {"jesse"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal([]string{"otp"}, fake.users["jesse"].AuthTypes)
+	assert.Empty(router.loadOTPRecoveryRequests())
+
+	// acting on a non-queued user is refused
+	resp = tcAdmin.postForm("/admin/user/otprecovery-approve", url.Values{"username": {"walter"}}, htmx)
+	assert.Equal(fiber.StatusInternalServerError, resp.StatusCode)
+}
+
+func TestOTPRecoveryAdminGating(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestAppWith(t, func() {
+		viper.Set("admin.enabled", true)
+	})
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	router.addOTPRecoveryRequest("someone")
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	resp := tc.get("/admin/otprecovery", htmx)
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+	resp = tc.postForm("/admin/user/otprecovery-approve", url.Values{"username": {"someone"}}, htmx)
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+}

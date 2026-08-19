@@ -1,0 +1,13 @@
+[{{ $.site_name }}] ( {{ $.homepage }} )
+
+****************
+{{ T "email_template.password_expiry_greeting" }} {{ $.user.First }},
+****************
+
+{{ if $.approved }}{{ T "email_template.otprecovery_decision_approved" }}{{ else }}{{ T "email_template.otprecovery_decision_denied" }}{{ end }}
+
+{{ $.base_url }}/security
+
+{{ T "email_template.closing_part1" }}[{{ $.site_name }}]{{ T "email_template.closing_part2" }}
+
+{{ $.sig }}

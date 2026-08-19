@@ -289,6 +289,21 @@ func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved 
 	return e.sendEmail(user, nil, subject+group, "group-decision", vars)
 }
 
+// SendOTPRecoveryDecisionEmail notifies the requester that an admin approved
+// or denied their OTP recovery request. Called synchronously from
+// AdminUserAction in the request path with a nil ctx, so the base URL comes
+// from config rather than the request — mirrors SendGroupDecisionEmail.
+func (e *Emailer) SendOTPRecoveryDecisionEmail(user *ipa.User, approved bool) error {
+	vars := map[string]interface{}{
+		"approved": approved,
+	}
+	subject := T("email_template.otprecovery_denied_subject")
+	if approved {
+		subject = T("email_template.otprecovery_approved_subject")
+	}
+	return e.sendEmail(user, nil, subject, "otprecovery-decision", vars)
+}
+
 // SendUsernameReminderEmail mails the username(s) associated with an address.
 // The recipient is identified only by email — no account context is leaked in
 // the delivery metadata.
