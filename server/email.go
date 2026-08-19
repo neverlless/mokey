@@ -104,6 +104,20 @@ func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	return e.sendEmail(user, ctx, T("email_template.account_verify_subject"), "account-verify", vars)
 }
 
+// SendOTPRecoveryConfirmEmail sends the confirm-before-queue link for an
+// OTP lockout recovery request
+func (e *Emailer) SendOTPRecoveryConfirmEmail(user *ipa.User, ctx *fiber.Ctx) error {
+	token, err := NewToken(user.Username, user.Email, TokenOTPRecovery, e.storage)
+	if err != nil {
+		return err
+	}
+	vars := map[string]interface{}{
+		"link":         fmt.Sprintf("%s/auth/otprecovery/%s", BaseURL(ctx), token),
+		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+	}
+	return e.sendEmail(user, ctx, T("email_template.otprecovery_confirm_subject"), "otprecovery-confirm", vars)
+}
+
 // SendEmailChangeConfirmEmail sends a confirmation link to the NEW email
 // address. The change is only applied after the link is visited.
 func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, ctx *fiber.Ctx) error {

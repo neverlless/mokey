@@ -1,0 +1,17 @@
+[{{ $.site_name }}] ( {{ $.homepage }} )
+
+****************
+{{ T "email_template.otprecovery_confirm_greeting" }} {{ $.user.First }},
+****************
+
+{{ T "email_template.otprecovery_confirm_intro_part1" }}[{{ $.site_name }}]{{ T "email_template.otprecovery_confirm_intro_part2" }}{{ $.link_expires }}.
+
+{{ T "email_template.otprecovery_confirm_button" }}: {{ $.link }}
+
+{{ T "email_template.account_updated_security_notice_part1" }}{{ $.os }}{{ T "email_template.account_updated_security_notice_part2" }}{{ $.browser }}{{ T "email_template.account_updated_security_notice_part3" }}{{ T "email_template.account_updated_security_notice_part4" }} ( {{ $.contact }} ){{ T "email_template.account_updated_security_notice_part5" }}{{ T "email_template.account_updated_security_notice_help" }} ( {{ $.help_url }} ){{ T "email_template.account_updated_security_notice_part6" }}
+
+{{ T "email_template.closing_part1" }}[{{ $.site_name }}]{{ T "email_template.closing_part2" }}
+
+{{ T "email_template.otprecovery_confirm_trouble" }}
+
+{{ $.sig }}
