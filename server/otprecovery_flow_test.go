@@ -106,6 +106,13 @@ func TestOTPRecoveryAdminFlow(t *testing.T) {
 	// acting on a non-queued user is refused
 	resp = tcAdmin.postForm("/admin/user/otprecovery-approve", url.Values{"username": {"walter"}}, htmx)
 	assert.Equal(fiber.StatusInternalServerError, resp.StatusCode)
+
+	// stale entry for a user that no longer exists (FreeIPA NotFound) is dropped
+	router.addOTPRecoveryRequest("ghost")
+	resp = tcAdmin.get("/admin/otprecovery", htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotContains(readBody(t, resp), "ghost")
+	assert.Empty(router.loadOTPRecoveryRequests())
 }
 
 func TestOTPRecoveryAdminGating(t *testing.T) {

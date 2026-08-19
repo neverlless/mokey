@@ -397,9 +397,22 @@ func (r *Router) AdminOTPRecoveryList(c *fiber.Ctx) error {
 	requests := []otpRecoveryView{}
 	for _, req := range r.loadOTPRecoveryRequests() {
 		user, err := r.adminClient.UserShow(req.Username)
-		if err != nil || !user.OTPOnly() {
-			// stale: user gone, or no longer OTP-only (recovered through
-			// another path) — drop, mirroring stale group request cleanup
+		if err != nil {
+			if ierr, ok := err.(*ipa.IpaError); ok && ierr.Code == 4001 {
+				// user provably gone — drop, mirroring stale group request cleanup
+				r.removeOTPRecoveryRequest(req.Username)
+				continue
+			}
+			// transient error (e.g. FreeIPA outage) — keep the entry for
+			// the next render instead of dropping a legitimate request
+			log.WithFields(log.Fields{
+				"username": req.Username,
+				"err":      err,
+			}).Error("Failed to look up user for OTP recovery queue")
+			continue
+		}
+		if !user.OTPOnly() {
+			// no longer OTP-only (recovered through another path) — drop
 			r.removeOTPRecoveryRequest(req.Username)
 			continue
 		}
