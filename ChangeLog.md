@@ -1,5 +1,9 @@
 # Mokey ChangeLog
 
+## Unreleased
+
+- OTP recovery: login-page entry, email-confirmed queue, admin approve sets auth-type to password for re-enrollment (enumeration-safe)
+
 ## [v2.0.1] - 2026-08-18
 
 Visual refresh release.

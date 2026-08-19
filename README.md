@@ -59,6 +59,7 @@ exposing mokey to the internet.
 - Hydra Consent/Login Endpoint for OAuth/OpenID Connect
 - Group self-service with sponsor approval (vanilla FreeIPA member managers)
 - "What can I access" page — applicable HBAC/sudo rules and an hbactest simulator
+- OTP lockout recovery — admin-approved "lost my token" flow from the login page
 - Easy to install and configure (requires no FreeIPA/LDAP schema changes)
 
 ## Screenshots

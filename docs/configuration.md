@@ -80,6 +80,17 @@ service-account privilege. Host groups are shown as named badges without
 expanding them to individual hosts — use the simulator for a
 concrete-host answer.
 
+### OTP lockout recovery
+
+A user who lost their only OTP token can request recovery from the
+login page ("Lost OTP token?"). The request is confirmed via an emailed
+link first, then lands in the admin panel's "OTP recovery requests"
+queue. Approving it switches the account to password-only sign-in
+(`user-mod --user-auth-type=password` equivalent) so the user can sign
+in and re-enroll a token; their existing tokens are left in place.
+Nothing to configure; the form only acts on accounts that actually
+require OTP, and all responses are enumeration-safe.
+
 ## `[email]`
 
 | Option | Type | Default | Description |

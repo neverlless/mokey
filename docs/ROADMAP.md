@@ -191,13 +191,13 @@ Keycloak / Authentik / Zitadel / FreeIPA Web UI):
 
 Ordered by demand strength from the Aug 2026 (post-v2.0) sweep:
 
-- [ ] OTP lockout self-recovery: a "lost my token" flow — email-verified
+- [x] OTP lockout self-recovery: a "lost my token" flow — email-verified
       request lands in an admin queue; approval disables the user's OTP
       tokens and restores password auth. Closes the structural FreeIPA
       catch-22 (lost token blocks both password reset and token
       management; today only `ipa user-mod --user-auth-type=password`
       by an admin unsticks the user) — recurring freeipa-users pain
-      across years
+      across years. Shipped: login-page entry, email-confirmed queue, admin approve = auth-type password.
 - [ ] Connected apps: list OAuth clients the user has granted access
       to, with per-app revoke — Hydra admin API already integrated
       (`ListOAuth2ConsentSessions`/`RevokeOAuth2ConsentSessions`);
