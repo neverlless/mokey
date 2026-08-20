@@ -366,6 +366,27 @@ func (e *Emailer) quotedBody(body []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// slackMessageFor builds the Slack DM text for a given email template. Most
+// templates fall through to a generic notice; a few carry information (like
+// the username list) that's worth surfacing directly in Slack rather than
+// pointing the user at their email.
+func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ipa.User) string {
+	switch tmpl {
+	case "password-reset":
+		return fmt.Sprintf(
+			"[%s] (<%s|%s>)\n\n****************\nHi %s,\n****************\n\nYou recently requested to reset your password for your [%s] account. Use the link below to reset it. This password reset is only valid for the next %s.\n\nReset your password: <%s|Reset Link>\n",
+			data["site_name"], data["homepage"], data["site_name"], user.First, data["site_name"], data["link_expires"], data["link"],
+		)
+	case "account-updated":
+		return "Your password has been reset successfully."
+	case "username-reminder":
+		usernames, _ := data["usernames"].([]string)
+		return fmt.Sprintf("Notification from %s: %s\n\n%s", data["site_name"], subject, strings.Join(usernames, "\n"))
+	default:
+		return fmt.Sprintf("Notification from %s: %s", data["site_name"], subject)
+	}
+}
+
 func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string, data map[string]interface{}) error {
 	log.WithFields(log.Fields{
 		"email":    user.Email,
@@ -534,20 +555,7 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 	}
 
 	if e.slackNotifier != nil {
-		var slackMessage string
-		switch tmpl {
-		case "password-reset":
-			slackMessage = fmt.Sprintf(
-				"[%s] (<%s|%s>)\n\n****************\nHi %s,\n****************\n\nYou recently requested to reset your password for your [%s] account. Use the link below to reset it. This password reset is only valid for the next %s.\n\nReset your password: <%s|Reset Link>\n",
-				data["site_name"], data["homepage"], data["site_name"], user.First, data["site_name"], data["link_expires"], data["link"],
-			)
-		case "account-updated":
-			slackMessage = "Your password has been reset successfully."
-		default:
-			slackMessage = fmt.Sprintf("Notification from %s: %s", data["site_name"], subject)
-		}
-
-		err = e.slackNotifier.SendSlackMessage(user.Email, slackMessage)
+		err = e.slackNotifier.SendSlackMessage(user.Email, slackMessageFor(tmpl, subject, data, user))
 		if err != nil {
 			log.WithFields(log.Fields{
 				"email":    user.Email,
