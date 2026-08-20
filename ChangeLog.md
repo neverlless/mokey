@@ -1,6 +1,8 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.1.0] - 2026-08-20
+
+Recovery and account hygiene release.
 
 - OTP recovery: login-page entry, email-confirmed queue, admin approve sets auth-type to password for re-enrollment (enumeration-safe)
 - Connected apps: new card on the Security page lists OAuth clients the
@@ -9,6 +11,10 @@
   sponsor approval queue (FreeIPA only allows a sponsor's own session to
   mutate membership), plus an instant member-removal action for sponsors
   on the groups they manage
+- Fixed: the Slack notification for a username reminder omitted the
+  username(s) — the email had them, Slack only showed a generic line
+- Fixed: the "Forgot Username" success message could overflow its card
+  instead of wrapping; added a "Log in" button back to the login page
 
 ## [v2.0.1] - 2026-08-18
 
