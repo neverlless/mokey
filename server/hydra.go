@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	hydra "github.com/ory/hydra-client-go/v26"
@@ -12,6 +13,48 @@ import (
 
 type FakeTLSTransport struct {
 	T http.RoundTripper
+}
+
+// connectedApp is one OAuth client the user has granted consent to, shown
+// on the Security page.
+type connectedApp struct {
+	ClientID  string
+	Name      string
+	Scope     []string
+	GrantedAt time.Time
+}
+
+// listConnectedApps lists the caller's granted OAuth clients via Hydra's
+// admin API. r.hydraClient must be non-nil (Hydra configured).
+func (r *Router) listConnectedApps(username string) ([]connectedApp, error) {
+	sessions, _, err := r.hydraClient.OAuth2API.ListOAuth2ConsentSessions(context.Background()).Subject(username).Execute()
+	if err != nil {
+		return nil, err
+	}
+
+	apps := []connectedApp{}
+	for _, s := range sessions {
+		app := connectedApp{Scope: s.GrantScope}
+		if s.HandledAt != nil {
+			app.GrantedAt = *s.HandledAt
+		}
+		if cr := s.ConsentRequest; cr != nil && cr.Client != nil {
+			app.ClientID = cr.Client.GetClientId()
+			app.Name = cr.Client.GetClientName()
+			if app.Name == "" {
+				app.Name = app.ClientID
+			}
+		}
+		apps = append(apps, app)
+	}
+	return apps, nil
+}
+
+// revokeConnectedApp revokes one client's consent for the caller.
+func (r *Router) revokeConnectedApp(username, clientID string) error {
+	_, err := r.hydraClient.OAuth2API.RevokeOAuth2ConsentSessions(context.Background()).
+		Subject(username).Client(clientID).Execute()
+	return err
 }
 
 func (ftt *FakeTLSTransport) RoundTrip(req *http.Request) (*http.Response, error) {

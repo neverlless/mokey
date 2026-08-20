@@ -144,8 +144,10 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	}
 
 	app.Post("/groups/request", r.RequireLogin, r.RequireHTMX, r.GroupRequestJoin)
+	app.Post("/groups/leave", r.RequireLogin, r.RequireHTMX, r.GroupRequestLeave)
 	app.Post("/groups/approve", r.RequireLogin, r.RequireHTMX, r.GroupApprove)
 	app.Post("/groups/deny", r.RequireLogin, r.RequireHTMX, r.GroupDeny)
+	app.Post("/groups/remove-member", r.RequireLogin, r.RequireHTMX, r.GroupRemoveMember)
 
 	// Account Create
 	if viper.GetBool("accounts.enable_signup") {
@@ -237,6 +239,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 		app.Get("/oauth/consent", r.ConsentGet)
 		app.Get("/oauth/login", r.LoginOAuthGet)
 		app.Get("/oauth/error", r.HydraError)
+		app.Post("/security/apps/revoke", r.RequireLogin, r.RequireHTMX, r.AppRevoke)
 	}
 
 	// Prometheus metrics
@@ -291,10 +294,7 @@ func (r *Router) Index(c *fiber.Ctx) error {
 	if path == "sshkey" {
 		vars["keys"] = user.SSHAuthKeys
 	} else if path == "security" {
-		if sess, err := r.session(c); err == nil {
-			vars["sessions"] = r.userSessions(user.Username, sess.ID())
-		}
-		vars["activity"] = auditUserRecent(r.storage, user.Username, 15)
+		r.securityVars(c, vars)
 	} else if path == "passkey" {
 		passkeys, err := r.passkeyList(c)
 		if err != nil {

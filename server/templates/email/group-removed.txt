@@ -4,7 +4,7 @@
 {{ T "email_template.password_expiry_greeting" }} {{ $.user.First }},
 ****************
 
-{{ T "email_template.group_request_body_part1" }}{{ $.requester }}{{ if eq $.type "leave" }}{{ T "email_template.group_leave_request_body_part2" }}{{ else }}{{ T "email_template.group_request_body_part2" }}{{ end }}{{ $.group }}{{ T "email_template.group_request_body_part3" }}
+{{ T "email_template.group_removed_body" }}{{ $.group }}.
 
 {{ $.base_url }}/groups
 

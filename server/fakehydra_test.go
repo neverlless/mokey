@@ -11,6 +11,19 @@ import (
 	"sync"
 )
 
+// fakeConsentSession is one granted app for a subject, keyed by client ID
+type fakeConsentSession struct {
+	ClientID   string
+	ClientName string
+	Scope      []string
+	HandledAt  string // RFC3339
+}
+
+type revokedConsent struct {
+	Subject string
+	Client  string
+}
+
 type fakeHydra struct {
 	srv *httptest.Server
 
@@ -19,19 +32,23 @@ type fakeHydra struct {
 	loginRequests  map[string]map[string]interface{} // login_challenge -> response object
 	consentSubject map[string]string                 // consent_challenge -> subject
 	logoutSubject  map[string]string                 // logout_challenge -> subject
+	// consent sessions ("connected apps"), keyed by subject
+	consentSessions map[string][]fakeConsentSession
 	// recorded accept calls
 	acceptedLogins   []string               // subjects passed to login/accept
 	acceptedConsent  map[string]interface{} // last consent accept body
 	acceptedLogouts  []string               // logout challenges accepted
 	revokedSubjects  []string               // DELETE sessions/login subjects
+	revokedConsents  []revokedConsent       // DELETE sessions/consent calls
 	rememberDuration int64
 }
 
 func newFakeHydra() *fakeHydra {
 	f := &fakeHydra{
-		loginRequests:  make(map[string]map[string]interface{}),
-		consentSubject: make(map[string]string),
-		logoutSubject:  make(map[string]string),
+		loginRequests:   make(map[string]map[string]interface{}),
+		consentSubject:  make(map[string]string),
+		logoutSubject:   make(map[string]string),
+		consentSessions: make(map[string][]fakeConsentSession),
 	}
 
 	mux := http.NewServeMux()
@@ -42,6 +59,7 @@ func newFakeHydra() *fakeHydra {
 	mux.HandleFunc("/admin/oauth2/auth/requests/logout", f.getLogout)
 	mux.HandleFunc("/admin/oauth2/auth/requests/logout/accept", f.acceptLogout)
 	mux.HandleFunc("/admin/oauth2/auth/sessions/login", f.revokeSessions)
+	mux.HandleFunc("/admin/oauth2/auth/sessions/consent", f.consentSessionsHandler)
 
 	f.srv = httptest.NewServer(mux)
 	return f
@@ -72,6 +90,12 @@ func (f *fakeHydra) seedLogout(challenge, subject string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.logoutSubject[challenge] = subject
+}
+
+func (f *fakeHydra) seedConsentSession(subject string, s fakeConsentSession) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.consentSessions[subject] = append(f.consentSessions[subject], s)
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
@@ -159,4 +183,50 @@ func (f *fakeHydra) revokeSessions(w http.ResponseWriter, r *http.Request) {
 	defer f.mu.Unlock()
 	f.revokedSubjects = append(f.revokedSubjects, r.URL.Query().Get("subject"))
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// consentSessionsHandler serves ListOAuth2ConsentSessions (GET) and
+// RevokeOAuth2ConsentSessions (DELETE), both scoped by ?subject=.
+func (f *fakeHydra) consentSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	subject := r.URL.Query().Get("subject")
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	switch r.Method {
+	case http.MethodGet:
+		sessions := []map[string]interface{}{}
+		for _, s := range f.consentSessions[subject] {
+			session := map[string]interface{}{
+				"consent_request": map[string]interface{}{
+					"challenge": "consent-" + s.ClientID,
+					"client": map[string]interface{}{
+						"client_id":   s.ClientID,
+						"client_name": s.ClientName,
+					},
+				},
+				"grant_scope": s.Scope,
+			}
+			if s.HandledAt != "" {
+				session["handled_at"] = s.HandledAt
+			}
+			sessions = append(sessions, session)
+		}
+		writeJSON(w, sessions)
+
+	case http.MethodDelete:
+		client := r.URL.Query().Get("client")
+		f.revokedConsents = append(f.revokedConsents, revokedConsent{Subject: subject, Client: client})
+		kept := f.consentSessions[subject][:0]
+		for _, s := range f.consentSessions[subject] {
+			if s.ClientID != client {
+				kept = append(kept, s)
+			}
+		}
+		f.consentSessions[subject] = kept
+		w.WriteHeader(http.StatusNoContent)
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }

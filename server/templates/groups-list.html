@@ -15,8 +15,8 @@
 {{ if $.my_requests }}
 <h5>{{ T "groups.my_requests" }}</h5>
 <div class="mb-4">
-	{{ range $g := $.my_requests }}
-	<span class="badge rounded-pill bg-secondary">{{ $g }}</span>
+	{{ range $r := $.my_requests }}
+	<span class="badge rounded-pill bg-secondary">{{ $r.Group }}{{ if eq $r.Type "leave" }} ({{ T "groups.leave_pending" }}){{ end }}</span>
 	{{ end }}
 </div>
 {{ end }}
@@ -44,6 +44,29 @@
 </table>
 {{ end }}
 
+{{ if $.leavable }}
+<h5>{{ T "groups.leavable" }}</h5>
+<table class="table align-middle mb-4">
+	<tbody>
+	{{ range $g := $.leavable }}
+	<tr>
+		<td><strong>{{ $g.Name }}</strong>
+			{{ if $g.Description }}<div class="text-muted small">{{ $g.Description }}</div>{{ end }}
+		</td>
+		<td class="text-end">
+			<button class="btn btn-sm btn-outline-danger" hx-post="/groups/leave"
+			        hx-vals='{"group": "{{ $g.Name }}"}'
+			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+			        hx-target="#groups-pane" hx-swap="outerHTML">
+				{{ T "groups.request_leave" }}
+			</button>
+		</td>
+	</tr>
+	{{ end }}
+	</tbody>
+</table>
+{{ end }}
+
 {{ if $.managed }}
 <h5>{{ T "groups.managed" }}</h5>
 {{ range $m := $.managed }}
@@ -54,7 +77,7 @@
 		<tbody>
 		{{ range $req := $m.Requests }}
 		<tr>
-			<td>{{ $req.Username }}</td>
+			<td>{{ $req.Username }}{{ if eq $req.Type "leave" }} ({{ T "groups.leave_pending" }}){{ end }}</td>
 			<td class="text-end">
 				<button class="btn btn-sm btn-success" hx-post="/groups/approve"
 				        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $req.Username }}"}'
@@ -76,6 +99,27 @@
 	</table>
 	{{ else }}
 	<div class="text-muted small">{{ T "groups.no_requests" }}</div>
+	{{ end }}
+	{{ if $m.Group.Members }}
+	<div class="text-muted small mb-1">{{ T "groups.members" }}</div>
+	<table class="table table-sm align-middle">
+		<tbody>
+		{{ range $member := $m.Group.Members }}
+		<tr>
+			<td>{{ $member }}</td>
+			<td class="text-end">
+				<button class="btn btn-sm btn-outline-danger" hx-post="/groups/remove-member"
+				        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $member }}"}'
+				        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+				        hx-target="#groups-pane" hx-swap="outerHTML"
+				        hx-confirm="{{ T "groups.remove_member_confirm" }}">
+					{{ T "groups.remove_member" }}
+				</button>
+			</td>
+		</tr>
+		{{ end }}
+		</tbody>
+	</table>
 	{{ end }}
 </div>
 {{ end }}

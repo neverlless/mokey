@@ -260,33 +260,54 @@ func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) erro
 	return e.sendEmail(user, nil, T("email_template.password_expiry_subject"), "password-expiry", vars)
 }
 
-// SendGroupRequestEmail notifies a group sponsor about a pending join
-// request. Called from a goroutine after the handler returns — no request
-// context, mirrors SendNewLoginEmail.
-func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group string) error {
+// SendGroupRequestEmail notifies a group sponsor about a pending join or
+// leave request. Called from a goroutine after the handler returns — no
+// request context, mirrors SendNewLoginEmail.
+func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group, reqType string) error {
 	vars := map[string]interface{}{
 		"requester": requester,
 		"group":     group,
+		"type":      reqType,
 	}
 
-	return e.sendEmail(manager, nil, T("email_template.group_request_subject")+group, "group-request", vars)
+	subject := T("email_template.group_request_subject")
+	if reqType == groupRequestLeave {
+		subject = T("email_template.group_leave_request_subject")
+	}
+	return e.sendEmail(manager, nil, subject+group, "group-request", vars)
 }
 
-// SendGroupDecisionEmail notifies the requester that a sponsor approved
-// or denied their join request. Called synchronously from GroupApprove/
-// GroupDeny in the request path with a nil ctx, so the base URL comes from
-// config rather than the request — mirrors SendNewLoginEmail's nil-ctx
-// mechanism.
-func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved bool) error {
+// SendGroupDecisionEmail notifies the requester that a sponsor approved or
+// denied their join or leave request. Called synchronously from
+// GroupApprove/GroupDeny in the request path with a nil ctx, so the base
+// URL comes from config rather than the request — mirrors
+// SendNewLoginEmail's nil-ctx mechanism.
+func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved bool, reqType string) error {
 	vars := map[string]interface{}{
 		"group":    group,
 		"approved": approved,
+		"type":     reqType,
 	}
+	leave := reqType == groupRequestLeave
 	subject := T("email_template.group_denied_subject")
-	if approved {
+	switch {
+	case approved && leave:
+		subject = T("email_template.group_leave_approved_subject")
+	case !approved && leave:
+		subject = T("email_template.group_leave_denied_subject")
+	case approved:
 		subject = T("email_template.group_approved_subject")
 	}
 	return e.sendEmail(user, nil, subject+group, "group-decision", vars)
+}
+
+// SendGroupRemovedEmail notifies a member that a sponsor removed them from
+// a group directly (not via a leave request they initiated).
+func (e *Emailer) SendGroupRemovedEmail(user *ipa.User, group string) error {
+	vars := map[string]interface{}{
+		"group": group,
+	}
+	return e.sendEmail(user, nil, T("email_template.group_removed_subject")+group, "group-removed", vars)
 }
 
 // SendOTPRecoveryDecisionEmail notifies the requester that an admin approved

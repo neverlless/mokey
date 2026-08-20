@@ -5,7 +5,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (r *Router) securityList(c *fiber.Ctx, vars fiber.Map) error {
+// securityVars fills the Security page sections: sessions, activity, and
+// (when Hydra is configured) connected apps. Shared by the HTMX partial
+// render and the non-HTMX full-page Index render.
+func (r *Router) securityVars(c *fiber.Ctx, vars fiber.Map) {
 	user := r.user(c)
 	vars["user"] = user
 
@@ -14,11 +17,51 @@ func (r *Router) securityList(c *fiber.Ctx, vars fiber.Map) error {
 	}
 	vars["activity"] = auditUserRecent(r.storage, user.Username, 15)
 
+	if r.hydraClient != nil {
+		apps, err := r.listConnectedApps(user.Username)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"username": user.Username,
+				"err":      err,
+			}).Error("Failed to list connected apps")
+			vars["apps_error"] = true
+		} else {
+			vars["connected_apps"] = apps
+		}
+	}
+}
+
+func (r *Router) securityList(c *fiber.Ctx, vars fiber.Map) error {
+	r.securityVars(c, vars)
 	return c.Render("security.html", vars)
 }
 
 func (r *Router) SecurityList(c *fiber.Ctx) error {
 	return r.securityList(c, fiber.Map{})
+}
+
+// AppRevoke revokes the caller's consent for one connected OAuth client.
+func (r *Router) AppRevoke(c *fiber.Ctx) error {
+	vars := fiber.Map{}
+	user := r.user(c)
+	clientID := c.FormValue("client")
+
+	if err := r.revokeConnectedApp(user.Username, clientID); err != nil {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+			"client":   clientID,
+			"err":      err,
+		}).Error("Failed to revoke connected app")
+		vars["message"] = T("security.apps_revoke_failed")
+	} else {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+			"client":   clientID,
+			"ip":       RemoteIP(c),
+		}).Info("AUDIT User revoked app access")
+	}
+
+	return r.securityList(c, vars)
 }
 
 func (r *Router) TwoFactorDisable(c *fiber.Ctx) error {

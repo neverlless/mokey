@@ -62,4 +62,13 @@ func TestGroupRPCLayer(t *testing.T) {
 	// non-manager is rejected by the fake's permission check
 	outsider := userSession(t, fake, "jesse", "Secret123!")
 	assert.Error(groupAddMember(outsider, "plain", "jesse"))
+
+	// sponsor removes a member with their own session
+	assert.NoError(groupRemoveMember(sponsor, "chemists", "jesse"))
+	g, _ = groupShow(sponsor, "chemists")
+	assert.NotContains(g.Members, "jesse")
+
+	// non-manager is rejected by the fake's permission check
+	assert.NoError(groupAddMember(sponsor, "chemists", "jesse"))
+	assert.Error(groupRemoveMember(outsider, "chemists", "jesse"))
 }

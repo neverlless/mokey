@@ -101,6 +101,36 @@
   </ul>
 </div>
 
+{{ if $.apps_error }}
+<div class="alert alert-danger mt-4">{{ T "account.fatal_system_error" }}</div>
+{{ end }}
+
+{{ if $.connected_apps }}
+<div class="card mt-4">
+  <div class="card-header">{{ T "security.apps_title" }}</div>
+  <ul class="list-group list-group-flush">
+    {{ range $a := $.connected_apps }}
+    <li class="list-group-item d-flex w-100 justify-content-between align-items-center">
+      <div>
+        <strong>{{ $a.Name }}</strong>
+        <div class="text-muted small">
+          {{ range $i, $sc := $a.Scope }}{{ if $i }}, {{ end }}{{ $sc }}{{ end }}
+          {{ if not $a.GrantedAt.IsZero }} · {{ T "security.apps_granted" }} {{ TimeAgo $a.GrantedAt }}{{ end }}
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
+              hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+              hx-vals='{"client": "{{ $a.ClientID }}"}'
+              hx-post="/security/apps/revoke" hx-target="#security"
+              hx-confirm="{{ T "security.apps_revoke_confirm" }}">
+        {{ T "security.apps_revoke" }}
+      </button>
+    </li>
+    {{ end }}
+  </ul>
+</div>
+{{ end }}
+
 <div class="card mt-4">
   <div class="card-header">{{ T "security.activity_title" }}</div>
   <ul class="list-group list-group-flush">

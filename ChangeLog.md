@@ -3,6 +3,12 @@
 ## Unreleased
 
 - OTP recovery: login-page entry, email-confirmed queue, admin approve sets auth-type to password for re-enrollment (enumeration-safe)
+- Connected apps: new card on the Security page lists OAuth clients the
+  user has granted access to (via Hydra's admin API), with per-app revoke
+- Leave group: mirrors the join flow — leave requests go through the same
+  sponsor approval queue (FreeIPA only allows a sponsor's own session to
+  mutate membership), plus an instant member-removal action for sponsors
+  on the groups they manage
 
 ## [v2.0.1] - 2026-08-18
 

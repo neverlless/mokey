@@ -82,3 +82,13 @@ func groupAddMember(client *ipa.Client, cn, uid string) error {
 	}
 	return err
 }
+
+func groupRemoveMember(client *ipa.Client, cn, uid string) error {
+	res, err := ipaSessionRPC(client, "group_remove_member", []string{cn}, map[string]interface{}{"user": uid})
+	if err == nil && res != nil {
+		if f := gjson.GetBytes(res.Result.Data, "failed.member.user"); f.Exists() && len(f.Array()) > 0 {
+			return &ipa.IpaError{Code: 2100, Message: f.Array()[0].String()}
+		}
+	}
+	return err
+}

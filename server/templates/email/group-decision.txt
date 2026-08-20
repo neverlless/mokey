@@ -4,7 +4,7 @@
 {{ T "email_template.password_expiry_greeting" }} {{ $.user.First }},
 ****************
 
-{{ if $.approved }}{{ T "email_template.group_decision_approved" }}{{ else }}{{ T "email_template.group_decision_denied" }}{{ end }}{{ $.group }}.
+{{ if eq $.type "leave" }}{{ if $.approved }}{{ T "email_template.group_decision_leave_approved" }}{{ else }}{{ T "email_template.group_decision_leave_denied" }}{{ end }}{{ else }}{{ if $.approved }}{{ T "email_template.group_decision_approved" }}{{ else }}{{ T "email_template.group_decision_denied" }}{{ end }}{{ end }}{{ $.group }}.
 
 {{ $.base_url }}/groups
 

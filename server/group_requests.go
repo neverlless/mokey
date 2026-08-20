@@ -17,10 +17,14 @@ import (
 const (
 	groupRequestsPrefix = "grouprequests-"
 	groupRequestsTTL    = 30 * 24 * time.Hour
+
+	groupRequestJoin  = "join"
+	groupRequestLeave = "leave"
 )
 
 type GroupRequest struct {
 	Username    string    `json:"username"`
+	Type        string    `json:"type"`
 	RequestedAt time.Time `json:"requested_at"`
 }
 
@@ -48,15 +52,15 @@ func (r *Router) saveGroupRequests(group string, reqs []GroupRequest) {
 	r.storage.Set(groupRequestsPrefix+group, raw, groupRequestsTTL)
 }
 
-// addGroupRequest queues a join request; false when already queued
-func (r *Router) addGroupRequest(group, username string) bool {
+// addGroupRequest queues a join or leave request; false when already queued
+func (r *Router) addGroupRequest(group, username, reqType string) bool {
 	reqs := r.loadGroupRequests(group)
 	for _, req := range reqs {
 		if req.Username == username {
 			return false
 		}
 	}
-	r.saveGroupRequests(group, append(reqs, GroupRequest{Username: username, RequestedAt: time.Now()}))
+	r.saveGroupRequests(group, append(reqs, GroupRequest{Username: username, Type: reqType, RequestedAt: time.Now()}))
 	return true
 }
 

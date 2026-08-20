@@ -788,6 +788,27 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		g.Members = append(g.Members, uid)
 		rpcResult(w, f.groupJSON(cn, g))
 
+	case "group_remove_member":
+		cn := args[0]
+		g, ok := f.groups[cn]
+		if !ok {
+			rpcError(w, 4001, cn+": group not found")
+			return
+		}
+		if !f.isGroupManager(caller, g) {
+			rpcError(w, 2100, "Insufficient access: not a member manager")
+			return
+		}
+		uid, _ := opts["user"].(string)
+		kept := g.Members[:0]
+		for _, m := range g.Members {
+			if m != uid {
+				kept = append(kept, m)
+			}
+		}
+		g.Members = kept
+		rpcResult(w, f.groupJSON(cn, g))
+
 	case "stageuser_add":
 		username := args[0]
 		if _, exists := f.stageusers[username]; exists {

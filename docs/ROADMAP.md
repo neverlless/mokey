@@ -198,13 +198,19 @@ Ordered by demand strength from the Aug 2026 (post-v2.0) sweep:
       management; today only `ipa user-mod --user-auth-type=password`
       by an admin unsticks the user) — recurring freeipa-users pain
       across years. Shipped: login-page entry, email-confirmed queue, admin approve = auth-type password.
-- [ ] Connected apps: list OAuth clients the user has granted access
+- [x] Connected apps: list OAuth clients the user has granted access
       to, with per-app revoke — Hydra admin API already integrated
       (`ListOAuth2ConsentSessions`/`RevokeOAuth2ConsentSessions`);
-      table stakes in Keycloak/Zitadel account consoles
-- [ ] Leave group: the mirror of the v2.0 join flow — leave requests
+      table stakes in Keycloak/Zitadel account consoles. Shipped: new
+      card on the Security page, revoke calls Hydra directly (no local
+      state to keep in sync).
+- [x] Leave group: the mirror of the v2.0 join flow — leave requests
       through the same sponsor queue, plus a member-removal action for
-      sponsors on the groups they manage (noggin parity)
+      sponsors on the groups they manage (noggin parity). Membership
+      can only be mutated by a sponsor's own FreeIPA session (never the
+      admin client), so leaving queues for approval like joining does;
+      sponsor-initiated removal is instant since it's the sponsor's own
+      standing authority, not a new grant.
 
 Deferred pending demand: username self-rename (noggin#105 is the
 ecosystem's top ask, but renames are operationally risky — revisit if
