@@ -238,6 +238,11 @@ func TestUsernameForgotUniformResponse(t *testing.T) {
 	}
 	assert.Equal(bodies["walter@example.com"], bodies["nobody@example.com"])
 	assert.Equal(bodies["walter@example.com"], bodies["skyler@example.com"])
+
+	// success page offers a way back to login, and doesn't render the
+	// long confirmation sentence inside a non-wrapping badge
+	assert.Contains(bodies["walter@example.com"], `href="/auth/login"`)
+	assert.NotContains(bodies["walter@example.com"], `class="badge bg-success"`)
 }
 
 func TestSignupAdminApprovalFlow(t *testing.T) {

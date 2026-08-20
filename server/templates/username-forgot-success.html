@@ -5,8 +5,11 @@
     <div class="login-body p-4 p-md-5">
         <div class="login-body-wrapper mx-auto">
             <div class="text-center">
-            <p><span class="badge bg-success"><i class="fa-regular fa-circle-check"></i> {{ T "username_forgot.email_sent" }}</span></p>
+            <div class="alert alert-success" role="alert"><i class="fa-regular fa-circle-check"></i> {{ T "username_forgot.email_sent" }}</div>
             <p>{{ T "common.check_email" }}</p>
+            <div class="d-grid gap-2 mt-3">
+              <a href="/auth/login" class="btn btn-primary">{{ T "common.login" }}</a>
+            </div>
             </div>
         </div>
     </div>
