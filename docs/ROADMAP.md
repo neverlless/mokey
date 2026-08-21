@@ -31,7 +31,7 @@ Priorities may shift based on feedback. Open an
       ubccr#150 (diagnosed — stale templates_dir overrides after upgrade;
       documented in the configuration reference)
 - [x] Get listed on freeipa.org Self-Service Password Reset page (ubccr#51 —
-      PR [freeipa.github.io#70](https://github.com/freeipa/freeipa.github.io/pull/70) submitted, awaiting review)
+      PR [freeipa.github.io#70](https://github.com/freeipa/freeipa.github.io/pull/70) merged 2026-08-21)
 
 ## v1.3 — Feature gap
 
