@@ -135,7 +135,7 @@ func (r *Router) GroupRequestJoin(c *fiber.Ctx) error {
 			"ip":       RemoteIP(c),
 		}).Info("AUDIT group join requested")
 
-		go r.notifyGroupSponsors(g, user.Username, groupRequestJoin)
+		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestJoin) })
 	}
 
 	vars := fiber.Map{"user": user}
@@ -166,7 +166,7 @@ func (r *Router) GroupRequestLeave(c *fiber.Ctx) error {
 			"ip":       RemoteIP(c),
 		}).Info("AUDIT group leave requested")
 
-		go r.notifyGroupSponsors(g, user.Username, groupRequestLeave)
+		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestLeave) })
 	}
 
 	vars := fiber.Map{"user": user}
@@ -296,7 +296,7 @@ func (r *Router) GroupRemoveMember(c *fiber.Ctx) error {
 		"ip":       RemoteIP(c),
 	}).Info("AUDIT group member removed")
 
-	go r.notifyGroupRemoved(target, g.Name)
+	r.goBG(func() { r.notifyGroupRemoved(target, g.Name) })
 
 	vars := fiber.Map{"user": user}
 	r.groupsVars(c, vars)

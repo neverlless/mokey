@@ -240,7 +240,7 @@ func (r *Router) notifyNewLogin(c *fiber.Ctx, username string) {
 	ua := useragent.Parse(c.Get(fiber.HeaderUserAgent))
 	ip := RemoteIP(c)
 
-	go func() {
+	r.goBG(func() {
 		user, err := r.adminClient.UserShow(username)
 		if err != nil || user.Email == "" {
 			return
@@ -251,5 +251,5 @@ func (r *Router) notifyNewLogin(c *fiber.Ctx, username string) {
 				"err":      err,
 			}).Error("Failed to send new login email")
 		}
-	}()
+	})
 }

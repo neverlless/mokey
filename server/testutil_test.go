@@ -119,6 +119,10 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *fakeI
 	if err != nil {
 		t.Fatalf("failed to build app: %s", err)
 	}
+	// Handlers fire notification emails from tracked background
+	// goroutines (Router.goBG); wait for them here so they can't still be
+	// reading global viper config when the next test resets it.
+	t.Cleanup(router.bg.Wait)
 
 	return app, router, fake
 }

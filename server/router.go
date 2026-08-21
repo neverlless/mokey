@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,6 +27,20 @@ type Router struct {
 
 	// Prometheus metrics
 	metrics *Metrics
+
+	// bg tracks fire-and-forget notification goroutines spawned by
+	// handlers, so tests can wait for them to finish before the next
+	// test resets shared state (e.g. global viper config).
+	bg sync.WaitGroup
+}
+
+// goBG runs fn in a tracked goroutine (see bg above).
+func (r *Router) goBG(fn func()) {
+	r.bg.Add(1)
+	go func() {
+		defer r.bg.Done()
+		fn()
+	}()
 }
 
 func NewRouter(storage fiber.Storage) (*Router, error) {
