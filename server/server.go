@@ -218,10 +218,13 @@ func newFiber() (*fiber.App, *Router, error) {
 		MaxAge: 900,
 	}))
 
-	if viper.IsSet("site.favicon") {
-		app.Use(favicon.New(favicon.Config{
-			File: viper.GetString("site.favicon"),
-		}))
+	// SendFile derives the Content-Type from the extension; the favicon
+	// middleware would announce a configured .png or .svg as image/x-icon
+	if custom := viper.GetString("site.favicon"); custom != "" {
+		app.Get("/favicon.ico", func(c *fiber.Ctx) error {
+			c.Set(fiber.HeaderCacheControl, "public, max-age=31536000")
+			return c.SendFile(custom)
+		})
 	} else {
 		app.Use(favicon.New(favicon.Config{
 			File:       "images/favicon.ico",

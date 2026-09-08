@@ -16,7 +16,7 @@ Addresses upstream request
 | `help_url` | string | — | Link to your help pages, shown in the navbar and emails. |
 | `getting_started_url` | string | — | Link to a getting-started guide included in the welcome email. |
 | `tos_url` | string | — | Link to your terms of service, shown on the signup page. |
-| `favicon` | string | built-in | Path to a custom `favicon.ico`. |
+| `favicon` | string | built-in | Path to a custom favicon file. `.ico`, `.png` and `.svg` are served with the right content type. |
 | `logo` | string | built-in | Path to a custom logo image shown on the pages. |
 | `css` | string | built-in | Path to a custom CSS file to override styles. |
 | `templates_dir` | string | — | Directory with local template overrides. Any template file placed there overrides the embedded one. **Overridden templates must be refreshed after every mokey upgrade** — stale copies reference old asset paths and break pages (see ubccr/mokey#150). |
