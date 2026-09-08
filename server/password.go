@@ -111,15 +111,18 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 		"user": user,
 	}
 
+	// every render of this page shows the policy, including the one that
+	// reports a rejected password — that is when the user needs it most
+	if policy, err := pwPolicyShow(r.adminClient, user.Username); err == nil {
+		vars["pwpolicy"] = policy
+	} else {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+			"err":      err,
+		}).Warn("Failed to fetch password policy for display")
+	}
+
 	if c.Method() == fiber.MethodGet {
-		if policy, err := pwPolicyShow(r.adminClient, user.Username); err == nil {
-			vars["pwpolicy"] = policy
-		} else {
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"err":      err,
-			}).Warn("Failed to fetch password policy for display")
-		}
 		return c.Render("password.html", vars)
 	}
 

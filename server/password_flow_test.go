@@ -217,3 +217,28 @@ func futureMarker(t *testing.T, router *Router, username string) {
 		t.Fatalf("failed to set marker: %s", err)
 	}
 }
+
+// #19: the policy is shown on the GET form but vanished on the POST
+// re-render, exactly when the user needs it to fix a rejected password
+func TestPasswordChangePolicyVisibleOnError(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	// baseline: the policy renders on the form itself
+	resp := tc.get("/password/change", htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), T("password.policy_title"))
+
+	// and must still render when the submission is rejected
+	resp = tc.postForm("/password/change", url.Values{
+		"password":     {"Secret123!"},
+		"newpassword":  {"NewSecret456!"},
+		"newpassword2": {"Mismatch789!"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), T("password.policy_title"))
+}
