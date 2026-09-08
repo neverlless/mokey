@@ -292,6 +292,8 @@ enter_current = "Please enter your current password"
 same_as_new = "Current password is the same as new password. Please set a different password."
 min_length = "Password does not conform to policy. Min length: %d"
 policy_not_met = "Password does not conform to policy. Try including both upper/lower case, numbers, and other characters"
+invalid_current = "Your current password is incorrect"
+rejected_by_policy = "FreeIPA rejected this password. Check the requirements above — it may also repeat a recent password or come too soon after your last change."
 
 [password_change]
 title = "Change Password"

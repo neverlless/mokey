@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"net/url"
 	"strconv"
 	"testing"
@@ -281,6 +282,93 @@ func TestSignupEnforcesFreeIPAPasswordPolicy(t *testing.T) {
 		"last":      {"Pinkman"},
 		"password":  {"abcdefg1"},
 		"password2": {"abcdefg1"},
+	}, nil)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(fake.users["jesse"])
+}
+
+// #18: FreeIPA tells mokey exactly why it refused a password change, and the
+// expired-password form answered every refusal with an empty 500 that htmx
+// rendered as a generic error
+func TestPasswordExpiredSurfacesFreeIPAReason(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.min_passwd_len", 4)
+	})
+	// mokey sees a laxer policy than change_password enforces, so its own
+	// pre-check passes and FreeIPA is the one that rejects
+	fake.reportedMinLength = 4
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Expired: true})
+
+	// reach the expired-password form with the real password, then submit
+	// whatever the case under test needs
+	expiredForm := func(login, current, newpass string) *http.Response {
+		tc := newTestClient(t, app)
+		tc.getCSRF("/auth/login")
+		resp := tc.postForm("/auth/authenticate", url.Values{
+			"username": {"walter"},
+			"password": {login},
+		}, nil)
+		assert.Equal(fiber.StatusOK, resp.StatusCode)
+		return tc.postForm("/auth/expiredpw", url.Values{
+			"password":     {current},
+			"newpassword":  {newpass},
+			"newpassword2": {newpass},
+		}, htmx)
+	}
+
+	// rejected by the FreeIPA policy, not by mokey's own check
+	resp := expiredForm("Secret123!", "Secret123!", "sh0rt")
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Equal(T("password.rejected_by_policy"), readBody(t, resp))
+	assert.Equal("Secret123!", fake.users["walter"].Password)
+
+	// a wrong current password is equally specific, not a generic failure
+	resp = expiredForm("Secret123!", "WrongSecret123!", "NewSecret456!")
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Equal(T("password.invalid_current"), readBody(t, resp))
+
+	// and the correct pair still goes through
+	resp = expiredForm("Secret123!", "Secret123!", "NewSecret456!")
+	assert.Equal(fiber.StatusNoContent, resp.StatusCode)
+	assert.Equal("NewSecret456!", fake.users["walter"].Password)
+}
+
+// #18, signup path: a password FreeIPA refuses after mokey's own check passed
+// was reported as "contact your administrator"
+func TestSignupSurfacesFreeIPAPolicyRejection(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.enable_captcha", false)
+		viper.Set("accounts.min_passwd_len", 4)
+	})
+	fake.reportedMinLength = 4
+
+	tc := newTestClient(t, app)
+	tc.getCSRF("/signup")
+	resp := tc.postForm("/signup", url.Values{
+		"username":  {"jesse"},
+		"email":     {"jesse@example.com"},
+		"first":     {"Jesse"},
+		"last":      {"Pinkman"},
+		"password":  {"sh0rt"},
+		"password2": {"sh0rt"},
+	}, nil)
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Equal(T("password.rejected_by_policy"), readBody(t, resp))
+
+	// the half-created account must be rolled back, or the retry the message
+	// invites fails with "username already exists"
+	assert.Nil(fake.users["jesse"])
+
+	tc.getCSRF("/signup")
+	resp = tc.postForm("/signup", url.Values{
+		"username":  {"jesse"},
+		"email":     {"jesse@example.com"},
+		"first":     {"Jesse"},
+		"last":      {"Pinkman"},
+		"password":  {"NewSecret456!"},
+		"password2": {"NewSecret456!"},
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.NotNil(fake.users["jesse"])
