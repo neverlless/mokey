@@ -52,7 +52,6 @@ func TestUIPreviewServe(t *testing.T) {
 	}
 }
 
-
 // #24: the toggle used to sit in the top bar next to the logo, where users
 // found it distracting; it belongs with the help icon in the footer
 func TestThemeToggleLivesInTheFooter(t *testing.T) {
