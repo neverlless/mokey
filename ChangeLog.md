@@ -1,5 +1,42 @@
 # Mokey ChangeLog
 
+## [v2.2.0] - 2026-09-08
+
+Deployment review release: the fourteen issues raised by the first outside
+evaluation, several of which shared a root cause.
+
+- Email tokens: the "issued" marker was written before delivery was attempted
+  and never rolled back, so a rejected recipient locked the user out of
+  retrying until the token expired. It is now scoped to a resend cooldown
+  (`email.resend_cooldown`, default 3 minutes) and cleared when delivery
+  fails — this covered password reset, invites and OTP recovery too. The
+  account page no longer renders "settings updated" next to a delivery error
+- Passwords are validated against the policy FreeIPA actually enforces, not
+  only `accounts.min_passwd_*`; the stricter of the two wins. Staged signups
+  no longer hand over an account whose password is already expired
+- FreeIPA's reason for refusing a password change reaches the user instead of
+  an empty error, on the expiry form and at signup — where a rejected password
+  had also been leaving a half-created account that blocked the retry
+- Password requirements stay on screen when a change is rejected, and are
+  shown on the signup and invite forms
+- Phone numbers are a country and a national number, validated against E.164,
+  with a searchable picker built from the ISO 3166 / ITU-T E.164 tables
+- Groups and Access are switchable features (`accounts.enable_groups`,
+  `accounts.enable_access`): the tabs and the routes behind them both go
+- Email subject affixes are configurable (`email.subject_prefix`,
+  `email.subject_suffix`) for gateways that only pass a marked subject
+- Fixed: `site.favicon` was ignored — the page linked at the embedded asset
+  rather than the route the favicon is served from; a configured `.png` or
+  `.svg` now carries the right content type
+- Fixed: form fields were drawn in the same colour as the card behind them,
+  so they read as inactive. Editable fields are recessed wells with a border
+  clearing 3:1 in both themes; read-only values sit flat
+- Fixed: cancelling OTP or passkey registration reported a failure
+- Fixed: the light/dark toggle moved from beside the logo to the footer
+- Go 1.27, and go-webauthn 0.18, which rejects a relying party id that is an
+  IP address — reaching the portal that way now explains itself instead of
+  failing as a system error
+
 ## [v2.1.0] - 2026-08-20
 
 Recovery and account hygiene release.
