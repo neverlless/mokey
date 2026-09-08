@@ -267,3 +267,57 @@ func TestRateLimitNotBypassedBySpoofedXFF(t *testing.T) {
 	})
 	assert.Equal(fiber.StatusTooManyRequests, resp.StatusCode)
 }
+
+// #20: cancelling out of the QR dialog is a deliberate act, not a failure —
+// it used to share a branch with "the token URI would not parse" and left
+// the user staring at "Failed to verify token."
+func TestOTPTokenVerifyCancelIsNotAnError(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.postForm("/otptoken/add", url.Values{"desc": {"phone"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	if !assert.Len(fake.tokens, 1) {
+		return
+	}
+	tok := fake.tokens[0]
+
+	resp = tc.postForm("/otptoken/verify", url.Values{
+		"action": {"cancel"},
+		"uri":    {tok.uri()},
+		"uuid":   {tok.UUID},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+
+	body := readBody(t, resp)
+	assert.NotContains(body, T("otptoken.failed_to_verify_token"))
+	// the unverified token is still cleaned up
+	assert.Empty(fake.tokens)
+}
+
+// a token URI mokey cannot parse really is a failure and must still say so
+func TestOTPTokenVerifyUnparsableURIStillFails(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.postForm("/otptoken/add", url.Values{"desc": {"phone"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	if !assert.Len(fake.tokens, 1) {
+		return
+	}
+
+	resp = tc.postForm("/otptoken/verify", url.Values{
+		"uri":  {"otpauth://totp/%zz"}, // invalid percent-encoding: url.Parse fails
+		"uuid": {fake.tokens[0].UUID},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), T("otptoken.failed_to_verify_token"))
+}
