@@ -13,9 +13,23 @@ import (
 )
 
 // Simple password checker to validate passwords before creating an account
-func checkPassword(pass string) error {
+// checkPassword enforces the stricter of mokey's configured minimums and the
+// password policy FreeIPA actually applies. The config alone silently drifts
+// from the directory (ubccr/mokey#16), and stageuser_add applies no policy at
+// all, so a staged signup would otherwise accept a password FreeIPA rejects.
+// A nil policy means the lookup failed; fall back to the config.
+func checkPassword(pass string, policy *PwPolicy) error {
 	minLength := viper.GetInt("accounts.min_passwd_len")
 	minClasses := viper.GetInt("accounts.min_passwd_classes")
+
+	if policy != nil {
+		if policy.MinLength > minLength {
+			minLength = policy.MinLength
+		}
+		if policy.MinClasses > minClasses {
+			minClasses = policy.MinClasses
+		}
+	}
 
 	l := len([]rune(pass))
 	if l < minLength {
@@ -71,7 +85,7 @@ func checkPassword(pass string) error {
 	return nil
 }
 
-func validatePassword(password, passwordConfirm string) error {
+func validatePassword(password, passwordConfirm string, policy *PwPolicy) error {
 	if password == "" {
 		return errors.New(T("password.enter_new"))
 	}
@@ -84,14 +98,14 @@ func validatePassword(password, passwordConfirm string) error {
 		return errors.New("Password do not match. Please confirm your password.")
 	}
 
-	if err := checkPassword(password); err != nil {
+	if err := checkPassword(password, policy); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validatePasswordChange(passwordCurrent, password, passwordConfirm string) error {
+func validatePasswordChange(passwordCurrent, password, passwordConfirm string, policy *PwPolicy) error {
 	if passwordCurrent == "" {
 		return errors.New(T("password.enter_current"))
 	}
@@ -100,7 +114,7 @@ func validatePasswordChange(passwordCurrent, password, passwordConfirm string) e
 		return errors.New(T("password.same_as_new"))
 	}
 
-	return validatePassword(password, passwordConfirm)
+	return validatePassword(password, passwordConfirm, policy)
 }
 
 func (r *Router) PasswordChange(c *fiber.Ctx) error {
@@ -136,7 +150,8 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 		return c.Render("password.html", vars)
 	}
 
-	if err := validatePasswordChange(password, newpass, newpass2); err != nil {
+	policy, _ := vars["pwpolicy"].(*PwPolicy)
+	if err := validatePasswordChange(password, newpass, newpass2, policy); err != nil {
 		vars["message"] = err.Error()
 		return c.Render("password.html", vars)
 	}
@@ -270,12 +285,21 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
+	policy, err := pwPolicyShow(r.adminClient, user.Username)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+			"err":      err,
+		}).Warn("Failed to fetch password policy")
+		policy = nil
+	}
+
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
 			"claims": claims,
 			"user":   user,
 		}
-		if policy, err := pwPolicyShow(r.adminClient, user.Username); err == nil {
+		if policy != nil {
 			vars["pwpolicy"] = policy
 		}
 
@@ -290,7 +314,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.enter_6_digit_code_help"))
 	}
 
-	if err := validatePassword(password, passwordConfirm); err != nil {
+	if err := validatePassword(password, passwordConfirm, policy); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
@@ -383,7 +407,12 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.enter_6_digit_code_help"))
 	}
 
-	if err := validatePasswordChange(password, newpass, newpass2); err != nil {
+	policy, perr := pwPolicyShow(r.adminClient, user.Username)
+	if perr != nil {
+		policy = nil
+	}
+
+	if err := validatePasswordChange(password, newpass, newpass2, policy); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 

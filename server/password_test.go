@@ -14,14 +14,14 @@ func TestPasswordCheck(t *testing.T) {
 	assert := assert.New(t)
 
 	// Too short
-	assert.Error(checkPassword("123"))
+	assert.Error(checkPassword("123", nil))
 	// Not enough classes
-	assert.Error(checkPassword("123456789"))
+	assert.Error(checkPassword("123456789", nil))
 	// Not enough classes
-	assert.Error(checkPassword("test1234"))
+	assert.Error(checkPassword("test1234", nil))
 
 	// Good
-	assert.NoError(checkPassword("test!1234"))
+	assert.NoError(checkPassword("test!1234", nil))
 }
 
 // Semantics must match FreeIPA's util/ipa_pwd.c (ubccr/mokey#170)
@@ -33,15 +33,15 @@ func TestPasswordCheckMatchesFreeIPA(t *testing.T) {
 
 	// 4 classes, a doubled character ("ss") — FreeIPA only penalizes runs
 	// of 3+, so this must pass
-	assert.NoError(checkPassword("Password1!"))
+	assert.NoError(checkPassword("Password1!", nil))
 	// 4 classes, tripled character — penalized down to 3, must fail
-	assert.Error(checkPassword("Passsword1!"))
+	assert.Error(checkPassword("Passsword1!", nil))
 	// 4 classes via the 8-bit category (lower, upper, digit, non-ASCII)
-	assert.NoError(checkPassword("aBcdef17п"))
+	assert.NoError(checkPassword("aBcdef17п", nil))
 	// only 3 classes at min 4 — fail
-	assert.Error(checkPassword("abcdef17x"))
+	assert.Error(checkPassword("abcdef17x", nil))
 
 	viper.Set("accounts.min_passwd_classes", 5)
 	// all 5 FreeIPA categories present
-	assert.NoError(checkPassword("aB1!пxyz"))
+	assert.NoError(checkPassword("aB1!пxyz", nil))
 }

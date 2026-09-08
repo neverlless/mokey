@@ -41,6 +41,7 @@
                             <label for="password2" class="form-label">{{ T "common.confirm_password" }}</label>
                             <input type="password" id="password2" class="form-control form-control-lg" name="password2" placeholder="">
                         </div>
+                        {{ template "password-policy.html" . }}
                         {{ with $.captchaID }}
                         <div class="mb-3">
                             <div id="captchaHelpBlock" class="form-text">

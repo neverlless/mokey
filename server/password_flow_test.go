@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -241,4 +242,46 @@ func TestPasswordChangePolicyVisibleOnError(t *testing.T) {
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Contains(readBody(t, resp), T("password.policy_title"))
+}
+
+// #16: mokey validated new passwords against its own accounts.min_passwd_*
+// config, which silently drifts from the policy FreeIPA actually enforces.
+// Staged signup made that visible: stageuser_add applies no password policy,
+// so a password FreeIPA would reject sailed through registration.
+func TestSignupEnforcesFreeIPAPasswordPolicy(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.enable_captcha", false)
+		// laxer than the fake FreeIPA policy (8 chars, 2 classes)
+		viper.Set("accounts.min_passwd_len", 4)
+		viper.Set("accounts.min_passwd_classes", 1)
+	})
+
+	tc := newTestClient(t, app)
+	tc.getCSRF("/signup")
+
+	// 7 chars, one class: allowed by mokey's config, rejected by FreeIPA
+	resp := tc.postForm("/signup", url.Values{
+		"username":  {"jesse"},
+		"email":     {"jesse@example.com"},
+		"first":     {"Jesse"},
+		"last":      {"Pinkman"},
+		"password":  {"abcdefg"},
+		"password2": {"abcdefg"},
+	}, nil)
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Nil(fake.users["jesse"], "account must not be created with a policy-violating password")
+
+	// a password meeting the FreeIPA policy still works
+	tc.getCSRF("/signup")
+	resp = tc.postForm("/signup", url.Values{
+		"username":  {"jesse"},
+		"email":     {"jesse@example.com"},
+		"first":     {"Jesse"},
+		"last":      {"Pinkman"},
+		"password":  {"abcdefg1"},
+		"password2": {"abcdefg1"},
+	}, nil)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(fake.users["jesse"])
 }

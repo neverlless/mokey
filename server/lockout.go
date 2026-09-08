@@ -71,11 +71,15 @@ type PwPolicy struct {
 }
 
 // pwPolicyShow fetches the effective password policy for the user via the
-// service bind (plain users lack the Password Policy Readers privilege)
+// service bind (plain users lack the Password Policy Readers privilege). An
+// empty username returns the global policy, which is the best we can do for
+// an account that does not exist yet.
 func pwPolicyShow(client *ipa.Client, username string) (*PwPolicy, error) {
-	res, err := ipaAdminRPC(client, "pwpolicy_show", []string{}, map[string]interface{}{
-		"user": username,
-	})
+	opts := map[string]interface{}{}
+	if username != "" {
+		opts["user"] = username
+	}
+	res, err := ipaAdminRPC(client, "pwpolicy_show", []string{}, opts)
 	if err != nil {
 		return nil, err
 	}

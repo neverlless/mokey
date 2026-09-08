@@ -102,10 +102,15 @@ func (r *Router) InviteAccept(c *fiber.Ctx) error {
 	}
 
 	if c.Method() == fiber.MethodGet {
-		return c.Render("invite.html", fiber.Map{
+		vars := fiber.Map{
 			"claims":            claims,
 			"usernameFromEmail": viper.GetBool("accounts.username_from_email"),
-		})
+		}
+		if policy, err := pwPolicyShow(r.adminClient, ""); err == nil {
+			vars["pwpolicy"] = policy
+		}
+
+		return c.Render("invite.html", vars)
 	}
 
 	user := &ipa.User{}
