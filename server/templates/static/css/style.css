@@ -234,6 +234,158 @@ body {
 	box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.18);
 }
 
+/* Phone: a compact country trigger welded to the number field. The trigger
+   shows flag + dial code only — the flag already names the country, so the
+   name would be saying it twice. */
+.mokey-phone {
+	flex-wrap: nowrap;
+}
+.mokey-dial {
+	position: relative;
+	display: flex;
+}
+.mokey-dial-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	height: 100%;
+	padding: 0.375rem 0.6rem;
+	background: var(--mokey-surface-raised);
+	border: 1px solid var(--mokey-field-border);
+	border-right: 0;
+	border-radius: var(--bs-border-radius) 0 0 var(--bs-border-radius);
+	color: var(--bs-body-color);
+	font-size: 0.925rem;
+	line-height: 1.5;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.mokey-dial-btn:hover {
+	background: var(--bs-tertiary-bg);
+}
+.mokey-dial-btn:focus-visible {
+	outline: 2px solid var(--mokey-accent);
+	outline-offset: -1px;
+}
+.mokey-dial-flag {
+	font-size: 1.05rem;
+	line-height: 1;
+}
+i.mokey-dial-flag {
+	font-size: 0.9rem;
+	color: var(--bs-secondary-color);
+}
+/* dial codes are identifiers, so they get the terminal face the rest of the
+   theme gives identifiers */
+.mokey-dial-code {
+	font-family: var(--mokey-mono);
+	font-size: 0.875rem;
+}
+.mokey-dial-caret {
+	font-size: 0.6rem;
+	color: var(--mokey-eyebrow);
+	margin-left: 0.1rem;
+}
+.mokey-phone input[type="tel"] {
+	flex: 1 1 auto;
+	min-width: 0;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.mokey-dial-pop {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 1060;
+	width: 20rem;
+	max-width: min(20rem, 78vw);
+	background: var(--mokey-surface);
+	border: 1px solid var(--bs-border-color);
+	border-radius: var(--bs-border-radius-lg);
+	overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+	.mokey-dial-pop:not([hidden]) {
+		animation: mokey-dial-in 90ms ease-out;
+	}
+}
+@keyframes mokey-dial-in {
+	from { opacity: 0; transform: translateY(-2px); }
+	to { opacity: 1; transform: none; }
+}
+
+.mokey-dial-search {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 0.65rem;
+	border-bottom: 1px solid var(--bs-border-color);
+	background: var(--mokey-field-bg);
+}
+.mokey-dial-search i {
+	color: var(--mokey-eyebrow);
+	font-size: 0.8rem;
+}
+.mokey-dial-input {
+	flex: 1;
+	min-width: 0;
+	border: 0;
+	background: transparent;
+	color: var(--bs-body-color);
+	font-size: 0.925rem;
+}
+.mokey-dial-input:focus {
+	outline: none;
+}
+
+.mokey-dial-list {
+	display: flex;
+	flex-direction: column;
+	max-height: 15rem;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+}
+.mokey-dial-opt {
+	display: grid;
+	grid-template-columns: 1.5rem 1fr auto;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.4rem 0.7rem;
+	border-left: 2px solid transparent;
+	cursor: pointer;
+}
+/* the active row carries the same 2px accent edge the left nav uses for the
+   page you are on */
+.mokey-dial-opt.is-active {
+	background: var(--mokey-rail-active-bg);
+	border-left-color: var(--mokey-accent);
+}
+.mokey-dial-name {
+	font-size: 0.9rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mokey-dial-opt .mokey-dial-code {
+	color: var(--bs-secondary-color);
+}
+.mokey-dial-empty {
+	margin: 0;
+	padding: 0.9rem 0.7rem;
+	color: var(--bs-secondary-color);
+	font-size: 0.9rem;
+	text-align: center;
+}
+
+@media (max-width: 575.98px) {
+	.mokey-dial-pop {
+		width: min(20rem, 90vw);
+	}
+}
+
 .table {
 	--bs-table-bg: transparent;
 	--bs-table-color: var(--bs-body-color);

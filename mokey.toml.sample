@@ -64,6 +64,14 @@ keytab = "/etc/mokey/private/mokeyapp.keytab"
 # created by an admin directly in FreeIPA.
 enable_signup = true
 
+# Show the Groups tab and let users request group membership. When false the
+# tab and every route behind it are gone.
+enable_groups = true
+
+# Show the Access tab: the HBAC/sudo rules that apply to the user and the
+# "can I log into host X?" simulator.
+enable_access = true
+
 # Show username and password on a single login page instead of the two-step
 # flow (username, then password on a separate page). Users with Two-Factor
 # Authentication enter their password followed by the OTP code in the
@@ -81,13 +89,14 @@ default_shell = "/bin/bash"
 # allow_change_shell = false
 # allowed_shells = ["/bin/bash", "/bin/sh", "/bin/zsh", "/usr/bin/fish", "/sbin/nologin"]
 
-# Minimum password length. Used for validating new passwords. Should match your
-# password policy set in FreeIPA
+# Minimum password length for new passwords. mokey reads the effective
+# FreeIPA policy and applies whichever is stricter, so this is a floor rather
+# than the whole rule.
 min_passwd_len = 8
 
 # Minimum password classes. Classes are lowercase, uppercase, numbers, and
-# special characters.  Used for validating new passwords. Should match your
-# password policy set in FreeIPA
+# special characters. As with min_passwd_len, the stricter of this and the
+# FreeIPA policy wins.
 min_passwd_classes = 2
 
 # Show a "password expires in N days" banner in the portal when expiry is
@@ -135,8 +144,9 @@ require_admin_verify = false
 # verification (plus admin approval when require_admin_verify is on)
 # activates the account; denial deletes the staged entry. The service
 # account needs the "Stage User Administrators" privilege.
-# Note: FreeIPA expires the password on activation, so the first login
-# asks the user to change it.
+# Note: FreeIPA expires the password on activation; mokey lifts that expiry
+# (resetting it to the policy's max lifetime) so the password chosen at
+# signup works on the first login.
 staged_signup = false
 
 # Show a "Subordinate IDs" section on the account page: users can view
@@ -168,6 +178,17 @@ enable_captcha = true
 
 # Max lifetime of branca tokens used for password resets and account verify
 token_max_age = 3600
+
+# How long a user must wait before the same email (account verification,
+# password reset, invite, OTP recovery) can be requested again. Links already
+# sent stay valid until token_max_age.
+resend_cooldown = 180
+
+# Subject line affixes. Unset, the subject is prefixed with "[site name] ".
+# Set subject_prefix to "" to drop the prefix, and use subject_suffix for
+# gateways that only pass a message carrying a marker.
+# subject_prefix = "[Acme Widgets] "
+# subject_suffix = " [SECURE]"
 
 # Secret key for branca tokens. Must be 32 bytes. To generate run:
 #    openssl rand -hex 32 

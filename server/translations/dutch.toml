@@ -32,6 +32,13 @@ verify_account = "Verifieer Account"
 too_many_requests = "Te veel verzoeken. Probeer het later opnieuw."
 
 [account]
+search_country = "Zoeken"
+no_country_match = "Geen land komt overeen"
+select_country = "Land"
+country_code = "Landcode"
+phone_needs_country_code = "Voeg de landcode van uw telefoonnummer toe"
+phone_invalid_country_code = "Een landcode bestaat uit 1-4 cijfers, bijvoorbeeld 31"
+phone_invalid = "Dat lijkt geen telefoonnummer. Gebruik alleen cijfers, spaties en - ( )"
 display_name = "Weergavenaam"
 work_phone = "Telefoon werk"
 shell = "Login-shell"

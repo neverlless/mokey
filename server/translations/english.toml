@@ -32,6 +32,13 @@ verify_account = "Verify Account"
 too_many_requests = "Too many requests. Please try again later."
 
 [account]
+search_country = "Search"
+no_country_match = "No country matches that"
+select_country = "Country"
+country_code = "Country code"
+phone_needs_country_code = "Add the country code for your phone number"
+phone_invalid_country_code = "A country code is 1-4 digits, for example 44"
+phone_invalid = "That does not look like a phone number. Use digits, spaces and - ( ) only"
 display_name = "Display Name"
 work_phone = "Work Phone"
 shell = "Login Shell"

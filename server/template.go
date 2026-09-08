@@ -25,6 +25,10 @@ var funcMap = template.FuncMap{
 	"ConfigValueStringSlice": ConfigValueStringSlice,
 	"AllowedDomains":         AllowedDomains,
 	"BreakNewlines":          BreakNewlines,
+	"PhoneCode":              PhoneCode,
+	"PhoneNumber":            PhoneNumber,
+	"PhoneCountries":         PhoneCountries,
+	"PhoneFlag":              PhoneFlag,
 	"T":                      T,
 }
 

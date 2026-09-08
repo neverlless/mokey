@@ -126,12 +126,14 @@ func TestAccountSettingsProfileFields(t *testing.T) {
 	tc.login("walter", "Secret123!")
 
 	resp := tc.postForm("/account/settings", url.Values{
-		"first":       {"Walter"},
-		"last":        {"White"},
-		"phone":       {"+1 505 555 0100"},
-		"displayname": {"Heisenberg"},
-		"telephone":   {"+1 505 555 0199"},
-		"shell":       {"/bin/zsh"},
+		"first":        {"Walter"},
+		"last":         {"White"},
+		"phone_cc":     {"1"},
+		"phone":        {"505 555 0100"},
+		"displayname":  {"Heisenberg"},
+		"telephone_cc": {"1"},
+		"telephone":    {"505 555 0199"},
+		"shell":        {"/bin/zsh"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
@@ -149,6 +151,8 @@ func TestAccountSettingsProfileFields(t *testing.T) {
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Equal("/bin/zsh", fake.users["walter"].Shell)
+	// the form submits every field, so omitting the phones clears them
+	assert.Equal("", fake.users["walter"].Mobile)
 }
 
 func TestAccountSettingsShellChangeDisabledByDefault(t *testing.T) {
