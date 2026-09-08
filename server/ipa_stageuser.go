@@ -5,6 +5,9 @@
 package server
 
 import (
+	"time"
+
+	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 	ipa "github.com/ubccr/goipa"
 )
@@ -76,12 +79,46 @@ func stageUserSetCategory(client *ipa.Client, username, category string) error {
 	return err
 }
 
-// stageUserActivate turns the staged entry into an active account. FreeIPA
-// marks the copied password expired, so the first login goes through the
-// expired-password change flow.
+// ipaDatetimeLayout is the generalized-time format FreeIPA accepts for
+// datetime attributes passed through setattr
+const ipaDatetimeLayout = "20060102150405Z"
+
+// stageUserActivate turns the staged entry into an active account, then lifts
+// the expiry FreeIPA stamps on the copied password.
 func stageUserActivate(client *ipa.Client, username string) error {
-	_, err := ipaAdminRPC(client, "stageuser_activate", []string{username}, nil)
-	return err
+	if _, err := ipaAdminRPC(client, "stageuser_activate", []string{username}, nil); err != nil {
+		return err
+	}
+
+	clearNewPasswordExpiry(client, username)
+	return nil
+}
+
+// clearNewPasswordExpiry undoes FreeIPA's "new passwords expired" marking for
+// an activated signup. That rule exists because an admin-set password is a
+// secret the owner did not choose; here the owner chose it themselves at
+// registration and it was validated against the live password policy, so all
+// the forced change buys is a confusing first login (ubccr/mokey#15).
+//
+// Best effort: if this fails the user simply gets the expired-password change
+// flow they would have got anyway, so activation is not rolled back.
+func clearNewPasswordExpiry(client *ipa.Client, username string) {
+	// Honour the policy's max lifetime; an unset one means passwords never
+	// expire, and an empty setattr value removes the attribute.
+	expiration := ""
+	if policy, err := pwPolicyShow(client, username); err == nil && policy.MaxLifeDays > 0 {
+		expiration = time.Now().UTC().AddDate(0, 0, policy.MaxLifeDays).Format(ipaDatetimeLayout)
+	}
+
+	_, err := ipaAdminRPC(client, "user_mod", []string{username}, map[string]interface{}{
+		"setattr": []string{"krbPasswordExpiration=" + expiration},
+	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"username": username,
+			"err":      err,
+		}).Warn("Failed to clear new-password expiry; user will be asked to change it on first login")
+	}
 }
 
 func stageUserDel(client *ipa.Client, username string) error {
