@@ -76,6 +76,18 @@ func NewEmailer(storage fiber.Storage) (*Emailer, error) {
 	}, nil
 }
 
+// sendTokenEmail delivers a mail carrying a single-use token, rolling back the
+// "token issued" marker when delivery fails. Without the rollback a rejected or
+// undeliverable address locks the user out of retrying until the token expires,
+// every attempt failing with "token already issued".
+func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *fiber.Ctx, subject, tmpl string, data map[string]interface{}) error {
+	err := e.sendEmail(user, ctx, subject, tmpl, data)
+	if err != nil {
+		e.storage.Delete(prefix + TokenIssuedPrefix + tokenKey)
+	}
+	return err
+}
+
 func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	token, err := NewToken(user.Username, user.Email, TokenPasswordReset, e.storage)
 	if err != nil {
@@ -87,7 +99,7 @@ func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
 		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
 	}
 
-	return e.sendEmail(user, ctx, T("email_template.password_reset_subject"), "password-reset", vars)
+	return e.sendTokenEmail(user, user.Username, TokenPasswordReset, ctx, T("email_template.password_reset_subject"), "password-reset", vars)
 }
 
 func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
@@ -101,7 +113,7 @@ func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
 		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
 	}
 
-	return e.sendEmail(user, ctx, T("email_template.account_verify_subject"), "account-verify", vars)
+	return e.sendTokenEmail(user, user.Username, TokenAccountVerify, ctx, T("email_template.account_verify_subject"), "account-verify", vars)
 }
 
 // SendOTPRecoveryConfirmEmail sends the confirm-before-queue link for an
@@ -115,7 +127,7 @@ func (e *Emailer) SendOTPRecoveryConfirmEmail(user *ipa.User, ctx *fiber.Ctx) er
 		"link":         fmt.Sprintf("%s/auth/otprecovery/%s", BaseURL(ctx), token),
 		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
 	}
-	return e.sendEmail(user, ctx, T("email_template.otprecovery_confirm_subject"), "otprecovery-confirm", vars)
+	return e.sendTokenEmail(user, user.Username, TokenOTPRecovery, ctx, T("email_template.otprecovery_confirm_subject"), "otprecovery-confirm", vars)
 }
 
 // SendEmailChangeConfirmEmail sends a confirmation link to the NEW email
@@ -136,7 +148,7 @@ func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, c
 	recipient := *user
 	recipient.Email = newEmail
 
-	return e.sendEmail(&recipient, ctx, T("email_template.email_change_subject"), "email-change", vars)
+	return e.sendTokenEmail(&recipient, user.Username, TokenEmailChange, ctx, T("email_template.email_change_subject"), "email-change", vars)
 }
 
 // SendEmailChangedNotification notifies the OLD address that the account
@@ -167,7 +179,7 @@ func (e *Emailer) SendInviteEmail(email string, ctx *fiber.Ctx) error {
 
 	recipient := &ipa.User{Email: email}
 
-	return e.sendEmail(recipient, ctx, T("email_template.invite_subject"), "invite", vars)
+	return e.sendTokenEmail(recipient, email, TokenInvite, ctx, T("email_template.invite_subject"), "invite", vars)
 }
 
 func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {

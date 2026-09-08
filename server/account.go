@@ -91,7 +91,10 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 					"email":    newEmail,
 					"err":      err,
 				}).Error("Failed to send email change confirmation email")
-				vars["message"] = T("account.fatal_system_error")
+				// one banner, not a contradictory success+error pair: the
+				// profile fields did save, the email change did not
+				delete(vars, "success")
+				vars["message"] = T("account.email_change_send_failed")
 			} else {
 				log.WithFields(log.Fields{
 					"username":  user.Username,

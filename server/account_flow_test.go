@@ -133,6 +133,7 @@ func TestCaptchaDisabled(t *testing.T) {
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_captcha", false)
 	})
+	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
 	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
 
 	// signup page renders no captcha block
@@ -176,6 +177,7 @@ func TestSignupDisabled(t *testing.T) {
 func TestPasswordForgotIssuesToken(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
+	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
 	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
@@ -343,4 +345,37 @@ func TestAdminDisabledByDefault(t *testing.T) {
 
 	resp := tc.postForm("/admin/user/block", url.Values{"username": {"x"}}, htmx)
 	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+}
+
+// #23: a confirmation email that fails to deliver must not render a success
+// banner next to the error, and must not leave the issued-token marker behind
+// (which blocked every later attempt with "token already issued")
+func TestAccountSettingsEmailChangeDeliveryFailure(t *testing.T) {
+	assert := assert.New(t)
+	// newTestApp points SMTP at a dead port, so delivery always fails
+	app, router, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Email: "old@example.com"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.postForm("/account/settings", url.Values{
+		"first": {"Walter"},
+		"last":  {"White"},
+		"email": {"walter@gmail.co"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+
+	body := readBody(t, resp)
+	assert.NotContains(body, T("account.settings_updated"), "no success banner alongside the failure")
+	assert.Contains(body, T("account.email_change_send_failed"))
+
+	// the issued marker must be rolled back so the user can try again
+	marker, err := router.storage.Get(TokenEmailChange + TokenIssuedPrefix + "walter")
+	assert.NoError(err)
+	assert.Nil(marker, "issued-token marker must not survive a failed delivery")
+
+	// ...and a retry must not be rejected as already issued
+	_, err = NewToken("walter", "walter@example.com", TokenEmailChange, router.storage)
+	assert.NoError(err)
 }
