@@ -379,3 +379,24 @@ func TestAccountSettingsEmailChangeDeliveryFailure(t *testing.T) {
 	_, err = NewToken("walter", "walter@example.com", TokenEmailChange, router.storage)
 	assert.NoError(err)
 }
+
+// #17: after signing up there was no visible way back to the resend form
+func TestSignupSuccessLinksToResend(t *testing.T) {
+	assert := assert.New(t)
+	app, _, _ := newTestAppWith(t, func() {
+		viper.Set("accounts.enable_captcha", false)
+	})
+
+	tc := newTestClient(t, app)
+	tc.getCSRF("/signup")
+	resp := tc.postForm("/signup", url.Values{
+		"username":  {"jesse"},
+		"email":     {"jesse@example.com"},
+		"first":     {"Jesse"},
+		"last":      {"Pinkman"},
+		"password":  {"NewSecret456!"},
+		"password2": {"NewSecret456!"},
+	}, nil)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), `href="/auth/verify"`)
+}

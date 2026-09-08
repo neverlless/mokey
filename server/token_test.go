@@ -20,6 +20,9 @@ func TestToken(t *testing.T) {
 	secret, _ := GenerateSecret(32)
 	viper.Set("email.token_secret", secret)
 	viper.Set("email.token_max_age", uint32(3))
+	// reissue is gated by the resend cooldown now, not the token lifetime
+	viper.Set("email.resend_cooldown", 3)
+	defer viper.Set("email.resend_cooldown", 180)
 
 	assert := assert.New(t)
 
@@ -85,4 +88,34 @@ func TestTokenFailsClosedOnStorageError(t *testing.T) {
 	// issuance must also fail closed
 	_, err = NewToken("jesse", "jesse@example.com", TokenPasswordReset, broken)
 	assert.Error(err)
+}
+
+// #17: the issued marker used to live as long as the token itself, so a
+// verification email lost in transit could not be resent for a full hour
+func TestTokenResendCooldown(t *testing.T) {
+	assert := assert.New(t)
+
+	secret, _ := GenerateSecret(32)
+	viper.Set("email.token_secret", secret)
+	viper.Set("email.token_max_age", uint32(3600))
+	viper.Set("email.resend_cooldown", 1)
+	defer viper.Set("email.resend_cooldown", 180)
+
+	storage := memory.New()
+
+	_, err := NewToken("walter", "walter@example.com", TokenAccountVerify, storage)
+	assert.NoError(err)
+
+	// still inside the cooldown
+	_, err = NewToken("walter", "walter@example.com", TokenAccountVerify, storage)
+	assert.EqualError(err, "token already issued")
+
+	time.Sleep(1500 * time.Millisecond)
+
+	// cooldown elapsed: a resend is allowed even though the first token
+	// has not expired yet
+	second, err := NewToken("walter", "walter@example.com", TokenAccountVerify, storage)
+	if assert.NoError(err) {
+		assert.NotEmpty(second)
+	}
 }

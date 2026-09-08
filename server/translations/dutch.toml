@@ -340,6 +340,8 @@ tos_link = "Algemene voorwaarden"
 tos_message = "Door op 'Account maken' te klikken ga je akkoord met onze"
 
 [signup_success]
+no_email = "Geen e-mail ontvangen?"
+resend_link = "Stuur hem opnieuw"
 title = "Bevestig je account"
 account_created = "Account succesvol aangemaakt"
 admin_verification = "Een beheerder moet je account activeren voordat je het kunt gebruiken."

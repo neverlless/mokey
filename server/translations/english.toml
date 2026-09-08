@@ -382,6 +382,8 @@ tos_link = "Terms of Service"
 tos_message = "By clicking 'Create Account,' you agree to our"
 
 [signup_success]
+no_email = "Did not get the email?"
+resend_link = "Send it again"
 title = "Confirm Your Account"
 account_created = "Account successfully created"
 admin_verification = "An administrator must activate your account before you can use it."

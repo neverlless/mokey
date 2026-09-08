@@ -16,6 +16,9 @@
             {{ end }}
             {{ T "common.check_email" }}
             </p>
+            {{ if not (ConfigValueBool "accounts.require_admin_verify") }}
+            <p class="text-muted">{{ T "signup_success.no_email" }} <a href="/auth/verify">{{ T "signup_success.resend_link" }}</a></p>
+            {{ end }}
             </div>
         </div>
     </div>
