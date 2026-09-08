@@ -598,6 +598,27 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			u.Expired = true // FreeIPA marks reset passwords expired
 			f.randomPasswords[username] = u.Password
 		}
+		// setattr krbPasswordExpiration: a future date un-expires the
+		// password, an empty value clears the attribute entirely
+		setattrs, _ := opts["setattr"].([]interface{})
+		for _, raw := range setattrs {
+			attr, _ := raw.(string)
+			name, value, _ := strings.Cut(attr, "=")
+			if !strings.EqualFold(name, "krbPasswordExpiration") {
+				continue
+			}
+			u.Expired = false
+			u.PasswdExpire = time.Time{}
+			if value != "" {
+				ts, err := time.Parse(ipaDatetimeLayout, value)
+				if err != nil {
+					rpcError(w, 3009, "invalid 'krbpasswordexpiration': "+value)
+					return
+				}
+				u.PasswdExpire = ts
+				u.Expired = !ts.After(time.Now())
+			}
+		}
 		// apply modifiable attributes when present (UserMod sends them all)
 		if v, ok := opts["givenname"].(string); ok {
 			u.First = v

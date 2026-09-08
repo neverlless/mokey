@@ -3,6 +3,7 @@ package server
 import (
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
@@ -56,10 +57,15 @@ func TestStagedSignupAndVerifyFlow(t *testing.T) {
 	if assert.NotNil(u) {
 		assert.Equal("", u.Category)
 		assert.False(u.Locked)
-		// FreeIPA expires the password on activation; first login goes
-		// through the existing expired-password change flow
-		assert.True(u.Expired)
+		// #15: the password came from the user at signup and was checked
+		// against the live policy, so it must work as-is on first login
+		assert.False(u.Expired)
+		// expiry follows the policy max lifetime (90 days in the fake),
+		// it is not simply removed
+		assert.WithinDuration(time.Now().AddDate(0, 0, 90), u.PasswdExpire, time.Minute)
 	}
+
+	newTestClient(t, app).login("jesse", "NewSecret456!")
 
 	// verify token is single-use
 	resp = tc.get("/auth/verify/" + token)
@@ -105,14 +111,14 @@ func TestStagedSignupAdminApproveFlow(t *testing.T) {
 	assert.Contains(body, "jesse")
 	assert.Contains(body, "kim")
 
-	// approve jesse: activated with expired password, category cleared
+	// approve jesse: activated with the signup password usable, category cleared
 	resp = tcAdmin.postForm("/admin/user/approve", url.Values{"username": {"jesse"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Nil(fake.stageusers["jesse"])
 	u := fake.users["jesse"]
 	if assert.NotNil(u) {
 		assert.Equal("", u.Category)
-		assert.True(u.Expired)
+		assert.False(u.Expired)
 	}
 
 	// deny kim: staged registration is deleted, never became a real account
