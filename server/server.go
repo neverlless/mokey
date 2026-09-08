@@ -63,6 +63,7 @@ func SetDefaults() {
 	viper.SetDefault("accounts.require_mfa", false)
 	viper.SetDefault("accounts.require_admin_verify", false)
 	viper.SetDefault("email.token_max_age", 3600)
+	viper.SetDefault("email.resend_cooldown", 180)
 	viper.SetDefault("accounts.password_expiry_warning_days", 14)
 	viper.SetDefault("email.smtp_host", "localhost")
 	viper.SetDefault("email.smtp_port", 25)

@@ -106,6 +106,7 @@ require OTP, and all responses are enumeration-safe.
 | `from` | string | `"support@example.com"` | From address for all emails. Also shown as the support contact. |
 | `base_url` | string | request host | Base URL used in email links. Set explicitly when mokey runs behind a proxy. |
 | `signature` | string | — | Signature appended to all emails. |
+| `resend_cooldown` | int | `180` | Seconds a user must wait before the same email (account verification, password reset, invite, OTP recovery) can be requested again. Links already sent stay valid until `token_max_age`. |
 | `subject_prefix` | string | `"[<site name>] "` | Text placed before every subject line. Set it to `""` to drop the prefix. |
 | `subject_suffix` | string | — | Text appended to every subject line, for gateways that require a marker to pass a message. |
 | `token_max_age` | int | `3600` | Lifetime (seconds) of password-reset and account-verify links. |

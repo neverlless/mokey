@@ -83,7 +83,12 @@ func NewToken(username, email, prefix string, storage fiber.Storage) (string, er
 		return "", err
 	}
 
-	storage.Set(prefix+TokenIssuedPrefix+username, []byte("true"), time.Until(time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+	// The marker expires after the resend cooldown, not after the token
+	// itself: an email lost in transit must be requestable again within
+	// minutes rather than after the token's full lifetime (ubccr/mokey#17).
+	// Links issued earlier stay valid until they expire; each is single-use
+	// and every one of them goes to the same registered address.
+	storage.Set(prefix+TokenIssuedPrefix+username, []byte("true"), time.Duration(viper.GetInt("email.resend_cooldown"))*time.Second)
 
 	return token, nil
 }
