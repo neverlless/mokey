@@ -114,6 +114,9 @@ func (r *Router) AccountCreate(c *fiber.Ctx) error {
 			"captchaID":         newCaptchaID(),
 			"usernameFromEmail": viper.GetBool("accounts.username_from_email"),
 		}
+		if policy, err := pwPolicyShow(r.adminClient, ""); err == nil {
+			vars["pwpolicy"] = policy
+		}
 
 		return c.Render("signup.html", vars)
 	}
@@ -185,7 +188,18 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string,
 		return errors.New("Last name is too long. Maximum of 150 chars allowed")
 	}
 
-	if err := validatePassword(password, passwordConfirm); err != nil {
+	// the account does not exist yet, so this is the global policy — still
+	// better than trusting the config to mirror FreeIPA
+	policy, perr := pwPolicyShow(r.adminClient, "")
+	if perr != nil {
+		log.WithFields(log.Fields{
+			"username": user.Username,
+			"err":      perr,
+		}).Warn("Failed to fetch password policy, falling back to configured minimums")
+		policy = nil
+	}
+
+	if err := validatePassword(password, passwordConfirm, policy); err != nil {
 		return err
 	}
 

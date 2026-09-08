@@ -43,8 +43,8 @@ Addresses upstream request
 | `password_expiry_warning_days` | int | `14` | Show a "password expires in N days" banner in the portal when expiry is this close. `0` disables the banner. |
 | `allow_change_shell` | bool | `false` | Let users change their login shell on the account page, restricted to `allowed_shells`. |
 | `allowed_shells` | list | bash, sh, zsh, fish, nologin | Shell choices offered when `allow_change_shell` is on. Enforced server-side. |
-| `min_passwd_len` | int | `8` | Minimum password length for new passwords. Should match your FreeIPA password policy. |
-| `min_passwd_classes` | int | `2` | Minimum number of character classes (lower, upper, digit, other) in new passwords. Should match your FreeIPA password policy. |
+| `min_passwd_len` | int | `8` | Minimum password length for new passwords. mokey reads the effective FreeIPA policy and applies whichever is stricter, so this is a floor, not a ceiling. |
+| `min_passwd_classes` | int | `2` | Minimum number of character classes (lower, upper, digit, other) in new passwords. As with `min_passwd_len`, the stricter of this and the FreeIPA policy wins. |
 | `otp_readonly_groups` | list | *(empty)* | FreeIPA groups whose members see their OTP tokens read-only — no self-enrollment, removal, or enable/disable (for orgs issuing hardware tokens centrally). Enforced server-side. |
 | `otp_hash_algorithm` | string | `"sha1"` | Hash algorithm for generated OTP tokens: `sha1`, `sha256`, or `sha512`. |
 | `otp_issuer` | string | FreeIPA default | Custom issuer name embedded in OTP token QR codes for a nicer display in authenticator apps. |
