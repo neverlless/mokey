@@ -1,8 +1,10 @@
 # Roadmap
 
-This roadmap is driven by community demand — largely from open issues and
+This roadmap is driven by demand: through v2.1 largely from open issues and
 unmerged pull requests in the upstream [ubccr/mokey](https://github.com/ubccr/mokey)
-project. Upstream issue numbers are referenced as `ubccr#NNN`.
+project, and from v2.2 also from this fork's own tracker as deployments report
+back. Upstream issue numbers are referenced as `ubccr#NNN`; bare `#NNN` is an
+issue in this repository.
 
 Priorities may shift based on feedback. Open an
 [issue](https://github.com/neverlless/mokey/issues) to influence it.
@@ -218,6 +220,43 @@ asked for mokey specifically), terms-of-service acceptance at signup,
 self-service certmap management (lighter slice of the user-certs item).
 Passkey login to the portal stays blocked upstream: FreeIPA 4.12/4.13
 still ship no FIDO2 assertion endpoint in the session API.
+
+## v2.2 — First deployment review
+
+The first release driven by this fork's own tracker rather than upstream
+demand: fourteen issues from an outside operator running mokey against a real
+FreeIPA install. Several turned out to share a root cause, so the work is
+grouped by cause rather than by issue.
+
+- [x] Email token reliability (#23, #17): the "token issued" marker was
+      written before delivery was attempted and never rolled back, so one
+      rejected recipient locked a user out of retrying until the token
+      expired — and a resend was a silent no-op for that whole hour. The
+      marker is now scoped to `email.resend_cooldown` and cleared when
+      delivery fails. The same defect sat in password reset, invites and
+      OTP recovery, none of which had been reported
+- [x] Passwords match what FreeIPA actually enforces (#15, #16, #18, #19):
+      validation read only `accounts.min_passwd_*`, which drifts from the
+      directory's policy, and `stageuser_add` applies no policy at all — so
+      a staged signup could set a password FreeIPA would reject. The live
+      policy is now read and the stricter rule wins; FreeIPA's reason for a
+      refusal reaches the user instead of a generic error; the requirements
+      stay on screen when a change is rejected
+- [x] Deliberate actions stop reading as failures (#20, #21, #24, #25):
+      cancelling OTP or passkey enrollment reported an error, form fields
+      were drawn in the same colour as the card behind them and read as
+      inactive, and the theme toggle sat where users found it distracting
+- [x] Phone numbers are structured (#22): a country and a national number
+      validated against E.164, with a searchable picker built from the
+      ISO 3166 / ITU-T E.164 tables rather than a hand-kept list
+- [x] Operator switches (#26, #27, #28): `site.favicon` is actually served,
+      Groups and Access became features that can be turned off (tabs *and*
+      routes), and email subject affixes are configurable for gateways that
+      only pass a marked subject
+
+Carried in with the dependency bumps: Go 1.27 and go-webauthn 0.18, whose
+stricter relying-party-id validation rejects a portal reached by IP address —
+that case now explains itself instead of failing as a system error.
 
 ## Deliberately not planned
 
