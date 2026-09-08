@@ -437,6 +437,7 @@ confirm_button = "Confirm"
 success_message = "Your email address has been successfully changed."
 
 [passkey]
+bad_hostname = "Passkeys need the portal to be reached by its domain name. This address cannot be used — open mokey by hostname and try again."
 title = "Passkeys"
 new_passkey = "Register Passkey"
 no_passkeys = "No Passkeys Found"

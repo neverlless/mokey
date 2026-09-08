@@ -7,6 +7,8 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net"
 	"strings"
 
@@ -30,10 +32,20 @@ func (u *passkeyUser) WebAuthnName() string                       { return u.use
 func (u *passkeyUser) WebAuthnDisplayName() string                { return u.displayName }
 func (u *passkeyUser) WebAuthnCredentials() []webauthn.Credential { return nil }
 
+// errPasskeyHost reports a hostname WebAuthn cannot use as a Relying Party ID.
+// go-webauthn v0.18 validates this at configuration time (see its MIGRATION.md
+// §2.1): an IP address or a bare single label other than localhost is rejected,
+// because a browser could never complete the ceremony against one anyway.
+var errPasskeyHost = errors.New("hostname is not usable as a WebAuthn relying party id")
+
 func (r *Router) webAuthn(c *fiber.Ctx) (*webauthn.WebAuthn, error) {
 	host := c.Hostname()
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h
+	}
+
+	if host != "localhost" && (net.ParseIP(host) != nil || !strings.Contains(host, ".")) {
+		return nil, fmt.Errorf("%w: %q", errPasskeyHost, host)
 	}
 
 	return webauthn.New(&webauthn.Config{
@@ -67,7 +79,10 @@ func (r *Router) passkeyList(c *fiber.Ctx) ([]fiber.Map, error) {
 func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
 	w, err := r.webAuthn(c)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Error("Failed to init webauthn")
+		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
+		if errors.Is(err, errPasskeyHost) {
+			return c.Status(fiber.StatusBadRequest).SendString(T("passkey.bad_hostname"))
+		}
 		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
 	}
 
@@ -124,6 +139,10 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 
 	w, err := r.webAuthn(c)
 	if err != nil {
+		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
+		if errors.Is(err, errPasskeyHost) {
+			return c.Status(fiber.StatusBadRequest).SendString(T("passkey.bad_hostname"))
+		}
 		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
 	}
 
