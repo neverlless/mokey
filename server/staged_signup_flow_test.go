@@ -133,6 +133,7 @@ func TestStagedSignupVerifyResend(t *testing.T) {
 		viper.Set("accounts.staged_signup", true)
 	})
 
+	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
 	stagedSignup(t, app, "jesse", "jesse@example.com")
 	assert.NotNil(fake.stageusers["jesse"])
 

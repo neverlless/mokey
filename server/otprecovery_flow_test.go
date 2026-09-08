@@ -14,6 +14,7 @@ func TestOTPRecoveryRequestFlow(t *testing.T) {
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_captcha", false)
 	})
+	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
 	fake.addUser("walter", &fakeUser{Password: "Secret123!", AuthTypes: []string{"otp"}})
 	fake.addUser("jesse", &fakeUser{Password: "Secret123!"}) // no OTP
 
