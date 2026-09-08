@@ -424,6 +424,14 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 			"email":    user.Email,
 		}).Error("Failed to change expired password for user")
 
+		// FreeIPA says why it refused; answering with an empty 500 turned
+		// that into a generic error for the user (ubccr/mokey#18)
+		switch {
+		case errors.Is(err, ipa.ErrPasswordPolicy):
+			return c.Status(fiber.StatusBadRequest).SendString(T("password.rejected_by_policy"))
+		case errors.Is(err, ipa.ErrInvalidPassword):
+			return c.Status(fiber.StatusBadRequest).SendString(T("password.invalid_current"))
+		}
 		return c.Status(fiber.StatusInternalServerError).SendString("")
 	}
 

@@ -218,6 +218,20 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string,
 		switch {
 		case errors.Is(err, ipa.ErrUserExists):
 			return fmt.Errorf("Username already exists: %s", user.Username)
+		case errors.Is(err, ipa.ErrPasswordPolicy):
+			// UserAddWithPassword adds the user first and sets the password
+			// second, so a policy rejection leaves a half-created account
+			// holding a random password. Left behind it would block the
+			// retry we are about to invite with "username already exists".
+			if derr := r.adminClient.UserDelete(false, true, user.Username); derr != nil {
+				log.WithFields(log.Fields{
+					"err":      derr,
+					"username": user.Username,
+				}).Error("Failed to remove half-created account after password rejection")
+			}
+			// FreeIPA rejected the password after the local check passed;
+			// say so instead of "contact your administrator" (#18)
+			return errors.New(T("password.rejected_by_policy"))
 		default:
 			log.WithFields(log.Fields{
 				"err":      err,

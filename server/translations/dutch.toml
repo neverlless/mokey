@@ -264,6 +264,8 @@ enter_current = "Voer je huidige wachtwoord in"
 same_as_new = "Het huidige wachtwoord is hetzelfde als het nieuwe wachtwoord. Kies een ander wachtwoord."
 min_length = "Wachtwoord voldoet niet aan het beleid. Minimumlengte: %d"
 policy_not_met = "Wachtwoord voldoet niet aan het beleid. Probeer zowel hoofd‑/kleine letters, cijfers en speciale tekens te gebruiken."
+invalid_current = "Uw huidige wachtwoord is onjuist"
+rejected_by_policy = "FreeIPA heeft dit wachtwoord geweigerd. Controleer de vereisten hierboven — het kan ook een recent wachtwoord herhalen of te kort na uw vorige wijziging komen."
 
 [password_change]
 title = "Wachtwoord Wijzigen"

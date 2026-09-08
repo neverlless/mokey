@@ -108,6 +108,11 @@ type fakeIPA struct {
 	tokens          []*fakeOTPToken
 	// last ipatokennotbefore value received by otptoken_add (raw string)
 	lastNotBefore string
+	// krbpwdminlength reported by pwpolicy_show (0 = 8). change_password
+	// always enforces 8, so lowering this models the real gap between what
+	// mokey can pre-check and what FreeIPA actually enforces (history,
+	// minimum lifetime, dictionary checks).
+	reportedMinLength int
 }
 
 func newFakeIPA() *fakeIPA {
@@ -969,12 +974,16 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 		rpcResult(w, map[string]interface{}{})
 
 	case "pwpolicy_show":
+		minLength := 8
+		if f.reportedMinLength > 0 {
+			minLength = f.reportedMinLength
+		}
 		rpcResult(w, map[string]interface{}{
 			"krbpwdmaxfailure":      []string{fmt.Sprintf("%d", fakeLockoutThreshold)},
 			"krbpwdlockoutduration": []string{"600"},
 			"krbminpwdlife":         []string{"1"},
 			"krbmaxpwdlife":         []string{"90"},
-			"krbpwdminlength":       []string{"8"},
+			"krbpwdminlength":       []string{fmt.Sprintf("%d", minLength)},
 			"krbpwdmindiffchars":    []string{"2"},
 			"krbpwdhistorylength":   []string{"5"},
 		})
