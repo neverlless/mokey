@@ -98,6 +98,8 @@ require OTP, and all responses are enumeration-safe.
 | `from` | string | `"support@example.com"` | From address for all emails. Also shown as the support contact. |
 | `base_url` | string | request host | Base URL used in email links. Set explicitly when mokey runs behind a proxy. |
 | `signature` | string | — | Signature appended to all emails. |
+| `subject_prefix` | string | `"[<site name>] "` | Text placed before every subject line. Set it to `""` to drop the prefix. |
+| `subject_suffix` | string | — | Text appended to every subject line, for gateways that require a marker to pass a message. |
 | `token_max_age` | int | `3600` | Lifetime (seconds) of password-reset and account-verify links. |
 | `token_secret` | string | auto-generated | 32-byte hex secret for signing email tokens (`openssl rand -hex 32`). Auto-generated at startup when blank — set it so links survive restarts. |
 | `notify_new_login` | bool | `false` | Email the user on every fresh sign-in (browser, OS, IP). Sent asynchronously. |

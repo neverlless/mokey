@@ -453,7 +453,14 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 	header.Set("Mime-Version", "1.0")
 	header.Set("Date", time.Now().Format(time.RFC1123Z))
 	header.Set("To", user.Email)
-	header.Set("Subject", fmt.Sprintf("[%s] %s", viper.GetString("site.name"), subject))
+	// Both affixes are configurable: some mail gateways only pass a message
+	// when its subject carries a marker (ubccr/mokey#28). Unset keeps the
+	// site-name prefix; setting it to "" removes the prefix entirely.
+	prefix := fmt.Sprintf("[%s] ", viper.GetString("site.name"))
+	if viper.IsSet("email.subject_prefix") {
+		prefix = viper.GetString("email.subject_prefix")
+	}
+	header.Set("Subject", prefix+subject+viper.GetString("email.subject_suffix"))
 	header.Set("From", viper.GetString("email.from"))
 
 	var multipartBody bytes.Buffer
