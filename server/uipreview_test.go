@@ -2,6 +2,7 @@ package server
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -51,3 +52,23 @@ func TestUIPreviewServe(t *testing.T) {
 	}
 }
 
+
+// #24: the toggle used to sit in the top bar next to the logo, where users
+// found it distracting; it belongs with the help icon in the footer
+func TestThemeToggleLivesInTheFooter(t *testing.T) {
+	header, err := os.ReadFile("templates/header.html")
+	if err != nil {
+		t.Fatalf("read header: %s", err)
+	}
+	footer, err := os.ReadFile("templates/footer.html")
+	if err != nil {
+		t.Fatalf("read footer: %s", err)
+	}
+
+	if strings.Contains(string(header), `id="theme-toggle"`) {
+		t.Error("theme toggle is back in the top bar")
+	}
+	if !strings.Contains(string(footer), `id="theme-toggle"`) {
+		t.Error("theme toggle is missing from the footer")
+	}
+}

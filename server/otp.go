@@ -153,10 +153,23 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 	user := r.user(c)
 	vars := fiber.Map{}
 
-	key, err := otp.NewKeyFromURL(uri)
-	if err != nil || action == "cancel" {
+	// Backing out of the QR dialog is a deliberate choice, not a failure:
+	// drop the unverified token and return to the list without an alarm
+	// (ubccr/mokey#20)
+	if action == "cancel" {
 		client.RemoveOTPToken(uuid)
-		vars["message"] = "Failed to verify token."
+		return r.tokenList(c, vars)
+	}
+
+	key, err := otp.NewKeyFromURL(uri)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"uuid":     uuid,
+			"username": user.Username,
+			"err":      err,
+		}).Error("Failed to parse OTP token URI")
+		client.RemoveOTPToken(uuid)
+		vars["message"] = T("otptoken.failed_to_verify_token")
 		return r.tokenList(c, vars)
 	}
 

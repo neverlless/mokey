@@ -18,7 +18,7 @@
 	<link rel="stylesheet" href="/static/css/fontawesome.all.min.css?v=20260818b" integrity="sha384-3B6NwesSXE7YJlcLI9RpRqGf2p/EgVH8BgoKTaUrmKNDkHPStTQ3EyoYjCGXaOTS" crossorigin="anonymous">
 	<link rel="stylesheet" href="/static/css/sweetalert2.min.css?v=20260818b" integrity="sha384-SUNIgQeCps0CoAVRrheRnQztaghCAffXsWBNCCUvia+XNEh7IZg6RvTKpovgqBrc" crossorigin="anonymous">
 	<link rel="stylesheet" type="text/css" href="/static/css/fonts.css?v=20260818b" integrity="sha384-zzo40lkWHjwFRdOCjLSbD5A9ldvpVA1P9TP7oIXVVqRoyAFy17XdtmusH4DOIaJf" crossorigin="anonymous">
-	<link rel="stylesheet" type="text/css" href="/static/css/style.css?v=20260818b" integrity="sha384-Fp5zxflxNSF8sfj0r6xZFasDfeQ721+3oJiNAUDs82PdBsdMv1KRTxIQtoMJ8R93" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="/static/css/style.css?v=20260908b" integrity="sha384-v3tsT3vfWs0ub+IjcQyoVU+YykHVpYObDIUStrvqBy/VZewdoGNo+ECf+pkebaWZ" crossorigin="anonymous">
     {{ with ConfigValueString "site.css" }}
 	<link rel="stylesheet" type="text/css" href="/css/styles">
     {{ end }}
@@ -29,8 +29,5 @@
         <div class="navbar-header">
           <a class="navbar-brand" href="/">{{ with ConfigValueString "site.logo" }}<img id="site-logo" src="/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ ConfigValueString "site.name" }}{{ end }}</a>
         </div>
-        <button type="button" class="theme-toggle ms-auto" id="theme-toggle" aria-label="Toggle dark mode">
-          <i class="fa fa-circle-half-stroke" aria-hidden="true"></i>
-        </button>
       </div>
     </nav>

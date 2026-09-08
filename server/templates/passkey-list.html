@@ -72,6 +72,10 @@
             if (!finishResp.ok) { fail(await finishResp.text()); return; }
             window.location.reload();
         } catch (e) {
+            // Dismissing the platform dialog surfaces as NotAllowedError,
+            // and AbortError when the page aborts it. The user knows they
+            // cancelled; reporting a failure only confuses them (#21).
+            if (e.name === 'NotAllowedError' || e.name === 'AbortError') return;
             fail(e.message || '{{ T "passkey.registration_failed" }}');
         }
     });
