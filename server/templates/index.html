@@ -41,14 +41,18 @@
 						<i class="fa fa-user-shield text-center me-1"></i>
 						{{ T "profile.passkeys" }}
 					</a>
+					{{ if ConfigValueBool "accounts.enable_groups" }}
 					<a class="nav-link{{ if eq $.path "groups" }} active{{end}}" id="groups-tab" href="/groups" role="tab">
 						<i class="fa fa-users text-center me-1"></i>
 						{{ T "groups.tab" }}
 					</a>
+					{{ end }}
+					{{ if ConfigValueBool "accounts.enable_access" }}
 					<a class="nav-link{{ if eq $.path "access" }} active{{end}}" id="access-tab" href="/access" role="tab">
 						<i class="fa fa-door-open text-center me-1"></i>
 						{{ T "access.tab" }}
 					</a>
+					{{ end }}
 					{{ if $.is_admin }}
 					<a class="nav-link{{ if eq $.path "admin" }} active{{end}}" id="admin-tab" href="/admin" role="tab">
 						<i class="fa fa-users-gear text-center me-1"></i>

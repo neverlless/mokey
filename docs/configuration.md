@@ -36,6 +36,8 @@ Addresses upstream request
 | `hide_invalid_username_error` | bool | `false` | On login, don't reveal account state — unknown, locked, and blocked usernames all proceed to the password step and fail with the same generic error. The default favors clearer error messages at the cost of allowing username enumeration on the login form; enable this on internet-facing deployments. |
 | `require_admin_verify` | bool | `false` | Registrations need admin approval: after email verification the account is marked pending and stays locked; admins approve or deny it from the panel's "Pending approval" queue. Approval sends the welcome email, denial deletes the registration. |
 | `staged_signup` | bool | `false` | Create signups as FreeIPA *stage users* (`stageuser_add`) instead of disabled active accounts. Unapproved registrations never appear in the active user tree: email verification (and admin approval, with `require_admin_verify`) activates the account via `stageuser_activate`; denial deletes the staged entry. FreeIPA expires the password on activation; mokey lifts that expiry (resetting it to the policy max lifetime) so the password chosen at signup works on first login. Requires the mokey service account to have the "Stage User Administrators" privilege (see README). Signups from before enabling this option finish verification through the old flow. |
+| `enable_groups` | bool | `true` | Show the Groups tab and enable group self-service. See [Group self-service](#group-self-service). |
+| `enable_access` | bool | `true` | Show the Access tab and the access-test route. See [Access page](#access-page). |
 | `enable_subid` | bool | `false` | Show a "Subordinate IDs" section on the account page: users see their subid range (subUID/subGID start, size) or generate one with a click (`subid_generate`) — used for rootless podman/docker on IPA-enrolled hosts. Generation is one-shot per user and cannot be undone. Requires the mokey service account to have the "Subordinate ID Administrators" privilege (see README). |
 | `require_mfa` | bool | `false` | Require Two-Factor Authentication on all accounts. Users without an OTP token cannot manage SSH keys and are prompted to enroll. |
 | `default_homedir` | string | `"/home"` | Base home directory for accounts created via signup (`<default_homedir>/<username>`). |
@@ -54,6 +56,9 @@ Addresses upstream request
 
 ### Group self-service
 
+Set `enable_groups = false` to remove the Groups tab and every route behind
+it, for deployments where users should not manage their own membership.
+
 Any group with at least one FreeIPA *member manager* automatically appears
 as joinable on the portal's Groups tab. Users request to join; the group's
 member managers (sponsors) approve or deny the request from the same tab —
@@ -70,6 +75,9 @@ sponsors who manage via a manager group see the queue in the portal but are
 not emailed.
 
 ### Access page
+
+Set `enable_access = false` to remove the Access tab and the `hbactest`
+route behind it.
 
 The Access tab shows every HBAC and sudo rule that applies to the
 logged-in user and includes a "can I log into host X?" simulator backed

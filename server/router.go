@@ -149,20 +149,26 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Get("/sshkey", r.RequireLogin, r.Index)
 	app.Get("/passkey", r.RequireLogin, r.Index)
 	app.Get("/otp", r.RequireLogin, r.Index)
-	app.Get("/groups", r.RequireLogin, r.Index)
-	app.Get("/access", r.RequireLogin, r.Index)
-	app.Post("/access/test", r.RequireLogin, r.RequireHTMX, r.AccessTest)
+	// Group self-service and the access page are whole features an operator
+	// can switch off; hiding the tab is not enough, the routes go too (#27)
+	if viper.GetBool("accounts.enable_groups") {
+		app.Get("/groups", r.RequireLogin, r.Index)
+		app.Post("/groups/request", r.RequireLogin, r.RequireHTMX, r.GroupRequestJoin)
+		app.Post("/groups/leave", r.RequireLogin, r.RequireHTMX, r.GroupRequestLeave)
+		app.Post("/groups/approve", r.RequireLogin, r.RequireHTMX, r.GroupApprove)
+		app.Post("/groups/deny", r.RequireLogin, r.RequireHTMX, r.GroupDeny)
+		app.Post("/groups/remove-member", r.RequireLogin, r.RequireHTMX, r.GroupRemoveMember)
+	}
+
+	if viper.GetBool("accounts.enable_access") {
+		app.Get("/access", r.RequireLogin, r.Index)
+		app.Post("/access/test", r.RequireLogin, r.RequireHTMX, r.AccessTest)
+	}
 
 	// Subordinate IDs
 	if viper.GetBool("accounts.enable_subid") {
 		app.Post("/subid/generate", r.RequireLogin, r.RequireHTMX, r.SubidGenerate)
 	}
-
-	app.Post("/groups/request", r.RequireLogin, r.RequireHTMX, r.GroupRequestJoin)
-	app.Post("/groups/leave", r.RequireLogin, r.RequireHTMX, r.GroupRequestLeave)
-	app.Post("/groups/approve", r.RequireLogin, r.RequireHTMX, r.GroupApprove)
-	app.Post("/groups/deny", r.RequireLogin, r.RequireHTMX, r.GroupDeny)
-	app.Post("/groups/remove-member", r.RequireLogin, r.RequireHTMX, r.GroupRemoveMember)
 
 	// Account Create
 	if viper.GetBool("accounts.enable_signup") {
