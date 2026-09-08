@@ -27,9 +27,30 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 
 	user.First = strings.TrimSpace(c.FormValue("first"))
 	user.Last = strings.TrimSpace(c.FormValue("last"))
-	user.Mobile = strings.TrimSpace(c.FormValue("phone"))
 	user.DisplayName = strings.TrimSpace(c.FormValue("displayname"))
-	user.TelephoneNumber = strings.TrimSpace(c.FormValue("telephone"))
+
+	// Phone numbers arrive as a country code and a national number (#22).
+	// On rejection the submitted halves go back into the form, so the user
+	// corrects what they typed instead of retyping it.
+	phoneRejected := func(err error) error {
+		vars["message"] = err.Error()
+		vars["phone_cc"] = c.FormValue("phone_cc")
+		vars["phone"] = c.FormValue("phone")
+		vars["telephone_cc"] = c.FormValue("telephone_cc")
+		vars["telephone"] = c.FormValue("telephone")
+		return c.Render("account.html", vars)
+	}
+
+	mobile, err := joinPhone(c.FormValue("phone_cc"), c.FormValue("phone"))
+	if err != nil {
+		return phoneRejected(err)
+	}
+	telephone, err := joinPhone(c.FormValue("telephone_cc"), c.FormValue("telephone"))
+	if err != nil {
+		return phoneRejected(err)
+	}
+	user.Mobile = mobile
+	user.TelephoneNumber = telephone
 
 	// Shell changes are opt-in and restricted to the configured allowlist
 	if viper.GetBool("accounts.allow_change_shell") {

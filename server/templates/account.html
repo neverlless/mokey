@@ -47,8 +47,28 @@
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "account.phone_number" }}</label>
-		  	<input type="text" class="form-control" name="phone" id="phone" value="{{ .user.Mobile }}">
+		  	<label class="form-label" for="phone">{{ T "account.phone_number" }}</label>
+		  	{{ $phone := "" }}{{ with $.phone_cc }}{{ $phone = . }}{{ else }}{{ $phone = PhoneCode .user.Mobile }}{{ end }}
+		  	<div class="input-group mokey-phone">
+		  		<div class="mokey-dial" data-dial>
+		  			<button type="button" class="mokey-dial-btn" id="phone_btn"
+		  			        aria-haspopup="listbox" aria-expanded="false"
+		  			        aria-label="{{ T "account.country_code" }}">
+		  				{{ if $phone }}
+		  				<span class="mokey-dial-flag">{{ PhoneFlag $phone }}</span>
+		  				<span class="mokey-dial-code">+{{ $phone }}</span>
+		  				{{ else }}
+		  				<i class="fa fa-globe mokey-dial-flag" aria-hidden="true"></i>
+		  				<span class="mokey-dial-code">{{ T "account.select_country" }}</span>
+		  				{{ end }}
+		  				<i class="fa fa-chevron-down mokey-dial-caret" aria-hidden="true"></i>
+		  			</button>
+		  			<input type="hidden" name="phone_cc" id="phone_cc" value="{{ $phone }}">
+		  		</div>
+		  		<input type="tel" class="form-control" name="phone" id="phone"
+		  		       inputmode="tel" autocomplete="tel-national"
+		  		       value="{{ with $.phone }}{{ . }}{{ else }}{{ PhoneNumber .user.Mobile }}{{ end }}">
+		  	</div>
 		</div>
 	</div>
 	<div class="col-md-6">
@@ -60,7 +80,27 @@
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label class="form-label" for="telephone">{{ T "account.work_phone" }}</label>
-		  	<input type="text" class="form-control" name="telephone" id="telephone" value="{{ .user.TelephoneNumber }}">
+		  	{{ $telephone := "" }}{{ with $.telephone_cc }}{{ $telephone = . }}{{ else }}{{ $telephone = PhoneCode .user.TelephoneNumber }}{{ end }}
+		  	<div class="input-group mokey-phone">
+		  		<div class="mokey-dial" data-dial>
+		  			<button type="button" class="mokey-dial-btn" id="telephone_btn"
+		  			        aria-haspopup="listbox" aria-expanded="false"
+		  			        aria-label="{{ T "account.country_code" }}">
+		  				{{ if $telephone }}
+		  				<span class="mokey-dial-flag">{{ PhoneFlag $telephone }}</span>
+		  				<span class="mokey-dial-code">+{{ $telephone }}</span>
+		  				{{ else }}
+		  				<i class="fa fa-globe mokey-dial-flag" aria-hidden="true"></i>
+		  				<span class="mokey-dial-code">{{ T "account.select_country" }}</span>
+		  				{{ end }}
+		  				<i class="fa fa-chevron-down mokey-dial-caret" aria-hidden="true"></i>
+		  			</button>
+		  			<input type="hidden" name="telephone_cc" id="telephone_cc" value="{{ $telephone }}">
+		  		</div>
+		  		<input type="tel" class="form-control" name="telephone" id="telephone"
+		  		       inputmode="tel" autocomplete="tel-national"
+		  		       value="{{ with $.telephone }}{{ . }}{{ else }}{{ PhoneNumber .user.TelephoneNumber }}{{ end }}">
+		  	</div>
 		</div>
 	</div>
 	<div class="col-md-6">
@@ -122,4 +162,27 @@
     </button>
 </form>
 {{ template "subid-card.html" . }}
+</div>
+
+{{/* One picker for both phone fields: the script moves it into whichever
+     trigger opened it, so positioning is plain CSS and the 250-row list is
+     only in the DOM once. */}}
+<div class="mokey-dial-pop" id="dial-picker" hidden>
+  <div class="mokey-dial-search">
+    <i class="fa fa-magnifying-glass" aria-hidden="true"></i>
+    <input type="text" id="dial-search" class="mokey-dial-input" autocomplete="off" spellcheck="false"
+           role="combobox" aria-expanded="true" aria-controls="dial-list" aria-autocomplete="list"
+           placeholder="{{ T "account.search_country" }}" aria-label="{{ T "account.search_country" }}">
+  </div>
+  <ul class="mokey-dial-list" id="dial-list" role="listbox" aria-label="{{ T "account.country_code" }}">
+    {{ range PhoneCountries }}
+    <li class="mokey-dial-opt" role="option" id="dial-opt-{{ .Alpha2 }}" aria-selected="false"
+        data-code="{{ .Code }}" data-flag="{{ .Flag }}" data-name="{{ .Name }}">
+      <span class="mokey-dial-flag">{{ .Flag }}</span>
+      <span class="mokey-dial-name">{{ .Name }}</span>
+      <span class="mokey-dial-code">+{{ .Code }}</span>
+    </li>
+    {{ end }}
+  </ul>
+  <p class="mokey-dial-empty" hidden>{{ T "account.no_country_match" }}</p>
 </div>

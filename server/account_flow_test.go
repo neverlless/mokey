@@ -3,6 +3,7 @@ package server
 import (
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
@@ -399,4 +400,58 @@ func TestSignupSuccessLinksToResend(t *testing.T) {
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Contains(readBody(t, resp), `href="/auth/verify"`)
+}
+
+// #22: the phone fields took any string at all
+func TestAccountSettingsPhoneValidation(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	save := func(form url.Values) string {
+		form.Set("first", "Walter")
+		form.Set("last", "White")
+		resp := tc.postForm("/account/settings", form, htmx)
+		assert.Equal(fiber.StatusOK, resp.StatusCode)
+		return readBody(t, resp)
+	}
+
+	// arbitrary text is refused and nothing is written
+	body := save(url.Values{"phone_cc": {"1"}, "phone": {"call me maybe"}})
+	assert.Contains(body, T("account.phone_invalid"))
+	assert.Equal("", fake.users["walter"].Mobile)
+
+	// a number without a country code is refused
+	body = save(url.Values{"phone": {"5055550100"}})
+	assert.Contains(body, T("account.phone_needs_country_code"))
+	assert.Equal("", fake.users["walter"].Mobile)
+
+	// a valid pair is stored with the code kept separable
+	save(url.Values{
+		"phone_cc": {"1"}, "phone": {"505 555 0100"},
+		"telephone_cc": {"46"}, "telephone": {"701234567"},
+	})
+	assert.Equal("+1 505 555 0100", fake.users["walter"].Mobile)
+	assert.Equal("+46 701234567", fake.users["walter"].Telephone)
+
+	// and the form renders the two halves back into their own controls
+	body = readBody(t, tc.get("/account"))
+	assert.Contains(body, `<input type="hidden" name="phone_cc" id="phone_cc" value="1">`)
+	assert.Contains(body, `<input type="hidden" name="telephone_cc" id="telephone_cc" value="46">`)
+	// the trigger shows the flag and the code, never the country name twice
+	assert.Contains(body, `<span class="mokey-dial-code">+1</span>`)
+	assert.Contains(body, `<span class="mokey-dial-code">+46</span>`)
+	assert.Contains(body, `value="505 555 0100"`)
+	assert.Contains(body, `value="701234567"`)
+
+	// the searchable list is rendered once and shared by both fields
+	assert.Equal(1, strings.Count(body, `id="dial-picker"`))
+	assert.Contains(body, `data-code="380" data-flag="🇺🇦" data-name="Ukraine"`)
+
+	// clearing the number clears the attribute
+	save(url.Values{"phone_cc": {"1"}, "phone": {""}})
+	assert.Equal("", fake.users["walter"].Mobile)
 }
