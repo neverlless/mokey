@@ -211,10 +211,14 @@ smtp_host = "localhost"
 # Port for smtp server
 smtp_port = 25
 
-# Enable smtp tls
+# Enable smtp tls: "off", "on" (implicit TLS) or "starttls". Required for
+# SMTP AUTH against anything but localhost — credentials are never sent over
+# a plaintext link.
 smtp_tls = "off"
 
-# SMTP Authentication Credentials
+# SMTP Authentication Credentials. The mechanism is negotiated from what the
+# server advertises after EHLO: PLAIN when offered, otherwise LOGIN. Set
+# smtp_tls above whenever these are set.
 #smtp_username = ""
 #smtp_password = ""
 

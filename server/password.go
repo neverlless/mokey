@@ -257,6 +257,10 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 		r.metrics.totalPasswordResetsSent.Inc()
 	}
 
+	// the same page either way: showing a delivery error only for accounts
+	// that exist would turn this form into an enumeration oracle. The
+	// operator's signal is the log line above plus a flat
+	// mokey_password_reset_sent_total (#31)
 	return c.Render("password-forgot-success.html", fiber.Map{})
 }
 

@@ -1,5 +1,28 @@
 # Mokey ChangeLog
 
+## [v2.2.1] - 2026-09-09
+
+Mail delivery (#31): three separate ways a send could go wrong without
+anyone hearing about it.
+
+- SMTP AUTH negotiates a mechanism instead of always sending `PLAIN`. The
+  mechanism is picked from what the server advertises after `EHLO`: `PLAIN`
+  when offered, otherwise `LOGIN` (not in Go's `net/smtp`, implemented here).
+  A server offering neither is refused with an error naming what it does
+  advertise, rather than a bare `504 Unrecognized authentication type`
+- Credentials are still never sent over a plaintext link, but the refusal now
+  names the knob — `email.smtp_tls` — instead of Go's bare "unencrypted
+  connection". With the default `smtp_tls = "off"`, setting
+  `email.smtp_username` used to fail with nothing pointing at TLS
+- The server's answer to the final `.` is read and reported. It was
+  discarded, so a message rejected after `DATA` (size, policy, antispam)
+  counted as delivered; the session also ends with `QUIT` now
+- Signup says the verification email failed instead of sending the user to an
+  inbox nothing was delivered to. The forgot-password, forgot-username and
+  resend-verification pages deliberately keep their uniform response — a
+  delivery error shown only for accounts that exist would be an enumeration
+  oracle — but they no longer flatly claim an email was sent
+
 ## [v2.2.0] - 2026-09-08
 
 Deployment review release: the fourteen issues raised by the first outside
