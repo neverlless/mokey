@@ -168,24 +168,15 @@ func (r *Router) AccountCreate(c *fiber.Ctx) error {
 	r.metrics.totalSignups.Inc()
 
 	// Send user an email to verify their account
-	err = r.emailer.SendAccountVerifyEmail(user, c)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to send new account email")
-	} else {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"email":    user.Email,
-		}).Info("New user account email sent successfully")
-		r.metrics.totalAccountVerificationsSent.Inc()
-	}
-
 	vars := fiber.Map{
 		"user": user,
 	}
+	if err := r.sendVerifyResendEmail(user, c); err != nil {
+		// the account is real, only the mail failed: say so instead of
+		// pointing at an inbox nothing was delivered to (#31)
+		vars["email_failed"] = true
+	}
+
 	return c.Render("signup-success.html", vars)
 }
 
@@ -516,27 +507,32 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 		return c.Render("account-verify-forgot-success.html", fiber.Map{})
 	}
 
+	// same page whether or not the send worked: see PasswordForgot
 	r.sendVerifyResendEmail(user, c)
 
 	return c.Render("account-verify-forgot-success.html", fiber.Map{})
 }
 
-// sendVerifyResendEmail re-sends the account verification email
-func (r *Router) sendVerifyResendEmail(user *ipa.User, c *fiber.Ctx) {
+// sendVerifyResendEmail sends the account verification email and reports
+// whether it made it out, so callers can stop promising mail that failed
+func (r *Router) sendVerifyResendEmail(user *ipa.User, c *fiber.Ctx) error {
 	err := r.emailer.SendAccountVerifyEmail(user, c)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":      err,
 			"username": user.Username,
 			"email":    user.Email,
-		}).Error("Failed to re-send verify account email")
-	} else {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"email":    user.Email,
-		}).Info("Verify user account email sent successfully")
-		r.metrics.totalAccountVerificationsSent.Inc()
+		}).Error("Failed to send verify account email")
+		return err
 	}
+
+	log.WithFields(log.Fields{
+		"username": user.Username,
+		"email":    user.Email,
+	}).Info("Verify user account email sent successfully")
+	r.metrics.totalAccountVerificationsSent.Inc()
+
+	return nil
 }
 
 // EmailChangeConfirm applies a pending email change. GET renders a

@@ -7,6 +7,9 @@
             <div class="text-center">
             <p><span class="badge bg-success"><i class="fa-regular fa-circle-check"></i> {{ T "signup_success.account_created" }}</span></p>
             <p class="text-center">{{ T "common.username" }}: <strong>{{ $.user.Username }}</strong></p>
+            {{ if $.email_failed }}
+            <p><span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation"></i> {{ T "common.email_send_failed" }}</span></p>
+            {{ else }}
             <p class="text-center">
             {{ if not (ConfigValueBool "accounts.require_admin_verify") }}
             {{ T "signup_success.email_verification" }}
@@ -16,6 +19,7 @@
             {{ end }}
             {{ T "common.check_email" }}
             </p>
+            {{ end }}
             {{ if not (ConfigValueBool "accounts.require_admin_verify") }}
             <p class="text-muted">{{ T "signup_success.no_email" }} <a href="/auth/verify">{{ T "signup_success.resend_link" }}</a></p>
             {{ end }}

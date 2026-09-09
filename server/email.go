@@ -7,6 +7,7 @@ package server
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"mime/quotedprintable"
@@ -14,10 +15,12 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
 	"time"
+	"unicode"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gofiber/fiber/v2"
@@ -504,6 +507,7 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 	var conn net.Conn
 	tlsMode := viper.GetString("email.smtp_tls")
 
+	encrypted := false
 	switch tlsMode {
 	case "on":
 		tlsConfig := &tls.Config{
@@ -511,6 +515,7 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 			ServerName:         viper.GetString("email.smtp_host"),
 		}
 		conn, err = tls.Dial("tcp", smtpHostPort, tlsConfig)
+		encrypted = true
 	case "off", "starttls":
 		conn, err = net.Dial("tcp", smtpHostPort)
 	default:
@@ -534,10 +539,18 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 		if err != nil {
 			return err
 		}
+		encrypted = true
 	}
 
-	if viper.IsSet("email.smtp_username") && viper.IsSet("email.smtp_password") {
-		auth := smtp.PlainAuth("", viper.GetString("email.smtp_username"), viper.GetString("email.smtp_password"), viper.GetString("email.smtp_host"))
+	username := viper.GetString("email.smtp_username")
+	password := viper.GetString("email.smtp_password")
+	if username != "" && password != "" {
+		_, advertised := c.Extension("AUTH")
+		auth, err := smtpAuth(advertised, username, password, viper.GetString("email.smtp_host"), encrypted)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 		if err = c.Auth(auth); err != nil {
 			log.Error(err)
 			return err
@@ -556,7 +569,6 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 	if err != nil {
 		return err
 	}
-	defer wc.Close()
 
 	var buf bytes.Buffer
 	for k, vv := range header {
@@ -570,7 +582,22 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 		return err
 	}
 	if _, err = wc.Write(multipartBody.Bytes()); err != nil {
+		wc.Close()
 		return err
+	}
+
+	// closing the DATA writer sends the final dot and reads the server's
+	// verdict: this is where a rejected message is reported, and dropping
+	// it used to turn every rejection into a "sent successfully"
+	if err = wc.Close(); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if err := c.Quit(); err != nil {
+		// the message was already accepted; a botched goodbye is not a
+		// delivery failure
+		log.WithFields(log.Fields{"err": err}).Warn("SMTP QUIT failed after the message was accepted")
 	}
 
 	if e.slackNotifier != nil {
@@ -585,4 +612,69 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 	}
 
 	return nil
+}
+
+// isLocalSMTPHost mirrors net/smtp's own localhost check: credentials may
+// travel in the clear only when they never leave the machine.
+func isLocalSMTPHost(name string) bool {
+	return name == "localhost" || name == "127.0.0.1" || name == "::1"
+}
+
+// smtpAuth picks an AUTH mechanism from the ones the server advertised in
+// its EHLO response. Go's net/smtp only ships PLAIN and CRAM-MD5, so LOGIN
+// is implemented here for servers that offer no PLAIN (#31).
+func smtpAuth(advertised, username, password, host string, encrypted bool) (smtp.Auth, error) {
+	if !encrypted && !isLocalSMTPHost(host) {
+		return nil, fmt.Errorf("refusing to send SMTP credentials over an unencrypted connection to %s: set email.smtp_tls to \"starttls\" or \"on\"", host)
+	}
+
+	mechs := strings.Fields(strings.ToUpper(advertised))
+
+	switch {
+	// a server that advertises nothing still usually takes PLAIN, and that
+	// is what mokey has always sent
+	case len(mechs) == 0 || slices.Contains(mechs, "PLAIN"):
+		return smtp.PlainAuth("", username, password, host), nil
+	case slices.Contains(mechs, "LOGIN"):
+		return &loginAuth{username: username, password: password, host: host}, nil
+	}
+
+	return nil, fmt.Errorf("no SMTP AUTH mechanism in common: server offers %q, mokey supports PLAIN and LOGIN", advertised)
+}
+
+// loginAuth implements the non-standard but widely deployed AUTH LOGIN
+// exchange, with the same plaintext refusal net/smtp applies to PLAIN.
+type loginAuth struct {
+	username, password, host string
+}
+
+func (a *loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	if !server.TLS && !isLocalSMTPHost(server.Name) {
+		return "", nil, errors.New("refusing to send SMTP credentials over an unencrypted connection")
+	}
+	if server.Name != a.host {
+		return "", nil, errors.New("wrong host name")
+	}
+	return "LOGIN", nil, nil
+}
+
+func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
+	if !more {
+		return nil, nil
+	}
+
+	// servers word the prompts differently ("Username:", "User Name",
+	// "Password:"), so match on the leading word only
+	prompt := strings.ToLower(strings.TrimFunc(string(fromServer), func(r rune) bool {
+		return !unicode.IsLetter(r)
+	}))
+
+	switch {
+	case strings.HasPrefix(prompt, "user"):
+		return []byte(a.username), nil
+	case strings.HasPrefix(prompt, "pass"):
+		return []byte(a.password), nil
+	}
+
+	return nil, fmt.Errorf("unexpected SMTP LOGIN challenge: %q", fromServer)
 }
