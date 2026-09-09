@@ -116,9 +116,17 @@ require OTP, and all responses are enumeration-safe.
 | `password_expiry_reminders` | list | *(empty — disabled)* | Days-before-expiry thresholds for password expiry reminder emails, e.g. `[14, 7, 3, 1]`. A background sweep (every 6h) emails each user once per threshold; a password change re-arms all thresholds. Empty disables reminders. |
 | `smtp_host` | string | `"localhost"` | SMTP server hostname. |
 | `smtp_port` | int | `25` | SMTP server port. |
-| `smtp_tls` | string | `"off"` | SMTP TLS mode: `off`, `on` (implicit TLS), or `starttls`. |
+| `smtp_tls` | string | `"off"` | SMTP TLS mode: `off`, `on` (implicit TLS), or `starttls`. Required for SMTP AUTH against anything but localhost — credentials are never sent over a plaintext link. |
 | `smtp_username` | string | — | SMTP AUTH username. Auth is used only when both username and password are set. |
 | `smtp_password` | string | — | SMTP AUTH password. |
+
+mokey picks the AUTH mechanism from the ones the server advertises after
+`EHLO`: `PLAIN` when it is offered, otherwise `LOGIN`. A server offering
+neither (Kerberos-only or NTLM-only gateways) is rejected with an error
+naming what it advertised. Credentials are only sent once the link is
+encrypted, so set `smtp_tls` to `starttls` or `on` whenever
+`smtp_username` is set — otherwise every send fails before the first
+command goes out.
 
 ## `[server]`
 

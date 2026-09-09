@@ -258,6 +258,21 @@ Carried in with the dependency bumps: Go 1.27 and go-webauthn 0.18, whose
 stricter relying-party-id validation rejects a portal reached by IP address —
 that case now explains itself instead of failing as a system error.
 
+## v2.2.1 — Mail delivery
+
+- [x] SMTP AUTH and delivery status (#31): mokey always sent `AUTH PLAIN`,
+      which servers offering only `NTLM LOGIN` answer with `504`. The
+      mechanism is now negotiated from the EHLO advertisement, with `LOGIN`
+      implemented locally since Go's `net/smtp` does not ship it. Two silent
+      failures sat behind the same report: the refusal to send credentials
+      over a plaintext link surfaced as Go's bare "unencrypted connection"
+      with nothing pointing at `email.smtp_tls`, and the server's answer to
+      the final `.` was discarded — so a message rejected after `DATA`
+      counted as delivered. Signup now says the verification mail failed
+      instead of pointing at an empty inbox; the forgot-password,
+      forgot-username and resend flows keep their uniform response, since a
+      delivery error shown only for real accounts is an enumeration oracle
+
 ## Deliberately not planned
 
 - MFA recovery/backup codes — FreeIPA has no static-token type, so codes
