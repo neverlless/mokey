@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -92,4 +94,86 @@ func TestStatusMessagesAreNotBadges(t *testing.T) {
 			t.Errorf("%s: status message rendered as a badge, use an alert", p)
 		}
 	}
+}
+
+// The dark theme lightens the accent for contrast against the dark surface,
+// but the button label stayed Bootstrap's white: 2.9:1 on #6f96e8. Every
+// accent-filled button state has to clear WCAG AA (4.5:1) in both themes
+func TestPrimaryButtonContrast(t *testing.T) {
+	b, err := os.ReadFile("templates/static/css/style.css")
+	if err != nil {
+		t.Fatalf("read style.css: %s", err)
+	}
+	css := string(b)
+
+	block := func(selector string) string {
+		start := strings.Index(css, selector+" {")
+		if start < 0 {
+			t.Fatalf("style.css has no %s block", selector)
+		}
+		return css[start : start+strings.Index(css[start:], "\n}")]
+	}
+	hexVar := regexp.MustCompile(`(--mokey-[a-z-]+):\s*(#[0-9a-fA-F]{6});`)
+	tokens := func(selector string) map[string]string {
+		m := map[string]string{}
+		for _, kv := range hexVar.FindAllStringSubmatch(block(selector), -1) {
+			m[kv[1]] = kv[2]
+		}
+		return m
+	}
+	light := tokens(":root")
+	dark := tokens(`[data-bs-theme="dark"]`)
+	for k, v := range light {
+		if _, ok := dark[k]; !ok {
+			dark[k] = v
+		}
+	}
+
+	btn := block(".btn-primary")
+	for _, theme := range []struct {
+		name string
+		vars map[string]string
+	}{{"light", light}, {"dark", dark}} {
+		for _, state := range []struct{ label, bg string }{
+			{"--bs-btn-color", "--mokey-accent"},
+			{"--bs-btn-hover-color", "--mokey-accent-hover"},
+			{"--bs-btn-active-color", "--mokey-accent-hover"},
+		} {
+			// Bootstrap's white unless the theme wires its own label color in
+			fg := "#ffffff"
+			if strings.Contains(btn, state.label+": var(--mokey-on-accent)") {
+				fg = theme.vars["--mokey-on-accent"]
+			}
+			bg := theme.vars[state.bg]
+			if fg == "" || bg == "" {
+				t.Fatalf("%s theme: missing color for %s (fg %q, bg %q)", theme.name, state.label, fg, bg)
+			}
+			if r := contrastRatio(t, fg, bg); r < 4.5 {
+				t.Errorf("%s theme: %s %s on %s is %.2f:1, below 4.5:1", theme.name, state.label, fg, bg, r)
+			}
+		}
+	}
+}
+
+// WCAG 2.x relative-luminance contrast between two #rrggbb colors
+func contrastRatio(t *testing.T, a, b string) float64 {
+	lum := func(hex string) float64 {
+		var r, g, bl uint8
+		if _, err := fmt.Sscanf(strings.TrimPrefix(hex, "#"), "%02x%02x%02x", &r, &g, &bl); err != nil {
+			t.Fatalf("parse color %q: %s", hex, err)
+		}
+		ch := func(v uint8) float64 {
+			c := float64(v) / 255
+			if c <= 0.03928 {
+				return c / 12.92
+			}
+			return math.Pow((c+0.055)/1.055, 2.4)
+		}
+		return 0.2126*ch(r) + 0.7152*ch(g) + 0.0722*ch(bl)
+	}
+	hi, lo := lum(a), lum(b)
+	if lo > hi {
+		hi, lo = lo, hi
+	}
+	return (hi + 0.05) / (lo + 0.05)
 }

@@ -10,6 +10,10 @@ Readability fixes for the pages around signing in.
   wraps, and v2.2.1's longer anti-enumeration wording made it overflow. These
   messages are alerts now, balanced so no word is left alone on the last
   line, and the forgot-* pages end with a button back to login
+- Primary buttons are readable in the dark theme. Their label stayed
+  Bootstrap's white on the lightened dark-theme accent: 2.9:1, and 2.2:1 on
+  hover, well under WCAG AA. The label is dark there now (6.2:1, hover 8.4:1);
+  the light theme is unchanged
 
 ## [v2.2.1] - 2026-09-09
 
