@@ -8,6 +8,8 @@
 :root {
 	--mokey-accent: #2453b3;
 	--mokey-accent-hover: #1a3f8f;
+	/* label on an accent fill; must clear 4.5:1 on accent and accent-hover */
+	--mokey-on-accent: #ffffff;
 	--mokey-mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
 
 	--bs-body-bg: #f7f7f5;
@@ -48,6 +50,8 @@
 	--mokey-eyebrow: #6b6f76;
 	--mokey-accent: #6f96e8;
 	--mokey-accent-hover: #92b0ef;
+	/* the dark accent is light, so its label goes dark: white was 2.9:1 */
+	--mokey-on-accent: #14161a;
 	--bs-link-color: #6f96e8;
 	--bs-link-hover-color: #92b0ef;
 	--bs-link-color-rgb: 111, 150, 232;
@@ -208,6 +212,9 @@ body {
 }
 
 .btn-primary {
+	--bs-btn-color: var(--mokey-on-accent);
+	--bs-btn-hover-color: var(--mokey-on-accent);
+	--bs-btn-active-color: var(--mokey-on-accent);
 	--bs-btn-bg: var(--mokey-accent);
 	--bs-btn-border-color: var(--mokey-accent);
 	--bs-btn-hover-bg: var(--mokey-accent-hover);

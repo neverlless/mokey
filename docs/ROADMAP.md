@@ -281,6 +281,11 @@ that case now explains itself instead of failing as a system error.
       card. They are alerts now, balanced so no word is left alone on the
       last line, on all eight status pages rather than only the one reported;
       a test fails if a status message goes back into a badge
+- [x] Dark-theme button contrast: the dark palette lightens the accent so it
+      reads against the dark surface, but button labels stayed Bootstrap's
+      white — 2.9:1, below WCAG AA. Labels on an accent fill now come from
+      `--mokey-on-accent`, and a test computes the contrast of every button
+      state in both themes from the stylesheet's own tokens
 
 ## Deliberately not planned
 
