@@ -5,10 +5,16 @@
     <div class="login-body p-4 p-md-5">
         <div class="login-body-wrapper mx-auto">
             <div class="text-center">
-            <p><span class="badge bg-success"><i class="fa-regular fa-circle-check"></i> {{ T "signup_success.account_created" }}</span></p>
+            <div class="alert alert-success d-flex gap-2 text-start" role="alert">
+              <i class="fa-regular fa-circle-check lh-base" aria-hidden="true"></i>
+              <div>{{ T "signup_success.account_created" }}</div>
+            </div>
             <p class="text-center">{{ T "common.username" }}: <strong>{{ $.user.Username }}</strong></p>
             {{ if $.email_failed }}
-            <p><span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation"></i> {{ T "common.email_send_failed" }}</span></p>
+            <div class="alert alert-warning d-flex gap-2 text-start" role="alert">
+              <i class="fa-solid fa-triangle-exclamation lh-base" aria-hidden="true"></i>
+              <div>{{ T "common.email_send_failed" }}</div>
+            </div>
             {{ else }}
             <p class="text-center">
             {{ if not (ConfigValueBool "accounts.require_admin_verify") }}

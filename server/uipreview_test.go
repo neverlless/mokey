@@ -2,6 +2,8 @@ package server
 
 import (
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -69,5 +71,25 @@ func TestThemeToggleLivesInTheFooter(t *testing.T) {
 	}
 	if !strings.Contains(string(footer), `id="theme-toggle"`) {
 		t.Error("theme toggle is missing from the footer")
+	}
+}
+
+// #34: Bootstrap badges never wrap (white-space: nowrap), so a status
+// sentence inside one runs out of the card. Badges are for short labels;
+// an icon + sentence is a status message and belongs in an .alert
+func TestStatusMessagesAreNotBadges(t *testing.T) {
+	pages, err := filepath.Glob("templates/*.html")
+	if err != nil || len(pages) == 0 {
+		t.Fatalf("glob templates: %v", err)
+	}
+	statusBadge := regexp.MustCompile(`class="badge[^"]*">\s*<i `)
+	for _, p := range pages {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read %s: %s", p, err)
+		}
+		if statusBadge.Match(b) {
+			t.Errorf("%s: status message rendered as a badge, use an alert", p)
+		}
 	}
 }
