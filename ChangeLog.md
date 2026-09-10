@@ -1,5 +1,16 @@
 # Mokey ChangeLog
 
+## [v2.2.2] - 2026-09-10
+
+Readability fixes for the pages around signing in.
+
+- The confirmation shown after forgot-password, resend-verification, OTP
+  recovery, password reset, account verification and signup no longer runs
+  out of its card (#34). The sentence sat in a Bootstrap badge, which never
+  wraps, and v2.2.1's longer anti-enumeration wording made it overflow. These
+  messages are alerts now, balanced so no word is left alone on the last
+  line, and the forgot-* pages end with a button back to login
+
 ## [v2.2.1] - 2026-09-09
 
 Mail delivery (#31): three separate ways a send could go wrong without

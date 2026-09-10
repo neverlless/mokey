@@ -88,6 +88,11 @@ body {
 .login-failed {
 	max-width: 440px;
 }
+/* status messages in the narrow auth card run 2-3 lines; balancing keeps a
+   lone word off the last line (#34). Older browsers just wrap normally */
+.login-card .alert {
+	text-wrap: balance;
+}
 
 /* slim top bar */
 .navbar-inverse {

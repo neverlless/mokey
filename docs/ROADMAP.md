@@ -273,6 +273,15 @@ that case now explains itself instead of failing as a system error.
       forgot-username and resend flows keep their uniform response, since a
       delivery error shown only for real accounts is an enumeration oracle
 
+## v2.2.2 — Sign-in page readability
+
+- [x] Status messages that fit (#34): confirmations after a sign-in form were
+      full sentences inside a Bootstrap badge, which never wraps — once
+      v2.2.1's anti-enumeration wording made them longer, they ran out of the
+      card. They are alerts now, balanced so no word is left alone on the
+      last line, on all eight status pages rather than only the one reported;
+      a test fails if a status message goes back into a badge
+
 ## Deliberately not planned
 
 - MFA recovery/backup codes — FreeIPA has no static-token type, so codes
