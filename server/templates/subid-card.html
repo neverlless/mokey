@@ -6,20 +6,20 @@
 	<div class="row">
 		<div class="col-md-4">
 			<div class="mb-3">
-				<label class="form-label">{{ T "subid.subuid_start" }}</label>
-				<input type="text" class="form-control" value="{{ .subid.SubUID }}" disabled readonly>
+				<label for="subuid-start" class="form-label">{{ T "subid.subuid_start" }}</label>
+				<input id="subuid-start" type="text" class="form-control" value="{{ .subid.SubUID }}" disabled readonly>
 			</div>
 		</div>
 		<div class="col-md-4">
 			<div class="mb-3">
-				<label class="form-label">{{ T "subid.subgid_start" }}</label>
-				<input type="text" class="form-control" value="{{ .subid.SubGID }}" disabled readonly>
+				<label for="subgid-start" class="form-label">{{ T "subid.subgid_start" }}</label>
+				<input id="subgid-start" type="text" class="form-control" value="{{ .subid.SubGID }}" disabled readonly>
 			</div>
 		</div>
 		<div class="col-md-4">
 			<div class="mb-3">
-				<label class="form-label">{{ T "subid.count" }}</label>
-				<input type="text" class="form-control" value="{{ .subid.Count }}" disabled readonly>
+				<label for="subid-count" class="form-label">{{ T "subid.count" }}</label>
+				<input id="subid-count" type="text" class="form-control" value="{{ .subid.Count }}" disabled readonly>
 			</div>
 		</div>
 	</div>

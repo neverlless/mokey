@@ -10,8 +10,8 @@
             <div id="add-token-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto" role="alert">
             </div>
             <div class="mb-3">
-                <label class="form-label">{{ T "otptoken.token_description_label" }}</label>
-                <input type="text" class="form-control" name="desc" id="desc" value="" autofocus="autofocus" placeholder="{{ T "otptoken.token_description_placeholder" }}" aria-describedby="tokenHelpBlock">
+                <label for="desc" class="form-label">{{ T "otptoken.token_description_label" }}</label>
+                <input id="desc" type="text" class="form-control" name="desc" value="" autofocus="autofocus" placeholder="{{ T "otptoken.token_description_placeholder" }}" aria-describedby="tokenHelpBlock">
                 <div id="tokenHelpBlock" class="form-text">
                     {{ T "otptoken.token_description_help" }}
                 </div>

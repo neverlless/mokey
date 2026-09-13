@@ -10,12 +10,12 @@
             <div id="add-key-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto" role="alert">
             </div>
             <div class="mb-3">
-                <label class="form-label">{{ T "sshkey_new.title_label" }}</label>
-                <input type="text" class="form-control" name="title" id="title" value="">
+                <label for="title" class="form-label">{{ T "sshkey_new.title_label" }}</label>
+                <input id="title" type="text" class="form-control" name="title" value="">
             </div>
             <div class="mb-3">
               <label for="key" class="form-label">{{ T "sshkey_new.public_key" }}</label>
-              <textarea class="form-control" id="key" name="key" rows="5" aria-describedby="keyHelp"></textarea>
+              <textarea id="key" class="form-control" name="key" rows="5" aria-describedby="keyHelp"></textarea>
               <div id="keyHelp" class="form-text">{{ T "sshkey_new.key_help" }}</div>
             </div>
         </div>
