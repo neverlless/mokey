@@ -29,20 +29,20 @@
 <div class="row">
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "common.first_name" }}</label>
-		  	<input type="text" class="form-control" name="first" id="first" value="{{ .user.First }}">
+		  	<label for="first" class="form-label">{{ T "common.first_name" }}</label>
+		  	<input id="first" type="text" class="form-control" name="first" value="{{ .user.First }}">
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "common.last_name" }}</label>
-		  	<input type="text" class="form-control" name="last" id="last" value="{{ .user.Last }}">
+		  	<label for="last" class="form-label">{{ T "common.last_name" }}</label>
+		  	<input id="last" type="text" class="form-control" name="last" value="{{ .user.Last }}">
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "common.email" }}</label>
-			<input type="email" class="form-control" name="email" id="email" value="{{ .user.Email }}">
+		  	<label for="email" class="form-label">{{ T "common.email" }}</label>
+			<input id="email" type="email" class="form-control" name="email" value="{{ .user.Email }}">
 		</div>
 	</div>
 	<div class="col-md-6">
@@ -105,20 +105,20 @@
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "common.username" }}</label>
-		  	<input type="text" class="form-control" value="{{ .user.Username }}" disabled readonly>
+		  	<label for="username" class="form-label">{{ T "common.username" }}</label>
+		  	<input id="username" type="text" class="form-control" value="{{ .user.Username }}" disabled readonly>
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "account.last_password_change" }}</label>
-		  	<input type="text" class="form-control" value="{{ if not .user.LastPasswdChange.IsZero }}{{ TimeAgo .user.LastPasswdChange }}{{ else }}{{ T "account.never" }}{{ end }}" disabled readonly>
+		  	<label for="last-password-change" class="form-label">{{ T "account.last_password_change" }}</label>
+		  	<input id="last-password-change" type="text" class="form-control" value="{{ if not .user.LastPasswdChange.IsZero }}{{ TimeAgo .user.LastPasswdChange }}{{ else }}{{ T "account.never" }}{{ end }}" disabled readonly>
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "account.home_dir" }}</label>
-		  	<input type="text" class="form-control" value="{{ .user.HomeDir }}" disabled readonly>
+		  	<label for="home-dir" class="form-label">{{ T "account.home_dir" }}</label>
+		  	<input id="home-dir" type="text" class="form-control" value="{{ .user.HomeDir }}" disabled readonly>
 		</div>
 	</div>
 	{{ if ConfigValueBool "accounts.allow_change_shell" }}
@@ -136,8 +136,8 @@
 	{{ end }}
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label">{{ T "account.password_expires" }}</label>
-		  	<input type="text" class="form-control" value="{{ if not .user.PasswdExpire.IsZero }}{{ TimeAgo .user.PasswdExpire }}{{ else }}{{ T "account.never" }}{{ end }}" disabled readonly>
+		  	<label for="password-expires" class="form-label">{{ T "account.password_expires" }}</label>
+		  	<input id="password-expires" type="text" class="form-control" value="{{ if not .user.PasswdExpire.IsZero }}{{ TimeAgo .user.PasswdExpire }}{{ else }}{{ T "account.never" }}{{ end }}" disabled readonly>
 		</div>
 	</div>
 	<div class="col-md-12">

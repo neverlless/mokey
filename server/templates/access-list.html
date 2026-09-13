@@ -85,12 +85,14 @@
       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
       hx-target="#access-test-result" hx-swap="innerHTML">
 	<div class="col-md-5">
-		<input type="text" class="form-control" name="host" placeholder="{{ T "access.test_host_placeholder" }}">
+        <label for="host" class="form-label">{{ T "access.test_hostname" }}</label>
+		<input id="host" type="text" class="form-control" name="host" placeholder="{{ T "access.test_host_placeholder" }}">
 	</div>
 	<div class="col-md-3">
-		<input type="text" class="form-control" name="service" value="sshd">
+        <label for="service" class="form-label">{{ T "access.test_service" }}</label>
+		<input id="service" type="text" class="form-control" name="service" value="sshd">
 	</div>
-	<div class="col-md-4">
+	<div class="col-md-4 align-self-end">
 		<button class="btn btn-primary" type="submit">
 			{{ T "access.test_button" }}
 		</button>

@@ -19,9 +19,10 @@
 <form>
 <div class="row">
 	<div class="col-md-8">
+        <label for="invite-email" class="form-label">{{ T "common.email" }}</label>
 		<div class="mb-3">
 			<div class="input-group">
-				<input type="email" class="form-control" name="email" id="invite-email" placeholder="user@example.com">
+				<input id="invite-email" type="email" class="form-control" name="email" placeholder="user@example.com">
 				<button class="btn btn-primary" type="button" hx-target-error="admin-failed"
 						hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
 						data-hx-include="#invite-email"
@@ -47,7 +48,8 @@
 <h5 class="mt-4">{{ T "admin.users_title" }}</h5>
 <div class="row">
 	<div class="col-md-8">
-		<input type="search" class="form-control mb-3" name="search" id="user-search"
+        <label for="user-search" class="form-label">{{ T "admin.search" }}</label>
+		<input id="user-search" type="search" class="form-control mb-3" name="search"
 		       placeholder="{{ T "admin.search_placeholder" }}"
 		       hx-get="/admin/users" hx-target="#admin-users"
 		       hx-trigger="input changed delay:300ms, search"
