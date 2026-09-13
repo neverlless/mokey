@@ -7,7 +7,7 @@
             <form>
             <div class="mb-3">
                 <label for="username" class="form-label">{{ T "common.username" }}</label>
-                <input type="username" class="form-control form-control-lg" value="{{ $.user.Username }}" disabled="disabled">
+                <input type="text" class="form-control form-control-lg" value="{{ $.user.Username }}" disabled="disabled">
                 <div id="usernameHelpBlock" class="form-text">
                  {{ T "login.not_you" }} <a href="/auth/login">{{ T "login.switch_account" }}</a>
                 </div>
@@ -19,7 +19,7 @@
             {{ if $.user.OTPOnly }}
             <div class="mb-3">
                 <label for="otp" class="form-label">{{ T "common.otp_code" }}</label>
-                <input type="otp" class="form-control form-control-lg" name="otp" id="otp" placeholder="">
+                <input type="text" class="form-control form-control-lg" name="otp" id="otp" placeholder="">
             </div>
             {{ end }}
             <div class="mb-3 d-grid gap-2">
