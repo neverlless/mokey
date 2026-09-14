@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.2.3] - 2026-09-14
 
 Markup and accessibility fixes in the templates, most of them contributed by
 Jarl Gullberg (@Nihlus).

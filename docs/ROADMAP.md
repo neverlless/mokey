@@ -287,6 +287,18 @@ that case now explains itself instead of failing as a system error.
       `--mokey-on-accent`, and a test computes the contrast of every button
       state in both themes from the stylesheet's own tokens
 
+## v2.2.3 — Template markup and form labels
+
+- [x] Markup the HTML spec accepts (#36, #37, #39, contributed): unmatched
+      tags in seven templates, `&quot;` inside inline email styles, and the
+      non-existent `type="username"`/`type="otp"` input types
+- [x] Labels tied to their fields (#38, contributed): every form label names
+      its field with `for`/`id`, and the captcha, user search and
+      access-check fields gained visible labels. The password page's field
+      had taken the id of its own tab, which is also the htmx swap target; a
+      test now fails if a label points at nothing or a field reuses an
+      index-page id
+
 ## Deliberately not planned
 
 - MFA recovery/backup codes — FreeIPA has no static-token type, so codes
