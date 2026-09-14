@@ -1,5 +1,21 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+Markup fixes in the templates, contributed by Jarl Gullberg (@Nihlus).
+
+- Unmatched tags in seven templates (#36): a stray `</em>` in the captcha
+  hint on the signup, forgot-password, forgot-username, OTP-recovery and
+  resend-verification pages, and `</div>` closing before `</form>` on the
+  account and password pages
+- Inline styles in the email templates quote font names with `'` instead of
+  `&quot;` (#37). CSS accepts either, and the escaped form made editors
+  report the markup as broken
+- `type="username"` and `type="otp"`, neither of which the HTML spec defines,
+  are `type="text"` on the login, signup, forgot-password, OTP-recovery and
+  resend-verification pages (#39). Browsers already fell back to text, so the
+  fields behave as before
+
 ## [v2.2.2] - 2026-09-10
 
 Readability fixes for the pages around signing in.
