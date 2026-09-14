@@ -24,7 +24,7 @@ if [ -f /data/volume-version ] ; then
 	sed 's%^/%%' /etc/volume-data-list | while read f ; do [ -e /data/$f -o -L /data/$f ] && echo $f ; done | ( cd /data && xargs cp --parents -rp -t / )
 fi
 
-DOMAIN=mokey.local
+DOMAIN=mokey.test
 IPA=ipa.$DOMAIN
 
 IPA_IP_FROM_DOCKER=$( host $IPA | awk '/has address (.+)/ { print $4; exit}' )
@@ -38,7 +38,7 @@ while ! curl -fs http://$IPA/ipa/config/ca.crt &> /dev/null ; do
 	sleep 1
 done
 i=0
-while ! dig NS mokey.local &> /dev/null ; do
+while ! dig NS mokey.test &> /dev/null ; do
 	if [ "$(( i % 20 ))" -eq 0 ] ; then
 		echo "Waiting for FreeIPA server (DNS) ..."
 	fi
