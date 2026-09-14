@@ -96,6 +96,68 @@ func TestStatusMessagesAreNotBadges(t *testing.T) {
 	}
 }
 
+// A label is announced for, and focuses, only the field its for= names. On the
+// index page the tab panes carry ids too and double as htmx swap targets, so a
+// field reusing one of them makes both the label and the swap ambiguous
+func TestFormLabelsPointAtUniqueFields(t *testing.T) {
+	idAttr := regexp.MustCompile(`\sid="([^"{]+)"`)
+	forAttr := regexp.MustCompile(`\sfor="([^"{]+)"`)
+	include := regexp.MustCompile(`{{\s*template "([^"]+)"`)
+	read := func(name string) string {
+		b, err := os.ReadFile(filepath.Join("templates", name))
+		if err != nil {
+			t.Fatalf("read %s: %s", name, err)
+		}
+		return string(b)
+	}
+	ids := func(src string) map[string]bool {
+		m := map[string]bool{}
+		for _, kv := range idAttr.FindAllStringSubmatch(src, -1) {
+			m[kv[1]] = true
+		}
+		return m
+	}
+
+	pages, err := filepath.Glob("templates/*.html")
+	if err != nil || len(pages) == 0 {
+		t.Fatalf("glob templates: %v", err)
+	}
+	for _, p := range pages {
+		src := read(filepath.Base(p))
+		have := ids(src)
+		for _, kv := range forAttr.FindAllStringSubmatch(src, -1) {
+			if !have[kv[1]] {
+				t.Errorf("%s: label for=%q has no field with that id", p, kv[1])
+			}
+		}
+	}
+
+	index := read("index.html")
+	chrome := ids(index + read("header.html") + read("footer.html"))
+	seen := map[string]bool{"header.html": true, "footer.html": true}
+	var queue []string
+	for _, kv := range include.FindAllStringSubmatch(index, -1) {
+		queue = append(queue, kv[1])
+	}
+	for len(queue) > 0 {
+		name := queue[0]
+		queue = queue[1:]
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		src := read(name)
+		for id := range ids(src) {
+			if chrome[id] {
+				t.Errorf("%s: id=%q is already taken on the index page", name, id)
+			}
+		}
+		for _, kv := range include.FindAllStringSubmatch(src, -1) {
+			queue = append(queue, kv[1])
+		}
+	}
+}
+
 // The dark theme lightens the accent for contrast against the dark surface,
 // but the button label stayed Bootstrap's white: 2.9:1 on #6f96e8. Every
 // accent-filled button state has to clear WCAG AA (4.5:1) in both themes
