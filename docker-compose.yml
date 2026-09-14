@@ -7,7 +7,7 @@ services:
       args:
         IPA_DS_PASS: $IPA_DS_PASS
         IPA_ADMIN_PASS: $IPA_ADMIN_PASS
-    hostname: ipa.mokey.local
+    hostname: ipa.mokey.test
     container_name: mokeyipaserver
     cgroup: host
     volumes:
@@ -27,7 +27,7 @@ services:
         GO_VERSION: $GO_VERSION
         USER_ID: ${UID:-1000}
         USER: ${USER:-developer}
-    hostname: client.mokey.local
+    hostname: client.mokey.test
     container_name: mokeyipaclient
     cgroup: host
     volumes:
@@ -36,7 +36,7 @@ services:
       - mokeyclient_data:/data
     stop_signal: RTMIN+3
     links:
-      - ipaserver:ipa.mokey.local
+      - ipaserver:ipa.mokey.test
     ports:
       - "127.0.0.1:9023:22"
       - "0.0.0.0:8866:8866"

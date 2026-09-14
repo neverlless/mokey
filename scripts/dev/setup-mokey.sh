@@ -12,7 +12,7 @@ set -e
 
 : "${IPA_ADMIN_PASS:?IPA_ADMIN_PASS is required}"
 
-IPA=ipa.mokey.local
+IPA=ipa.mokey.test
 HOST=$(hostname -f)
 
 echo "$IPA_ADMIN_PASS" | kinit admin
@@ -37,9 +37,9 @@ fi
 # test users: testuser (plain), testadmin (member of admins)
 for u in testuser testadmin; do
     if ! ipa user-show $u &>/dev/null; then
-        echo "Secret123!" | ipa user-add $u --first=Test --last=${u#test} --email=$u@mokey.local --password
+        echo "Secret123!" | ipa user-add $u --first=Test --last=${u#test} --email=$u@mokey.test --password
         # expire flag is set on first password; reset via kadmin change to make it usable
-        printf 'Secret123!\nSecret123!\nSecret123!\n' | kpasswd $u@MOKEY.LOCAL || true
+        printf 'Secret123!\nSecret123!\nSecret123!\n' | kpasswd $u@MOKEY.TEST || true
     fi
 done
 ipa group-add-member admins --users=testadmin 2>/dev/null || true
@@ -59,7 +59,7 @@ enable_signup = true
 smtp_host = "localhost"
 smtp_port = 1025
 smtp_tls = "off"
-from = "mokey@mokey.local"
+from = "mokey@mokey.test"
 token_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 [server]

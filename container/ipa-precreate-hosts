@@ -10,7 +10,7 @@ set -e
 
 exec >> /var/log/ipa-server-run.log 2>&1
 
-HOSTS="client.mokey.local"
+HOSTS="client.mokey.test"
 for i in $HOSTS ; do
 	if ! [ -f /data/$i-otp ] ; then
 		echo "Creating host record for $i"
