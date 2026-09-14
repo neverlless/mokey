@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-Markup fixes in the templates, contributed by Jarl Gullberg (@Nihlus).
+Markup and accessibility fixes in the templates, most of them contributed by
+Jarl Gullberg (@Nihlus).
 
 - Unmatched tags in seven templates (#36): a stray `</em>` in the captcha
   hint on the signup, forgot-password, forgot-username, OTP-recovery and
@@ -15,6 +16,14 @@ Markup fixes in the templates, contributed by Jarl Gullberg (@Nihlus).
   are `type="text"` on the login, signup, forgot-password, OTP-recovery and
   resend-verification pages (#39). Browsers already fell back to text, so the
   fields behave as before
+- Form labels are tied to their fields with `for`/`id` on the login, signup,
+  account, password, admin, access, SSH key and OTP forms, and the captcha,
+  user search and access-check fields have visible labels now (#38). Screen
+  readers announce each field by its label, and clicking a label focuses its
+  field
+- The current-password field on the password page is `id="current-password"`.
+  `password` is already the id of the tab it sits in, which is also where the
+  change-password response is swapped in
 
 ## [v2.2.2] - 2026-09-10
 
