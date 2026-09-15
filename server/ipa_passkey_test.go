@@ -18,13 +18,16 @@ func TestPasskeyMapping(t *testing.T) {
 	// build a COSE EC2 P-256 key like an authenticator would return
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(err)
+	// uncompressed point: 0x04 || X (32 bytes) || Y (32 bytes)
+	point, err := priv.PublicKey.Bytes()
+	assert.NoError(err)
 
 	coseKey := map[int]interface{}{
 		1:  2,  // kty: EC2
 		3:  -7, // alg: ES256
 		-1: 1,  // crv: P-256
-		-2: priv.PublicKey.X.Bytes(),
-		-3: priv.PublicKey.Y.Bytes(),
+		-2: point[1:33],
+		-3: point[33:65],
 	}
 	coseBytes, err := webauthncbor.Marshal(coseKey)
 	assert.NoError(err)
