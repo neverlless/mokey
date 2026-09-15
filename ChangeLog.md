@@ -1,5 +1,17 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- The docker-compose dev environment uses the `mokey.test` domain instead of
+  `mokey.local` (#41, Jarl Gullberg). `.local` is reserved for mDNS, and under
+  Podman the duplicate DNS answers kept the FreeIPA container from starting.
+  Only the dev stack changes; deployed instances are not affected. An existing
+  dev stack was provisioned as `MOKEY.LOCAL` and has to be recreated with
+  `docker compose down -v`
+- Go dependencies updated (#40): go-webauthn 0.18.1, fasthttp 1.74.0,
+  gofiber storage (redis 3.6.0, sqlite3 2.3.0), x/net 0.59.0, x/oauth2 0.37.0.
+  Building from source needs Go 1.26 or newer; go.mod pins toolchain go1.26.8
+
 ## [v2.2.3] - 2026-09-14
 
 Markup and accessibility fixes in the templates, most of them contributed by
