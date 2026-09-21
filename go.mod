@@ -5,7 +5,7 @@ require (
 	github.com/biter777/countries v1.7.5
 	github.com/coreos/go-oidc v2.5.0+incompatible
 	github.com/dchest/captcha v1.1.0
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/essentialkaos/branca/v2 v2.0.9
 	github.com/go-webauthn/webauthn v0.18.1
 	github.com/gofiber/fiber/v2 v2.52.15
