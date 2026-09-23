@@ -1,0 +1,54 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations: {required: true}
+  - type: input
+    id: version
+    attributes:
+      label: mokey version
+      placeholder: release tag or image tag, e.g. v2.2.3
+    validations: {required: true}
+  - type: input
+    id: ipa
+    attributes:
+      label: FreeIPA / IdM version
+      placeholder: e.g. FreeIPA 4.12.2 on RHEL 9
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: How do you run it?
+      options: [Helm chart, Docker / Compose, deb / rpm package, Binary, Other]
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Session storage
+      options: [memory, sqlite3, redis]
+  - type: dropdown
+    id: hydra
+    attributes:
+      label: Hydra (OAuth / OIDC) enabled?
+      options: ["No", "Yes"]
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: For UI, passkey and WebAuthn issues.
+      placeholder: e.g. Firefox 142 on macOS
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Relevant parts of mokey.toml. **Remove secrets, passwords and tokens.**
+      render: toml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: mokey log output around the failure, with `--loglevel debug` if you can.
+      render: text

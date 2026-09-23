@@ -14,3 +14,5 @@ mokey-*.tar.gz
 private/
 docs/superpowers/
 .playwright-mcp/
+.superpowers
+.claude

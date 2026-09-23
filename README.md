@@ -1,52 +1,47 @@
-# FreeIPA self-service account management tool
+# mokey
+
+**Self-service account management portal for FreeIPA / Red Hat IdM.**
+
+[![CI](https://github.com/neverlless/mokey/actions/workflows/ci.yml/badge.svg)](https://github.com/neverlless/mokey/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/neverlless/mokey)](https://goreportcard.com/report/github.com/neverlless/mokey)
+[![Release](https://img.shields.io/github/v/release/neverlless/mokey)](https://github.com/neverlless/mokey/releases)
+[![Go version](https://img.shields.io/github/go-mod/go-version/neverlless/mokey)](go.mod)
+[![License](https://img.shields.io/github/license/neverlless/mokey)](LICENSE)
+
+mokey gives FreeIPA users a portal for their own account: signup, password
+change and reset, SSH keys, OTP tokens and passkeys, sessions, group requests
+and a "what can I access" view. It is a standalone web application that talks
+to the FreeIPA JSON-RPC API, needs no LDAP schema changes, and can act as the
+login and consent provider for Ory Hydra (OAuth 2.0 / OpenID Connect).
 
 > **Note:** This project began as a fork of [ubccr/mokey](https://github.com/ubccr/mokey)
 > and is now maintained independently. See
 > [Differences from upstream](#differences-from-upstream) for what has changed.
 
-## What is mokey?
+## Why
 
-mokey is web application that provides self-service user account management
-tools for [FreeIPA](https://www.freeipa.org). The motivation for this project was
-to implement the self-service account creation and password reset functionality
-missing in FreeIPA.  This feature is not provided by default in FreeIPA, see
-[here](https://www.freeipa.org/page/Self-Service_Password_Reset) for more info
-and the rationale behind this decision. mokey is not a FreeIPA plugin but a
-complete standalone application that uses the FreeIPA JSON API.  mokey requires
-no changes to the underlying LDAP schema and stores sessions and tokens in a
-pluggable backend (in-memory, SQLite, or Redis — no separate database server
-required). The user experience and web interface can be customized to fit
-the requirements of an organization's look and feel. mokey is written in Go and
-released under a modified BSD license.
+- **FreeIPA has no self-service signup or password reset**, by design (see
+  [the rationale](https://www.freeipa.org/page/Self-Service_Password_Reset)).
+  mokey adds both as a separate application instead of a FreeIPA plugin.
+- **Keep regular users out of the FreeIPA Web UI.** By default any
+  authenticated user can browse every account there, and locking that down
+  means hand-editing ACIs the Web UI relies on. mokey shows users *their own*
+  account only; the Web UI stays with administrators.
+- **No schema changes, no separate database.** mokey uses a least-privilege
+  FreeIPA service account and keeps sessions and tokens in memory, SQLite or
+  Redis.
 
-## Keeping users out of the FreeIPA Web UI
+## How it works
 
-A recurring ask on the freeipa-users list is how to stop regular users
-from browsing the directory in the FreeIPA Web UI — by default any
-authenticated user can list every account, and locking that down means
-hand-editing ACIs that the Web UI was built to rely on. mokey is the
-practical answer: give users a portal scoped to *their own* account —
-password changes and resets, SSH keys, OTP tokens and passkeys, active
-sessions, group join requests, and a "what can I access" view — and
-keep the FreeIPA Web UI for administrators. Users never need to touch
-the directory browser, and mokey never shows them other people's
-accounts.
-
-## Project status
-
-mokey is actively maintained and used in production. The core flows — login,
-password change/reset, signup and email verification, invites, OTP tokens,
-and the admin panel — are covered by an automated test suite that drives the
-real application against a simulated FreeIPA server, and the code base has
-been through a security audit (`gosec`, `govulncheck`, `staticcheck`, plus a
-manual review of the auth/session/token paths) with all high- and
-medium-severity findings fixed — see
-[docs/security-audit-v1.6.md](docs/security-audit-v1.6.md).
-
-Keep in mind that self-service password reset inherently widens your attack
-surface: review the [configuration reference](docs/configuration.md)
-(`trusted_proxies`, `hide_invalid_username_error`, rate limits) before
-exposing mokey to the internet.
+```mermaid
+flowchart LR
+    U[Users<br/>browser] -->|HTTPS| M[mokey]
+    A[OAuth / OIDC apps] --> H[Ory Hydra]
+    H -->|login & consent| M
+    M -->|JSON-RPC, keytab| I[FreeIPA / IdM]
+    M --> S[(Sessions<br/>memory / SQLite / Redis)]
+    M -->|SMTP, Slack| N[Verification &<br/>reset messages]
+```
 
 ## Features
 
@@ -72,51 +67,52 @@ exposing mokey to the internet.
 | --- | --- |
 | ![Login](docs/mokey-screenshot-login.png) | ![Admin panel](docs/mokey-screenshot-admin.png) |
 
-## Differences from upstream
+## Project status
 
-This project tracks [ubccr/mokey](https://github.com/ubccr/mokey) and adds the
-following on top of it:
+mokey is actively maintained and used in production. The core flows (login,
+password change and reset, signup and email verification, invites, OTP tokens,
+the admin panel) are covered by tests that drive the real application against
+a simulated FreeIPA server. The code base has been through a security audit
+(`gosec`, `govulncheck`, `staticcheck` and a manual review of the
+auth/session/token paths) with all high- and medium-severity findings fixed;
+see [docs/security-audit-v1.6.md](docs/security-audit-v1.6.md).
 
-- **Slack notifications** — account events that trigger emails are also
-  delivered to the user as a Slack direct message via a bot token (see the
-  `[slack]` section in `mokey.toml.sample`)
-- **Unauthenticated `/healthz` endpoint** — for load balancer and Kubernetes
-  liveness/readiness probes
-- **Passkey self-service** — users can register and remove FreeIPA passkeys
-  (FreeIPA 4.11+) from their account page via WebAuthn; credentials are
-  stored only in FreeIPA. Managing own passkey mappings requires the
-  corresponding FreeIPA self-service permission
-- **Multiple languages** — the interface and emails are translatable; English
-  and Dutch are built in (translations contributed by
-  [@tubby1981](https://github.com/tubby1981) in
-  [ubccr/mokey#157](https://github.com/ubccr/mokey/pull/157)). See
-  [Localization](#localization).
+Self-service password reset widens your attack surface. Read
+[Operating mokey safely](SECURITY.md#operating-mokey-safely) before exposing
+mokey to the internet.
 
-Upstream changes are merged in periodically when relevant.
+## Quick start
 
-## Localization
+1. **FreeIPA:** create the mokey service account and keytab as described in
+   [Setup and configuration](#setup-and-configuration).
+2. **Config:** copy [mokey.toml.sample](mokey.toml.sample) and set at least
+   `keytab`, the email settings and a persistent `[storage]` driver. Every
+   option is in the [configuration reference](docs/configuration.md).
+3. **Run** it one of these ways:
 
-Set the interface language in `mokey.toml`:
+   ```sh
+   # Kubernetes
+   kubectl create secret generic mokey-config --from-file=mokey.toml
+   kubectl create secret generic mokey-keytab --from-file=mokeyapp.keytab
+   helm install mokey ./charts/mokey \
+     --set existingConfigSecret=mokey-config \
+     --set existingKeytabSecret=mokey-keytab
 
-```toml
-[site]
-default_language = "dutch"   # built-in: english (default), dutch
-```
+   # Docker Compose
+   docker compose -f examples/production/docker-compose.yml up -d
 
-To add or customize a language, point `site.translations_dir` at a directory
-containing `<language>.toml` files and set `default_language` to the file
-name. Copy
-[`server/translations/english.toml`](server/translations/english.toml) as a
-starting point — a file named after a built-in language fully replaces it.
-Missing keys fall back to English. Contributions of new languages are
-welcome.
+   # deb / rpm package with systemd
+   systemctl enable --now mokey
+   ```
+
+See [charts/mokey](charts/mokey) for the Helm chart options.
 
 ## Requirements
 
 - FreeIPA v4.6.8 or greater
-- Linux x86_64 
+- Linux x86_64
 - Redis (optional)
-- Hydra v1.0.0 (optional)
+- Hydra v2.x (optional)
 
 ## Install
 
@@ -267,15 +263,85 @@ urls:
   logout: https://mokey.example.com/auth/logout
 ```
 
+## Localization
+
+Set the interface language in `mokey.toml`:
+
+```toml
+[site]
+default_language = "dutch"   # built-in: english (default), dutch
+```
+
+To add or customize a language, point `site.translations_dir` at a directory
+containing `<language>.toml` files and set `default_language` to the file
+name. Copy
+[`server/translations/english.toml`](server/translations/english.toml) as a
+starting point — a file named after a built-in language fully replaces it.
+Missing keys fall back to English. Contributions of new languages are
+welcome.
+
+## Differences from upstream
+
+This project tracks [ubccr/mokey](https://github.com/ubccr/mokey) and adds the
+following on top of it:
+
+- **Slack notifications** — account events that trigger emails are also
+  delivered to the user as a Slack direct message via a bot token (see the
+  `[slack]` section in `mokey.toml.sample`)
+- **Unauthenticated `/healthz` endpoint** — for load balancer and Kubernetes
+  liveness/readiness probes
+- **Passkey self-service** — users can register and remove FreeIPA passkeys
+  (FreeIPA 4.11+) from their account page via WebAuthn; credentials are
+  stored only in FreeIPA. Managing own passkey mappings requires the
+  corresponding FreeIPA self-service permission
+- **Multiple languages** — the interface and emails are translatable; English
+  and Dutch are built in (translations contributed by
+  [@tubby1981](https://github.com/tubby1981) in
+  [ubccr/mokey#157](https://github.com/ubccr/mokey/pull/157)). See
+  [Localization](#localization).
+
+Upstream changes are merged in periodically when relevant.
+
 ## Building from source
 
-First, you will need Go v1.21 or greater. Clone the repository:
+You need Go 1.26 or newer:
 
+```sh
+git clone https://github.com/neverlless/mokey
+cd mokey
+go build .
 ```
-$ git clone https://github.com/neverlless/mokey
-$ cd mokey
-$ go build .
-```
+
+## FAQ
+
+**Does mokey replace the FreeIPA Web UI?**
+No. It covers what end users need for their own account. Administrators keep
+the Web UI and CLI; mokey's admin panel handles the day-to-day side of
+self-service: invitations, signup approvals, OTP recovery requests,
+blocking and unlocking users, and an audit log.
+
+**Does it work with Red Hat Identity Management?**
+IdM exposes the same JSON-RPC API as FreeIPA, so mokey talks to it the same
+way. Passkeys need FreeIPA 4.11 or newer.
+
+**Can I run more than one replica?**
+Yes, with `redis` storage so all replicas share sessions and tokens. `memory`
+and `sqlite3` are per instance. The Helm chart's `ipa.enroll` mode rotates the
+keytab on start and supports only one replica; use `existingKeytabSecret`.
+
+**Do users lose their session when mokey restarts?**
+With the default `memory` storage and blank `token_secret` / `csrf_secret`,
+yes. Set both secrets and use `sqlite3` or `redis`.
+
+**Can SAML-only applications log in through mokey?**
+Via Keycloak as an identity broker in front of Hydra; see the
+[Keycloak guide](docs/keycloak.md).
+
+## Contributing
+
+Bug reports, translations and pull requests are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md); report vulnerabilities privately as
+described in [SECURITY.md](SECURITY.md).
 
 ## License
 
