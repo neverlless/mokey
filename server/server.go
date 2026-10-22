@@ -160,6 +160,7 @@ func newFiber() (*fiber.App, *Router, error) {
 
 	app := fiber.New(fiber.Config{
 		Prefork:               false,
+		Network:               fiber.NetworkTCP,
 		CaseSensitive:         true,
 		StrictRouting:         true,
 		ReadTimeout:           time.Duration(viper.GetInt("server.read_timeout")) * time.Second,
