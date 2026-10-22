@@ -99,7 +99,12 @@ func (r *Router) expiryReminderSweep() {
 				break // no marker — retried next sweep
 			}
 
-			r.storage.Set(marker, []byte("sent"), time.Until(user.PasswdExpire)+24*time.Hour)
+			if err := r.storage.Set(marker, []byte("sent"), time.Until(user.PasswdExpire)+24*time.Hour); err != nil {
+				log.WithFields(log.Fields{
+					"username": user.Username,
+					"err":      err,
+				}).Warn("Failed to record password expiry reminder, it may be sent again")
+			}
 			log.WithFields(log.Fields{
 				"username": user.Username,
 				"days":     days,

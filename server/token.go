@@ -89,7 +89,9 @@ func NewToken(username, email, prefix string, storage fiber.Storage) (string, er
 	// minutes rather than after the token's full lifetime (ubccr/mokey#17).
 	// Links issued earlier stay valid until they expire; each is single-use
 	// and every one of them goes to the same registered address.
-	storage.Set(prefix+TokenIssuedPrefix+username, []byte("true"), time.Duration(viper.GetInt("email.resend_cooldown"))*time.Second)
+	if err := storage.Set(prefix+TokenIssuedPrefix+username, []byte("true"), time.Duration(viper.GetInt("email.resend_cooldown"))*time.Second); err != nil {
+		return "", err
+	}
 
 	return token, nil
 }

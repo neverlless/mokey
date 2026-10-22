@@ -24,7 +24,9 @@ func (r *Router) CSRF(c *fiber.Ctx) error {
 		if token == "" {
 			token = xsrftoken.Generate(viper.GetString("server.csrf_secret"), "", "")
 			sess.Set(SessionKeyCSRF, token)
-			sess.Save()
+			if err := r.sessionSave(c, sess); err != nil {
+				return err
+			}
 		}
 	default:
 		if token == "" || token != c.Get("X-CSRF-Token") {

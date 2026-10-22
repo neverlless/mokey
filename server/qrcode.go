@@ -47,6 +47,8 @@ func QRCode(otptoken *ipa.OTPToken, realm string) (string, error) {
 		return "", err
 	}
 
-	png.Encode(&buf, img)
+	if err := png.Encode(&buf, img); err != nil {
+		return "", err
+	}
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }

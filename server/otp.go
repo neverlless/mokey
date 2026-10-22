@@ -157,7 +157,13 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 	// drop the unverified token and return to the list without an alarm
 	// (ubccr/mokey#20)
 	if action == "cancel" {
-		client.RemoveOTPToken(uuid)
+		if err := client.RemoveOTPToken(uuid); err != nil {
+			log.WithFields(log.Fields{
+				"uuid":     uuid,
+				"username": user.Username,
+				"err":      err,
+			}).Error("Failed to remove unverified OTP token")
+		}
 		return r.tokenList(c, vars)
 	}
 
@@ -168,7 +174,13 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 			"username": user.Username,
 			"err":      err,
 		}).Error("Failed to parse OTP token URI")
-		client.RemoveOTPToken(uuid)
+		if err := client.RemoveOTPToken(uuid); err != nil {
+			log.WithFields(log.Fields{
+				"uuid":     uuid,
+				"username": user.Username,
+				"err":      err,
+			}).Error("Failed to remove unverified OTP token")
+		}
 		vars["message"] = T("otptoken.failed_to_verify_token")
 		return r.tokenList(c, vars)
 	}

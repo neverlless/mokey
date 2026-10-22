@@ -71,7 +71,7 @@ func (r *Router) isLoggedIn(c *fiber.Ctx) (bool, error) {
 	// Update session expiry time
 	sess.SetExpiry(time.Duration(viper.GetInt("server.session_idle_timeout")) * time.Second)
 
-	sess.Save()
+	_ = r.sessionSave(c, sess)
 
 	return true, nil
 }
@@ -94,7 +94,12 @@ func sessionInvalidatedByPasswordChange(loginTime int64, marker []byte) bool {
 
 func (r *Router) invalidateUserSessions(username string) {
 	ttl := time.Duration(viper.GetInt("server.session_idle_timeout"))*time.Second + time.Minute
-	r.storage.Set(PasswordChangedPrefix+username, []byte(strconv.FormatInt(time.Now().Unix(), 10)), ttl)
+	if err := r.storage.Set(PasswordChangedPrefix+username, []byte(strconv.FormatInt(time.Now().Unix(), 10)), ttl); err != nil {
+		log.WithFields(log.Fields{
+			"username": username,
+			"err":      err,
+		}).Error("Failed to invalidate sessions after password change")
+	}
 }
 
 func (r *Router) Login(c *fiber.Ctx) error {
