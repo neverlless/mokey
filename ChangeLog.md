@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Plain-HTTP mode can listen on IPv6 (upstream ubccr/mokey#175). Fiber
+  defaulted to `tcp4`, so `listen = "[::]:8866"` failed without TLS and an
+  address like `":8866"` bound IPv4 only. The listener is now dual-stack, as
+  the TLS path already was
 - Admin → Pending approval stayed empty with `staged_signup` and
   `require_admin_verify` (#46, reported by @ads103). `stageuser_find` omits
   `userclass` unless `all` is set, so every verified signup was filtered out
