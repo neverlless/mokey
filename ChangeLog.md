@@ -1,5 +1,14 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- Container image for linux/arm64 next to linux/amd64. The builder stage
+  cross-compiles, so only the runtime stage's package install is emulated
+- `mokey --version` reports the module version for `go install` builds
+  instead of "dev"
+- The OIDC client example has its own go.mod: gorilla/mux, negroni,
+  pkg/errors and go-oidc v2 are no longer requirements of mokey itself
+
 ## [v2.3.1] - 2026-10-22
 
 - Module path is now `github.com/neverlless/mokey/v2`. Go modules require the

@@ -334,7 +334,7 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
 
 ## v2.4 — Try it, trust it
 
-- [ ] Multi-arch container image (`linux/amd64`, `linux/arm64`); the release
+- [x] Multi-arch container image (`linux/amd64`, `linux/arm64`); the release
       binaries already cover arm64, the image and the README do not
 - [ ] One-command demo: FreeIPA + mokey + Mailpit with a seeded user, built
       on the existing `container/` FreeIPA images — nobody else in the niche
@@ -343,7 +343,7 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
       release and GitHub build attestations, next to the GPG-signed
       checksums
 - [ ] Helm chart published as an OCI artifact and listed on Artifact Hub
-- [ ] `examples/mokey-oidc` gets its own `go.mod`, so its five dependencies
+- [x] `examples/mokey-oidc` gets its own `go.mod`, so its dependencies
       leave mokey's module
 
 ## v2.5 — FreeIPA correctness
