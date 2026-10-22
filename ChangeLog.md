@@ -4,6 +4,9 @@
 
 - Container image for linux/arm64 next to linux/amd64. The builder stage
   cross-compiles, so only the runtime stage's package install is emulated
+- Container images are signed with cosign (keyless) and carry an SBOM and
+  provenance attestation; release archives get an SPDX SBOM and a GitHub
+  build provenance attestation. See "Verifying releases" in the README
 - `mokey --version` reports the module version for `go install` builds
   instead of "dev"
 - The OIDC client example has its own go.mod: gorilla/mux, negroni,

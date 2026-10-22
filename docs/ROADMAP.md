@@ -339,7 +339,7 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
 - [ ] One-command demo: FreeIPA + mokey + Mailpit with a seeded user, built
       on the existing `container/` FreeIPA images — nobody else in the niche
       can be tried without an existing IPA server
-- [ ] Signed images and SBOM: cosign keyless signatures, an SBOM per
+- [x] Signed images and SBOM: cosign keyless signatures, an SBOM per
       release and GitHub build attestations, next to the GPG-signed
       checksums
 - [ ] Helm chart published as an OCI artifact and listed on Artifact Hub
