@@ -3,7 +3,6 @@
 **Self-service account management portal for FreeIPA / Red Hat IdM.**
 
 [![CI](https://github.com/neverlless/mokey/actions/workflows/ci.yml/badge.svg)](https://github.com/neverlless/mokey/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/neverlless/mokey)](https://goreportcard.com/report/github.com/neverlless/mokey)
 [![Release](https://img.shields.io/github/v/release/neverlless/mokey)](https://github.com/neverlless/mokey/releases)
 [![Go version](https://img.shields.io/github/go-mod/go-version/neverlless/mokey)](go.mod)
 [![License](https://img.shields.io/github/license/neverlless/mokey)](LICENSE)
