@@ -186,6 +186,24 @@ func TestOIDCConsentInvalidClientPolicyDenies(t *testing.T) {
 	assert.NotNil(hy.rejectedConsent)
 }
 
+func TestOIDCConsentMistypedClientIDDenies(t *testing.T) {
+	assert := assert.New(t)
+	app, fake, hy := newHydraTestApp(t)
+	viper.SetConfigType("toml")
+	assert.NoError(viper.MergeConfig(strings.NewReader(`
+[[hydra.clients]]
+clientid = "lubelogger"
+groups = ["lubelogger-users"]
+`)))
+	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"ipausers"}})
+	hy.seedConsentForClient("consent-typo", "walter", "lubelogger")
+
+	tc := newTestClient(t, app)
+	resp := tc.get("/oauth/consent?consent_challenge=consent-typo")
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+	assert.Nil(hy.acceptedConsent)
+}
+
 func TestOIDCLogoutFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
