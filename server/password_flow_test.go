@@ -225,8 +225,9 @@ func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/resetpw/" + token)
 
+	saved := log.StandardLogger().ReplaceHooks(make(log.LevelHooks))
+	t.Cleanup(func() { log.StandardLogger().ReplaceHooks(saved) })
 	hook := logtest.NewGlobal()
-	defer hook.Reset()
 	router.storage = &failingSetStorage{router.storage}
 
 	resp := tc.postForm("/auth/resetpw/"+token, url.Values{
