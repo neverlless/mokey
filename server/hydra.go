@@ -79,6 +79,10 @@ func clientAllowed(clientID string, user *ipa.User) bool {
 	}
 
 	for _, p := range policies {
+		if p.ClientID == "" {
+			log.Error("Invalid hydra.clients config: entry without client_id, denying OAuth client access")
+			return false
+		}
 		if p.ClientID != clientID {
 			continue
 		}

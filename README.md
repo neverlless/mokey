@@ -283,7 +283,9 @@ case-insensitively). Clients without an entry stay open unless
 `default_deny = true`. A denied user gets a 403 page from mokey; the consent
 request is rejected in Hydra with `access_denied`, but mokey does not redirect
 back to the client, so clients that restart login on an error callback don't
-loop. An unparseable `hydra.clients` denies every client.
+loop. An unparseable `hydra.clients`, or an entry without `client_id` (a
+mistyped key, say), denies every client; an entry with no groups denies that
+client to everyone.
 
 Known limits:
 
