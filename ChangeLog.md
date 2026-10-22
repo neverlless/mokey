@@ -9,6 +9,9 @@
   listing now asks for all attributes, and the test FreeIPA leaves
   `userclass` out of `user_find`/`stageuser_find` results unless `all` is
   set, so the test suite catches this case
+- Passkey registration stops with an error when the session cannot be saved
+  after the registration challenge is consumed. The save error used to be
+  ignored, which left the single-use challenge valid in session storage
 - The docker-compose dev environment uses the `mokey.test` domain instead of
   `mokey.local` (#41, Jarl Gullberg). `.local` is reserved for mDNS, and under
   Podman the duplicate DNS answers kept the FreeIPA container from starting.

@@ -123,8 +123,11 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 	if sd == "" {
 		return c.Status(fiber.StatusBadRequest).SendString(T("passkey.registration_failed"))
 	}
+	// the challenge is single use: stop if consuming it cannot be persisted
 	sess.Delete(SessionKeyWebAuthn)
-	r.sessionSave(c, sess)
+	if err := r.sessionSave(c, sess); err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+	}
 
 	var sessionData webauthn.SessionData
 	if err := json.Unmarshal([]byte(sd), &sessionData); err != nil {
