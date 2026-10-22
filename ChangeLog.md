@@ -11,6 +11,9 @@
 - Go dependencies updated (#40): go-webauthn 0.18.1, fasthttp 1.74.0,
   gofiber storage (redis 3.6.0, sqlite3 2.3.0), x/net 0.59.0, x/oauth2 0.37.0.
   Building from source needs Go 1.26 or newer; go.mod pins toolchain go1.26.8
+- Toolchain go1.26.10: picks up the Go security fixes in `net/http`,
+  `net/textproto`, `crypto/tls`, `crypto/x509` and `html/template` that
+  govulncheck reports against go1.26.8
 
 ## [v2.2.3] - 2026-09-14
 
