@@ -56,9 +56,10 @@ func stageUserShow(client *ipa.Client, username string) (*ipa.User, error) {
 
 // stageUserFindPending lists staged signups that verified their email.
 // stageuser_find matches loosely, so results are filtered to the exact
-// pending category.
+// pending category. all=true is required: the default find output leaves
+// out userclass, which would filter every record away (#46).
 func stageUserFindPending(client *ipa.Client) ([]*ipa.User, error) {
-	res, err := ipaAdminRPC(client, "stageuser_find", []string{}, map[string]interface{}{"sizelimit": 500})
+	res, err := ipaAdminRPC(client, "stageuser_find", []string{}, map[string]interface{}{"sizelimit": 500, "all": true})
 	if err != nil {
 		return nil, err
 	}

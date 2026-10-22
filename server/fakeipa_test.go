@@ -529,6 +529,18 @@ func (f *fakeIPA) userJSON(username string, u *fakeUser) map[string]interface{} 
 	return rec
 }
 
+// findRecord trims a user record to what a *_find call returns. Real
+// FreeIPA leaves userclass out of the default find output and sends it only
+// with all=true (#46); *_show includes it either way. Only userclass is
+// trimmed: extend the list when code starts reading another non-default
+// attribute from a find.
+func findRecord(rec map[string]interface{}, opts map[string]interface{}) map[string]interface{} {
+	if all, _ := opts["all"].(bool); !all {
+		delete(rec, "userclass")
+	}
+	return rec
+}
+
 func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 	// Session-authenticated endpoint requires a session cookie the fake issued
 	var caller string
@@ -587,7 +599,7 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 	case "user_find":
 		users := []map[string]interface{}{}
 		for name, u := range f.users {
-			users = append(users, f.userJSON(name, u))
+			users = append(users, findRecord(f.userJSON(name, u), opts))
 		}
 		rpcResult(w, users)
 
@@ -865,7 +877,7 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 	case "stageuser_find":
 		users := []map[string]interface{}{}
 		for name, u := range f.stageusers {
-			users = append(users, f.userJSON(name, u))
+			users = append(users, findRecord(f.userJSON(name, u), opts))
 		}
 		rpcResult(w, users)
 

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Admin → Pending approval stayed empty with `staged_signup` and
+  `require_admin_verify` (#46, reported by @ads103). `stageuser_find` omits
+  `userclass` unless `all` is set, so every verified signup was filtered out
+  of the queue; approving or denying through the API still worked. The
+  listing now asks for all attributes, and the test FreeIPA leaves
+  `userclass` out of `user_find`/`stageuser_find` results unless `all` is
+  set, so the test suite catches this case
 - The docker-compose dev environment uses the `mokey.test` domain instead of
   `mokey.local` (#41, Jarl Gullberg). `.local` is reserved for mDNS, and under
   Podman the duplicate DNS answers kept the FreeIPA container from starting.
