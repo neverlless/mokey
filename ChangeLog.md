@@ -21,6 +21,9 @@
 - Go dependencies updated (#40): go-webauthn 0.18.1, fasthttp 1.74.0,
   gofiber storage (redis 3.6.0, sqlite3 2.3.0), x/net 0.59.0, x/oauth2 0.37.0.
   Building from source needs Go 1.26 or newer
+- Go dependencies updated (#45): go-webauthn 0.18.2, fasthttp 1.76.0,
+  gofiber storage (redis 3.6.2, sqlite3 2.3.1), prometheus client_golang
+  1.25.0, slack-go 0.30.1, gjson 1.20.0, go-humanize 1.1.0, x/net 0.61.0
 - Builds use Go 1.27.3 (go.mod `toolchain go1.27.3`; the Docker image
   already built with Go 1.27) and pick up the Go security fixes in
   `net/http`, `net/textproto`, `crypto/tls`, `crypto/x509` and
