@@ -7,6 +7,8 @@ package server
 import (
 	"encoding/json"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Join-request queue: one storage key per group holding a JSON list,
@@ -41,15 +43,21 @@ func (r *Router) loadGroupRequests(group string) []GroupRequest {
 }
 
 func (r *Router) saveGroupRequests(group string, reqs []GroupRequest) {
+	var err error
 	if len(reqs) == 0 {
-		r.storage.Delete(groupRequestsPrefix + group)
-		return
+		err = r.storage.Delete(groupRequestsPrefix + group)
+	} else {
+		var raw []byte
+		if raw, err = json.Marshal(reqs); err == nil {
+			err = r.storage.Set(groupRequestsPrefix+group, raw, groupRequestsTTL)
+		}
 	}
-	raw, err := json.Marshal(reqs)
 	if err != nil {
-		return
+		log.WithFields(log.Fields{
+			"group": group,
+			"err":   err,
+		}).Error("Failed to save group requests")
 	}
-	r.storage.Set(groupRequestsPrefix+group, raw, groupRequestsTTL)
 }
 
 // addGroupRequest queues a join or leave request; false when already queued

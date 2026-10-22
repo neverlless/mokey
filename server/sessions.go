@@ -49,16 +49,21 @@ func (r *Router) loadSessionIndex(username string) []UserSession {
 }
 
 func (r *Router) saveSessionIndex(username string, sessions []UserSession) {
+	var err error
 	if len(sessions) == 0 {
-		r.storage.Delete(userSessionsPrefix + username)
-		return
+		err = r.storage.Delete(userSessionsPrefix + username)
+	} else {
+		var raw []byte
+		if raw, err = json.Marshal(sessions); err == nil {
+			err = r.storage.Set(userSessionsPrefix+username, raw, userSessionsTTL)
+		}
 	}
-
-	raw, err := json.Marshal(sessions)
 	if err != nil {
-		return
+		log.WithFields(log.Fields{
+			"username": username,
+			"err":      err,
+		}).Error("Failed to save session index")
 	}
-	r.storage.Set(userSessionsPrefix+username, raw, userSessionsTTL)
 }
 
 // recordUserSession registers a fresh login in the user's session index

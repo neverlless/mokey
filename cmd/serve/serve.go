@@ -26,25 +26,25 @@ var (
 
 func init() {
 	serveCmd.Flags().String("keytab", "", "path to keytab file")
-	viper.BindPFlag("site.keytab", serveCmd.Flags().Lookup("keytab"))
+	cobra.CheckErr(viper.BindPFlag("site.keytab", serveCmd.Flags().Lookup("keytab")))
 
 	serveCmd.Flags().String("listen", "0.0.0.0:8866", "address to listen on")
-	viper.BindPFlag("server.listen", serveCmd.Flags().Lookup("listen"))
+	cobra.CheckErr(viper.BindPFlag("server.listen", serveCmd.Flags().Lookup("listen")))
 	serveCmd.Flags().String("cert", "", "path to ssl cert")
-	viper.BindPFlag("server.ssl_cert", serveCmd.Flags().Lookup("cert"))
+	cobra.CheckErr(viper.BindPFlag("server.ssl_cert", serveCmd.Flags().Lookup("cert")))
 	serveCmd.Flags().String("key", "", "path to ssl key")
-	viper.BindPFlag("server.ssl_key", serveCmd.Flags().Lookup("key"))
+	cobra.CheckErr(viper.BindPFlag("server.ssl_key", serveCmd.Flags().Lookup("key")))
 	serveCmd.Flags().String("dbpath", "", "path to mokey database")
-	viper.BindPFlag("storage.sqlite3.dbpath", serveCmd.Flags().Lookup("dbpath"))
+	cobra.CheckErr(viper.BindPFlag("storage.sqlite3.dbpath", serveCmd.Flags().Lookup("dbpath")))
 
 	serveCmd.Flags().String("smtp-host", "localhost", "smtp host")
-	viper.BindPFlag("email.smtp_host", serveCmd.Flags().Lookup("smtp-host"))
+	cobra.CheckErr(viper.BindPFlag("email.smtp_host", serveCmd.Flags().Lookup("smtp-host")))
 
 	serveCmd.Flags().Int("smtp-port", 25, "smtp port")
-	viper.BindPFlag("email.smtp_port", serveCmd.Flags().Lookup("smtp-port"))
+	cobra.CheckErr(viper.BindPFlag("email.smtp_port", serveCmd.Flags().Lookup("smtp-port")))
 
 	serveCmd.Flags().String("email-from", "", "from email address")
-	viper.BindPFlag("email.from", serveCmd.Flags().Lookup("email-from"))
+	cobra.CheckErr(viper.BindPFlag("email.from", serveCmd.Flags().Lookup("email-from")))
 
 	cmd.Root.AddCommand(serveCmd)
 }
@@ -66,7 +66,9 @@ func serve() error {
 		defer cancel()
 
 		logrus.Debug("Shutting down server")
-		srv.Shutdown(ctx)
+		if err := srv.Shutdown(ctx); err != nil {
+			logrus.WithFields(logrus.Fields{"err": err}).Error("Server shutdown failed")
+		}
 	}()
 
 	return srv.Serve()

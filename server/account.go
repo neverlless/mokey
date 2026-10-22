@@ -475,7 +475,7 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 		// while they still carry the unverified marker
 		if su, serr := stageUserShow(r.adminClient, username); serr == nil {
 			if su.Category == UserCategoryUnverified {
-				r.sendVerifyResendEmail(su, c)
+				_ = r.sendVerifyResendEmail(su, c)
 			} else {
 				log.WithFields(log.Fields{
 					"username": username,
@@ -507,7 +507,7 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 	}
 
 	// same page whether or not the send worked: see PasswordForgot
-	r.sendVerifyResendEmail(user, c)
+	_ = r.sendVerifyResendEmail(user, c)
 
 	return c.Render("account-verify-forgot-success.html", fiber.Map{})
 }

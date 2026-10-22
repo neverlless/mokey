@@ -89,10 +89,10 @@ func (h *AuditHook) Fire(entry *log.Entry) error {
 	}
 	seq++
 
-	h.storage.Set(fmt.Sprintf("%s%d", auditEntryKey, seq%auditRingSize), b, auditRetention)
-	h.storage.Set(auditSeqKey, []byte(strconv.FormatInt(seq, 10)), 0)
-
-	return nil
+	if err := h.storage.Set(fmt.Sprintf("%s%d", auditEntryKey, seq%auditRingSize), b, auditRetention); err != nil {
+		return err
+	}
+	return h.storage.Set(auditSeqKey, []byte(strconv.FormatInt(seq, 10)), 0)
 }
 
 // auditRecent returns up to n most recent audit events, newest first.

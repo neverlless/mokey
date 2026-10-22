@@ -86,7 +86,12 @@ func NewEmailer(storage fiber.Storage) (*Emailer, error) {
 func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *fiber.Ctx, subject, tmpl string, data map[string]interface{}) error {
 	err := e.sendEmail(user, ctx, subject, tmpl, data)
 	if err != nil {
-		e.storage.Delete(prefix + TokenIssuedPrefix + tokenKey)
+		if derr := e.storage.Delete(prefix + TokenIssuedPrefix + tokenKey); derr != nil {
+			log.WithFields(log.Fields{
+				"username": user.Username,
+				"err":      derr,
+			}).Error("Failed to roll back issued token marker after failed delivery")
+		}
 	}
 	return err
 }
@@ -582,7 +587,7 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 		return err
 	}
 	if _, err = wc.Write(multipartBody.Bytes()); err != nil {
-		wc.Close()
+		_ = wc.Close()
 		return err
 	}
 

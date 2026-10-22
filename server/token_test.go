@@ -88,6 +88,9 @@ func TestTokenFailsClosedOnStorageError(t *testing.T) {
 	// issuance must also fail closed
 	_, err = NewToken("jesse", "jesse@example.com", TokenPasswordReset, broken)
 	assert.Error(err)
+
+	_, err = NewToken("jesse", "jesse@example.com", TokenPasswordReset, &failingSetStorage{healthy})
+	assert.Error(err)
 }
 
 // #17: the issued marker used to live as long as the token itself, so a

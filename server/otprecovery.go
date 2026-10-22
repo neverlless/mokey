@@ -41,15 +41,18 @@ func (r *Router) loadOTPRecoveryRequests() []OTPRecoveryRequest {
 }
 
 func (r *Router) saveOTPRecoveryRequests(reqs []OTPRecoveryRequest) {
+	var err error
 	if len(reqs) == 0 {
-		r.storage.Delete(otpRecoveryKey)
-		return
+		err = r.storage.Delete(otpRecoveryKey)
+	} else {
+		var raw []byte
+		if raw, err = json.Marshal(reqs); err == nil {
+			err = r.storage.Set(otpRecoveryKey, raw, otpRecoveryTTL)
+		}
 	}
-	raw, err := json.Marshal(reqs)
 	if err != nil {
-		return
+		log.WithFields(log.Fields{"err": err}).Error("Failed to save OTP recovery requests")
 	}
-	r.storage.Set(otpRecoveryKey, raw, otpRecoveryTTL)
 }
 
 // addOTPRecoveryRequest queues a recovery request; false when already queued
