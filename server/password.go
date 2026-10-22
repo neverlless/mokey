@@ -351,7 +351,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 		}
 	}
 
-	r.storage.Set(TokenPasswordReset+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+	MarkTokenUsed(token, TokenPasswordReset, claims, r.storage)
 	r.invalidateUserSessions(user.Username)
 
 	err = r.emailer.SendPasswordChangedEmail(user, c)

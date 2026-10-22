@@ -14,6 +14,7 @@ import (
 
 	"github.com/essentialkaos/branca/v2"
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -133,4 +134,18 @@ func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
 	tk.Timestamp = brancaToken.Timestamp()
 
 	return &tk, nil
+}
+
+// MarkTokenUsed runs after the token's action has taken effect, so a storage
+// failure cannot be rolled back: it is logged, and the token stays valid until
+// it expires
+func MarkTokenUsed(token, prefix string, claims *Token, storage fiber.Storage) {
+	ttl := time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age")) * time.Second))
+	if err := storage.Set(prefix+TokenUsedPrefix+token, []byte("true"), ttl); err != nil {
+		log.WithFields(log.Fields{
+			"username":   claims.Username,
+			"token_type": prefix,
+			"err":        err,
+		}).Error("Failed to mark token used")
+	}
 }

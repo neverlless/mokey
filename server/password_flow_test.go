@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -207,6 +209,42 @@ func TestPasswordResetInvalidatesSessions(t *testing.T) {
 
 	resp = tc.get("/")
 	assert.Equal(fiber.StatusFound, resp.StatusCode)
+}
+
+// The password is already changed when the used marker is written, so a
+// failed write cannot undo the reset, but it leaves the link reusable and
+// must not go unnoticed
+func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+
+	token, err := NewToken("walter", "walter@example.com", TokenPasswordReset, router.storage)
+	assert.NoError(err)
+
+	tc := newTestClient(t, app)
+	tc.getCSRF("/auth/resetpw/" + token)
+
+	hook := logtest.NewGlobal()
+	defer hook.Reset()
+	router.storage = &failingSetStorage{router.storage}
+
+	resp := tc.postForm("/auth/resetpw/"+token, url.Values{
+		"password":  {"NewSecret456!"},
+		"password2": {"NewSecret456!"},
+	}, nil)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal("NewSecret456!", fake.users["walter"].Password)
+
+	logged := false
+	for _, e := range hook.AllEntries() {
+		if e.Level == log.ErrorLevel && e.Message == "Failed to mark token used" {
+			logged = true
+			assert.Equal("walter", e.Data["username"])
+			assert.Error(e.Data["err"].(error))
+		}
+	}
+	assert.True(logged, "used-marker write failure was not logged")
 }
 
 // futureMarker rewrites the password-change marker one minute into the
