@@ -262,6 +262,39 @@ urls:
   logout: https://mokey.example.com/auth/logout
 ```
 
+### Restricting clients to FreeIPA groups
+
+By default every active FreeIPA user may sign in to every OAuth client. To
+limit a client to members of FreeIPA groups, add a `[[hydra.clients]]` entry
+per client:
+
+```
+[hydra]
+# deny clients that have no [[hydra.clients]] entry (default false)
+default_deny = false
+
+[[hydra.clients]]
+client_id = "lubelogger"
+groups = ["lubelogger-users", "admins"]
+```
+
+A user must be a member of at least one listed group (names compared
+case-insensitively). Clients without an entry stay open unless
+`default_deny = true`. A denied user gets a 403 page from mokey; the consent
+request is rejected in Hydra with `access_denied`, but mokey does not redirect
+back to the client, so clients that restart login on an error callback don't
+loop. An unparseable `hydra.clients` denies every client.
+
+Known limits:
+
+- Only direct group membership counts: the same list mokey sends in the
+  `groups` claim. Nested groups are not resolved.
+- Clients registered in Hydra with `skip_consent: true` never reach mokey's
+  consent endpoint, so the check does not apply to them.
+- Removing a user from a group does not revoke tokens already issued. Refresh
+  tokens keep working until they expire or the consent is revoked (on the
+  Security page or via the Hydra admin API).
+
 ## Localization
 
 Set the interface language in `mokey.toml`:

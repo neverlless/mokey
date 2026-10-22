@@ -309,6 +309,16 @@ driver = "memory"
 # login_timeout: 3600
 # fake_tls_termination: true
 
+# Deny clients that have no [[hydra.clients]] entry below. Default: false,
+# every FreeIPA user may sign in to every client.
+# default_deny = false
+
+# Limit an OAuth client to members of FreeIPA groups (direct membership,
+# names compared case-insensitively). Repeat the block per client.
+# [[hydra.clients]]
+# client_id = "lubelogger"
+# groups = ["lubelogger-users"]
+
 #------------------------------------------------------------------------------
 # Slack
 #------------------------------------------------------------------------------

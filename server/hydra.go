@@ -3,12 +3,14 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	hydra "github.com/ory/hydra-client-go/v26"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	ipa "github.com/ubccr/goipa"
 )
 
 type FakeTLSTransport struct {
@@ -57,6 +59,42 @@ func (r *Router) revokeConnectedApp(username, clientID string) error {
 	return err
 }
 
+// hydraClientPolicy limits one OAuth client to members of FreeIPA groups,
+// configured as [[hydra.clients]] entries.
+type hydraClientPolicy struct {
+	ClientID string   `mapstructure:"client_id"`
+	Groups   []string `mapstructure:"groups"`
+}
+
+// clientAllowed reports whether user may sign in to the OAuth client.
+// Clients without a [[hydra.clients]] entry are open to every user unless
+// hydra.default_deny is set. Only direct group membership is checked.
+func clientAllowed(clientID string, user *ipa.User) bool {
+	var policies []hydraClientPolicy
+	if err := viper.UnmarshalKey("hydra.clients", &policies); err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("Invalid hydra.clients config, denying OAuth client access")
+		return false
+	}
+
+	for _, p := range policies {
+		if p.ClientID != clientID {
+			continue
+		}
+		for _, want := range p.Groups {
+			for _, have := range user.Groups {
+				if strings.EqualFold(want, have) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	return !viper.GetBool("hydra.default_deny")
+}
+
 func (ftt *FakeTLSTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("X-Forwarded-Proto", "https")
 	return ftt.T.RoundTrip(req)
@@ -98,6 +136,33 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 	if viper.GetBool("accounts.require_mfa") && !user.OTPOnly() {
 		r.metrics.totalHydraFailedLogins.Inc()
 		return c.Status(fiber.StatusUnauthorized).SendString(T("hydra.access_denied"))
+	}
+
+	client := consent.GetClient()
+	clientID := client.GetClientId()
+	if !clientAllowed(clientID, user) {
+		// Reject so Hydra closes the flow, but don't follow redirect_to:
+		// clients that restart login on access_denied would loop back here.
+		rejectBody := hydra.NewRejectOAuth2Request()
+		rejectBody.SetError("access_denied")
+		rejectBody.SetErrorDescription("User is not a member of a group allowed to use this client")
+		rejectBody.SetStatusCode(fiber.StatusForbidden)
+		_, _, err := r.hydraClient.OAuth2API.RejectOAuth2ConsentRequest(context.Background()).
+			ConsentChallenge(challenge).RejectOAuth2Request(*rejectBody).Execute()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err":      err,
+				"username": subject,
+			}).Error("Failed to reject the consent challenge")
+		}
+
+		log.WithFields(log.Fields{
+			"username": subject,
+			"client":   clientID,
+			"ip":       RemoteIP(c),
+		}).Warn("AUDIT OAuth2 client denied, user not in an allowed group")
+		r.metrics.totalHydraFailedLogins.Inc()
+		return c.Status(fiber.StatusForbidden).SendString(T("hydra.client_not_allowed"))
 	}
 
 	acceptBody := hydra.NewAcceptOAuth2ConsentRequest()
