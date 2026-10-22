@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/neverlless/mokey/cmd"
-	"github.com/neverlless/mokey/server"
+	"github.com/neverlless/mokey/v2/cmd"
+	"github.com/neverlless/mokey/v2/server"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

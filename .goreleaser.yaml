@@ -18,7 +18,7 @@ builds:
         env:
           - CC=aarch64-linux-gnu-gcc
     ldflags:
-      - -s -w -X github.com/neverlless/mokey/server.Version={{.Version}}
+      - -s -w -X github.com/neverlless/mokey/v2/server.Version={{.Version}}
       - -extldflags=-static
     tags:
       - sqlite_omit_load_extension

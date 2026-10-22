@@ -1,5 +1,13 @@
 # Mokey ChangeLog
 
+## [v2.3.1] - 2026-10-22
+
+- Module path is now `github.com/neverlless/mokey/v2`. Go modules require the
+  `/v2` suffix for v2+ tags, so the Go proxy rejected every v2.x release:
+  `go install github.com/neverlless/mokey@latest` installed v1.9.1 and
+  pkg.go.dev showed no v2 version. Install with
+  `go install github.com/neverlless/mokey/v2@latest`
+
 ## [v2.3.0] - 2026-10-22
 
 Hydra OAuth clients can be limited to FreeIPA groups, the staged-signup

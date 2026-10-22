@@ -6,7 +6,7 @@ RUN go mod download
 COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=1 go build \
-    -ldflags "-s -w -X github.com/neverlless/mokey/server.Version=${VERSION} -extldflags=-static" \
+    -ldflags "-s -w -X github.com/neverlless/mokey/v2/server.Version=${VERSION} -extldflags=-static" \
     -tags "sqlite_omit_load_extension osusergo netgo" \
     -o /mokey .
 
