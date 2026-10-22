@@ -75,6 +75,8 @@ nfpms:
         dst: /usr/lib/systemd/system/mokey.service
 checksum:
   name_template: 'checksums.txt'
+sboms:
+  - artifacts: archive
 signs:
   - artifacts: checksum
     cmd: gpg

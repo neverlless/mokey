@@ -157,6 +157,23 @@ $ gpg --verify checksums.txt.sig checksums.txt
 $ sha256sum --check --ignore-missing checksums.txt
 ```
 
+Release archives also carry an SPDX SBOM (`*.sbom.json`) and a GitHub build
+provenance attestation:
+
+```
+$ gh attestation verify mokey-VERSION-linux-x86_64.tar.gz --repo neverlless/mokey
+```
+
+Container images are signed with cosign (keyless, by the release workflow)
+and carry an SBOM and provenance attestation:
+
+```
+$ cosign verify ghcr.io/neverlless/mokey:VERSION \
+    --certificate-identity-regexp '^https://github.com/neverlless/mokey/' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+$ docker buildx imagetools inspect ghcr.io/neverlless/mokey:VERSION --format '{{ json .SBOM }}'
+```
+
 ## Setup and configuration
 
 Create a service account and role in FreeIPA with the "Modify users and Reset
