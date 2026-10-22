@@ -62,7 +62,12 @@ jobs:
           go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
           staticcheck ./...
 
+      # gosec v2.29.0 cannot type-check against Go 1.27 export data and, with
+      # -quiet, still exits 0. Scan with the go.mod minimum and without -quiet
+      # so a type-check failure fails the step.
       - name: gosec
+        env:
+          GOTOOLCHAIN: go1.26.10
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
-          gosec -quiet -exclude-dir=examples ./...
+          gosec -exclude-dir=examples ./...
