@@ -62,9 +62,7 @@ jobs:
           go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
           staticcheck ./...
 
-      # G104 (unhandled errors) is excluded: the remaining sites are
-      # deliberate log-and-continue paths reviewed in the v1.6 audit
       - name: gosec
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
-          gosec -quiet -exclude-dir=examples -exclude=G104 ./...
+          gosec -quiet -exclude-dir=examples ./...

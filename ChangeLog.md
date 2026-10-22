@@ -16,6 +16,11 @@
 - Passkey registration stops with an error when the session cannot be saved
   after the registration challenge is consumed. The save error used to be
   ignored, which left the single-use challenge valid in session storage
+- A failed write of a single-use token's "used" marker (password reset,
+  account verify, email change, invite, OTP recovery) is logged as an error.
+  It used to be ignored silently, leaving the link reusable until it expired.
+  Other dropped storage errors are now logged or returned, and CI's gosec run
+  no longer excludes G104 (unhandled errors)
 - The docker-compose dev environment uses the `mokey.test` domain instead of
   `mokey.local` (#41, Jarl Gullberg). `.local` is reserved for mDNS, and under
   Podman the duplicate DNS answers kept the FreeIPA container from starting.
