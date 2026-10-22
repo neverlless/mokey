@@ -47,6 +47,9 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Build OIDC example
+        run: go -C examples/mokey-oidc vet ./... && go -C examples/mokey-oidc build ./...
+
       - name: Test
         run: go test -race ./...
 
