@@ -109,7 +109,7 @@ See [charts/mokey](charts/mokey) for the Helm chart options.
 ## Requirements
 
 - FreeIPA v4.6.8 or greater
-- Linux x86_64
+- Linux x86_64 or aarch64
 - Redis (optional)
 - Hydra v2.x (optional)
 
@@ -121,7 +121,7 @@ host in FreeIPA is outside the scope of this document.
 
 To install mokey download a copy of the pre-compiled binary [here](https://github.com/neverlless/mokey/releases).
 
-Container image (linux/amd64):
+Container image (linux/amd64, linux/arm64):
 
 ```sh
 docker pull ghcr.io/neverlless/mokey:latest
