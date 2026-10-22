@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
@@ -115,6 +116,74 @@ func TestOIDCConsentRequiresMFA(t *testing.T) {
 	resp := tc.get("/oauth/consent?consent_challenge=consent-2")
 	assert.Equal(fiber.StatusUnauthorized, resp.StatusCode)
 	assert.Nil(hy.acceptedConsent)
+}
+
+func TestOIDCConsentClientGroups(t *testing.T) {
+	// parsed from TOML so the test covers the real [[hydra.clients]] shape
+	policies := `
+[[hydra.clients]]
+client_id = "lubelogger"
+groups = ["lubelogger-users", "admins"]
+`
+
+	tests := []struct {
+		name        string
+		client      string
+		groups      []string
+		defaultDeny bool
+		allowed     bool
+	}{
+		{"member of listed group", "lubelogger", []string{"ipausers", "lubelogger-users"}, false, true},
+		{"group match ignores case", "lubelogger", []string{"Admins"}, false, true},
+		{"not a member", "lubelogger", []string{"ipausers"}, false, false},
+		{"unlisted client is open", "other-app", []string{"ipausers"}, false, true},
+		{"unlisted client with default_deny", "other-app", []string{"lubelogger-users"}, true, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			app, fake, hy := newHydraTestApp(t)
+			viper.SetConfigType("toml")
+			if !assert.NoError(viper.MergeConfig(strings.NewReader(policies))) {
+				return
+			}
+			viper.Set("hydra.default_deny", tt.defaultDeny)
+			fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: tt.groups})
+			hy.seedConsentForClient("consent-g", "walter", tt.client)
+
+			tc := newTestClient(t, app)
+			resp := tc.get("/oauth/consent?consent_challenge=consent-g")
+			if tt.allowed {
+				assert.Equal(fiber.StatusFound, resp.StatusCode)
+				assert.NotNil(hy.acceptedConsent)
+				assert.Nil(hy.rejectedConsent)
+				return
+			}
+
+			// denied: rejected in Hydra, error shown by mokey, no redirect
+			assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+			assert.Empty(resp.Header.Get("Location"))
+			assert.Nil(hy.acceptedConsent)
+			if assert.NotNil(hy.rejectedConsent) {
+				assert.Equal("access_denied", hy.rejectedConsent["error"])
+			}
+		})
+	}
+}
+
+func TestOIDCConsentInvalidClientPolicyDenies(t *testing.T) {
+	assert := assert.New(t)
+	app, fake, hy := newHydraTestApp(t)
+	viper.Set("hydra.clients", "lubelogger")
+	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	hy.seedConsent("consent-bad", "walter")
+
+	tc := newTestClient(t, app)
+	resp := tc.get("/oauth/consent?consent_challenge=consent-bad")
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+	assert.Nil(hy.acceptedConsent)
+	assert.NotNil(hy.rejectedConsent)
 }
 
 func TestOIDCLogoutFlow(t *testing.T) {

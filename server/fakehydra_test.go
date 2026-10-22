@@ -31,12 +31,14 @@ type fakeHydra struct {
 	// seeded challenges
 	loginRequests  map[string]map[string]interface{} // login_challenge -> response object
 	consentSubject map[string]string                 // consent_challenge -> subject
+	consentClient  map[string]string                 // consent_challenge -> client_id
 	logoutSubject  map[string]string                 // logout_challenge -> subject
 	// consent sessions ("connected apps"), keyed by subject
 	consentSessions map[string][]fakeConsentSession
 	// recorded accept calls
 	acceptedLogins   []string               // subjects passed to login/accept
 	acceptedConsent  map[string]interface{} // last consent accept body
+	rejectedConsent  map[string]interface{} // last consent reject body
 	acceptedLogouts  []string               // logout challenges accepted
 	revokedSubjects  []string               // DELETE sessions/login subjects
 	revokedConsents  []revokedConsent       // DELETE sessions/consent calls
@@ -47,6 +49,7 @@ func newFakeHydra() *fakeHydra {
 	f := &fakeHydra{
 		loginRequests:   make(map[string]map[string]interface{}),
 		consentSubject:  make(map[string]string),
+		consentClient:   make(map[string]string),
 		logoutSubject:   make(map[string]string),
 		consentSessions: make(map[string][]fakeConsentSession),
 	}
@@ -56,6 +59,7 @@ func newFakeHydra() *fakeHydra {
 	mux.HandleFunc("/admin/oauth2/auth/requests/login/accept", f.acceptLogin)
 	mux.HandleFunc("/admin/oauth2/auth/requests/consent", f.getConsent)
 	mux.HandleFunc("/admin/oauth2/auth/requests/consent/accept", f.acceptConsent)
+	mux.HandleFunc("/admin/oauth2/auth/requests/consent/reject", f.rejectConsent)
 	mux.HandleFunc("/admin/oauth2/auth/requests/logout", f.getLogout)
 	mux.HandleFunc("/admin/oauth2/auth/requests/logout/accept", f.acceptLogout)
 	mux.HandleFunc("/admin/oauth2/auth/sessions/login", f.revokeSessions)
@@ -84,6 +88,13 @@ func (f *fakeHydra) seedConsent(challenge, subject string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.consentSubject[challenge] = subject
+}
+
+func (f *fakeHydra) seedConsentForClient(challenge, subject, clientID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.consentSubject[challenge] = subject
+	f.consentClient[challenge] = clientID
 }
 
 func (f *fakeHydra) seedLogout(challenge, subject string) {
@@ -131,16 +142,32 @@ func (f *fakeHydra) acceptLogin(w http.ResponseWriter, r *http.Request) {
 func (f *fakeHydra) getConsent(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	subject, ok := f.consentSubject[r.URL.Query().Get("consent_challenge")]
+	challenge := r.URL.Query().Get("consent_challenge")
+	subject, ok := f.consentSubject[challenge]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	clientID := f.consentClient[challenge]
+	if clientID == "" {
+		clientID = "test-client"
+	}
 	writeJSON(w, map[string]interface{}{
-		"challenge":       r.URL.Query().Get("consent_challenge"),
+		"challenge":       challenge,
 		"subject":         subject,
 		"requested_scope": []string{"openid", "profile"},
+		"client":          map[string]interface{}{"client_id": clientID},
 	})
+}
+
+func (f *fakeHydra) rejectConsent(w http.ResponseWriter, r *http.Request) {
+	var body map[string]interface{}
+	json.NewDecoder(r.Body).Decode(&body)
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.rejectedConsent = body
+	writeJSON(w, map[string]string{"redirect_to": "https://client.example.com/cb?error=access_denied"})
 }
 
 func (f *fakeHydra) acceptConsent(w http.ResponseWriter, r *http.Request) {

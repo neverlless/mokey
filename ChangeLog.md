@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Hydra OAuth clients can be restricted to FreeIPA groups (#51, proposed by
+  @ads103). Optional `[[hydra.clients]]` entries list the groups allowed to
+  use a client, and `hydra.default_deny` closes clients without an entry.
+  A denied user gets mokey's own 403 page and the consent request is rejected
+  in Hydra, without redirecting back to the client. Default behaviour is
+  unchanged
 - Plain-HTTP mode can listen on IPv6 (upstream ubccr/mokey#175). Fiber
   defaulted to `tcp4`, so `listen = "[::]:8866"` failed without TLS and an
   address like `":8866"` bound IPv4 only. The listener is now dual-stack, as
