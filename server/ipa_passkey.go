@@ -130,11 +130,15 @@ func passkeyMapping(credentialID, cosePublicKey []byte) (string, error) {
 		default:
 			return "", fmt.Errorf("unsupported elliptic curve: %d", key.Curve)
 		}
-		pub = &ecdsa.PublicKey{
-			Curve: curve,
-			X:     new(big.Int).SetBytes(key.XCoord),
-			Y:     new(big.Int).SetBytes(key.YCoord),
+		// uncompressed point 0x04 || X || Y. ParsePublicKey has already
+		// checked both coordinates are exactly the curve size; this parse
+		// rejects points off the curve
+		point := append(append([]byte{4}, key.XCoord...), key.YCoord...)
+		ec, err := ecdsa.ParseUncompressedPublicKey(curve, point)
+		if err != nil {
+			return "", err
 		}
+		pub = ec
 	case webauthncose.RSAPublicKeyData:
 		pub = &rsa.PublicKey{
 			N: new(big.Int).SetBytes(key.Modulus),
