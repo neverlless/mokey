@@ -317,6 +317,89 @@ that case now explains itself instead of failing as a system error.
 - [x] Go 1.27.3 toolchain, staticcheck v0.8.2, govulncheck v1.9.0, and the
       dependency updates from #40 and #45
 
+## v2.3.1 — Go module path
+
+- [x] Module path is `github.com/neverlless/mokey/v2`: without the suffix the
+      Go proxy rejected every v2.x tag, so `go install …@latest` installed
+      v1.9.1 and pkg.go.dev showed no v2 release
+
+The milestones below come from the Oct 2026 strategy review: a feature and
+positioning comparison with LTB Self Service Password, PWM, noggin, upstream
+mokey, Keycloak, Authentik, Authelia, LLDAP, Kanidm and Zitadel, plus the
+FreeIPA 4.13 changes. Its conclusion: mokey is already the most complete
+FreeIPA-native portal; what holds it back is how hard it is to find, try and
+trust. mokey stays FreeIPA-first and positions itself as the account
+lifecycle layer — signup, reset, recovery, approvals — next to whichever
+OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
+
+## v2.4 — Try it, trust it
+
+- [ ] Multi-arch container image (`linux/amd64`, `linux/arm64`); the release
+      binaries already cover arm64, the image and the README do not
+- [ ] One-command demo: FreeIPA + mokey + Mailpit with a seeded user, built
+      on the existing `container/` FreeIPA images — nobody else in the niche
+      can be tried without an existing IPA server
+- [ ] Signed images and SBOM: cosign keyless signatures, an SBOM per
+      release and GitHub build attestations, next to the GPG-signed
+      checksums
+- [ ] Helm chart published as an OCI artifact and listed on Artifact Hub
+- [ ] `examples/mokey-oidc` gets its own `go.mod`, so its five dependencies
+      leave mokey's module
+
+## v2.5 — FreeIPA correctness
+
+- [ ] Nested group membership in the OAuth client gate (#51) and the Access
+      page — today only direct membership counts (also requested in the
+      fajo-de fork)
+- [ ] FreeIPA 4.13 password policy credits (libpwquality) read and shown,
+      so the portal does not drift from the server again (#15, #16)
+- [ ] Optional breached-password check against Have I Been Pwned
+      (k-anonymity range API, off by default) — LTB SSP and PWM have it
+- [ ] Revoke a user's Hydra consent sessions for a client when they lose
+      the group that admits them to it
+- [ ] Clear handling of AD-trust and external-IdP users, who cannot reset
+      or change a password in FreeIPA
+
+## v2.6 — Languages and docs
+
+- [ ] Translation workflow: completeness test, `Accept-Language` selection,
+      a "help translate" call to fork authors who already translated
+      upstream; Russian and Ukrainian first-party
+- [ ] Localized durations in emails ("link expires in …"), replacing
+      go-humanize, which only speaks English
+- [ ] Documentation site with one page per task people search for
+      (FreeIPA self-service password reset, signup, OTP, passkeys, OIDC)
+      and honest comparisons with upstream mokey, noggin, LTB SSP and
+      Keycloak-in-front-of-FreeIPA
+- [ ] Companion-mode guides: mokey next to Keycloak (exists), next to any
+      OIDC provider, and next to FreeIPA's own OIDC provider when it ships
+      a release
+
+## v2.7 — Foundations
+
+- [ ] FreeIPA client moves to a maintained fork of goipa (upstream quiet
+      since Dec 2024) with typed calls for what mokey sends as raw JSON-RPC
+      today: stage users, groups, HBAC/sudo, subids, passkeys, lockout,
+      password policy
+- [ ] Structured logging on `log/slog` with secrets redacted, replacing
+      logrus (maintenance mode); stdlib validation replacing govalidator
+- [ ] Integration tests against a real FreeIPA container and browser
+      end-to-end tests including passkey enrollment, next to the existing
+      fake-FreeIPA suite
+- [ ] HTTP stack decision: Fiber v3 or `net/http`, made before Fiber v2
+      stops receiving fixes
+
+## v2.8 — Integrations
+
+- [ ] Outgoing webhooks for account events, generalizing the Slack notifier
+- [ ] A narrow JSON API for the same events and pending-approval queues
+- [ ] App catalog: the OAuth clients a user may use, with "request access"
+      going through the existing sponsor approval queue
+- [ ] Helpdesk view in the admin panel: expiring, expired, locked and
+      inactive accounts
+- [ ] Ansible role (service account, role, keytab, config) and an RPM in
+      Fedora COPR
+
 ## Deliberately not planned
 
 - MFA recovery/backup codes — FreeIPA has no static-token type, so codes
@@ -334,7 +417,11 @@ that case now explains itself instead of failing as a system error.
   upgrade is the pragmatic step
 - Compliance-grade audit trail — the ring-buffer audit log shipped in v1.5
   and the rest of the reliability package landed in v1.6
-- Marketing work (demo instance, docs site, announcements) — code first
+- Generic LDAP / Active Directory backends — LTB SSP and PWM serve that
+  market; mokey's value is knowing FreeIPA (stage users, OTP, passkeys,
+  HBAC, subids), which a generic backend would dilute
+- Security questions as a reset factor — FreeIPA calls them a weak method
+- SCIM — ipa-tuura already bridges FreeIPA to SCIM
 - Homelab-specific features — enterprise is the target audience for now
 
 ## Already done in this fork
