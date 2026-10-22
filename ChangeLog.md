@@ -1,6 +1,10 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.3.0] - 2026-10-22
+
+Hydra OAuth clients can be limited to FreeIPA groups, the staged-signup
+approval queue works again, and the build moves to Go 1.27.3 with the Go
+security fixes. Most of this release came from reports by @ads103.
 
 - Hydra OAuth clients can be restricted to FreeIPA groups (#51, proposed by
   @ads103). Optional `[[hydra.clients]]` entries list the groups allowed to

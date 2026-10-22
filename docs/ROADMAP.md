@@ -299,6 +299,24 @@ that case now explains itself instead of failing as a system error.
       test now fails if a label points at nothing or a field reuses an
       index-page id
 
+## v2.3 — OAuth client access and upkeep
+
+- [x] OAuth clients limited to FreeIPA groups (#51, proposed): optional
+      `[[hydra.clients]]` entries name the groups allowed to use a client,
+      checked at consent; a denied user sees mokey's own 403 page instead of
+      bouncing back into a client that would restart the login. Invalid
+      entries deny rather than open the client
+- [x] Pending approval queue with staged signup (#46): the listing asked
+      FreeIPA for default attributes only, which leave out `userclass`, so
+      the queue was always empty; the test FreeIPA now drops it the same way
+- [x] Plain-HTTP listener on IPv6 (upstream ubccr/mokey#175)
+- [x] No silently dropped errors: single-use token markers, the passkey
+      challenge and other storage writes are handled or logged, and gosec
+      no longer excludes G104. gosec runs under the go.mod minimum and
+      without `-quiet`, after it was found skipping type checks on Go 1.27
+- [x] Go 1.27.3 toolchain, staticcheck v0.8.2, govulncheck v1.9.0, and the
+      dependency updates from #40 and #45
+
 ## Deliberately not planned
 
 - MFA recovery/backup codes — FreeIPA has no static-token type, so codes
