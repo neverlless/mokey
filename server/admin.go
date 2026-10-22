@@ -123,7 +123,7 @@ func (r *Router) InviteAccept(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	r.storage.Set(TokenInvite+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+	MarkTokenUsed(token, TokenInvite, claims, r.storage)
 
 	log.WithFields(log.Fields{
 		"username": user.Username,

@@ -11,7 +11,6 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 // OTP recovery request queue: single storage key holding a JSON list,
@@ -133,10 +132,15 @@ func (r *Router) OTPRecoveryConfirm(c *fiber.Ctx) error {
 		return c.Render("otprecovery-confirm.html", fiber.Map{"claims": claims})
 	}
 
-	r.storage.Set(TokenOTPRecovery+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+	MarkTokenUsed(token, TokenOTPRecovery, claims, r.storage)
 	// release the issued-token lock now that this request is confirmed and
 	// queued, so a future recovery attempt isn't blocked until TTL expiry
-	r.storage.Delete(TokenOTPRecovery + TokenIssuedPrefix + claims.Username)
+	if err := r.storage.Delete(TokenOTPRecovery + TokenIssuedPrefix + claims.Username); err != nil {
+		log.WithFields(log.Fields{
+			"username": claims.Username,
+			"err":      err,
+		}).Error("Failed to release OTP recovery issued-token marker")
+	}
 	r.addOTPRecoveryRequest(claims.Username)
 	log.WithFields(log.Fields{"username": claims.Username, "ip": RemoteIP(c)}).Info("AUDIT OTP recovery requested")
 	return c.Render("otprecovery-submitted.html", fiber.Map{})

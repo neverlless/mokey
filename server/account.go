@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
@@ -423,7 +422,7 @@ func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) err
 // finishAccountVerify marks the verify token used, sends the welcome email
 // and renders the success page — shared by the staged and legacy paths
 func (r *Router) finishAccountVerify(c *fiber.Ctx, claims *Token, user *ipa.User, token string) error {
-	r.storage.Set(TokenAccountVerify+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+	MarkTokenUsed(token, TokenAccountVerify, claims, r.storage)
 
 	err := r.emailer.SendWelcomeEmail(user, c)
 	if err != nil {
@@ -578,7 +577,7 @@ func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
 	}
 
-	r.storage.Set(TokenEmailChange+TokenUsedPrefix+token, []byte("true"), time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second)))
+	MarkTokenUsed(token, TokenEmailChange, claims, r.storage)
 
 	if oldEmail != "" {
 		if err := r.emailer.SendEmailChangedNotification(oldEmail, user, c); err != nil {
