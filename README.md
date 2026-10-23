@@ -80,6 +80,19 @@ Self-service password reset widens your attack surface. Read
 [Operating mokey safely](SECURITY.md#operating-mokey-safely) before exposing
 mokey to the internet.
 
+## Try it
+
+No FreeIPA server at hand? Start a throwaway one with mokey and a mail
+catcher (Docker, about 10 minutes on first start):
+
+```sh
+docker compose -f examples/demo/compose.yml up -d
+```
+
+Then open <http://localhost:8866> and log in as `demo` / `demo-Passw0rd`.
+Emails show up in Mailpit at <http://localhost:8025>. See
+[examples/demo](examples/demo) for what to try and how to reset it.
+
 ## Quick start
 
 1. **FreeIPA:** create the mokey service account and keytab as described in

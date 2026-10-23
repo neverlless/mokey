@@ -1,0 +1,79 @@
+# One-command demo: a fresh FreeIPA, mokey enrolled into it, and Mailpit
+# catching outgoing mail. DEMO ONLY: fixed passwords and secrets, never
+# expose it. See README.md next to this file.
+#
+#   docker compose -f examples/demo/compose.yml up -d
+
+x-admin-password: &admin-password "Secret123-demo"
+
+services:
+  ipa:
+    image: freeipa/freeipa-server:rocky-9
+    hostname: ipa.mokey.test
+    command:
+      - ipa-server-install
+      - -U
+      - --realm=MOKEY.TEST
+      - --no-ntp
+      - --skip-mem-check
+      - --setup-dns
+      - --no-forwarders
+      - --no-dnssec-validation
+    environment:
+      PASSWORD: *admin-password
+    cgroup: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - ipa-data:/data
+    stop_signal: RTMIN+3
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    networks:
+      default:
+        aliases: [ipa.mokey.test]
+    healthcheck:
+      # /data/volume-version is written only after ipa-server-install succeeds
+      test: ["CMD-SHELL", "test -f /data/volume-version && curl -fsk https://localhost/ipa/config/ca.crt -o /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 20m
+
+  setup:
+    image: ${MOKEY_IMAGE:-ghcr.io/neverlless/mokey:latest}
+    entrypoint: ["/bin/bash", "/seed.sh"]
+    environment:
+      IPA_ADMIN_PASSWORD: *admin-password
+    volumes:
+      - ./seed.sh:/seed.sh:ro
+    depends_on:
+      ipa:
+        condition: service_healthy
+
+  mokey:
+    image: ${MOKEY_IMAGE:-ghcr.io/neverlless/mokey:latest}
+    hostname: mokey.mokey.test
+    restart: unless-stopped
+    environment:
+      IPA_ENROLL: "true"
+      IPA_SERVER: ipa.mokey.test
+      IPA_DOMAIN: mokey.test
+      IPA_ADMIN_PASSWORD: *admin-password
+      MOKEY_KT_PRINCIPAL: mokey/mokey
+    volumes:
+      - ./mokey.toml:/etc/mokey/mokey.toml:ro
+    ports:
+      - "127.0.0.1:8866:8866"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+
+  mailpit:
+    image: axllent/mailpit:v1.31.3
+    ports:
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  ipa-data:

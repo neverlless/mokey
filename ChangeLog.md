@@ -1,5 +1,19 @@
 # Mokey ChangeLog
 
+## [v2.4.1] - 2026-10-23
+
+- One-command demo: `docker compose -f examples/demo/compose.yml up -d`
+  starts a fresh FreeIPA, seeds the mokey service account and demo users,
+  enrolls mokey into it and catches its mail in Mailpit. See
+  [examples/demo](examples/demo)
+- Container self-enrollment (`IPA_ENROLL=true`) works without DNS SRV
+  records for the realm. ipa-client-install 4.13 writes `[realms]` to
+  `/etc/krb5.conf.d/freeipa-realm`, which the Go Kerberos library behind
+  goipa does not read, so mokey found no KDC and restarted in a loop. The
+  entrypoint now copies the realm into `/etc/krb5.conf` after enrollment.
+  Installs on hosts enrolled with a 4.13 client are still affected when the
+  realm has no SRV records; that fix belongs in goipa
+
 ## [v2.4.0] - 2026-10-23
 
 mokey can be pulled, verified and installed more easily: an arm64 image,
