@@ -1,6 +1,10 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.4.0] - 2026-10-23
+
+mokey can be pulled, verified and installed more easily: an arm64 image,
+signed images with SBOMs, provenance for the release archives, and the Helm
+chart published as an OCI artifact.
 
 - Container image for linux/arm64 next to linux/amd64. The builder stage
   cross-compiles, so only the runtime stage's package install is emulated
