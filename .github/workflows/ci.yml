@@ -50,6 +50,12 @@ jobs:
       - name: Build OIDC example
         run: go -C examples/mokey-oidc vet ./... && go -C examples/mokey-oidc build ./...
 
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+
+      - name: Lint Helm chart
+        run: helm lint --strict charts/mokey && helm template charts/mokey > /dev/null
+
       - name: Test
         run: go test -race ./...
 

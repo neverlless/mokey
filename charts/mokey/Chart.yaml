@@ -3,7 +3,24 @@ name: mokey
 description: FreeIPA self-service account management portal
 type: application
 home: https://github.com/neverlless/mokey
+icon: https://raw.githubusercontent.com/neverlless/mokey/main/docs/mokey-logo.png
 sources:
   - https://github.com/neverlless/mokey
-version: 1.0.1
-appVersion: "2.0.1"
+keywords:
+  - freeipa
+  - self-service
+  - password-reset
+  - identity
+  - passkeys
+  - oidc
+maintainers:
+  - name: Maksym Hrytsaienko
+    url: https://github.com/neverlless
+# The release workflow sets both from the git tag when it publishes the chart.
+version: 2.3.1
+appVersion: "2.3.1"
+annotations:
+  artifacthub.io/license: BSD-3-Clause
+  artifacthub.io/links: |
+    - name: Configuration reference
+      url: https://github.com/neverlless/mokey/blob/main/docs/configuration.md

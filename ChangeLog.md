@@ -7,6 +7,9 @@
 - Container images are signed with cosign (keyless) and carry an SBOM and
   provenance attestation; release archives get an SPDX SBOM and a GitHub
   build provenance attestation. See "Verifying releases" in the README
+- The Helm chart is published to `oci://ghcr.io/neverlless/charts/mokey` on
+  every release, versioned with mokey. Its `appVersion` had stayed at 2.0.1,
+  so an install without `image.tag` ran mokey 2.0.1
 - `mokey --version` reports the module version for `go install` builds
   instead of "dev"
 - The OIDC client example has its own go.mod: gorilla/mux, negroni,

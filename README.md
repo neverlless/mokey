@@ -93,7 +93,7 @@ mokey to the internet.
    # Kubernetes
    kubectl create secret generic mokey-config --from-file=mokey.toml
    kubectl create secret generic mokey-keytab --from-file=mokeyapp.keytab
-   helm install mokey ./charts/mokey \
+   helm install mokey oci://ghcr.io/neverlless/charts/mokey \
      --set existingConfigSecret=mokey-config \
      --set existingKeytabSecret=mokey-keytab
 

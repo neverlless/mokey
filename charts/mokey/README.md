@@ -22,10 +22,14 @@ kubectl create secret generic mokey-keytab --from-file=mokeyapp.keytab
 Install:
 
 ```sh
-helm install mokey ./charts/mokey \
+helm install mokey oci://ghcr.io/neverlless/charts/mokey \
   --set existingConfigSecret=mokey-config \
   --set existingKeytabSecret=mokey-keytab
 ```
+
+The chart is published to `oci://ghcr.io/neverlless/charts/mokey` from
+v2.4.0 on, versioned with mokey itself; add `--version X.Y.Z` to pin it, or
+install `./charts/mokey` from a checkout.
 
 ## Keytab options
 
