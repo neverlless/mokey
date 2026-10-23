@@ -52,6 +52,13 @@ if [ "${IPA_ENROLL,,}" = "true" ] && [ ! -f "$MOKEY_KEYTAB" ]; then
         --no-nisdomain \
         --log-file /tmp/ipa-client-install.log
 
+    # ipa-client-install 4.13 writes [realms] to krb5.conf.d, which the Go
+    # Kerberos library ignores; without a copy in krb5.conf mokey can find
+    # the KDC only through DNS SRV records.
+    if ! grep -q '^\[realms\]' /etc/krb5.conf && [ -f /etc/krb5.conf.d/freeipa-realm ]; then
+        cat /etc/krb5.conf.d/freeipa-realm >> /etc/krb5.conf
+    fi
+
     echo "$IPA_ADMIN_PASSWORD" | kinit "$IPA_ADMIN_PRINCIPAL"
     /usr/sbin/ipa-getkeytab -s "$IPA_SERVER" -p "$MOKEY_KT_PRINCIPAL" -k "$MOKEY_KEYTAB"
     kdestroy
