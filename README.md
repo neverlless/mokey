@@ -164,8 +164,8 @@ provenance attestation:
 $ gh attestation verify mokey-VERSION-linux-x86_64.tar.gz --repo neverlless/mokey
 ```
 
-Container images are signed with cosign (keyless, by the release workflow)
-and carry an SBOM and provenance attestation:
+Container images are signed with cosign (keyless, by the release workflow;
+verify with cosign v3 or later) and carry an SBOM and provenance attestation:
 
 ```
 $ cosign verify ghcr.io/neverlless/mokey:VERSION \
