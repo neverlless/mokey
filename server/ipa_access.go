@@ -152,7 +152,7 @@ func sudoRuleFind(client *ipa.Client) ([]*sudoRule, bool, error) {
 
 // hbacTest runs FreeIPA's server-side HBAC simulation over enabled rules
 func hbacTest(client *ipa.Client, user, targethost, service string) (*hbacTestResult, error) {
-	res, err := ipaSessionRPC(client, "hbactest", []string{}, map[string]interface{}{
+	data, err := ipaSessionResult(client, "hbactest", []string{}, map[string]interface{}{
 		"user":       user,
 		"targethost": targethost,
 		"service":    service,
@@ -161,7 +161,6 @@ func hbacTest(client *ipa.Client, user, targethost, service string) (*hbacTestRe
 	if err != nil {
 		return nil, err
 	}
-	data := gjson.ParseBytes(res.Result.Data)
 	out := &hbacTestResult{Granted: data.Get("value").Bool()}
 	for _, v := range data.Get("matched").Array() {
 		out.Matched = append(out.Matched, v.String())

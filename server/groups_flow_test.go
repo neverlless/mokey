@@ -135,6 +135,26 @@ func TestGroupApproveNonManager(t *testing.T) {
 	assert.Len(router.loadGroupRequests("chemists"), 1)
 }
 
+func TestGroupApproveRefusedByFreeIPA(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+
+	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
+	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+	// the requester's account is gone by the time the sponsor approves;
+	// FreeIPA answers with HTTP 200 and the refusal in result.failed
+	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
+
+	tc := newTestClient(t, app)
+	tc.login("skyler", "Secret123!")
+	resp := tc.postForm("/groups/approve", url.Values{
+		"group": {"chemists"}, "username": {"jesse"},
+	}, htmx)
+	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+	assert.NotContains(fake.groups["chemists"].Members, "jesse")
+	assert.Len(router.loadGroupRequests("chemists"), 1)
+}
+
 func TestGroupRequestLeaveFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)

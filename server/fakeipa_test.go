@@ -324,6 +324,42 @@ func rpcResult(w http.ResponseWriter, result interface{}) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// rpcResultTop writes result itself as the "result" object, for commands
+// that answer there instead of in result.result (hbactest)
+func rpcResultTop(w http.ResponseWriter, result map[string]interface{}) {
+	resp := map[string]interface{}{
+		"error":     nil,
+		"id":        0,
+		"principal": "admin@TEST.LOCAL",
+		"version":   "4.10.0",
+		"result":    result,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+// rpcMemberResult answers group_add_member/group_remove_member as FreeIPA
+// does: HTTP 200 and no error even when nothing changed, with per-member
+// refusals in result.failed beside the group entry in result.result
+func rpcMemberResult(w http.ResponseWriter, group map[string]interface{}, uid, failure string) {
+	failed := [][]string{}
+	completed := 1
+	if failure != "" {
+		failed = append(failed, []string{uid, failure})
+		completed = 0
+	}
+	rpcResultTop(w, map[string]interface{}{
+		"completed": completed,
+		"failed": map[string]interface{}{
+			"member": map[string]interface{}{
+				"user":  failed,
+				"group": [][]string{},
+			},
+		},
+		"result": group,
+	})
+}
+
 func rpcError(w http.ResponseWriter, code int, message string) {
 	resp := map[string]interface{}{
 		"error": map[string]interface{}{
@@ -783,10 +819,13 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 				notmatched = append(notmatched, cn)
 			}
 		}
-		rpcResult(w, map[string]interface{}{
+		rpcResultTop(w, map[string]interface{}{
+			"summary":    fmt.Sprintf("Access granted: %v", len(matched) > 0),
 			"value":      len(matched) > 0,
 			"matched":    matched,
 			"notmatched": notmatched,
+			"error":      nil,
+			"warning":    nil,
 		})
 
 	case "group_find":
@@ -812,19 +851,23 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			rpcError(w, 4001, cn+": group not found")
 			return
 		}
+		uid, _ := opts["user"].(string)
 		if !f.isGroupManager(caller, g) {
-			rpcError(w, 2100, "Insufficient access: not a member manager")
+			rpcMemberResult(w, f.groupJSON(cn, g), uid, "Insufficient access: Insufficient 'write' privilege to the 'member' attribute")
 			return
 		}
-		uid, _ := opts["user"].(string)
+		if _, exists := f.users[uid]; !exists {
+			rpcMemberResult(w, f.groupJSON(cn, g), uid, "no matching entry found")
+			return
+		}
 		for _, m := range g.Members {
 			if m == uid {
-				rpcResult(w, f.groupJSON(cn, g))
+				rpcMemberResult(w, f.groupJSON(cn, g), uid, "This entry is already a member")
 				return
 			}
 		}
 		g.Members = append(g.Members, uid)
-		rpcResult(w, f.groupJSON(cn, g))
+		rpcMemberResult(w, f.groupJSON(cn, g), uid, "")
 
 	case "group_remove_member":
 		cn := args[0]
@@ -833,19 +876,23 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			rpcError(w, 4001, cn+": group not found")
 			return
 		}
+		uid, _ := opts["user"].(string)
 		if !f.isGroupManager(caller, g) {
-			rpcError(w, 2100, "Insufficient access: not a member manager")
+			rpcMemberResult(w, f.groupJSON(cn, g), uid, "Insufficient access: Insufficient 'write' privilege to the 'member' attribute")
 			return
 		}
-		uid, _ := opts["user"].(string)
 		kept := g.Members[:0]
 		for _, m := range g.Members {
 			if m != uid {
 				kept = append(kept, m)
 			}
 		}
+		if len(kept) == len(g.Members) {
+			rpcMemberResult(w, f.groupJSON(cn, g), uid, "This entry is not a member")
+			return
+		}
 		g.Members = kept
-		rpcResult(w, f.groupJSON(cn, g))
+		rpcMemberResult(w, f.groupJSON(cn, g), uid, "")
 
 	case "stageuser_add":
 		username := args[0]

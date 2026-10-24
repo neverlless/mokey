@@ -29,8 +29,24 @@ import (
 // client. Managing your own passkey mappings requires the FreeIPA
 // self-service permission introduced with passkey support in FreeIPA 4.11.
 func ipaSessionRPC(client *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, error) {
+	res, _, err := ipaSessionCall(client, method, params, options)
+	return res, err
+}
+
+// ipaSessionResult returns the whole "result" object of the response.
+// hbactest and the *_add_member/*_remove_member commands answer there,
+// beside result.result, which is all ipa.Response keeps.
+func ipaSessionResult(client *ipa.Client, method string, params []string, options map[string]interface{}) (gjson.Result, error) {
+	_, raw, err := ipaSessionCall(client, method, params, options)
+	if err != nil {
+		return gjson.Result{}, err
+	}
+	return gjson.GetBytes(raw, "result"), nil
+}
+
+func ipaSessionCall(client *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, []byte, error) {
 	if client.SessionID() == "" {
-		return nil, fmt.Errorf("passkey rpc requires an authenticated FreeIPA session")
+		return nil, nil, fmt.Errorf("passkey rpc requires an authenticated FreeIPA session")
 	}
 
 	if options == nil {
@@ -46,12 +62,12 @@ func ipaSessionRPC(client *ipa.Client, method string, params []string, options m
 
 	b, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://%s/ipa/session/json", client.Host()), bytes.NewBuffer(b))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Referer", fmt.Sprintf("https://%s/ipa/xml", client.Host()))
@@ -59,28 +75,28 @@ func ipaSessionRPC(client *ipa.Client, method string, params []string, options m
 
 	res, err := ipaRPCHTTPClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("IPA passkey RPC failed with HTTP status code: %d", res.StatusCode)
+		return nil, nil, fmt.Errorf("IPA passkey RPC failed with HTTP status code: %d", res.StatusCode)
 	}
 
 	rawJSON, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var ipaRes ipa.Response
 	if err := json.Unmarshal(rawJSON, &ipaRes); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if ipaRes.Error != nil {
-		return nil, ipaRes.Error
+		return nil, nil, ipaRes.Error
 	}
 
-	return &ipaRes, nil
+	return &ipaRes, rawJSON, nil
 }
 
 func userAddPasskey(client *ipa.Client, uid, mapping string) error {

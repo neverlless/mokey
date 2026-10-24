@@ -1,5 +1,19 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- The Access page's "Can I log into…" check reported every host as denied
+  (#56). hbactest answers in the top-level `result` object, not in
+  `result.result` where mokey read it, so `value` and the matched rules were
+  always empty
+- Group approvals no longer report success when FreeIPA refused the change
+  (#56). `group_add_member` and `group_remove_member` answer HTTP 200 with
+  no error and list per-member refusals in `result.failed`, which mokey
+  never read: a denied or failed approval cleared the request, was audited
+  as approved and mailed the user an approval. Already being in the
+  requested state still counts as done. The test FreeIPA now returns the
+  shapes a 4.13 server sends, so the tests catch this
+
 ## [v2.4.1] - 2026-10-23
 
 - One-command demo: `docker compose -f examples/demo/compose.yml up -d`

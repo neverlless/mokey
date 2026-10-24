@@ -70,5 +70,13 @@ func TestGroupRPCLayer(t *testing.T) {
 
 	// non-manager is rejected by the fake's permission check
 	assert.NoError(groupAddMember(sponsor, "chemists", "jesse"))
-	assert.Error(groupRemoveMember(outsider, "chemists", "jesse"))
+	err = groupRemoveMember(outsider, "chemists", "jesse")
+	if assert.Error(err) {
+		assert.Contains(err.Error(), "Insufficient access")
+	}
+
+	// already in the wanted state: FreeIPA refuses, mokey treats it as done
+	assert.NoError(groupAddMember(sponsor, "chemists", "jesse"))
+	assert.NoError(groupRemoveMember(sponsor, "chemists", "jesse"))
+	assert.NoError(groupRemoveMember(sponsor, "chemists", "jesse"))
 }

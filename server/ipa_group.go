@@ -74,21 +74,25 @@ func groupShow(client *ipa.Client, cn string) (*ipaGroup, error) {
 }
 
 func groupAddMember(client *ipa.Client, cn, uid string) error {
-	res, err := ipaSessionRPC(client, "group_add_member", []string{cn}, map[string]interface{}{"user": uid})
-	if err == nil && res != nil {
-		if f := gjson.GetBytes(res.Result.Data, "failed.member.user"); f.Exists() && len(f.Array()) > 0 {
-			return &ipa.IpaError{Code: 2100, Message: f.Array()[0].String()}
-		}
-	}
-	return err
+	return groupChangeMember(client, "group_add_member", cn, uid, "This entry is already a member")
 }
 
 func groupRemoveMember(client *ipa.Client, cn, uid string) error {
-	res, err := ipaSessionRPC(client, "group_remove_member", []string{cn}, map[string]interface{}{"user": uid})
-	if err == nil && res != nil {
-		if f := gjson.GetBytes(res.Result.Data, "failed.member.user"); f.Exists() && len(f.Array()) > 0 {
-			return &ipa.IpaError{Code: 2100, Message: f.Array()[0].String()}
+	return groupChangeMember(client, "group_remove_member", cn, uid, "This entry is not a member")
+}
+
+// groupChangeMember reports FreeIPA's per-member refusals, which come with
+// HTTP 200 and no error in result.failed. Already being in the wanted
+// state is not a failure.
+func groupChangeMember(client *ipa.Client, method, cn, uid, alreadyDone string) error {
+	res, err := ipaSessionResult(client, method, []string{cn}, map[string]interface{}{"user": uid})
+	if err != nil {
+		return err
+	}
+	for _, f := range res.Get("failed.member.user").Array() {
+		if msg := f.Get("1").String(); msg != alreadyDone {
+			return &ipa.IpaError{Code: 2100, Message: msg}
 		}
 	}
-	return err
+	return nil
 }
