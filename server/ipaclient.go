@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	ipa "github.com/ubccr/goipa"
+	ipa "github.com/neverlless/goipa"
 )
 
 // FreeIPA client factories. Package-level vars so tests can point them at a

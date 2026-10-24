@@ -6,8 +6,8 @@ package server
 
 import (
 	"github.com/gofiber/fiber/v2"
+	ipa "github.com/neverlless/goipa"
 	log "github.com/sirupsen/logrus"
-	ipa "github.com/ubccr/goipa"
 )
 
 // subidVars adds the user's subordinate id range (nil when none) to the

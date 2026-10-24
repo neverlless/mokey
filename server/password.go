@@ -7,9 +7,9 @@ import (
 
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
+	ipa "github.com/neverlless/goipa"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	ipa "github.com/ubccr/goipa"
 )
 
 // Simple password checker to validate passwords before creating an account

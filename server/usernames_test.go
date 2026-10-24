@@ -3,8 +3,8 @@ package server
 import (
 	"testing"
 
+	"github.com/neverlless/goipa"
 	"github.com/stretchr/testify/assert"
-	"github.com/ubccr/goipa"
 )
 
 func TestUsernameFromEmail(t *testing.T) {

@@ -12,8 +12,8 @@ import (
 
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
+	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
-	ipa "github.com/ubccr/goipa"
 )
 
 // recordingCaptchaStore remembers captcha digits so tests can "solve" them

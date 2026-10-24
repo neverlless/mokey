@@ -19,8 +19,8 @@ import (
 	"net/http"
 
 	"github.com/go-webauthn/webauthn/protocol/webauthncose"
+	ipa "github.com/neverlless/goipa"
 	"github.com/tidwall/gjson"
-	ipa "github.com/ubccr/goipa"
 )
 
 // goipa has no passkey support and keeps its rpc method private, so the

@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/neverlless/goipa"
 	"github.com/pquerna/otp"
 	"github.com/spf13/viper"
-	"github.com/ubccr/goipa"
 )
 
 func QRCode(otptoken *ipa.OTPToken, realm string) (string, error) {

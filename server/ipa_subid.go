@@ -5,8 +5,8 @@
 package server
 
 import (
+	ipa "github.com/neverlless/goipa"
 	"github.com/tidwall/gjson"
-	ipa "github.com/ubccr/goipa"
 )
 
 // goipa has no subordinate-id support, so the subid_* commands go through

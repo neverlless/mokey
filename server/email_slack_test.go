@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	ipa "github.com/ubccr/goipa"
 )
 
 func TestSlackMessageForUsernameReminderIncludesUsernames(t *testing.T) {

@@ -4,8 +4,8 @@ package server
 // user_status (per-replica failed-login counters) and user_unlock.
 
 import (
+	ipa "github.com/neverlless/goipa"
 	"github.com/tidwall/gjson"
-	ipa "github.com/ubccr/goipa"
 )
 
 // ipaAdminRPC runs a direct JSON-RPC call with the keytab-bound admin

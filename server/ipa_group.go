@@ -5,8 +5,8 @@
 package server
 
 import (
+	ipa "github.com/neverlless/goipa"
 	"github.com/tidwall/gjson"
-	ipa "github.com/ubccr/goipa"
 )
 
 // goipa has no group support, so the group_* commands go through the

@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	ipa "github.com/neverlless/goipa"
 	hydra "github.com/ory/hydra-client-go/v26"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	ipa "github.com/ubccr/goipa"
 )
 
 type FakeTLSTransport struct {

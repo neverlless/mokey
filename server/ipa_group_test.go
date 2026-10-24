@@ -3,8 +3,8 @@ package server
 import (
 	"testing"
 
+	ipa "github.com/neverlless/goipa"
 	"github.com/stretchr/testify/assert"
-	ipa "github.com/ubccr/goipa"
 )
 
 // userSession logs a fake user in through goipa and returns the client

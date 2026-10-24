@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	ipa "github.com/ubccr/goipa"
+	ipa "github.com/neverlless/goipa"
 )
 
 type fakeUser struct {

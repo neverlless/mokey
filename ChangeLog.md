@@ -1,7 +1,14 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.4.2] - 2026-10-24
 
+- mokey uses [neverlless/goipa](https://github.com/neverlless/goipa), the
+  maintained continuation of ubccr/goipa, at v0.4.0. No configuration
+  changes. With `--log-level trace` the old library dumped every FreeIPA
+  request, session cookie and body included, so passwords and OTP codes
+  reached the log; the new one does not log at all. Kerberos logins now
+  read `include`/`includedir` in `/etc/krb5.conf`, so hosts enrolled with an
+  ipa-client 4.13 find the KDC without DNS SRV records
 - The Access page's "Can I log into…" check reported every host as denied
   (#56). hbactest answers in the top-level `result` object, not in
   `result.result` where mokey read it, so `value` and the matched rules were
@@ -26,7 +33,7 @@
   goipa does not read, so mokey found no KDC and restarted in a loop. The
   entrypoint now copies the realm into `/etc/krb5.conf` after enrollment.
   Installs on hosts enrolled with a 4.13 client are still affected when the
-  realm has no SRV records; that fix belongs in goipa
+  realm has no SRV records; fixed in v2.4.2
 
 ## [v2.4.0] - 2026-10-23
 

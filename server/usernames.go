@@ -8,9 +8,9 @@ import (
 
 	valid "github.com/asaskevich/govalidator"
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/ubccr/goipa"
 )
 
 var (

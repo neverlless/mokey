@@ -7,9 +7,9 @@ package server
 import (
 	"time"
 
+	ipa "github.com/neverlless/goipa"
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	ipa "github.com/ubccr/goipa"
 )
 
 // goipa has no stage-user support, so the stageuser_* JSON RPC commands are

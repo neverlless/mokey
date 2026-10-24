@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/ubccr/goipa"
 )
 
 func getHashAlgorithm() otp.Algorithm {

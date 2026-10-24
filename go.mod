@@ -12,6 +12,7 @@ require (
 	github.com/gofiber/storage/redis/v3 v3.6.2
 	github.com/gofiber/storage/sqlite3/v2 v2.3.1
 	github.com/mileusna/useragent v1.3.5
+	github.com/neverlless/goipa v0.4.0
 	github.com/ory/hydra-client-go/v26 v26.2.0
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.25.0
@@ -21,7 +22,6 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tidwall/gjson v1.20.0
-	github.com/ubccr/goipa v0.0.7
 	github.com/valyala/fasthttp v1.76.0
 	golang.org/x/net v0.61.0
 )
