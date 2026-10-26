@@ -102,11 +102,11 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *fakeI
 		ipaKeytabLogin = origKeytabLogin
 	})
 
-	newIPAClient = fake.client
-	newIPAClientWithSession = func(sid string) *ipa.Client {
+	newIPAClient = func() (*ipa.Client, error) { return fake.client(), nil }
+	newIPAClientWithSession = func(sid string) (*ipa.Client, error) {
 		c := fake.client()
 		c.RemoteLogin("__restore__", sid)
-		return c
+		return c, nil
 	}
 	ipaKeytabLogin = func(c *ipa.Client, keytab, username string) error {
 		return c.RemoteLogin("__admin__", "")

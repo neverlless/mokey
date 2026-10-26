@@ -58,7 +58,10 @@ func (r *Router) isLoggedIn(c *fiber.Ctx) (bool, error) {
 		return false, errors.New("Session invalidated by password change")
 	}
 
-	client := newIPAClientWithSession(sid.(string))
+	client, err := newIPAClientWithSession(sid.(string))
+	if err != nil {
+		return false, err
+	}
 	user, err := client.UserShow(username.(string))
 	if err != nil {
 		return false, fmt.Errorf("Failed to refresh FreeIPA user session: %w", err)
@@ -309,8 +312,11 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
 	}
 
-	client := newIPAClient()
-	err := client.RemoteLogin(username, password+otp)
+	client, err := newIPAClient()
+	if err != nil {
+		return err
+	}
+	err = client.RemoteLogin(username, password+otp)
 	if err != nil {
 		switch {
 		case errors.Is(err, ipa.ErrExpiredPassword):

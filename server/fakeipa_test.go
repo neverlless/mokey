@@ -147,7 +147,11 @@ func (f *fakeIPA) host() string {
 
 // client returns a goipa client wired to this fake server
 func (f *fakeIPA) client() *ipa.Client {
-	return ipa.NewClientCustomHttp(f.host(), "TEST.LOCAL", f.srv.Client())
+	c, err := ipa.New(ipa.WithHost(f.host()), ipa.WithRealm("TEST.LOCAL"), ipa.WithHTTPClient(f.srv.Client()))
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func (f *fakeIPA) addUser(username string, u *fakeUser) {
