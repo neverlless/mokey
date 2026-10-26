@@ -1,5 +1,17 @@
 # Mokey ChangeLog
 
+## [v2.4.3] - 2026-10-26
+
+- mokey uses neverlless/goipa v1.0.0 and calls FreeIPA only through its
+  typed calls; the hand-written JSON-RPC requests are gone. No
+  configuration changes. Those requests trusted the system CA roots
+  instead of the FreeIPA CA in `/etc/ipa/ca.crt`, and admin calls flipped
+  the shared service client's session on every call, which could fail a
+  concurrent request with a 401. The Access page's HBAC check now
+  evaluates every rule, not only the first 100
+- The demo shipped without its `mokey.toml`: `.gitignore` hid it, so a
+  fresh clone of v2.4.1 or v2.4.2 could not start `examples/demo`
+
 ## [v2.4.2] - 2026-10-24
 
 - mokey uses [neverlless/goipa](https://github.com/neverlless/goipa), the
