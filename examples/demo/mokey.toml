@@ -1,0 +1,40 @@
+# mokey config for the local demo (examples/demo/compose.yml).
+# DEMO ONLY: the secrets below are public. Never reuse this file.
+
+[site]
+name = "mokey demo"
+ktuser = "mokey/mokey"
+keytab = "/etc/mokey/private/mokeyapp.keytab"
+
+[accounts]
+enable_signup = true
+enable_groups = true
+enable_access = true
+otp_issuer = "mokey demo"
+
+[email]
+base_url = "http://localhost:8866"
+from = "mokey@mokey.test"
+token_secret = "00000000000000000000000000000000000000000000000000000000000000de"
+notify_password_change = true
+notify_new_login = true
+# Mailpit accepts plain SMTP without auth
+smtp_host = "mailpit"
+smtp_port = 1025
+smtp_tls = "off"
+
+[server]
+listen = "0.0.0.0:8866"
+# Plain HTTP on localhost
+secure_cookies = false
+csrf_secret = "mokey-demo-csrf-secret-not-secret"
+# Room for clicking around: only failed requests count
+rate_limit_expiration = 60
+rate_limit_max = 100
+
+[storage]
+driver = "memory"
+
+[admin]
+enabled = true
+group = "admins"
