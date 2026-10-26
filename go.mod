@@ -7,7 +7,7 @@ require (
 	github.com/dustin/go-humanize v1.1.0
 	github.com/essentialkaos/branca/v2 v2.0.9
 	github.com/go-webauthn/webauthn v0.18.2
-	github.com/gofiber/fiber/v2 v2.52.15
+	github.com/gofiber/fiber/v2 v2.52.16
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/gofiber/storage/redis/v3 v3.6.2
 	github.com/gofiber/storage/sqlite3/v2 v2.3.1
