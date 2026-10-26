@@ -5,15 +5,10 @@
 package server
 
 import (
-	"strings"
-
 	ipa "github.com/neverlless/goipa"
-	"github.com/tidwall/gjson"
 )
 
-// goipa has no HBAC/sudo support, so hbacrule_find / sudorule_find /
-// hbactest go through the direct session RPC (see ipa_passkey.go). All
-// three are readable/runnable by any authenticated user — "System: Read
+// hbacrule_find / sudorule_find / hbactest are readable/runnable by any authenticated user — "System: Read
 // HBAC Rules" and "System: Read Sudo Rules" ship with bind rule "all",
 // so the USER's session client is used and the admin client stays out
 // of this page entirely.
@@ -55,120 +50,84 @@ type hbacTestResult struct {
 	NotMatched []string
 }
 
-func strList(rec gjson.Result, key string) []string {
-	var out []string
-	for _, v := range rec.Get(key).Array() {
-		out = append(out, v.String())
-	}
-	return out
-}
-
-// enabledFlag parses ipaenabledflag, which arrives as ["TRUE"]/["FALSE"]
-// strings on the wire (older servers) or as a plain bool (newer ones)
-func enabledFlag(rec gjson.Result) bool {
-	v := rec.Get("ipaenabledflag.0")
-	if !v.Exists() {
-		v = rec.Get("ipaenabledflag")
-	}
-	if v.Type == gjson.True || v.Type == gjson.False {
-		return v.Bool()
-	}
-	return strings.EqualFold(v.String(), "TRUE")
-}
-
-func hbacRuleFromRecord(rec gjson.Result) *hbacRule {
+func hbacRuleFrom(r *ipa.HBACRule) *hbacRule {
 	return &hbacRule{
-		Name:             rec.Get("cn.0").String(),
-		Description:      rec.Get("description.0").String(),
-		Enabled:          enabledFlag(rec),
-		UserCategory:     rec.Get("usercategory.0").String(),
-		HostCategory:     rec.Get("hostcategory.0").String(),
-		ServiceCategory:  rec.Get("servicecategory.0").String(),
-		MemberUsers:      strList(rec, "memberuser_user"),
-		MemberGroups:     strList(rec, "memberuser_group"),
-		MemberHosts:      strList(rec, "memberhost_host"),
-		MemberHostgroups: strList(rec, "memberhost_hostgroup"),
-		MemberServices:   strList(rec, "memberservice_hbacsvc"),
+		Name:             r.Name,
+		Description:      r.Description,
+		Enabled:          r.Enabled,
+		UserCategory:     r.UserCategory,
+		HostCategory:     r.HostCategory,
+		ServiceCategory:  r.ServiceCategory,
+		MemberUsers:      r.Users,
+		MemberGroups:     r.Groups,
+		MemberHosts:      r.Hosts,
+		MemberHostgroups: r.HostGroups,
+		MemberServices:   r.Services,
 	}
 }
 
-func sudoRuleFromRecord(rec gjson.Result) *sudoRule {
+func sudoRuleFrom(r *ipa.SudoRule) *sudoRule {
 	return &sudoRule{
-		Name:             rec.Get("cn.0").String(),
-		Description:      rec.Get("description.0").String(),
-		Enabled:          enabledFlag(rec),
-		UserCategory:     rec.Get("usercategory.0").String(),
-		HostCategory:     rec.Get("hostcategory.0").String(),
-		CmdCategory:      rec.Get("cmdcategory.0").String(),
-		MemberUsers:      strList(rec, "memberuser_user"),
-		MemberGroups:     strList(rec, "memberuser_group"),
-		MemberHosts:      strList(rec, "memberhost_host"),
-		MemberHostgroups: strList(rec, "memberhost_hostgroup"),
-		AllowCommands:    strList(rec, "memberallowcmd_sudocmd"),
-		DenyCommands:     strList(rec, "memberdenycmd_sudocmd"),
-		RunAsUsers:       strList(rec, "ipasudorunas_user"),
-		RunAsGroups:      strList(rec, "ipasudorunasgroup_group"),
+		Name:             r.Name,
+		Description:      r.Description,
+		Enabled:          r.Enabled,
+		UserCategory:     r.UserCategory,
+		HostCategory:     r.HostCategory,
+		CmdCategory:      r.CmdCategory,
+		MemberUsers:      r.Users,
+		MemberGroups:     r.Groups,
+		MemberHosts:      r.Hosts,
+		MemberHostgroups: r.HostGroups,
+		AllowCommands:    r.AllowCommands,
+		DenyCommands:     r.DenyCommands,
+		RunAsUsers:       r.RunAsUsers,
+		RunAsGroups:      r.RunAsGroups,
 	}
 }
 
-// ruleSizeLimit caps hbacrule_find/sudorule_find result sets. FreeIPA's
-// "truncated" flag lives at result.truncated, but goipa's Result struct
-// (ipa.go) only exposes Summary/Value/Data (=result.result) and drops it,
-// so truncation is detected below by a count heuristic instead.
+// ruleSizeLimit caps hbacrule_find/sudorule_find result sets. goipa's
+// HBACRuleFind/SudoRuleFind don't report FreeIPA's truncated flag, so
+// truncation is detected below by a count heuristic instead.
 const ruleSizeLimit = 500
 
 func hbacRuleFind(client *ipa.Client) ([]*hbacRule, bool, error) {
-	res, err := ipaSessionRPC(client, "hbacrule_find", []string{}, map[string]interface{}{
-		"all":       true,
-		"sizelimit": ruleSizeLimit,
-	})
+	found, err := client.HBACRuleFind(ipa.Options{"sizelimit": ruleSizeLimit})
 	if err != nil {
 		return nil, false, err
 	}
 	rules := []*hbacRule{}
-	for _, rec := range gjson.ParseBytes(res.Result.Data).Array() {
-		rules = append(rules, hbacRuleFromRecord(rec))
+	for _, r := range found {
+		rules = append(rules, hbacRuleFrom(r))
 	}
-	// ponytail: count heuristic, not the real truncated flag (goipa drops
-	// it) — exact-limit hits are assumed truncated. Upgrade to parsing
-	// result.truncated directly if goipa ever surfaces it.
+	// ponytail: count heuristic, not the real truncated flag — exact-limit
+	// hits are assumed truncated. Upgrade to FindEntries + ErrTruncated if
+	// the false positive ever matters.
 	return rules, len(rules) >= ruleSizeLimit, nil
 }
 
 func sudoRuleFind(client *ipa.Client) ([]*sudoRule, bool, error) {
-	res, err := ipaSessionRPC(client, "sudorule_find", []string{}, map[string]interface{}{
-		"all":       true,
-		"sizelimit": ruleSizeLimit,
-	})
+	found, err := client.SudoRuleFind(ipa.Options{"sizelimit": ruleSizeLimit})
 	if err != nil {
 		return nil, false, err
 	}
 	rules := []*sudoRule{}
-	for _, rec := range gjson.ParseBytes(res.Result.Data).Array() {
-		rules = append(rules, sudoRuleFromRecord(rec))
+	for _, r := range found {
+		rules = append(rules, sudoRuleFrom(r))
 	}
 	return rules, len(rules) >= ruleSizeLimit, nil
 }
 
 // hbacTest runs FreeIPA's server-side HBAC simulation over enabled rules
 func hbacTest(client *ipa.Client, user, targethost, service string) (*hbacTestResult, error) {
-	data, err := ipaSessionResult(client, "hbactest", []string{}, map[string]interface{}{
-		"user":       user,
-		"targethost": targethost,
-		"service":    service,
-		"enabled":    true,
-	})
+	res, err := client.HBACTest(user, targethost, service)
 	if err != nil {
 		return nil, err
 	}
-	out := &hbacTestResult{Granted: data.Get("value").Bool()}
-	for _, v := range data.Get("matched").Array() {
-		out.Matched = append(out.Matched, v.String())
-	}
-	for _, v := range data.Get("notmatched").Array() {
-		out.NotMatched = append(out.NotMatched, v.String())
-	}
-	return out, nil
+	return &hbacTestResult{
+		Granted:    res.Granted,
+		Matched:    res.Matched,
+		NotMatched: res.NotMatched,
+	}, nil
 }
 
 // ruleAppliesToUser: usercategory=all, direct uid membership, or a group

@@ -360,6 +360,17 @@ func rpcMemberResult(w http.ResponseWriter, group map[string]interface{}, uid, f
 	})
 }
 
+// memberUID reads the one user goipa's GroupAddMember/GroupRemoveMember
+// send, as the list FreeIPA's user option takes
+func memberUID(opts map[string]interface{}) string {
+	users, _ := opts["user"].([]interface{})
+	if len(users) == 0 {
+		return ""
+	}
+	uid, _ := users[0].(string)
+	return uid
+}
+
 func rpcError(w http.ResponseWriter, code int, message string) {
 	resp := map[string]interface{}{
 		"error": map[string]interface{}{
@@ -851,7 +862,7 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			rpcError(w, 4001, cn+": group not found")
 			return
 		}
-		uid, _ := opts["user"].(string)
+		uid := memberUID(opts)
 		if !f.isGroupManager(caller, g) {
 			rpcMemberResult(w, f.groupJSON(cn, g), uid, "Insufficient access: Insufficient 'write' privilege to the 'member' attribute")
 			return
@@ -876,7 +887,7 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			rpcError(w, 4001, cn+": group not found")
 			return
 		}
-		uid, _ := opts["user"].(string)
+		uid := memberUID(opts)
 		if !f.isGroupManager(caller, g) {
 			rpcMemberResult(w, f.groupJSON(cn, g), uid, "Insufficient access: Insufficient 'write' privilege to the 'member' attribute")
 			return
@@ -935,8 +946,12 @@ func (f *fakeIPA) handleRPC(w http.ResponseWriter, r *http.Request) {
 			rpcError(w, 4001, username+": stage user not found")
 			return
 		}
-		if v, ok := opts["userclass"].(string); ok {
-			u.Category = v
+		setattrs, _ := opts["setattr"].([]interface{})
+		for _, raw := range setattrs {
+			attr, _ := raw.(string)
+			if name, value, _ := strings.Cut(attr, "="); strings.EqualFold(name, "userclass") {
+				u.Category = value
+			}
 		}
 		rpcResult(w, f.userJSON(username, u))
 

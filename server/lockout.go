@@ -1,53 +1,23 @@
 package server
 
-// Account lockout support via FreeIPA RPC methods goipa doesn't wrap:
-// user_status (per-replica failed-login counters) and user_unlock.
-
 import (
+	"time"
+
 	ipa "github.com/neverlless/goipa"
-	"github.com/tidwall/gjson"
 )
-
-// ipaAdminRPC runs a direct JSON-RPC call with the keytab-bound admin
-// client. That client authenticates per-request via SPNEGO and normally has
-// no session cookie (StickySession(false)), which the direct-RPC helper
-// requires — so grab a fresh session with a Ping first and drop it after.
-// ponytail: the sticky/session toggling races with concurrent requests on
-// the shared client; worst case is a rare 401 on an admin RPC, which every
-// caller already handles as an error.
-func ipaAdminRPC(admin *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, error) {
-	admin.StickySession(true)
-	defer func() {
-		admin.ClearSession()
-		admin.StickySession(false)
-	}()
-
-	if admin.SessionID() == "" {
-		if _, err := admin.Ping(); err != nil {
-			return nil, err
-		}
-	}
-
-	return ipaSessionRPC(admin, method, params, options)
-}
 
 // userFailedLogins returns the highest krbloginfailedcount reported by any
 // replica for the user
 func userFailedLogins(client *ipa.Client, username string) (int, error) {
-	res, err := ipaAdminRPC(client, "user_status", []string{username}, map[string]interface{}{
-		"all": true,
-	})
+	replicas, err := client.UserStatus(username)
 	if err != nil {
 		return 0, err
 	}
 
 	failed := 0
-	gjson.ParseBytes(res.Result.Data).ForEach(func(_, entry gjson.Result) bool {
-		if n := int(entry.Get("krbloginfailedcount.0").Int()); n > failed {
-			failed = n
-		}
-		return true
-	})
+	for _, r := range replicas {
+		failed = max(failed, r.FailedLogins)
+	}
 
 	return failed, nil
 }
@@ -55,8 +25,7 @@ func userFailedLogins(client *ipa.Client, username string) (int, error) {
 // userUnlock clears the failed-login lockout state for the user on all
 // replicas (FreeIPA user_unlock)
 func userUnlock(client *ipa.Client, username string) error {
-	_, err := ipaAdminRPC(client, "user_unlock", []string{username}, nil)
-	return err
+	return client.UserUnlock(username)
 }
 
 // PwPolicy is the password policy in effect for a user (pwpolicy_show).
@@ -75,23 +44,26 @@ type PwPolicy struct {
 // empty username returns the global policy, which is the best we can do for
 // an account that does not exist yet.
 func pwPolicyShow(client *ipa.Client, username string) (*PwPolicy, error) {
-	opts := map[string]interface{}{}
+	var (
+		p   *ipa.PwPolicy
+		err error
+	)
 	if username != "" {
-		opts["user"] = username
+		p, err = client.UserPwPolicy(username)
+	} else {
+		p, err = client.PwPolicyShow("")
 	}
-	res, err := ipaAdminRPC(client, "pwpolicy_show", []string{}, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	data := gjson.ParseBytes(res.Result.Data)
 	return &PwPolicy{
-		MinLength:    int(data.Get("krbpwdminlength.0").Int()),
-		MinClasses:   int(data.Get("krbpwdmindiffchars.0").Int()),
-		HistorySize:  int(data.Get("krbpwdhistorylength.0").Int()),
-		MaxLifeDays:  int(data.Get("krbmaxpwdlife.0").Int()),
-		MinLifeHours: int(data.Get("krbminpwdlife.0").Int()),
-		MaxFailure:   int(data.Get("krbpwdmaxfailure.0").Int()),
+		MinLength:    p.MinLength,
+		MinClasses:   p.MinClasses,
+		HistorySize:  p.HistoryLength,
+		MaxLifeDays:  int(p.MaxLife / (24 * time.Hour)),
+		MinLifeHours: int(p.MinLife / time.Hour),
+		MaxFailure:   p.MaxFailures,
 	}, nil
 }
 

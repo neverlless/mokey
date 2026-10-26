@@ -10,8 +10,6 @@ func TestAccessRPCLayer(t *testing.T) {
 	assert := assert.New(t)
 	fake := newFakeIPA()
 	defer fake.Close()
-	restore := swapRPCHTTPClient(fake)
-	defer restore()
 
 	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"chemists"}})
 	fake.addHBACRule("lab-access", &fakeHBACRule{

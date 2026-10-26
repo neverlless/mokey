@@ -5,27 +5,15 @@
 package server
 
 import (
+	"context"
 	"time"
 
 	ipa "github.com/neverlless/goipa"
 	log "github.com/sirupsen/logrus"
-	"github.com/tidwall/gjson"
 )
 
-// goipa has no stage-user support, so the stageuser_* JSON RPC commands are
-// called directly through the admin client's FreeIPA session (same approach
-// as passkeys, see ipa_passkey.go). The service account needs the
-// "Stage User Administrators" privilege for these to succeed.
-
-func stagedUserFromRecord(rec gjson.Result) *ipa.User {
-	return &ipa.User{
-		Username: rec.Get("uid.0").String(),
-		Email:    rec.Get("mail.0").String(),
-		First:    rec.Get("givenname.0").String(),
-		Last:     rec.Get("sn.0").String(),
-		Category: rec.Get("userclass.0").String(),
-	}
-}
+// The service account needs the "Stage User Administrators" privilege for
+// these to succeed.
 
 func stageUserAdd(client *ipa.Client, user *ipa.User, password string) error {
 	options := map[string]interface{}{
@@ -42,16 +30,13 @@ func stageUserAdd(client *ipa.Client, user *ipa.User, password string) error {
 	if user.Shell != "" {
 		options["loginshell"] = user.Shell
 	}
-	_, err := ipaAdminRPC(client, "stageuser_add", []string{user.Username}, options)
+	// goipa's StageUserAdd has no way to send userpassword
+	_, err := client.RPC("stageuser_add", []string{user.Username}, options)
 	return err
 }
 
 func stageUserShow(client *ipa.Client, username string) (*ipa.User, error) {
-	res, err := ipaAdminRPC(client, "stageuser_show", []string{username}, nil)
-	if err != nil {
-		return nil, err
-	}
-	return stagedUserFromRecord(gjson.ParseBytes(res.Result.Data)), nil
+	return client.StageUserShow(username)
 }
 
 // stageUserFindPending lists staged signups that verified their email.
@@ -59,13 +44,12 @@ func stageUserShow(client *ipa.Client, username string) (*ipa.User, error) {
 // pending category. all=true is required: the default find output leaves
 // out userclass, which would filter every record away (#46).
 func stageUserFindPending(client *ipa.Client) ([]*ipa.User, error) {
-	res, err := ipaAdminRPC(client, "stageuser_find", []string{}, map[string]interface{}{"sizelimit": 500, "all": true})
+	staged, err := client.StageUserFind(ipa.Options{"sizelimit": 500})
 	if err != nil {
 		return nil, err
 	}
 	pending := []*ipa.User{}
-	for _, rec := range gjson.ParseBytes(res.Result.Data).Array() {
-		u := stagedUserFromRecord(rec)
+	for _, u := range staged {
 		if u.Category == UserCategoryPending {
 			pending = append(pending, u)
 		}
@@ -76,7 +60,7 @@ func stageUserFindPending(client *ipa.Client) ([]*ipa.User, error) {
 // stageUserSetCategory sets userclass; an empty category clears the
 // attribute (FreeIPA mod semantics)
 func stageUserSetCategory(client *ipa.Client, username, category string) error {
-	_, err := ipaAdminRPC(client, "stageuser_mod", []string{username}, map[string]interface{}{"userclass": category})
+	_, err := client.Modify("stageuser_mod", username).Set("userclass", category).Run(context.Background())
 	return err
 }
 
@@ -87,7 +71,7 @@ const ipaDatetimeLayout = "20060102150405Z"
 // stageUserActivate turns the staged entry into an active account, then lifts
 // the expiry FreeIPA stamps on the copied password.
 func stageUserActivate(client *ipa.Client, username string) error {
-	if _, err := ipaAdminRPC(client, "stageuser_activate", []string{username}, nil); err != nil {
+	if _, err := client.StageUserActivate(username); err != nil {
 		return err
 	}
 
@@ -111,9 +95,7 @@ func clearNewPasswordExpiry(client *ipa.Client, username string) {
 		expiration = time.Now().UTC().AddDate(0, 0, policy.MaxLifeDays).Format(ipaDatetimeLayout)
 	}
 
-	_, err := ipaAdminRPC(client, "user_mod", []string{username}, map[string]interface{}{
-		"setattr": []string{"krbPasswordExpiration=" + expiration},
-	})
+	_, err := client.Modify("user_mod", username).Set("krbPasswordExpiration", expiration).Run(context.Background())
 	if err != nil {
 		log.WithFields(log.Fields{
 			"username": username,
@@ -123,6 +105,5 @@ func clearNewPasswordExpiry(client *ipa.Client, username string) {
 }
 
 func stageUserDel(client *ipa.Client, username string) error {
-	_, err := ipaAdminRPC(client, "stageuser_del", []string{username}, nil)
-	return err
+	return client.StageUserDelete(username)
 }

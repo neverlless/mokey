@@ -5,122 +5,35 @@
 package server
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
 
 	"github.com/go-webauthn/webauthn/protocol/webauthncose"
 	ipa "github.com/neverlless/goipa"
-	"github.com/tidwall/gjson"
 )
 
-// goipa has no passkey support and keeps its rpc method private, so the
-// user_add_passkey / user_remove_passkey / user_show calls are made here
-// directly, reusing the FreeIPA session of an already authenticated goipa
-// client. Managing your own passkey mappings requires the FreeIPA
-// self-service permission introduced with passkey support in FreeIPA 4.11.
-func ipaSessionRPC(client *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, error) {
-	res, _, err := ipaSessionCall(client, method, params, options)
-	return res, err
-}
-
-// ipaSessionResult returns the whole "result" object of the response.
-// hbactest and the *_add_member/*_remove_member commands answer there,
-// beside result.result, which is all ipa.Response keeps.
-func ipaSessionResult(client *ipa.Client, method string, params []string, options map[string]interface{}) (gjson.Result, error) {
-	_, raw, err := ipaSessionCall(client, method, params, options)
-	if err != nil {
-		return gjson.Result{}, err
-	}
-	return gjson.GetBytes(raw, "result"), nil
-}
-
-func ipaSessionCall(client *ipa.Client, method string, params []string, options map[string]interface{}) (*ipa.Response, []byte, error) {
-	if client.SessionID() == "" {
-		return nil, nil, fmt.Errorf("passkey rpc requires an authenticated FreeIPA session")
-	}
-
-	if options == nil {
-		options = map[string]interface{}{}
-	}
-	options["version"] = ipa.IpaClientVersion
-
-	payload := map[string]interface{}{
-		"id":     0,
-		"method": method,
-		"params": []interface{}{params, options},
-	}
-
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("https://%s/ipa/session/json", client.Host()), bytes.NewBuffer(b))
-	if err != nil {
-		return nil, nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Referer", fmt.Sprintf("https://%s/ipa/xml", client.Host()))
-	req.Header.Set("Cookie", fmt.Sprintf("ipa_session=%s", client.SessionID()))
-
-	res, err := ipaRPCHTTPClient.Do(req)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("IPA passkey RPC failed with HTTP status code: %d", res.StatusCode)
-	}
-
-	rawJSON, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var ipaRes ipa.Response
-	if err := json.Unmarshal(rawJSON, &ipaRes); err != nil {
-		return nil, nil, err
-	}
-	if ipaRes.Error != nil {
-		return nil, nil, ipaRes.Error
-	}
-
-	return &ipaRes, rawJSON, nil
-}
-
+// Managing your own passkey mappings requires the FreeIPA self-service
+// permission introduced with passkey support in FreeIPA 4.11.
 func userAddPasskey(client *ipa.Client, uid, mapping string) error {
-	_, err := ipaSessionRPC(client, "user_add_passkey", []string{uid, mapping}, nil)
-	return err
+	return client.UserAddPasskey(uid, mapping)
 }
 
 func userRemovePasskey(client *ipa.Client, uid, mapping string) error {
-	_, err := ipaSessionRPC(client, "user_remove_passkey", []string{uid, mapping}, nil)
-	return err
+	return client.UserRemovePasskey(uid, mapping)
 }
 
 func userPasskeys(client *ipa.Client, uid string) ([]string, error) {
-	res, err := ipaSessionRPC(client, "user_show", []string{uid}, map[string]interface{}{"all": true})
+	u, err := client.UserShow(uid)
 	if err != nil {
 		return nil, err
 	}
-
-	var mappings []string
-	for _, v := range gjson.GetBytes(res.Result.Data, "ipapasskey").Array() {
-		mappings = append(mappings, v.String())
-	}
-
-	return mappings, nil
+	return u.Passkeys, nil
 }
 
 // passkeyMapping builds a FreeIPA passkey mapping string

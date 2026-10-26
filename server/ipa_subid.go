@@ -6,13 +6,10 @@ package server
 
 import (
 	ipa "github.com/neverlless/goipa"
-	"github.com/tidwall/gjson"
 )
 
-// goipa has no subordinate-id support, so the subid_* commands go through
-// the direct session RPC (see ipa_passkey.go). Generating a range for
-// another user requires the "Subordinate ID Administrators" privilege on
-// the service account.
+// Generating a range for another user requires the "Subordinate ID
+// Administrators" privilege on the service account.
 
 type subidRange struct {
 	SubUID int64
@@ -20,33 +17,24 @@ type subidRange struct {
 	Count  int64
 }
 
-func subidFromRecord(rec gjson.Result) *subidRange {
-	return &subidRange{
-		SubUID: rec.Get("ipasubuidnumber.0").Int(),
-		SubGID: rec.Get("ipasubgidnumber.0").Int(),
-		Count:  rec.Get("ipasubuidcount.0").Int(),
-	}
-}
-
 // subidFind returns the user's subordinate id range, or nil when none is
 // allocated (FreeIPA enforces at most one range per user)
 func subidFind(client *ipa.Client, username string) (*subidRange, error) {
-	res, err := ipaAdminRPC(client, "subid_find", []string{}, map[string]interface{}{
-		"ipaowner": username,
-	})
+	subs, err := client.SubIDFind(ipa.Options{"ipaowner": username})
 	if err != nil {
 		return nil, err
 	}
-	recs := gjson.ParseBytes(res.Result.Data).Array()
-	if len(recs) == 0 {
+	if len(subs) == 0 {
 		return nil, nil
 	}
-	return subidFromRecord(recs[0]), nil
+	return &subidRange{
+		SubUID: subs[0].UIDStart,
+		SubGID: subs[0].GIDStart,
+		Count:  subs[0].UIDCount,
+	}, nil
 }
 
 func subidGenerate(client *ipa.Client, username string) error {
-	_, err := ipaAdminRPC(client, "subid_generate", []string{}, map[string]interface{}{
-		"ipaowner": username,
-	})
+	_, err := client.SubIDGenerate(username)
 	return err
 }

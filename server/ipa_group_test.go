@@ -16,21 +16,10 @@ func userSession(t *testing.T, fake *fakeIPA, username, password string) *ipa.Cl
 	return client
 }
 
-// swapRPCHTTPClient points ipaSessionRPC's direct HTTP client at the fake's
-// TLS cert and returns a func to restore the original client
-func swapRPCHTTPClient(f *fakeIPA) (restore func()) {
-	orig := ipaRPCHTTPClient
-	ipaRPCHTTPClient = f.srv.Client()
-	return func() { ipaRPCHTTPClient = orig }
-}
-
 func TestGroupRPCLayer(t *testing.T) {
 	assert := assert.New(t)
 	fake := newFakeIPA()
 	defer fake.Close()
-
-	restore := swapRPCHTTPClient(fake)
-	defer restore()
 
 	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
 	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
