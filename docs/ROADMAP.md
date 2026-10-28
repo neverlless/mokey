@@ -9,6 +9,14 @@ issue in this repository.
 Priorities may shift based on feedback. Open an
 [issue](https://github.com/neverlless/mokey/issues) to influence it.
 
+## v1.0 — Fork baseline
+
+- [x] CI, release automation and a security policy
+- [x] Slack notifications for account events
+- [x] Unauthenticated `/healthz` endpoint
+- [x] Configurable read buffer size — fixes `431 Request Header Fields Too
+      Large` (ubccr#122)
+
 ## v1.1 — Community quick wins
 
 - [x] Merge i18n support (upstream PR ubccr#157 by @tubby1981) — configurable
@@ -177,12 +185,7 @@ Keycloak / Authentik / Zitadel / FreeIPA Web UI):
       differentiator: no portal (including FreeIPA's own Web UI)
       answers this for a normal user, and generic IdPs structurally
       can't follow. Shipped: Access tab, user-session reads (HBAC/sudo read ACIs are bind-rule "all"), hbactest simulator; host-group expansion deliberately out.
-- [ ] Self-service user certificates (S/MIME / mTLS client certs) via
-      `cert_request` with a documented CA ACL + certprofile setup —
-      requires an operator setup guide. Weakest demand (a mechanics
-      thread every 1–2 years); the one documented unmet ask is CentOS
-      asking noggin for it (noggin#33/#34, declined) — build last, on
-      renewed demand
+- Self-service user certificates moved to [Waiting for demand](#waiting-for-demand)
 - [x] README positioning: document the "keep users out of the IPA Web
       UI" story — the loudest recent freeipa-users theme (2024) is
       hiding the user list from non-admins; mokey answers it by
@@ -214,12 +217,8 @@ Ordered by demand strength from the Aug 2026 (post-v2.0) sweep:
       sponsor-initiated removal is instant since it's the sponsor's own
       standing authority, not a new grant.
 
-Deferred pending demand: username self-rename (noggin#105 is the
-ecosystem's top ask, but renames are operationally risky — revisit if
-asked for mokey specifically), terms-of-service acceptance at signup,
-self-service certmap management (lighter slice of the user-certs item).
-Passkey login to the portal stays blocked upstream: FreeIPA 4.12/4.13
-still ship no FIDO2 assertion endpoint in the session API.
+Username self-rename, terms-of-service acceptance and certmap self-service
+were deferred here; see [Waiting for demand](#waiting-for-demand).
 
 ## v2.2 — First deployment review
 
@@ -342,11 +341,28 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
 - [x] Signed images and SBOM: cosign keyless signatures, an SBOM per
       release and GitHub build attestations, next to the GPG-signed
       checksums
-- [ ] Helm chart published as an OCI artifact and listed on Artifact Hub
+- [x] Helm chart published as an OCI artifact
+      (`oci://ghcr.io/neverlless/charts/mokey`) and listed on Artifact Hub
+      as a verified publisher
 - [x] `examples/mokey-oidc` gets its own `go.mod`, so its dependencies
       leave mokey's module
 
+## v2.4.1 – v2.4.3 — FreeIPA client
+
+- [x] Container self-enrollment finds the KDC with ipa-client 4.13, which
+      moved the realm into `/etc/krb5.conf.d` (v2.4.1)
+- [x] The Access page simulator and group approvals read FreeIPA's answers
+      where it actually puts them; a refused approval no longer counts as
+      done (#56, v2.4.2)
+- [x] FreeIPA client: [neverlless/goipa](https://github.com/neverlless/goipa)
+      (v2.4.2), then its v1 typed calls for everything mokey used to send as
+      raw JSON-RPC (v2.4.3) — pulled forward from v2.7
+- [x] The demo ships its `mokey.toml`, which `.gitignore` had hidden (v2.4.3)
+
 ## v2.5 — FreeIPA correctness
+
+goipa v1 already decodes indirect group membership and the 4.13 password
+quality credits, so these items are mostly mokey-side work.
 
 - [ ] Nested group membership in the OAuth client gate (#51) and the Access
       page — today only direct membership counts (also requested in the
@@ -377,15 +393,14 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
 
 ## v2.7 — Foundations
 
-- [ ] FreeIPA client moves to a maintained fork of goipa (upstream quiet
-      since Dec 2024) with typed calls for what mokey sends as raw JSON-RPC
-      today: stage users, groups, HBAC/sudo, subids, passkeys, lockout,
-      password policy
+- [x] FreeIPA client moves to a maintained fork of goipa with typed calls
+      — done in v2.4.2–v2.4.3
 - [ ] Structured logging on `log/slog` with secrets redacted, replacing
       logrus (maintenance mode); stdlib validation replacing govalidator
-- [ ] Integration tests against a real FreeIPA container and browser
-      end-to-end tests including passkey enrollment, next to the existing
-      fake-FreeIPA suite
+- [ ] Tests: goipa's `ipatest`, checked against real FreeIPA 4.9–4.13,
+      replaces the hand-written fake FreeIPA; integration tests against the
+      demo's FreeIPA container and browser end-to-end tests including
+      passkey enrollment
 - [ ] HTTP stack decision: Fiber v3 or `net/http`, made before Fiber v2
       stops receiving fixes
 
@@ -399,6 +414,20 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
       inactive accounts
 - [ ] Ansible role (service account, role, keytab, config) and an RPM in
       Fedora COPR
+
+## Waiting for demand
+
+Worth building once someone asks for it in this tracker:
+
+- Self-service user certificates (S/MIME / mTLS client certs) via
+  `cert_request` with a documented CA ACL and certprofile setup — the one
+  documented ask is CentOS asking noggin (noggin#33/#34, declined)
+- Certmap self-service — the lighter slice of user certificates
+- Username self-rename — noggin#105 is the ecosystem's top ask, but renames
+  are operationally risky
+- Terms-of-service acceptance at signup
+- Passkey login to the portal — blocked upstream: FreeIPA 4.12/4.13 have no
+  FIDO2 assertion endpoint in the session API
 
 ## Deliberately not planned
 
@@ -415,19 +444,13 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
   single credential store
 - Built-in OIDC provider replacing Hydra — too large; Hydra v2 client
   upgrade is the pragmatic step
-- Compliance-grade audit trail — the ring-buffer audit log shipped in v1.5
-  and the rest of the reliability package landed in v1.6
+- Compliance-grade audit trail (tamper-evident, long retention) — mokey
+  keeps a ring-buffer audit log (v1.5) and forwards events (v2.8 webhooks,
+  structured logs); retention belongs in the site's log pipeline or SIEM
 - Generic LDAP / Active Directory backends — LTB SSP and PWM serve that
   market; mokey's value is knowing FreeIPA (stage users, OTP, passkeys,
   HBAC, subids), which a generic backend would dilute
 - Security questions as a reset factor — FreeIPA calls them a weak method
 - SCIM — ipa-tuura already bridges FreeIPA to SCIM
-- Homelab-specific features — enterprise is the target audience for now
-
-## Already done in this fork
-
-- Slack notifications for account events
-- Unauthenticated `/healthz` endpoint
-- Configurable read buffer size — fixes `431 Request Header Fields Too Large`
-  (ubccr#122)
-- CI, release automation, security policy
+- Homelab-only features — mokey is built for organisations running FreeIPA;
+  homelabs get the same product
