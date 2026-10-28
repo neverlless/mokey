@@ -108,9 +108,11 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 		c.SetSessionID(sid)
 		return c, nil
 	}
-	// The keytab client talks SPNEGO on /ipa/json. It is "admin" rather than
-	// site.ktuser because ipatest grants pwpolicy_show only to admins (Q32),
-	// while the real service account holds Password Policy Readers.
+	// The keytab client talks SPNEGO on /ipa/json, with the README's
+	// service-account privileges and nothing more
+	for _, p := range []string{"User Administrators", "Password Policy Readers", "Stage User Administrators", "Subordinate ID Administrators"} {
+		fake.GrantPrivilege(keytabUser, p)
+	}
 	ipaKeytabLogin = func(c *ipa.Client, keytab, username string) error {
 		fake.SetNegotiateUser(keytabUser)
 		return nil
@@ -137,7 +139,7 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 	return app, router, fake
 }
 
-const keytabUser = "admin"
+const keytabUser = "mokey"
 
 // newFakeClient builds a goipa client the way production does (ipa.New),
 // pointed at the fake server
@@ -170,7 +172,7 @@ func fakeStageUser(fake *ipatest.Server, uid string) *ipatest.User {
 // groupMembers returns member_user of group cn as FreeIPA reports it
 func groupMembers(t *testing.T, fake *ipatest.Server, cn string) []string {
 	t.Helper()
-	g, err := fake.ClientAs(keytabUser).GroupShow(cn)
+	g, err := fake.ClientAs("admin").GroupShow(cn)
 	if err != nil {
 		t.Fatalf("group_show %s: %s", cn, err)
 	}
@@ -181,7 +183,7 @@ func groupMembers(t *testing.T, fake *ipatest.Server, cn string) []string {
 // sites that restrict access do
 func dropAllowAll(t *testing.T, fake *ipatest.Server) {
 	t.Helper()
-	if err := fake.ClientAs(keytabUser).HBACRuleDelete("allow_all"); err != nil {
+	if err := fake.ClientAs("admin").HBACRuleDelete("allow_all"); err != nil {
 		t.Fatalf("hbacrule_del allow_all: %s", err)
 	}
 }

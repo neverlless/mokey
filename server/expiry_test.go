@@ -51,6 +51,9 @@ func TestPasswordChangedEmailOptIn(t *testing.T) {
 	app, _, fake := newTestApp(t)
 	sink := newFakeSMTP(t)
 	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
+	policy, _ := fake.PwPolicy("global_policy")
+	policy.MinLife = 0
+	fake.SetPwPolicy("global_policy", policy)
 
 	change := func(oldPw, newPw string) {
 		tc := newTestClient(t, app)

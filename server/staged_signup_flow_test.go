@@ -1,14 +1,11 @@
 package server
 
 import (
-	"fmt"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	ipa "github.com/neverlless/goipa"
 	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -31,54 +28,12 @@ func stagedSignup(t *testing.T, app *fiber.App, username, email string) *testCli
 	return tc
 }
 
-// modelStagedPasswords covers what ipatest leaves out of the staged signup
-// path: stageuser_add keeps userpassword, expired as FreeIPA stamps the copied
-// password on activation, and user_mod takes setattr krbPasswordExpiration
-func modelStagedPasswords(fake *ipatest.Server) {
-	str := func(c ipatest.Call, k string) string { s, _ := c.Options[k].(string); return s }
-	fake.Handle("stageuser_add", func(c ipatest.Call) (any, *ipa.IpaError) {
-		uid := c.Args[0]
-		if _, ok := fake.StageUser(uid); ok {
-			return nil, &ipa.IpaError{Code: ipa.CodeDuplicateEntry, Message: fmt.Sprintf("stage user with name %q already exists", uid)}
-		}
-		fake.AddStageUser(uid, ipatest.User{
-			First: str(c, "givenname"), Last: str(c, "sn"), Email: str(c, "mail"), Category: str(c, "userclass"),
-			Shell: str(c, "loginshell"), HomeDir: str(c, "homedirectory"),
-			Password: str(c, "userpassword"), PasswdExpire: time.Now(),
-		})
-		return map[string]any{"result": map[string]any{"uid": []string{uid}}, "value": uid, "summary": "Added stage user"}, nil
-	})
-	fake.Handle("user_mod", func(c ipatest.Call) (any, *ipa.IpaError) {
-		uid := c.Args[0]
-		set, _ := c.Options["setattr"].([]any)
-		if len(set) != 1 {
-			return nil, &ipa.IpaError{Code: ipa.CodeCommand, Message: "user_mod: only setattr krbPasswordExpiration is modelled here"}
-		}
-		name, value, _ := strings.Cut(fmt.Sprint(set[0]), "=")
-		if !strings.EqualFold(name, "krbPasswordExpiration") {
-			return nil, &ipa.IpaError{Code: ipa.CodeCommand, Message: "user_mod: only setattr krbPasswordExpiration is modelled here"}
-		}
-		var expire time.Time
-		if value != "" {
-			var err error
-			if expire, err = time.Parse(ipaDatetimeLayout, value); err != nil {
-				return nil, &ipa.IpaError{Code: ipa.CodeValidation, Message: "invalid 'krbpasswordexpiration': " + value}
-			}
-		}
-		if !fake.UpdateUser(uid, func(u *ipatest.User) { u.PasswdExpire = expire }) {
-			return nil, &ipa.IpaError{Code: ipa.CodeNotFound, Message: uid + ": user not found"}
-		}
-		return map[string]any{"result": map[string]any{"uid": []string{uid}}, "value": uid, "summary": "Modified user"}, nil
-	})
-}
-
 func TestStagedSignupAndVerifyFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("accounts.staged_signup", true)
 	})
-	modelStagedPasswords(fake)
 
 	tc := stagedSignup(t, app, "jesse", "jesse@example.com")
 
@@ -126,7 +81,6 @@ func TestStagedSignupAdminApproveFlow(t *testing.T) {
 		viper.Set("accounts.require_admin_verify", true)
 		viper.Set("admin.enabled", true)
 	})
-	modelStagedPasswords(fake)
 	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
 
 	verify := func(username, email string) {
@@ -185,7 +139,6 @@ func TestStagedSignupVerifyResend(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("accounts.staged_signup", true)
 	})
-	modelStagedPasswords(fake)
 
 	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
 	stagedSignup(t, app, "jesse", "jesse@example.com")
@@ -212,7 +165,6 @@ func TestStagedSignupDuplicateUsername(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("accounts.staged_signup", true)
 	})
-	modelStagedPasswords(fake)
 	// active user with the same name: stageuser_add alone would not
 	// conflict until activation, so signup must check the active tree
 	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})

@@ -16,22 +16,7 @@ import (
 // these to succeed.
 
 func stageUserAdd(client *ipa.Client, user *ipa.User, password string) error {
-	options := map[string]interface{}{
-		"givenname":    user.First,
-		"sn":           user.Last,
-		"cn":           user.First + " " + user.Last,
-		"mail":         user.Email,
-		"userpassword": password,
-		"userclass":    user.Category,
-	}
-	if user.HomeDir != "" {
-		options["homedirectory"] = user.HomeDir
-	}
-	if user.Shell != "" {
-		options["loginshell"] = user.Shell
-	}
-	// goipa's StageUserAdd has no way to send userpassword
-	_, err := client.RPC("stageuser_add", []string{user.Username}, options)
+	_, err := client.StageUserAddWithPassword(user, password)
 	return err
 }
 
