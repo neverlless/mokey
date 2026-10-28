@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/neverlless/goipa/ipatest"
 	"net/url"
 	"strings"
 	"testing"
@@ -45,7 +46,7 @@ func TestEmailSubjectAffixes(t *testing.T) {
 			configure()
 		})
 		sink := newFakeSMTP(t)
-		fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+		fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 		tc := newTestClient(t, app)
 		tc.getCSRF("/auth/forgotpw")

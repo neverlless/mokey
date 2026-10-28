@@ -5,8 +5,10 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,7 +16,7 @@ import (
 func TestLoginSuccess(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -40,7 +42,7 @@ func TestLoginSuccess(t *testing.T) {
 func TestLoginWrongPassword(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -73,8 +75,8 @@ func TestLoginHideInvalidUsername(t *testing.T) {
 	app, _, fake := newTestApp(t)
 	viper.Set("accounts.hide_invalid_username_error", true)
 	viper.Set("accounts.block_users", []string{"gus"})
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!", Locked: true})
-	fake.addUser("gus", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!", Locked: true})
+	fake.AddUser("gus", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -102,7 +104,7 @@ func TestLoginHideInvalidUsername(t *testing.T) {
 func TestLoginBlockedUser(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	viper.Set("accounts.block_users", []string{"walter"})
 
 	tc := newTestClient(t, app)
@@ -121,7 +123,7 @@ func TestLoginBlockedUser(t *testing.T) {
 func TestLoginLockedUser(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Locked: true})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Locked: true})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -134,7 +136,7 @@ func TestLoginLockedUser(t *testing.T) {
 func TestCSRFRequiredOnPost(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.get("/auth/login") // establish session, but don't capture the token
@@ -149,7 +151,7 @@ func TestCSRFRequiredOnPost(t *testing.T) {
 func TestCSRFWrongToken(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -165,7 +167,7 @@ func TestCSRFWrongToken(t *testing.T) {
 func TestLogout(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -181,7 +183,7 @@ func TestLogout(t *testing.T) {
 func TestLogoutGETDoesNotDestroySession(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -200,14 +202,15 @@ func TestLockoutMessageAndAdminUnlock(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
 
 	// burn through the failure threshold
-	for i := 0; i < fakeLockoutThreshold; i++ {
+	policy, _ := fake.PwPolicy("global_policy")
+	for i := 0; i < policy.MaxFailures; i++ {
 		resp := tc.postForm("/auth/authenticate", url.Values{
 			"username": {"walter"},
 			"password": {"wrong"},
@@ -228,7 +231,7 @@ func TestLockoutMessageAndAdminUnlock(t *testing.T) {
 	tcAdmin.login("skyler", "Secret123!")
 	resp = tcAdmin.postForm("/admin/user/unlock", url.Values{"username": {"walter"}}, htmx)
 	assert.NotEqual(fiber.StatusForbidden, resp.StatusCode)
-	assert.Equal(0, fake.users["walter"].FailedLogins)
+	assert.Equal(0, fakeUser(fake, "walter").FailedLogins)
 
 	// user can log in again
 	tc2 := newTestClient(t, app)
@@ -238,7 +241,7 @@ func TestLockoutMessageAndAdminUnlock(t *testing.T) {
 func TestExpiredPasswordFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!", Expired: true})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!", PasswdExpire: time.Now()})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -279,7 +282,7 @@ func TestExpiredPasswordFlow(t *testing.T) {
 func TestExpiredPasswordFlowRequiresPriorLoginAttempt(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!", Expired: true})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!", PasswdExpire: time.Now()})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -293,16 +296,16 @@ func TestExpiredPasswordFlowRequiresPriorLoginAttempt(t *testing.T) {
 	assert.Equal(fiber.StatusFound, resp.StatusCode)
 	assert.Equal("/auth/login", resp.Header.Get("Location"))
 	// password unchanged
-	assert.Equal("OldSecret123!", fake.users["walter"].Password)
+	assert.Equal("OldSecret123!", fakeUser(fake, "walter").Password)
 }
 
 func TestExpiredPasswordOTPUserNoAutoLogin(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{
-		Password:  "OldSecret123!",
-		Expired:   true,
-		AuthTypes: []string{"otp"},
+	fake.AddUser("walter", ipatest.User{
+		Password:     "OldSecret123!",
+		PasswdExpire: time.Now(),
+		AuthTypes:    []string{"otp"},
 	})
 
 	tc := newTestClient(t, app)

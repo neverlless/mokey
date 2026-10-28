@@ -5,6 +5,7 @@ package server
 // message actually reaching the caller.
 
 import (
+	"github.com/neverlless/goipa/ipatest"
 	"net/smtp"
 	"net/url"
 	"testing"
@@ -97,7 +98,7 @@ func TestSendEmailAuthenticatesWithLogin(t *testing.T) {
 	})
 	sink := newFakeSMTP(t)
 	sink.authMechs = "NTLM LOGIN"
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/forgotpw")
@@ -177,7 +178,7 @@ func TestForgotFlowsStayUniformWhenDeliveryFails(t *testing.T) {
 	})
 	sink := newFakeSMTP(t)
 	sink.rejectData = true
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/forgotpw")

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +19,7 @@ func TestGroupsAndAccessCanBeDisabled(t *testing.T) {
 		viper.Set("accounts.enable_groups", false)
 		viper.Set("accounts.enable_access", false)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -44,7 +45,7 @@ func TestGroupsAndAccessCanBeDisabled(t *testing.T) {
 func TestGroupsAndAccessEnabledByDefault(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")

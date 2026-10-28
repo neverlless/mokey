@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,10 +13,10 @@ func TestGroupsPageSections(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"ipausers"}})
-	fake.addGroup("chemists", &fakeGroup{Description: "Lab crew", ManagerUsers: []string{"skyler"}})
-	fake.addGroup("laundry", &fakeGroup{ManagerUsers: []string{"walter"}})
-	fake.addGroup("secret", &fakeGroup{}) // unmanaged: never shown
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"ipausers"}})
+	fake.AddGroup("chemists", ipatest.Group{Description: "Lab crew", ManagerUsers: []string{"skyler"}})
+	fake.AddGroup("laundry", ipatest.Group{ManagerUsers: []string{"walter"}})
+	fake.AddGroup("secret", ipatest.Group{}) // unmanaged: never shown
 
 	router.addGroupRequest("laundry", "jesse", groupRequestJoin)
 
@@ -44,10 +45,10 @@ func TestGroupRequestJoinFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
-	fake.addGroup("secret", &fakeGroup{}) // unmanaged
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
+	fake.AddGroup("secret", ipatest.Group{}) // unmanaged
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -80,10 +81,10 @@ func TestGroupApproveDenyFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
 
 	router.addGroupRequest("chemists", "walter", groupRequestJoin)
 	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
@@ -96,7 +97,7 @@ func TestGroupApproveDenyFlow(t *testing.T) {
 		"group": {"chemists"}, "username": {"walter"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Contains(fake.groups["chemists"].Members, "walter")
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
 	assert.Len(router.loadGroupRequests("chemists"), 1)
 
 	// deny: request cleared, membership unchanged
@@ -104,7 +105,7 @@ func TestGroupApproveDenyFlow(t *testing.T) {
 		"group": {"chemists"}, "username": {"jesse"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.NotContains(fake.groups["chemists"].Members, "jesse")
+	assert.NotContains(groupMembers(t, fake, "chemists"), "jesse")
 	assert.Empty(router.loadGroupRequests("chemists"))
 
 	// approving a non-queued user is refused
@@ -118,9 +119,9 @@ func TestGroupApproveNonManager(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
 	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
 
 	// jesse is not a manager; both mokey's check and the fake's
@@ -131,7 +132,7 @@ func TestGroupApproveNonManager(t *testing.T) {
 		"group": {"chemists"}, "username": {"jesse"},
 	}, htmx)
 	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
-	assert.NotContains(fake.groups["chemists"].Members, "jesse")
+	assert.NotContains(groupMembers(t, fake, "chemists"), "jesse")
 	assert.Len(router.loadGroupRequests("chemists"), 1)
 }
 
@@ -139,8 +140,8 @@ func TestGroupApproveRefusedByFreeIPA(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
 	// the requester's account is gone by the time the sponsor approves;
 	// FreeIPA answers with HTTP 200 and the refusal in result.failed
 	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
@@ -151,7 +152,7 @@ func TestGroupApproveRefusedByFreeIPA(t *testing.T) {
 		"group": {"chemists"}, "username": {"jesse"},
 	}, htmx)
 	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
-	assert.NotContains(fake.groups["chemists"].Members, "jesse")
+	assert.NotContains(groupMembers(t, fake, "chemists"), "jesse")
 	assert.Len(router.loadGroupRequests("chemists"), 1)
 }
 
@@ -159,9 +160,9 @@ func TestGroupRequestLeaveFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"chemists"}})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"chemists"}})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -188,7 +189,7 @@ func TestGroupRequestLeaveFlow(t *testing.T) {
 		"group": {"chemists"}, "username": {"walter"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.NotContains(fake.groups["chemists"].Members, "walter")
+	assert.NotContains(groupMembers(t, fake, "chemists"), "walter")
 	assert.Empty(router.loadGroupRequests("chemists"))
 }
 
@@ -196,9 +197,9 @@ func TestGroupLeaveDenyFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
 	router.addGroupRequest("chemists", "walter", groupRequestLeave)
 
 	tcSponsor := newTestClient(t, app)
@@ -208,7 +209,7 @@ func TestGroupLeaveDenyFlow(t *testing.T) {
 		"group": {"chemists"}, "username": {"walter"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Contains(fake.groups["chemists"].Members, "walter")
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
 	assert.Empty(router.loadGroupRequests("chemists"))
 }
 
@@ -216,9 +217,9 @@ func TestGroupRequestLeaveNotMember(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
 
 	tc := newTestClient(t, app)
 	tc.login("jesse", "Secret123!")
@@ -232,9 +233,9 @@ func TestGroupRemoveMemberBySponsor(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
 
 	tc := newTestClient(t, app)
 	tc.login("skyler", "Secret123!")
@@ -243,16 +244,16 @@ func TestGroupRemoveMemberBySponsor(t *testing.T) {
 		"group": {"chemists"}, "username": {"walter"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.NotContains(fake.groups["chemists"].Members, "walter")
+	assert.NotContains(groupMembers(t, fake, "chemists"), "walter")
 }
 
 func TestGroupRemoveMemberNonManager(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}, Members: []string{"jesse"}})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"jesse"}})
 
 	tc := newTestClient(t, app)
 	tc.login("jesse", "Secret123!")
@@ -261,17 +262,17 @@ func TestGroupRemoveMemberNonManager(t *testing.T) {
 		"group": {"chemists"}, "username": {"jesse"},
 	}, htmx)
 	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
-	assert.Contains(fake.groups["chemists"].Members, "jesse")
+	assert.Contains(groupMembers(t, fake, "chemists"), "jesse")
 }
 
 func TestGroupStaleRequestCleanup(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!"})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	// walter is already a member but a stale request lingers in the queue
-	fake.addGroup("chemists", &fakeGroup{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
 	router.addGroupRequest("chemists", "walter", groupRequestJoin)
 
 	tc := newTestClient(t, app)

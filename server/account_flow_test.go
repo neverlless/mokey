@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,7 +47,7 @@ func TestSignupAndVerifyFlow(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
 	// account exists, disabled and marked unverified until email verification
-	u := fake.users["jesse"]
+	u := fakeUser(fake, "jesse")
 	if assert.NotNil(u) {
 		assert.True(u.Locked)
 		assert.Equal(UserCategoryUnverified, u.Category)
@@ -72,8 +73,8 @@ func TestSignupAndVerifyFlow(t *testing.T) {
 
 	resp = tc2.postForm("/auth/verify/"+token, url.Values{}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.False(fake.users["jesse"].Locked)
-	assert.Equal("", fake.users["jesse"].Category)
+	assert.False(fakeUser(fake, "jesse").Locked)
+	assert.Equal("", fakeUser(fake, "jesse").Category)
 
 	// verify token is single-use
 	resp = tc2.get("/auth/verify/" + token)
@@ -87,7 +88,7 @@ func TestSignupAndVerifyFlow(t *testing.T) {
 func TestSignupDuplicateUsername(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/signup")
@@ -126,7 +127,7 @@ func TestSignupWrongCaptcha(t *testing.T) {
 		"captcha_sol": {"000000"},
 	}, nil)
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
-	assert.Nil(fake.users["jesse"])
+	assert.Nil(fakeUser(fake, "jesse"))
 }
 
 func TestCaptchaDisabled(t *testing.T) {
@@ -135,7 +136,7 @@ func TestCaptchaDisabled(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 	})
 	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	// signup page renders no captcha block
 	tc := newTestClient(t, app)
@@ -153,7 +154,7 @@ func TestCaptchaDisabled(t *testing.T) {
 		"password2": {"NewSecret456!"},
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.NotNil(fake.users["jesse"])
+	assert.NotNil(fakeUser(fake, "jesse"))
 
 	// forgot-password works without captcha fields
 	tc2 := newTestClient(t, app)
@@ -179,7 +180,7 @@ func TestPasswordForgotIssuesToken(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/forgotpw")
@@ -223,8 +224,8 @@ func TestUsernameForgotUniformResponse(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_captcha", false)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Email: "walter@example.com"})
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!", Email: "skyler@example.com", Locked: true})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Email: "walter@example.com"})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!", Email: "skyler@example.com", Locked: true})
 
 	tc := newTestClient(t, app)
 	resp := tc.get("/auth/forgotuser")
@@ -255,7 +256,7 @@ func TestSignupAdminApprovalFlow(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
 
 	signup := func(username, email string) {
 		tc := newTestClient(t, app)
@@ -283,8 +284,8 @@ func TestSignupAdminApprovalFlow(t *testing.T) {
 	signup("kim", "kim@example.com")
 
 	// email verified but still locked and marked pending
-	assert.True(fake.users["jesse"].Locked)
-	assert.Equal(UserCategoryPending, fake.users["jesse"].Category)
+	assert.True(fakeUser(fake, "jesse").Locked)
+	assert.Equal(UserCategoryPending, fakeUser(fake, "jesse").Category)
 
 	// admin sees both in the pending queue
 	tcAdmin := newTestClient(t, app)
@@ -298,15 +299,15 @@ func TestSignupAdminApprovalFlow(t *testing.T) {
 	// approve jesse: enabled, category cleared, can log in
 	resp = tcAdmin.postForm("/admin/user/approve", url.Values{"username": {"jesse"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.False(fake.users["jesse"].Locked)
-	assert.Equal("", fake.users["jesse"].Category)
+	assert.False(fakeUser(fake, "jesse").Locked)
+	assert.Equal("", fakeUser(fake, "jesse").Category)
 	tcJesse := newTestClient(t, app)
 	tcJesse.login("jesse", "NewSecret456!")
 
 	// deny kim: registration is deleted
 	resp = tcAdmin.postForm("/admin/user/deny", url.Values{"username": {"kim"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Nil(fake.users["kim"])
+	assert.Nil(fakeUser(fake, "kim"))
 
 	// approve is refused for accounts that are not pending
 	resp = tcAdmin.postForm("/admin/user/approve", url.Values{"username": {"jesse"}}, htmx)
@@ -318,8 +319,8 @@ func TestAdminRouteGating(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 
 	// non-admin is rejected
 	tcUser := newTestClient(t, app)
@@ -332,14 +333,14 @@ func TestAdminRouteGating(t *testing.T) {
 	tcAdmin.login("walter", "Secret123!")
 	resp = tcAdmin.postForm("/admin/user/block", url.Values{"username": {"jesse"}}, htmx)
 	assert.NotEqual(fiber.StatusForbidden, resp.StatusCode)
-	assert.True(fake.users["jesse"].Locked)
+	assert.True(fakeUser(fake, "jesse").Locked)
 }
 
 func TestAdminDisabledByDefault(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
 	// even a member of the admins group is refused while admin.enabled=false
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -355,7 +356,7 @@ func TestAccountSettingsEmailChangeDeliveryFailure(t *testing.T) {
 	assert := assert.New(t)
 	// newTestApp points SMTP at a dead port, so delivery always fails
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Email: "old@example.com"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Email: "old@example.com"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -406,7 +407,7 @@ func TestSignupSuccessLinksToResend(t *testing.T) {
 func TestAccountSettingsPhoneValidation(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -422,20 +423,20 @@ func TestAccountSettingsPhoneValidation(t *testing.T) {
 	// arbitrary text is refused and nothing is written
 	body := save(url.Values{"phone_cc": {"1"}, "phone": {"call me maybe"}})
 	assert.Contains(body, T("account.phone_invalid"))
-	assert.Equal("", fake.users["walter"].Mobile)
+	assert.Equal("", fakeUser(fake, "walter").Mobile)
 
 	// a number without a country code is refused
 	body = save(url.Values{"phone": {"5055550100"}})
 	assert.Contains(body, T("account.phone_needs_country_code"))
-	assert.Equal("", fake.users["walter"].Mobile)
+	assert.Equal("", fakeUser(fake, "walter").Mobile)
 
 	// a valid pair is stored with the code kept separable
 	save(url.Values{
 		"phone_cc": {"1"}, "phone": {"505 555 0100"},
 		"telephone_cc": {"46"}, "telephone": {"701234567"},
 	})
-	assert.Equal("+1 505 555 0100", fake.users["walter"].Mobile)
-	assert.Equal("+46 701234567", fake.users["walter"].Telephone)
+	assert.Equal("+1 505 555 0100", fakeUser(fake, "walter").Mobile)
+	assert.Equal("+46 701234567", fakeUser(fake, "walter").Telephone)
 
 	// and the form renders the two halves back into their own controls
 	body = readBody(t, tc.get("/account"))
@@ -453,5 +454,5 @@ func TestAccountSettingsPhoneValidation(t *testing.T) {
 
 	// clearing the number clears the attribute
 	save(url.Values{"phone_cc": {"1"}, "phone": {""}})
-	assert.Equal("", fake.users["walter"].Mobile)
+	assert.Equal("", fakeUser(fake, "walter").Mobile)
 }

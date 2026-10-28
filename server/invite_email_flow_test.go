@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,7 +33,7 @@ func TestInviteAcceptFlow(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
 	// invited accounts are enabled immediately, email comes from the token
-	u := fake.users["kim"]
+	u := fakeUser(fake, "kim")
 	if assert.NotNil(u) {
 		assert.False(u.Locked)
 		assert.Equal("kim@example.com", u.Email)
@@ -62,7 +63,7 @@ func TestInviteSendRequiresAdmin(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("jesse", "Secret123!")
@@ -74,7 +75,7 @@ func TestInviteSendRequiresAdmin(t *testing.T) {
 func TestEmailChangeConfirmFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Email: "old@example.com"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Email: "old@example.com"})
 
 	// token as SendEmailChangeConfirmEmail would issue it: claims.Email is
 	// the NEW address
@@ -88,7 +89,7 @@ func TestEmailChangeConfirmFlow(t *testing.T) {
 
 	resp = tc.postForm("/auth/email/confirm/"+token, url.Values{}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("new@example.com", fake.users["walter"].Email)
+	assert.Equal("new@example.com", fakeUser(fake, "walter").Email)
 
 	// token is single-use
 	resp = tc.get("/auth/email/confirm/" + token)
@@ -98,7 +99,7 @@ func TestEmailChangeConfirmFlow(t *testing.T) {
 func TestAccountSettingsEmailNotChangedDirectly(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Email: "old@example.com"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Email: "old@example.com"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -111,8 +112,8 @@ func TestAccountSettingsEmailNotChangedDirectly(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
 	// email must stay until the confirmation link is used
-	assert.Equal("old@example.com", fake.users["walter"].Email)
-	assert.Equal("Walter", fake.users["walter"].First)
+	assert.Equal("old@example.com", fakeUser(fake, "walter").Email)
+	assert.Equal("Walter", fakeUser(fake, "walter").First)
 }
 
 func TestAccountSettingsProfileFields(t *testing.T) {
@@ -120,7 +121,7 @@ func TestAccountSettingsProfileFields(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.allow_change_shell", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Shell: "/bin/bash"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Shell: "/bin/bash"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -137,7 +138,7 @@ func TestAccountSettingsProfileFields(t *testing.T) {
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
-	u := fake.users["walter"]
+	u := fakeUser(fake, "walter")
 	assert.Equal("Heisenberg", u.DisplayName)
 	assert.Equal("+1 505 555 0199", u.Telephone)
 	assert.Equal("+1 505 555 0100", u.Mobile)
@@ -150,15 +151,15 @@ func TestAccountSettingsProfileFields(t *testing.T) {
 		"shell": {"/bin/evil"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("/bin/zsh", fake.users["walter"].Shell)
+	assert.Equal("/bin/zsh", fakeUser(fake, "walter").Shell)
 	// the form submits every field, so omitting the phones clears them
-	assert.Equal("", fake.users["walter"].Mobile)
+	assert.Equal("", fakeUser(fake, "walter").Mobile)
 }
 
 func TestAccountSettingsShellChangeDisabledByDefault(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Shell: "/bin/bash"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Shell: "/bin/bash"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -169,7 +170,7 @@ func TestAccountSettingsShellChangeDisabledByDefault(t *testing.T) {
 		"shell": {"/bin/zsh"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("/bin/bash", fake.users["walter"].Shell)
+	assert.Equal("/bin/bash", fakeUser(fake, "walter").Shell)
 }
 
 func TestSSHKeyAddRequiresMFA(t *testing.T) {
@@ -177,7 +178,7 @@ func TestSSHKeyAddRequiresMFA(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.require_mfa", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"}) // no OTP auth type
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"}) // no OTP auth type
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")

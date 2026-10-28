@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/neverlless/goipa/ipatest"
 	"math"
 	"os"
 	"path/filepath"
@@ -30,22 +31,22 @@ func TestUIPreviewServe(t *testing.T) {
 		viper.Set("admin.enabled", true)
 	})
 
-	fake.addUser("walter", &fakeUser{
+	fake.AddUser("walter", ipatest.User{
 		Password: "Secret123!",
 		First:    "Walter", Last: "White",
 		Email:  "wwhite@acme.local",
 		Groups: []string{"ipausers", "chemists", "lab-admins", "admins"},
 	})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter"}})
-	fake.addGroup("glee-club", &fakeGroup{Description: "After-hours choir", ManagerUsers: []string{"jesse"}})
-	fake.subids["walter"] = &fakeSubid{SubUID: 2147483648, SubGID: 2147483648}
-	fake.addHBACRule("lab-access", &fakeHBACRule{
-		Enabled: true, Description: "Lab SSH",
-		MemberGroups: []string{"chemists"}, MemberHosts: []string{"lab.acme.local"}, MemberServices: []string{"sshd"},
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter"}})
+	fake.AddGroup("glee-club", ipatest.Group{Description: "After-hours choir", ManagerUsers: []string{"jesse"}})
+	fake.AddSubID(ipatest.SubID{Owner: "walter"})
+	fake.AddHBACRule("lab-access", ipatest.HBACRule{
+		Description: "Lab SSH",
+		Groups:      []string{"chemists"}, Hosts: []string{"lab.acme.local"}, Services: []string{"sshd"},
 	})
-	fake.addSudoRule("lab-sudo", &fakeSudoRule{
-		Enabled: true, MemberGroups: []string{"chemists"},
+	fake.AddSudoRule("lab-sudo", ipatest.SudoRule{
+		Groups:       []string{"chemists"},
 		HostCategory: "all", AllowCommands: []string{"/usr/bin/systemctl"},
 	})
 	router.addGroupRequest("chemists", "jesse", groupRequestJoin)

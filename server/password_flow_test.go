@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	ipa "github.com/neverlless/goipa"
+	"github.com/neverlless/goipa/ipatest"
 	log "github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
@@ -19,7 +21,7 @@ var htmx = map[string]string{"HX-Request": "true"}
 func TestPasswordChange(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "OldSecret123!")
@@ -31,7 +33,7 @@ func TestPasswordChange(t *testing.T) {
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.NotContains(readBody(t, resp), "fatal")
-	assert.Equal("NewSecret456!", fake.users["walter"].Password)
+	assert.Equal("NewSecret456!", fakeUser(fake, "walter").Password)
 
 	// the changing session survives
 	resp = tc.get("/")
@@ -41,7 +43,7 @@ func TestPasswordChange(t *testing.T) {
 func TestPasswordChangeWrongCurrent(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "OldSecret123!")
@@ -52,13 +54,13 @@ func TestPasswordChangeWrongCurrent(t *testing.T) {
 		"newpassword2": {"NewSecret456!"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("OldSecret123!", fake.users["walter"].Password)
+	assert.Equal("OldSecret123!", fakeUser(fake, "walter").Password)
 }
 
 func TestPasswordChangeMismatchedConfirm(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "OldSecret123!")
@@ -69,13 +71,13 @@ func TestPasswordChangeMismatchedConfirm(t *testing.T) {
 		"newpassword2": {"Different789!"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("OldSecret123!", fake.users["walter"].Password)
+	assert.Equal("OldSecret123!", fakeUser(fake, "walter").Password)
 }
 
 func TestPasswordChangeInvalidatesOtherSessions(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	// two browser sessions
 	tc1 := newTestClient(t, app)
@@ -90,7 +92,7 @@ func TestPasswordChangeInvalidatesOtherSessions(t *testing.T) {
 		"newpassword2": {"NewSecret456!"},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("NewSecret456!", fake.users["walter"].Password)
+	assert.Equal("NewSecret456!", fakeUser(fake, "walter").Password)
 
 	// the change wrote an invalidation marker
 	marker, err := router.storage.Get(PasswordChangedPrefix + "walter")
@@ -132,7 +134,7 @@ func TestPasswordChangeRequiresLogin(t *testing.T) {
 func TestPasswordResetFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	token, err := NewToken("walter", "walter@example.com", TokenPasswordReset, router.storage)
 	assert.NoError(err)
@@ -148,7 +150,7 @@ func TestPasswordResetFlow(t *testing.T) {
 		"password2": {"NewSecret456!"},
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("NewSecret456!", fake.users["walter"].Password)
+	assert.Equal("NewSecret456!", fakeUser(fake, "walter").Password)
 
 	// token is single-use
 	resp = tc.get("/auth/resetpw/" + token)
@@ -171,7 +173,7 @@ func TestPasswordResetGarbageToken(t *testing.T) {
 func TestPasswordResetLockedUser(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!", Locked: true})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!", Locked: true})
 
 	token, err := NewToken("walter", "walter@example.com", TokenPasswordReset, router.storage)
 	assert.NoError(err)
@@ -184,7 +186,7 @@ func TestPasswordResetLockedUser(t *testing.T) {
 func TestPasswordResetInvalidatesSessions(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "OldSecret123!")
@@ -217,7 +219,7 @@ func TestPasswordResetInvalidatesSessions(t *testing.T) {
 func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	token, err := NewToken("walter", "walter@example.com", TokenPasswordReset, router.storage)
 	assert.NoError(err)
@@ -235,7 +237,7 @@ func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
 		"password2": {"NewSecret456!"},
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("NewSecret456!", fake.users["walter"].Password)
+	assert.Equal("NewSecret456!", fakeUser(fake, "walter").Password)
 
 	logged := false
 	for _, e := range hook.AllEntries() {
@@ -264,7 +266,7 @@ func futureMarker(t *testing.T, router *Router, username string) {
 func TestPasswordChangePolicyVisibleOnError(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -296,6 +298,9 @@ func TestSignupEnforcesFreeIPAPasswordPolicy(t *testing.T) {
 		viper.Set("accounts.min_passwd_len", 4)
 		viper.Set("accounts.min_passwd_classes", 1)
 	})
+	policy, _ := fake.PwPolicy("global_policy")
+	policy.MinClasses = 2
+	fake.SetPwPolicy("global_policy", policy)
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/signup")
@@ -310,7 +315,7 @@ func TestSignupEnforcesFreeIPAPasswordPolicy(t *testing.T) {
 		"password2": {"abcdefg"},
 	}, nil)
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
-	assert.Nil(fake.users["jesse"], "account must not be created with a policy-violating password")
+	assert.Nil(fakeUser(fake, "jesse"), "account must not be created with a policy-violating password")
 
 	// a password meeting the FreeIPA policy still works
 	tc.getCSRF("/signup")
@@ -323,7 +328,24 @@ func TestSignupEnforcesFreeIPAPasswordPolicy(t *testing.T) {
 		"password2": {"abcdefg1"},
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.NotNil(fake.users["jesse"])
+	assert.NotNil(fakeUser(fake, "jesse"))
+}
+
+// reportLaxerPolicy makes pwpolicy_show report a 4-character minimum while
+// change_password still enforces global_policy's 8, standing in for the
+// checks mokey cannot pre-check (history, minimum lifetime, dictionary)
+func reportLaxerPolicy(fake *ipatest.Server) {
+	fake.Handle("pwpolicy_show", func(ipatest.Call) (any, *ipa.IpaError) {
+		return map[string]any{"value": "global_policy", "summary": nil, "result": map[string]any{
+			"cn":                         []string{"global_policy"},
+			"krbmaxpwdlife":              []string{"90"},
+			"krbminpwdlife":              []string{"1"},
+			"krbpwdminlength":            []string{"4"},
+			"krbpwdmaxfailure":           []string{"6"},
+			"krbpwdfailurecountinterval": []string{"60"},
+			"krbpwdlockoutduration":      []string{"600"},
+		}}, nil
+	})
 }
 
 // #18: FreeIPA tells mokey exactly why it refused a password change, and the
@@ -336,8 +358,8 @@ func TestPasswordExpiredSurfacesFreeIPAReason(t *testing.T) {
 	})
 	// mokey sees a laxer policy than change_password enforces, so its own
 	// pre-check passes and FreeIPA is the one that rejects
-	fake.reportedMinLength = 4
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Expired: true})
+	reportLaxerPolicy(fake)
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", PasswdExpire: time.Now()})
 
 	// reach the expired-password form with the real password, then submit
 	// whatever the case under test needs
@@ -360,7 +382,7 @@ func TestPasswordExpiredSurfacesFreeIPAReason(t *testing.T) {
 	resp := expiredForm("Secret123!", "Secret123!", "sh0rt")
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
 	assert.Equal(T("password.rejected_by_policy"), readBody(t, resp))
-	assert.Equal("Secret123!", fake.users["walter"].Password)
+	assert.Equal("Secret123!", fakeUser(fake, "walter").Password)
 
 	// a wrong current password is equally specific, not a generic failure
 	resp = expiredForm("Secret123!", "WrongSecret123!", "NewSecret456!")
@@ -370,7 +392,7 @@ func TestPasswordExpiredSurfacesFreeIPAReason(t *testing.T) {
 	// and the correct pair still goes through
 	resp = expiredForm("Secret123!", "Secret123!", "NewSecret456!")
 	assert.Equal(fiber.StatusNoContent, resp.StatusCode)
-	assert.Equal("NewSecret456!", fake.users["walter"].Password)
+	assert.Equal("NewSecret456!", fakeUser(fake, "walter").Password)
 }
 
 // #18, signup path: a password FreeIPA refuses after mokey's own check passed
@@ -381,7 +403,7 @@ func TestSignupSurfacesFreeIPAPolicyRejection(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("accounts.min_passwd_len", 4)
 	})
-	fake.reportedMinLength = 4
+	reportLaxerPolicy(fake)
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/signup")
@@ -398,7 +420,7 @@ func TestSignupSurfacesFreeIPAPolicyRejection(t *testing.T) {
 
 	// the half-created account must be rolled back, or the retry the message
 	// invites fails with "username already exists"
-	assert.Nil(fake.users["jesse"])
+	assert.Nil(fakeUser(fake, "jesse"))
 
 	tc.getCSRF("/signup")
 	resp = tc.postForm("/signup", url.Values{
@@ -410,5 +432,5 @@ func TestSignupSurfacesFreeIPAPolicyRejection(t *testing.T) {
 		"password2": {"NewSecret456!"},
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.NotNil(fake.users["jesse"])
+	assert.NotNil(fakeUser(fake, "jesse"))
 }

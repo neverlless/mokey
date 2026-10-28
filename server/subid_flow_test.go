@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,7 +13,7 @@ import (
 func TestSubidDisabledByDefault(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -32,7 +33,7 @@ func TestSubidGenerateFlow(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_subid", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -45,8 +46,8 @@ func TestSubidGenerateFlow(t *testing.T) {
 	// generate allocates a range for the logged-in user
 	resp = tc.postForm("/subid/generate", url.Values{}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	sub := fake.subids["walter"]
-	if assert.NotNil(sub) {
+	sub, ok := fake.SubID("walter")
+	if assert.True(ok) {
 		assert.Contains(readBody(t, resp), "2147483648")
 	}
 
@@ -60,6 +61,10 @@ func TestSubidGenerateFlow(t *testing.T) {
 	// the existing one
 	resp = tc.postForm("/subid/generate", url.Values{}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Len(fake.subids, 1)
+	subs, err := fake.ClientAs(keytabUser).SubIDFind(nil)
+	assert.NoError(err)
+	if assert.Len(subs, 1) {
+		assert.Equal(sub.ID, subs[0].ID)
+	}
 	assert.Contains(readBody(t, resp), "2147483648")
 }

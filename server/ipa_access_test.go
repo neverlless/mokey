@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/neverlless/goipa/ipatest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,20 +9,18 @@ import (
 
 func TestAccessRPCLayer(t *testing.T) {
 	assert := assert.New(t)
-	fake := newFakeIPA()
-	defer fake.Close()
+	fake := ipatest.NewServer(t)
+	dropAllowAll(t, fake)
 
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"chemists"}})
-	fake.addHBACRule("lab-access", &fakeHBACRule{
-		Enabled:        true,
-		MemberGroups:   []string{"chemists"},
-		MemberHosts:    []string{"lab.test.local"},
-		MemberServices: []string{"sshd"},
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"chemists"}})
+	fake.AddHBACRule("lab-access", ipatest.HBACRule{
+		Groups:   []string{"chemists"},
+		Hosts:    []string{"lab.test.local"},
+		Services: []string{"sshd"},
 	})
-	fake.addHBACRule("disabled-rule", &fakeHBACRule{Enabled: false, UserCategory: "all"})
-	fake.addSudoRule("run-all", &fakeSudoRule{
-		Enabled:      true,
-		MemberUsers:  []string{"walter"},
+	fake.AddHBACRule("disabled-rule", ipatest.HBACRule{Disabled: true, UserCategory: "all"})
+	fake.AddSudoRule("run-all", ipatest.SudoRule{
+		Users:        []string{"walter"},
 		HostCategory: "all",
 		CmdCategory:  "all",
 	})

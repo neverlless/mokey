@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConnectedAppsList(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	hy.seedConsentSession("walter", fakeConsentSession{
 		ClientID: "app-1", ClientName: "Example App", Scope: []string{"openid", "profile"},
 		HandledAt: time.Now().Format(time.RFC3339),
@@ -30,7 +31,7 @@ func TestConnectedAppsList(t *testing.T) {
 func TestConnectedAppsRevoke(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	hy.seedConsentSession("walter", fakeConsentSession{ClientID: "app-1", ClientName: "Example App"})
 
 	tc := newTestClient(t, app)
@@ -47,7 +48,7 @@ func TestConnectedAppsRevoke(t *testing.T) {
 func TestConnectedAppsAbsentWithoutHydra(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -62,7 +63,7 @@ func TestConnectedAppsAbsentWithoutHydra(t *testing.T) {
 func TestAppRevokeRouteAbsentWithoutHydra(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")

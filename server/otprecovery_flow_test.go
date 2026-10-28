@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,8 +16,8 @@ func TestOTPRecoveryRequestFlow(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 	})
 	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", AuthTypes: []string{"otp"}})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"}) // no OTP
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", AuthTypes: []string{"otp"}})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"}) // no OTP
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/otprecovery")
@@ -76,9 +77,9 @@ func TestOTPRecoveryAdminFlow(t *testing.T) {
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("boss", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", AuthTypes: []string{"otp"}})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!", AuthTypes: []string{"otp"}})
+	fake.AddUser("boss", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", AuthTypes: []string{"otp"}})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!", AuthTypes: []string{"otp"}})
 	router.addOTPRecoveryRequest("walter")
 	router.addOTPRecoveryRequest("jesse")
 
@@ -95,13 +96,13 @@ func TestOTPRecoveryAdminFlow(t *testing.T) {
 	// approve: auth types become password-only, queue entry gone
 	resp = tcAdmin.postForm("/admin/user/otprecovery-approve", url.Values{"username": {"walter"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal([]string{"password"}, fake.users["walter"].AuthTypes)
+	assert.Equal([]string{"password"}, fakeUser(fake, "walter").AuthTypes)
 	assert.Len(router.loadOTPRecoveryRequests(), 1)
 
 	// deny: queue entry gone, auth types unchanged
 	resp = tcAdmin.postForm("/admin/user/otprecovery-deny", url.Values{"username": {"jesse"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal([]string{"otp"}, fake.users["jesse"].AuthTypes)
+	assert.Equal([]string{"otp"}, fakeUser(fake, "jesse").AuthTypes)
 	assert.Empty(router.loadOTPRecoveryRequests())
 
 	// acting on a non-queued user is refused
@@ -121,7 +122,7 @@ func TestOTPRecoveryAdminGating(t *testing.T) {
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	router.addOTPRecoveryRequest("someone")
 
 	tc := newTestClient(t, app)

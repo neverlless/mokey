@@ -13,6 +13,7 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 )
 
@@ -63,18 +64,17 @@ func captchaSolution(t *testing.T, id string) string {
 // newTestApp builds the real fiber app (routes, middleware, CSRF, sessions)
 // wired to a fake FreeIPA server. Tests share package-global viper config, so
 // they cannot run in parallel — same constraint the existing tests have.
-func newTestApp(t *testing.T) (*fiber.App, *Router, *fakeIPA) {
+func newTestApp(t *testing.T) (*fiber.App, *Router, *ipatest.Server) {
 	t.Helper()
 	return newTestAppWith(t, nil)
 }
 
 // newTestAppWith applies extra viper config (routes depend on some settings
 // at build time) before assembling the app
-func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *fakeIPA) {
+func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipatest.Server) {
 	t.Helper()
 
-	fake := newFakeIPA()
-	t.Cleanup(fake.Close)
+	fake := ipatest.NewServer(t)
 
 	captchaStoreOnce.Do(func() { captcha.SetCustomStore(captchaStore) })
 
@@ -102,15 +102,28 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *fakeI
 		ipaKeytabLogin = origKeytabLogin
 	})
 
-	newIPAClient = func() (*ipa.Client, error) { return fake.client(), nil }
+	newIPAClient = func() (*ipa.Client, error) { return newFakeClient(fake), nil }
 	newIPAClientWithSession = func(sid string) (*ipa.Client, error) {
-		c := fake.client()
-		c.RemoteLogin("__restore__", sid)
+		c := newFakeClient(fake)
+		c.SetSessionID(sid)
 		return c, nil
 	}
+	// The keytab client talks SPNEGO on /ipa/json. It is "admin" rather than
+	// site.ktuser because ipatest grants pwpolicy_show only to admins (Q32),
+	// while the real service account holds Password Policy Readers.
 	ipaKeytabLogin = func(c *ipa.Client, keytab, username string) error {
-		return c.RemoteLogin("__admin__", "")
+		fake.SetNegotiateUser(keytabUser)
+		return nil
 	}
+	// mokey's design: group membership only changes under the sponsor's own
+	// session, never through the service account
+	t.Cleanup(func() {
+		for _, c := range fake.Calls() {
+			if c.User == keytabUser && strings.HasPrefix(c.Method, "group_") && strings.Contains(c.Method, "member") {
+				t.Errorf("%s ran as the service account", c.Method)
+			}
+		}
+	})
 
 	app, router, err := newFiber()
 	if err != nil {
@@ -122,6 +135,55 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *fakeI
 	t.Cleanup(router.bg.Wait)
 
 	return app, router, fake
+}
+
+const keytabUser = "admin"
+
+// newFakeClient builds a goipa client the way production does (ipa.New),
+// pointed at the fake server
+func newFakeClient(fake *ipatest.Server) *ipa.Client {
+	c, err := ipa.New(ipa.WithHost(fake.Host()), ipa.WithRealm(fake.Realm()), ipa.WithHTTPClient(fake.HTTPClient()))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+// fakeUser returns a copy of active user uid, nil when there is none
+func fakeUser(fake *ipatest.Server, uid string) *ipatest.User {
+	u, ok := fake.User(uid)
+	if !ok {
+		return nil
+	}
+	return &u
+}
+
+// fakeStageUser returns a copy of stage user uid, nil when there is none
+func fakeStageUser(fake *ipatest.Server, uid string) *ipatest.User {
+	u, ok := fake.StageUser(uid)
+	if !ok {
+		return nil
+	}
+	return &u
+}
+
+// groupMembers returns member_user of group cn as FreeIPA reports it
+func groupMembers(t *testing.T, fake *ipatest.Server, cn string) []string {
+	t.Helper()
+	g, err := fake.ClientAs(keytabUser).GroupShow(cn)
+	if err != nil {
+		t.Fatalf("group_show %s: %s", cn, err)
+	}
+	return g.Users
+}
+
+// dropAllowAll deletes the allow_all HBAC rule every FreeIPA ships with, as
+// sites that restrict access do
+func dropAllowAll(t *testing.T, fake *ipatest.Server) {
+	t.Helper()
+	if err := fake.ClientAs(keytabUser).HBACRuleDelete("allow_all"); err != nil {
+		t.Fatalf("hbacrule_del allow_all: %s", err)
+	}
 }
 
 var csrfPattern = regexp.MustCompile(`X-CSRF-Token": "([^"]+)"`)

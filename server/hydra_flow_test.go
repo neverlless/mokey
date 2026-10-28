@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 // newHydraTestApp builds the app with a fake Hydra admin API wired in.
 // hydra.admin_url must be set before newFiber so the /oauth routes register.
-func newHydraTestApp(t *testing.T) (*fiber.App, *fakeIPA, *fakeHydra) {
+func newHydraTestApp(t *testing.T) (*fiber.App, *ipatest.Server, *fakeHydra) {
 	t.Helper()
 	hy := newFakeHydra()
 	t.Cleanup(hy.Close)
@@ -27,7 +28,7 @@ func newHydraTestApp(t *testing.T) (*fiber.App, *fakeIPA, *fakeHydra) {
 func TestOIDCLoginFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	hy.seedLogin("chal-1", "", false)
 
 	tc := newTestClient(t, app)
@@ -56,7 +57,7 @@ func TestOIDCLoginFlow(t *testing.T) {
 func TestOIDCLoginSkip(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	hy.seedLogin("chal-2", "walter", true)
 
 	tc := newTestClient(t, app)
@@ -80,7 +81,7 @@ func TestOIDCLoginMissingChallenge(t *testing.T) {
 func TestOIDCConsentFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
-	fake.addUser("walter", &fakeUser{
+	fake.AddUser("walter", ipatest.User{
 		Password: "Secret123!",
 		Email:    "walter@example.com",
 		Groups:   []string{"admins"},
@@ -109,7 +110,7 @@ func TestOIDCConsentRequiresMFA(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
 	viper.Set("accounts.require_mfa", true)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"}) // no OTP
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"}) // no OTP
 	hy.seedConsent("consent-2", "walter")
 
 	tc := newTestClient(t, app)
@@ -149,7 +150,7 @@ groups = ["lubelogger-users", "admins"]
 				return
 			}
 			viper.Set("hydra.default_deny", tt.defaultDeny)
-			fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: tt.groups})
+			fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: tt.groups})
 			hy.seedConsentForClient("consent-g", "walter", tt.client)
 
 			tc := newTestClient(t, app)
@@ -176,7 +177,7 @@ func TestOIDCConsentInvalidClientPolicyDenies(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
 	viper.Set("hydra.clients", "lubelogger")
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	hy.seedConsent("consent-bad", "walter")
 
 	tc := newTestClient(t, app)
@@ -195,7 +196,7 @@ func TestOIDCConsentMistypedClientIDDenies(t *testing.T) {
 clientid = "lubelogger"
 groups = ["lubelogger-users"]
 `)))
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"ipausers"}})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"ipausers"}})
 	hy.seedConsentForClient("consent-typo", "walter", "lubelogger")
 
 	tc := newTestClient(t, app)
@@ -207,7 +208,7 @@ groups = ["lubelogger-users"]
 func TestOIDCLogoutFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	hy.seedLogout("logout-1", "walter")
 
 	tc := newTestClient(t, app)
@@ -227,7 +228,7 @@ func TestOIDCLogoutFlow(t *testing.T) {
 func TestLogoutRevokesHydraSessions(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")

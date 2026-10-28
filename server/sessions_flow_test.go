@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +24,7 @@ func securityPage(t *testing.T, tc *testClient) string {
 func TestSessionListAndRevoke(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc1 := newTestClient(t, app)
 	tc1.login("walter", "Secret123!")
@@ -55,8 +56,8 @@ func TestSessionListAndRevoke(t *testing.T) {
 func TestSessionRevokeForeignSIDIgnored(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 
 	tcWalter := newTestClient(t, app)
 	tcWalter.login("walter", "Secret123!")
@@ -89,7 +90,7 @@ func TestSessionRevokeForeignSIDIgnored(t *testing.T) {
 func TestSignOutOtherSessions(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc1 := newTestClient(t, app)
 	tc1.login("walter", "Secret123!")
@@ -112,7 +113,7 @@ func TestSignOutOtherSessions(t *testing.T) {
 func TestLogoutDropsSessionFromIndex(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc1 := newTestClient(t, app)
 	tc1.login("walter", "Secret123!")
@@ -131,7 +132,7 @@ func TestLogoutDropsSessionFromIndex(t *testing.T) {
 func TestFullPageTabsRender(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -147,8 +148,8 @@ func TestFullPageTabsRender(t *testing.T) {
 func TestLoginHistoryOnSecurityPage(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 
 	// a failed and a successful login for walter, plus noise from jesse
 	tcFail := newTestClient(t, app)
@@ -173,7 +174,7 @@ func TestNewLoginEmailOptIn(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
 	sink := newFakeSMTP(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	// default: no email on login
 	tc := newTestClient(t, app)

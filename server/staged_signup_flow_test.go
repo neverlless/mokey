@@ -1,11 +1,15 @@
 package server
 
 import (
+	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	ipa "github.com/neverlless/goipa"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,22 +31,64 @@ func stagedSignup(t *testing.T, app *fiber.App, username, email string) *testCli
 	return tc
 }
 
+// modelStagedPasswords covers what ipatest leaves out of the staged signup
+// path: stageuser_add keeps userpassword, expired as FreeIPA stamps the copied
+// password on activation, and user_mod takes setattr krbPasswordExpiration
+func modelStagedPasswords(fake *ipatest.Server) {
+	str := func(c ipatest.Call, k string) string { s, _ := c.Options[k].(string); return s }
+	fake.Handle("stageuser_add", func(c ipatest.Call) (any, *ipa.IpaError) {
+		uid := c.Args[0]
+		if _, ok := fake.StageUser(uid); ok {
+			return nil, &ipa.IpaError{Code: ipa.CodeDuplicateEntry, Message: fmt.Sprintf("stage user with name %q already exists", uid)}
+		}
+		fake.AddStageUser(uid, ipatest.User{
+			First: str(c, "givenname"), Last: str(c, "sn"), Email: str(c, "mail"), Category: str(c, "userclass"),
+			Shell: str(c, "loginshell"), HomeDir: str(c, "homedirectory"),
+			Password: str(c, "userpassword"), PasswdExpire: time.Now(),
+		})
+		return map[string]any{"result": map[string]any{"uid": []string{uid}}, "value": uid, "summary": "Added stage user"}, nil
+	})
+	fake.Handle("user_mod", func(c ipatest.Call) (any, *ipa.IpaError) {
+		uid := c.Args[0]
+		set, _ := c.Options["setattr"].([]any)
+		if len(set) != 1 {
+			return nil, &ipa.IpaError{Code: ipa.CodeCommand, Message: "user_mod: only setattr krbPasswordExpiration is modelled here"}
+		}
+		name, value, _ := strings.Cut(fmt.Sprint(set[0]), "=")
+		if !strings.EqualFold(name, "krbPasswordExpiration") {
+			return nil, &ipa.IpaError{Code: ipa.CodeCommand, Message: "user_mod: only setattr krbPasswordExpiration is modelled here"}
+		}
+		var expire time.Time
+		if value != "" {
+			var err error
+			if expire, err = time.Parse(ipaDatetimeLayout, value); err != nil {
+				return nil, &ipa.IpaError{Code: ipa.CodeValidation, Message: "invalid 'krbpasswordexpiration': " + value}
+			}
+		}
+		if !fake.UpdateUser(uid, func(u *ipatest.User) { u.PasswdExpire = expire }) {
+			return nil, &ipa.IpaError{Code: ipa.CodeNotFound, Message: uid + ": user not found"}
+		}
+		return map[string]any{"result": map[string]any{"uid": []string{uid}}, "value": uid, "summary": "Modified user"}, nil
+	})
+}
+
 func TestStagedSignupAndVerifyFlow(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("accounts.staged_signup", true)
 	})
+	modelStagedPasswords(fake)
 
 	tc := stagedSignup(t, app, "jesse", "jesse@example.com")
 
 	// account lives in the staging tree only, invisible to active users
-	su := fake.stageusers["jesse"]
+	su := fakeStageUser(fake, "jesse")
 	if assert.NotNil(su) {
 		assert.Equal(UserCategoryUnverified, su.Category)
 		assert.Equal("NewSecret456!", su.Password)
 	}
-	assert.Nil(fake.users["jesse"])
+	assert.Nil(fakeUser(fake, "jesse"))
 
 	// verify via emailed token: staged user is activated
 	router.storage.Delete(TokenAccountVerify + TokenIssuedPrefix + "jesse")
@@ -52,14 +98,14 @@ func TestStagedSignupAndVerifyFlow(t *testing.T) {
 	resp := tc.postForm("/auth/verify/"+token, url.Values{}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
-	assert.Nil(fake.stageusers["jesse"])
-	u := fake.users["jesse"]
+	assert.Nil(fakeStageUser(fake, "jesse"))
+	u := fakeUser(fake, "jesse")
 	if assert.NotNil(u) {
 		assert.Equal("", u.Category)
 		assert.False(u.Locked)
 		// #15: the password came from the user at signup and was checked
 		// against the live policy, so it must work as-is on first login
-		assert.False(u.Expired)
+		assert.True(u.PasswdExpire.IsZero() || u.PasswdExpire.After(time.Now()))
 		// expiry follows the policy max lifetime (90 days in the fake),
 		// it is not simply removed
 		assert.WithinDuration(time.Now().AddDate(0, 0, 90), u.PasswdExpire, time.Minute)
@@ -80,7 +126,8 @@ func TestStagedSignupAdminApproveFlow(t *testing.T) {
 		viper.Set("accounts.require_admin_verify", true)
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+	modelStagedPasswords(fake)
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
 
 	verify := func(username, email string) {
 		tc := stagedSignup(t, app, username, email)
@@ -97,10 +144,10 @@ func TestStagedSignupAdminApproveFlow(t *testing.T) {
 	verify("kim", "kim@example.com")
 
 	// email verified: still staged, marked pending, no active account yet
-	if assert.NotNil(fake.stageusers["jesse"]) {
-		assert.Equal(UserCategoryPending, fake.stageusers["jesse"].Category)
+	if assert.NotNil(fakeStageUser(fake, "jesse")) {
+		assert.Equal(UserCategoryPending, fakeStageUser(fake, "jesse").Category)
 	}
-	assert.Nil(fake.users["jesse"])
+	assert.Nil(fakeUser(fake, "jesse"))
 
 	// admin sees both in the pending queue
 	tcAdmin := newTestClient(t, app)
@@ -114,18 +161,18 @@ func TestStagedSignupAdminApproveFlow(t *testing.T) {
 	// approve jesse: activated with the signup password usable, category cleared
 	resp = tcAdmin.postForm("/admin/user/approve", url.Values{"username": {"jesse"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Nil(fake.stageusers["jesse"])
-	u := fake.users["jesse"]
+	assert.Nil(fakeStageUser(fake, "jesse"))
+	u := fakeUser(fake, "jesse")
 	if assert.NotNil(u) {
 		assert.Equal("", u.Category)
-		assert.False(u.Expired)
+		assert.True(u.PasswdExpire.IsZero() || u.PasswdExpire.After(time.Now()))
 	}
 
 	// deny kim: staged registration is deleted, never became a real account
 	resp = tcAdmin.postForm("/admin/user/deny", url.Values{"username": {"kim"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Nil(fake.stageusers["kim"])
-	assert.Nil(fake.users["kim"])
+	assert.Nil(fakeStageUser(fake, "kim"))
+	assert.Nil(fakeUser(fake, "kim"))
 
 	// approve is refused for accounts that are not pending
 	resp = tcAdmin.postForm("/admin/user/approve", url.Values{"username": {"jesse"}}, htmx)
@@ -138,10 +185,11 @@ func TestStagedSignupVerifyResend(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("accounts.staged_signup", true)
 	})
+	modelStagedPasswords(fake)
 
 	newFakeSMTP(t) // delivery must succeed, or the issued marker is rolled back
 	stagedSignup(t, app, "jesse", "jesse@example.com")
-	assert.NotNil(fake.stageusers["jesse"])
+	assert.NotNil(fakeStageUser(fake, "jesse"))
 
 	// signup issued a verify token; clear the issued marker so the resend
 	// path can issue a fresh one
@@ -164,9 +212,10 @@ func TestStagedSignupDuplicateUsername(t *testing.T) {
 		viper.Set("accounts.enable_captcha", false)
 		viper.Set("accounts.staged_signup", true)
 	})
+	modelStagedPasswords(fake)
 	// active user with the same name: stageuser_add alone would not
 	// conflict until activation, so signup must check the active tree
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/signup")
@@ -180,7 +229,7 @@ func TestStagedSignupDuplicateUsername(t *testing.T) {
 	}, nil)
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
 	assert.Contains(readBody(t, resp), "already exists")
-	assert.Nil(fake.stageusers["walter"])
+	assert.Nil(fakeStageUser(fake, "walter"))
 
 	// staged user with the same name also conflicts
 	stagedSignup(t, app, "gus", "gus@example.com")

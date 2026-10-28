@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,11 +15,11 @@ import (
 func TestExpiryBannerAndPolicyDisplay(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{
+	fake.AddUser("walter", ipatest.User{
 		Password:     "Secret123!",
 		PasswdExpire: time.Now().Add(5 * 24 * time.Hour),
 	})
-	fake.addUser("jesse", &fakeUser{
+	fake.AddUser("jesse", ipatest.User{
 		Password:     "Secret123!",
 		PasswdExpire: time.Now().Add(60 * 24 * time.Hour),
 	})
@@ -49,7 +50,7 @@ func TestPasswordChangedEmailOptIn(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
 	sink := newFakeSMTP(t)
-	fake.addUser("walter", &fakeUser{Password: "OldSecret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
 
 	change := func(oldPw, newPw string) {
 		tc := newTestClient(t, app)
@@ -82,10 +83,10 @@ func TestPasswordExpiryReminderSweep(t *testing.T) {
 	viper.Set("email.password_expiry_reminders", []int{14, 7, 3})
 
 	now := time.Now()
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", PasswdExpire: now.Add(5 * 24 * time.Hour)})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!", PasswdExpire: now.Add(60 * 24 * time.Hour)})
-	fake.addUser("skyler", &fakeUser{Password: "Secret123!", Locked: true, PasswdExpire: now.Add(2 * 24 * time.Hour)})
-	fake.addUser("gus", &fakeUser{Password: "Secret123!"}) // no expiry set
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", PasswdExpire: now.Add(5 * 24 * time.Hour)})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!", PasswdExpire: now.Add(60 * 24 * time.Hour)})
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!", Locked: true, PasswdExpire: now.Add(2 * 24 * time.Hour)})
+	fake.AddUser("gus", ipatest.User{Password: "Secret123!"}) // no expiry set
 
 	router.expiryReminderSweep()
 
@@ -101,7 +102,7 @@ func TestPasswordExpiryReminderSweep(t *testing.T) {
 	assert.Equal(1, sink.count())
 
 	// crossing into a tighter window sends the next reminder
-	fake.users["walter"].PasswdExpire = now.Add(2 * 24 * time.Hour)
+	fake.UpdateUser("walter", func(u *ipatest.User) { u.PasswdExpire = now.Add(2 * 24 * time.Hour) })
 	router.expiryReminderSweep()
 	assert.Equal(2, sink.count())
 

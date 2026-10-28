@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +22,7 @@ import (
 func TestPasskeyRejectsUnusableHostname(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	begin := func(host string) *http.Response {
 		tc := newTestClient(t, app)
@@ -61,7 +62,7 @@ func (s *failingSetStorage) Set(key string, val []byte, exp time.Duration) error
 func TestPasskeyFinishStopsWhenChallengeNotConsumed(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")

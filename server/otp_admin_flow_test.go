@@ -2,12 +2,14 @@ package server
 
 import (
 	"fmt"
+	"html"
 	"net/url"
-	"strings"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/pquerna/otp/totp"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +18,7 @@ import (
 func TestOTPTokenLifecycle(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -24,25 +26,24 @@ func TestOTPTokenLifecycle(t *testing.T) {
 	// add: server creates the token and shows the QR code
 	resp := tc.postForm("/otptoken/add", url.Values{"desc": {"phone"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	if !assert.Len(fake.tokens, 1) {
+	tok := scannedToken(t, readBody(t, resp))
+	if !assert.Len(fake.OTPTokens(""), 1) {
 		return
 	}
-	tok := fake.tokens[0]
-	assert.Equal("walter", tok.Owner)
+	stored := fake.OTPTokens("")[0]
+	assert.Equal("walter", stored.Owner)
 
 	// notBefore must be sent as UTC — a local timestamp makes the token
 	// reject codes until the timezone offset elapses (ubccr#159)
-	nb, err := time.Parse("20060102150405Z", fake.lastNotBefore)
-	assert.NoError(err)
-	assert.WithinDuration(time.Now().UTC(), nb, time.Minute)
+	assert.WithinDuration(time.Now().UTC(), stored.NotBefore, time.Minute)
 
 	// verify with a real TOTP code computed from the secret
-	code, err := totp.GenerateCode(tok.Secret, time.Now())
+	code, err := totp.GenerateCode(tok.secret, time.Now())
 	assert.NoError(err)
 	resp = tc.postForm("/otptoken/verify", url.Values{
 		"otpcode": {code},
-		"uri":     {tok.uri()},
-		"uuid":    {tok.UUID},
+		"uri":     {tok.uri},
+		"uuid":    {tok.uuid},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
@@ -51,35 +52,58 @@ func TestOTPTokenLifecycle(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
 	// disable / enable / remove
-	resp = tc.postForm("/otptoken/disable", url.Values{"uuid": {tok.UUID}}, htmx)
+	resp = tc.postForm("/otptoken/disable", url.Values{"uuid": {tok.uuid}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.True(fake.tokens[0].Disabled)
+	assert.True(fake.OTPTokens("")[0].Disabled)
 
-	resp = tc.postForm("/otptoken/enable", url.Values{"uuid": {tok.UUID}}, htmx)
+	resp = tc.postForm("/otptoken/enable", url.Values{"uuid": {tok.uuid}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.False(fake.tokens[0].Disabled)
+	assert.False(fake.OTPTokens("")[0].Disabled)
 
-	resp = tc.postForm("/otptoken/remove", url.Values{"uuid": {tok.UUID}}, htmx)
+	resp = tc.postForm("/otptoken/remove", url.Values{"uuid": {tok.uuid}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Len(fake.tokens, 0)
+	assert.Len(fake.OTPTokens(""), 0)
+}
+
+var scanInputPattern = regexp.MustCompile(`name="(uuid|uri)" value="([^"]*)"`)
+
+type scanned struct{ uuid, uri, secret string }
+
+// scannedToken reads the token the scan dialog posts back to /otptoken/verify
+func scannedToken(t *testing.T, body string) scanned {
+	t.Helper()
+	var tok scanned
+	for _, m := range scanInputPattern.FindAllStringSubmatch(body, -1) {
+		if m[1] == "uuid" {
+			tok.uuid = html.UnescapeString(m[2])
+		} else {
+			tok.uri = html.UnescapeString(m[2])
+		}
+	}
+	u, err := url.Parse(tok.uri)
+	if err != nil || tok.uuid == "" {
+		t.Fatalf("no token in the scan dialog: uuid %q, uri %q", tok.uuid, tok.uri)
+	}
+	tok.secret = u.Query().Get("secret")
+	return tok
 }
 
 func TestOTPTokenVerifyWrongCode(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
 
 	resp := tc.postForm("/otptoken/add", url.Values{}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	tok := fake.tokens[0]
+	tok := scannedToken(t, readBody(t, resp))
 
 	resp = tc.postForm("/otptoken/verify", url.Values{
 		"otpcode": {"000000"},
-		"uri":     {tok.uri()},
-		"uuid":    {tok.UUID},
+		"uri":     {tok.uri},
+		"uuid":    {tok.uuid},
 	}, htmx)
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
 }
@@ -87,37 +111,34 @@ func TestOTPTokenVerifyWrongCode(t *testing.T) {
 func TestOTPTokenVerifyCancelRemovesToken(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
 
 	resp := tc.postForm("/otptoken/add", url.Values{}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	tok := fake.tokens[0]
+	tok := scannedToken(t, readBody(t, resp))
 
 	resp = tc.postForm("/otptoken/verify", url.Values{
 		"action": {"cancel"},
-		"uri":    {tok.uri()},
-		"uuid":   {tok.UUID},
+		"uri":    {tok.uri},
+		"uuid":   {tok.uuid},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Len(fake.tokens, 0)
+	assert.Len(fake.OTPTokens(""), 0)
 }
 
 func TestOTPRemoveLastActiveTokenBlocked(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{
+	fake.AddUser("walter", ipatest.User{
 		Password:  "Secret123!",
 		AuthTypes: []string{"otp"},
 	})
-	// Secret is never validated on the remove path; a low-entropy
-	// placeholder keeps secret scanners quiet
-	fake.tokens = append(fake.tokens, &fakeOTPToken{
-		UUID:   "11111111-2222-3333-4444-555555555555",
-		Owner:  "walter",
-		Secret: strings.Repeat("A", 32),
+	fake.AddOTPToken(ipatest.OTPToken{
+		UUID:  "11111111-2222-3333-4444-555555555555",
+		Owner: "walter",
 	})
 
 	tc := newTestClient(t, app)
@@ -128,7 +149,7 @@ func TestOTPRemoveLastActiveTokenBlocked(t *testing.T) {
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Contains(readBody(t, resp), "last active token")
-	assert.Len(fake.tokens, 1)
+	assert.Len(fake.OTPTokens(""), 1)
 }
 
 func TestOTPAutoMFAEnable(t *testing.T) {
@@ -136,27 +157,27 @@ func TestOTPAutoMFAEnable(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.require_mfa", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
 
 	resp := tc.postForm("/otptoken/add", url.Values{}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	tok := fake.tokens[0]
+	tok := scannedToken(t, readBody(t, resp))
 
-	code, err := totp.GenerateCode(tok.Secret, time.Now())
+	code, err := totp.GenerateCode(tok.secret, time.Now())
 	assert.NoError(err)
 	resp = tc.postForm("/otptoken/verify", url.Values{
 		"otpcode": {code},
-		"uri":     {tok.uri()},
-		"uuid":    {tok.UUID},
+		"uri":     {tok.uri},
+		"uuid":    {tok.uuid},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
 	// verifying the first token under require_mfa flips the account to
 	// OTP-only auth
-	assert.Equal([]string{"otp"}, fake.users["walter"].AuthTypes)
+	assert.Equal([]string{"otp"}, fakeUser(fake, "walter").AuthTypes)
 }
 
 func TestOTPReadonlyGroup(t *testing.T) {
@@ -164,8 +185,8 @@ func TestOTPReadonlyGroup(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.otp_readonly_groups", []string{"hw-token-users"})
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"hw-token-users"}})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"hw-token-users"}})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 
 	// read-only user: list works, shows the notice, mutations are 403
 	tc := newTestClient(t, app)
@@ -177,7 +198,7 @@ func TestOTPReadonlyGroup(t *testing.T) {
 
 	resp = tc.postForm("/otptoken/add", url.Values{}, htmx)
 	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
-	assert.Len(fake.tokens, 0)
+	assert.Len(fake.OTPTokens(""), 0)
 
 	resp = tc.get("/otptoken/modal", htmx)
 	assert.Equal(fiber.StatusForbidden, resp.StatusCode)
@@ -187,7 +208,7 @@ func TestOTPReadonlyGroup(t *testing.T) {
 	tc2.login("jesse", "Secret123!")
 	resp = tc2.postForm("/otptoken/add", url.Values{}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Len(fake.tokens, 1)
+	assert.Len(fake.OTPTokens(""), 1)
 }
 
 func TestAdminUserList(t *testing.T) {
@@ -195,8 +216,8 @@ func TestAdminUserList(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -213,7 +234,7 @@ func TestAdminAuditList(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("admin.enabled", true)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"admins"}})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -227,7 +248,7 @@ func TestRateLimitOnAuthPosts(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("server.rate_limit_max", 3)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -247,7 +268,7 @@ func TestRateLimitNotBypassedBySpoofedXFF(t *testing.T) {
 	app, _, fake := newTestAppWith(t, func() {
 		viper.Set("server.rate_limit_max", 3)
 	})
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/login")
@@ -274,49 +295,49 @@ func TestRateLimitNotBypassedBySpoofedXFF(t *testing.T) {
 func TestOTPTokenVerifyCancelIsNotAnError(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
 
 	resp := tc.postForm("/otptoken/add", url.Values{"desc": {"phone"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	if !assert.Len(fake.tokens, 1) {
+	tok := scannedToken(t, readBody(t, resp))
+	if !assert.Len(fake.OTPTokens(""), 1) {
 		return
 	}
-	tok := fake.tokens[0]
 
 	resp = tc.postForm("/otptoken/verify", url.Values{
 		"action": {"cancel"},
-		"uri":    {tok.uri()},
-		"uuid":   {tok.UUID},
+		"uri":    {tok.uri},
+		"uuid":   {tok.uuid},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
 	body := readBody(t, resp)
 	assert.NotContains(body, T("otptoken.failed_to_verify_token"))
 	// the unverified token is still cleaned up
-	assert.Empty(fake.tokens)
+	assert.Empty(fake.OTPTokens(""))
 }
 
 // a token URI mokey cannot parse really is a failure and must still say so
 func TestOTPTokenVerifyUnparsableURIStillFails(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
 
 	resp := tc.postForm("/otptoken/add", url.Values{"desc": {"phone"}}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	if !assert.Len(fake.tokens, 1) {
+	if !assert.Len(fake.OTPTokens(""), 1) {
 		return
 	}
 
 	resp = tc.postForm("/otptoken/verify", url.Values{
 		"uri":  {"otpauth://totp/%zz"}, // invalid percent-encoding: url.Parse fails
-		"uuid": {fake.tokens[0].UUID},
+		"uuid": {fake.OTPTokens("")[0].UUID},
 	}, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Contains(readBody(t, resp), T("otptoken.failed_to_verify_token"))

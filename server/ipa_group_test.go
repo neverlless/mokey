@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/neverlless/goipa/ipatest"
 	"testing"
 
 	ipa "github.com/neverlless/goipa"
@@ -8,9 +9,9 @@ import (
 )
 
 // userSession logs a fake user in through goipa and returns the client
-func userSession(t *testing.T, fake *fakeIPA, username, password string) *ipa.Client {
+func userSession(t *testing.T, fake *ipatest.Server, username, password string) *ipa.Client {
 	t.Helper()
-	client := fake.client()
+	client := newFakeClient(fake)
 	err := client.RemoteLogin(username, password)
 	assert.NoError(t, err)
 	return client
@@ -18,16 +19,15 @@ func userSession(t *testing.T, fake *fakeIPA, username, password string) *ipa.Cl
 
 func TestGroupRPCLayer(t *testing.T) {
 	assert := assert.New(t)
-	fake := newFakeIPA()
-	defer fake.Close()
+	fake := ipatest.NewServer(t)
 
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addUser("jesse", &fakeUser{Password: "Secret123!"})
-	fake.addGroup("chemists", &fakeGroup{
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{
 		Description:  "Lab crew",
 		ManagerUsers: []string{"walter"},
 	})
-	fake.addGroup("plain", &fakeGroup{}) // no managers: not joinable
+	fake.AddGroup("plain", ipatest.Group{}) // no managers: not joinable
 
 	sponsor := userSession(t, fake, "walter", "Secret123!")
 

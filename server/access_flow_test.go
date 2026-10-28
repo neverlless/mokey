@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,30 +17,30 @@ func TestAccessPageSections(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
 
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"chemists"}})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"chemists"}})
 
 	// applies via group
-	fake.addHBACRule("lab-access", &fakeHBACRule{
-		Enabled: true, Description: "Lab SSH",
-		MemberGroups: []string{"chemists"}, MemberHosts: []string{"lab.test.local"},
-		MemberServices: []string{"sshd"},
+	fake.AddHBACRule("lab-access", ipatest.HBACRule{
+		Description: "Lab SSH",
+		Groups:      []string{"chemists"}, Hosts: []string{"lab.test.local"},
+		Services: []string{"sshd"},
 	})
 	// applies via direct uid
-	fake.addHBACRule("walter-direct", &fakeHBACRule{
-		Enabled: true, MemberUsers: []string{"walter"}, HostCategory: "all", ServiceCategory: "all",
+	fake.AddHBACRule("walter-direct", ipatest.HBACRule{
+		Users: []string{"walter"}, HostCategory: "all", ServiceCategory: "all",
 	})
 	// applies to everyone
-	fake.addHBACRule("allow-all", &fakeHBACRule{Enabled: true, UserCategory: "all", HostCategory: "all", ServiceCategory: "all"})
+	fake.AddHBACRule("allow-all", ipatest.HBACRule{UserCategory: "all", HostCategory: "all", ServiceCategory: "all"})
 	// someone else's rule: hidden
-	fake.addHBACRule("dea-only", &fakeHBACRule{Enabled: true, MemberUsers: []string{"hank"}, MemberHosts: []string{"dea.test.local"}})
+	fake.AddHBACRule("dea-only", ipatest.HBACRule{Users: []string{"hank"}, Hosts: []string{"dea.test.local"}})
 	// disabled: hidden
-	fake.addHBACRule("old-rule", &fakeHBACRule{Enabled: false, UserCategory: "all"})
+	fake.AddHBACRule("old-rule", ipatest.HBACRule{Disabled: true, UserCategory: "all"})
 
-	fake.addSudoRule("cook-sudo", &fakeSudoRule{
-		Enabled: true, MemberGroups: []string{"chemists"},
+	fake.AddSudoRule("cook-sudo", ipatest.SudoRule{
+		Groups:       []string{"chemists"},
 		HostCategory: "all", AllowCommands: []string{"/usr/bin/systemctl"},
 	})
-	fake.addSudoRule("dea-sudo", &fakeSudoRule{Enabled: true, MemberUsers: []string{"hank"}, CmdCategory: "all"})
+	fake.AddSudoRule("dea-sudo", ipatest.SudoRule{Users: []string{"hank"}, CmdCategory: "all"})
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -68,11 +69,12 @@ func TestAccessPageSections(t *testing.T) {
 func TestAccessSimulator(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
+	dropAllowAll(t, fake)
 
-	fake.addUser("walter", &fakeUser{Password: "Secret123!", Groups: []string{"chemists"}})
-	fake.addHBACRule("lab-access", &fakeHBACRule{
-		Enabled: true, MemberGroups: []string{"chemists"},
-		MemberHosts: []string{"lab.test.local"}, MemberServices: []string{"sshd"},
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"chemists"}})
+	fake.AddHBACRule("lab-access", ipatest.HBACRule{
+		Groups: []string{"chemists"},
+		Hosts:  []string{"lab.test.local"}, Services: []string{"sshd"},
 	})
 
 	tc := newTestClient(t, app)
@@ -103,13 +105,14 @@ func TestAccessSimulator(t *testing.T) {
 func TestAccessSimulatorIgnoresUserField(t *testing.T) {
 	assert := assert.New(t)
 	app, _, fake := newTestApp(t)
+	dropAllowAll(t, fake)
 
 	// hank has access, walter does not; walter must not be able to test as hank
-	fake.addUser("walter", &fakeUser{Password: "Secret123!"})
-	fake.addUser("hank", &fakeUser{Password: "Secret123!"})
-	fake.addHBACRule("dea-only", &fakeHBACRule{
-		Enabled: true, MemberUsers: []string{"hank"},
-		MemberHosts: []string{"dea.test.local"}, MemberServices: []string{"sshd"},
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("hank", ipatest.User{Password: "Secret123!"})
+	fake.AddHBACRule("dea-only", ipatest.HBACRule{
+		Users: []string{"hank"},
+		Hosts: []string{"dea.test.local"}, Services: []string{"sshd"},
 	})
 
 	tc := newTestClient(t, app)
