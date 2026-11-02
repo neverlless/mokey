@@ -7,7 +7,7 @@ require (
 	github.com/dustin/go-humanize v1.1.0
 	github.com/essentialkaos/branca/v2 v2.0.9
 	github.com/go-webauthn/webauthn v0.18.2
-	github.com/gofiber/fiber/v2 v2.52.15
+	github.com/gofiber/fiber/v2 v2.52.16
 	github.com/gofiber/storage/memory/v2 v2.1.2
 	github.com/gofiber/storage/redis/v3 v3.6.2
 	github.com/gofiber/storage/sqlite3/v2 v2.3.1
@@ -17,12 +17,12 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/sirupsen/logrus v1.10.2
-	github.com/slack-go/slack v0.30.1
+	github.com/slack-go/slack v0.33.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
-	github.com/valyala/fasthttp v1.76.0
-	golang.org/x/net v0.61.0
+	github.com/valyala/fasthttp v1.77.0
+	golang.org/x/net v0.62.0
 )
 
 require (
