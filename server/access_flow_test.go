@@ -18,7 +18,10 @@ func TestAccessPageSections(t *testing.T) {
 	app, _, fake := newTestApp(t)
 
 	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"chemists"}})
+	fake.AddGroup("scientists", ipatest.Group{MemberGroups: []string{"chemists"}})
 
+	// applies via nested group
+	fake.AddHBACRule("science-wing", ipatest.HBACRule{Groups: []string{"scientists"}, HostCategory: "all"})
 	// applies via group
 	fake.AddHBACRule("lab-access", ipatest.HBACRule{
 		Description: "Lab SSH",
@@ -51,6 +54,7 @@ func TestAccessPageSections(t *testing.T) {
 
 	assert.Contains(body, "lab-access")
 	assert.Contains(body, "Lab SSH")
+	assert.Contains(body, "science-wing")
 	assert.Contains(body, "walter-direct")
 	assert.Contains(body, "allow-all")
 	assert.NotContains(body, "dea-only")

@@ -87,7 +87,7 @@ func clientAllowed(clientID string, user *ipa.User) bool {
 			continue
 		}
 		for _, want := range p.Groups {
-			for _, have := range user.Groups {
+			for _, have := range memberOf(user) {
 				if strings.EqualFold(want, have) {
 					return true
 				}

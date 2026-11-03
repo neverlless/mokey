@@ -43,13 +43,13 @@ func (r *Router) accessVars(c *fiber.Ctx, vars fiber.Map) {
 
 	myHBAC := []*hbacRule{}
 	for _, rule := range hbac {
-		if rule.Enabled && ruleAppliesToUser(rule.UserCategory, rule.MemberUsers, rule.MemberGroups, user.Username, user.Groups) {
+		if rule.Enabled && ruleAppliesToUser(rule.UserCategory, rule.MemberUsers, rule.MemberGroups, user.Username, memberOf(user)) {
 			myHBAC = append(myHBAC, rule)
 		}
 	}
 	mySudo := []*sudoRule{}
 	for _, rule := range sudo {
-		if rule.Enabled && ruleAppliesToUser(rule.UserCategory, rule.MemberUsers, rule.MemberGroups, user.Username, user.Groups) {
+		if rule.Enabled && ruleAppliesToUser(rule.UserCategory, rule.MemberUsers, rule.MemberGroups, user.Username, memberOf(user)) {
 			mySudo = append(mySudo, rule)
 		}
 	}

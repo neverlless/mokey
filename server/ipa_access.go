@@ -5,6 +5,8 @@
 package server
 
 import (
+	"slices"
+
 	ipa "github.com/neverlless/goipa"
 )
 
@@ -131,7 +133,7 @@ func hbacTest(client *ipa.Client, user, targethost, service string) (*hbacTestRe
 }
 
 // ruleAppliesToUser: usercategory=all, direct uid membership, or a group
-// intersection. Direct membership only — nested groups out of scope.
+// intersection; userGroups should include nested groups (memberOf).
 func ruleAppliesToUser(usercategory string, memberUsers, memberGroups []string, username string, userGroups []string) bool {
 	if usercategory == "all" {
 		return true
@@ -149,4 +151,10 @@ func ruleAppliesToUser(usercategory string, memberUsers, memberGroups []string, 
 		}
 	}
 	return false
+}
+
+// memberOf lists the user's direct and nested groups; the nested ones come
+// from user_show only
+func memberOf(user *ipa.User) []string {
+	return append(slices.Clone(user.Groups), user.IndirectGroups...)
 }

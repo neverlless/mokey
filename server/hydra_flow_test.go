@@ -136,6 +136,7 @@ groups = ["lubelogger-users", "admins"]
 	}{
 		{"member of listed group", "lubelogger", []string{"ipausers", "lubelogger-users"}, false, true},
 		{"group match ignores case", "lubelogger", []string{"Admins"}, false, true},
+		{"member through nested group", "lubelogger", []string{"mechanics"}, false, true},
 		{"not a member", "lubelogger", []string{"ipausers"}, false, false},
 		{"unlisted client is open", "other-app", []string{"ipausers"}, false, true},
 		{"unlisted client with default_deny", "other-app", []string{"lubelogger-users"}, true, false},
@@ -150,6 +151,8 @@ groups = ["lubelogger-users", "admins"]
 				return
 			}
 			viper.Set("hydra.default_deny", tt.defaultDeny)
+			fake.AddGroup("mechanics", ipatest.Group{})
+			fake.AddGroup("lubelogger-users", ipatest.Group{MemberGroups: []string{"mechanics"}})
 			fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: tt.groups})
 			hy.seedConsentForClient("consent-g", "walter", tt.client)
 

@@ -319,8 +319,9 @@ client to everyone.
 
 Known limits:
 
-- Only direct group membership counts: the same list mokey sends in the
-  `groups` claim. Nested groups are not resolved.
+- Membership through nested groups counts, but the `groups` claim lists
+  direct groups only, so an application that checks the claim itself can
+  still refuse a user mokey let through.
 - Clients registered in Hydra with `skip_consent: true` never reach mokey's
   consent endpoint, so the check does not apply to them.
 - Removing a user from a group does not revoke tokens already issued. Refresh

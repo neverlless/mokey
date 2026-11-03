@@ -364,7 +364,7 @@ OIDC provider a site runs (Hydra, Keycloak, or FreeIPA's own when it ships).
 goipa v1 already decodes indirect group membership and the 4.13 password
 quality credits, so these items are mostly mokey-side work.
 
-- [ ] Nested group membership in the OAuth client gate (#51) and the Access
+- [x] Nested group membership in the OAuth client gate (#51) and the Access
       page — today only direct membership counts (also requested in the
       fajo-de fork)
 - [ ] FreeIPA 4.13 password policy credits (libpwquality) read and shown,

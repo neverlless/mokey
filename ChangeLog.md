@@ -1,5 +1,12 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- `[[hydra.clients]]` group checks and the Access page count membership
+  through nested groups, not only direct membership
+- mokey uses neverlless/goipa v1.1.0; stage users get their password from
+  the typed `stageuser_add` call
+
 ## [v2.4.3] - 2026-10-26
 
 - mokey uses neverlless/goipa v1.0.0 and calls FreeIPA only through its
