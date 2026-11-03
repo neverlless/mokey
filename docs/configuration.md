@@ -169,6 +169,15 @@ The unauthenticated health check endpoint `/healthz` is always enabled.
 | --- | --- | --- | --- |
 | `url` | string | — | Redis URL, e.g. `redis://user:password@localhost:6379/0`. |
 
+Tested with Redis 8.10 and Valkey 9.1. Only the user, password, database
+number and the `rediss://` scheme (TLS) are read from the URL; other query
+options such as timeouts are ignored, except `?skip_verify=true`, which turns
+off certificate checks. With `rediss://` the server certificate must chain to
+the system trust store; there is no option for a private CA yet. An ACL user
+needs only `~* +get +set +del +ping +select`. mokey writes keys without a
+prefix and never flushes the database, so give it a database of its own on a
+shared server.
+
 ## `[hydra]`
 
 Enables the [Ory Hydra](https://www.ory.sh/hydra/) login/consent flow for
