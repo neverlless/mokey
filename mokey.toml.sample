@@ -99,6 +99,11 @@ min_passwd_len = 8
 # FreeIPA policy wins.
 min_passwd_classes = 2
 
+# Refuse new passwords found in known breaches (Have I Been Pwned). Only the
+# first five hex digits of the password's SHA-1 hash leave the server. If the
+# API cannot be reached the password is accepted and a warning is logged.
+#check_breached_passwords = false
+
 # Show a "password expires in N days" banner in the portal when expiry is
 # this close. 0 disables the banner.
 # password_expiry_warning_days = 14

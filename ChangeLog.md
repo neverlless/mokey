@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Optional breached-password check against Have I Been Pwned
+  (`accounts.check_breached_passwords`, off by default). It uses the
+  k-anonymity range API and accepts the password if the API is unreachable
 - `[[hydra.clients]]` group checks and the Access page count membership
   through nested groups, not only direct membership
 - Passwords are checked against FreeIPA 4.13's libpwquality rules:

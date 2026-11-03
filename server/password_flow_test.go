@@ -74,6 +74,28 @@ func TestPasswordChangeMismatchedConfirm(t *testing.T) {
 	assert.Equal("OldSecret123!", fakeUser(fake, "walter").Password)
 }
 
+func TestPasswordChangeBreached(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	viper.Set("accounts.check_breached_passwords", true)
+	fakePwned(t, func(w http.ResponseWriter, suffix string) {
+		_, _ = w.Write([]byte(suffix + ":7\r\n"))
+	})
+	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "OldSecret123!")
+
+	resp := tc.postForm("/password/change", url.Values{
+		"password":     {"OldSecret123!"},
+		"newpassword":  {pwnedFixture},
+		"newpassword2": {pwnedFixture},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), T("password.breached"))
+	assert.Equal("OldSecret123!", fakeUser(fake, "walter").Password)
+}
+
 func TestPasswordChangeInvalidatesOtherSessions(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)

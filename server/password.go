@@ -202,6 +202,19 @@ func validatePassword(password, passwordConfirm, username string, policy *PwPoli
 		return err
 	}
 
+	if viper.GetBool("accounts.check_breached_passwords") {
+		breached, err := passwordBreached(password)
+		if err != nil {
+			// fail open: an unreachable API must not lock users out of password changes
+			log.WithFields(log.Fields{
+				"username": username,
+				"err":      err,
+			}).Warn("Breached-password check failed, accepting password")
+		} else if breached {
+			return errors.New(T("password.breached"))
+		}
+	}
+
 	return nil
 }
 

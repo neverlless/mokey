@@ -369,7 +369,7 @@ quality credits, so these items are mostly mokey-side work.
       fajo-de fork)
 - [x] FreeIPA 4.13 password policy credits (libpwquality) read and shown,
       so the portal does not drift from the server again (#15, #16)
-- [ ] Optional breached-password check against Have I Been Pwned
+- [x] Optional breached-password check against Have I Been Pwned
       (k-anonymity range API, off by default) — LTB SSP and PWM have it
 - [ ] Revoke a user's Hydra consent sessions for a client when they lose
       the group that admits them to it
