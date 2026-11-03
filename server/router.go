@@ -316,6 +316,10 @@ func (r *Router) Index(c *fiber.Ctx) error {
 		r.accessVars(c, vars)
 	}
 
+	if path == "password" {
+		r.pwPolicyVars(user.Username, vars)
+	}
+
 	if path == "sshkey" {
 		vars["keys"] = user.SSHAuthKeys
 	} else if path == "security" {

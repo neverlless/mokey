@@ -4,6 +4,13 @@
 
 - `[[hydra.clients]]` group checks and the Access page count membership
   through nested groups, not only direct membership
+- Passwords are checked against FreeIPA 4.13's libpwquality rules:
+  required digits, upper- and lowercase letters and special characters
+  (negative credits), length credits, `maxrepeat`, `maxsequence`,
+  palindromes and `usercheck`. The requirements list shows them, and the
+  dictionary check (`dictcheck`), which only FreeIPA can run
+- The password requirements now show when the Password page is first
+  opened, not only after a rejected change
 - mokey uses neverlless/goipa v1.1.0; stage users get their password from
   the typed `stageuser_add` call
 

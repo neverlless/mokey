@@ -367,7 +367,7 @@ quality credits, so these items are mostly mokey-side work.
 - [x] Nested group membership in the OAuth client gate (#51) and the Access
       page — today only direct membership counts (also requested in the
       fajo-de fork)
-- [ ] FreeIPA 4.13 password policy credits (libpwquality) read and shown,
+- [x] FreeIPA 4.13 password policy credits (libpwquality) read and shown,
       so the portal does not drift from the server again (#15, #16)
 - [ ] Optional breached-password check against Have I Been Pwned
       (k-anonymity range API, off by default) — LTB SSP and PWM have it

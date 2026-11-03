@@ -1,8 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/dchest/captcha"
@@ -18,12 +21,14 @@ import (
 // from the directory (ubccr/mokey#16), and stageuser_add applies no policy at
 // all, so a staged signup would otherwise accept a password FreeIPA rejects.
 // A nil policy means the lookup failed; fall back to the config.
-func checkPassword(pass string, policy *PwPolicy) error {
+func checkPassword(pass, username string, policy *PwPolicy) error {
 	minLength := viper.GetInt("accounts.min_passwd_len")
 	minClasses := viper.GetInt("accounts.min_passwd_classes")
 
+	pwquality := policy != nil && policy.pwquality()
 	if policy != nil {
-		if policy.MinLength > minLength {
+		// libpwquality replaces FreeIPA's plain length check, see checkPwquality
+		if !pwquality && policy.MinLength > minLength {
 			minLength = policy.MinLength
 		}
 		if policy.MinClasses > minClasses {
@@ -82,10 +87,105 @@ func checkPassword(pass string, policy *PwPolicy) error {
 		return errors.New(T("password.policy_not_met"))
 	}
 
+	if pwquality {
+		return checkPwquality(pass, username, policy)
+	}
+
 	return nil
 }
 
-func validatePassword(password, passwordConfirm string, policy *PwPolicy) error {
+// checkPwquality runs libpwquality's checks the way FreeIPA 4.13 configures
+// them, in libpwquality's order. Like libpwquality it works on bytes:
+// counting runes would reject non-ASCII passwords FreeIPA accepts. The
+// dictionary check (cracklib) is left to FreeIPA.
+func checkPwquality(pass, username string, p *PwPolicy) error {
+	b := []byte(pass)
+	mono := slices.Clone(b)
+	for i, c := range mono {
+		if c >= 'A' && c <= 'Z' {
+			mono[i] = c + 'a' - 'A'
+		}
+	}
+
+	var digits, uppers, lowers, others int
+	for _, c := range b {
+		switch {
+		case c >= '0' && c <= '9':
+			digits++
+		case c >= 'A' && c <= 'Z':
+			uppers++
+		case c >= 'a' && c <= 'z':
+			lowers++
+		default:
+			others++
+		}
+	}
+
+	// shortcut: length counts runes while libpwquality counts bytes, so a
+	// non-ASCII password near the minimum may be refused here although
+	// FreeIPA would take it; count bytes if that ever bites
+	size := len([]rune(pass))
+	for _, class := range []struct {
+		count, credit int
+		tooFew        string
+	}{
+		{digits, p.DigitCredit, "password.too_few_digits"},
+		{uppers, p.UpperCredit, "password.too_few_upper"},
+		{lowers, p.LowerCredit, "password.too_few_lower"},
+		{others, p.OtherCredit, "password.too_few_special"},
+	} {
+		if class.count < -class.credit {
+			return errors.New(T(class.tooFew))
+		}
+		if class.credit > 0 {
+			size += min(class.count, class.credit)
+		}
+	}
+	// libpwquality's floor; FreeIPA refuses a lower minlength for such policies anyway
+	if minLength := max(p.MinLength, 6); size < minLength {
+		return fmt.Errorf(T("password.min_length"), minLength)
+	}
+
+	rev := slices.Clone(mono)
+	slices.Reverse(rev)
+	if bytes.Equal(mono, rev) {
+		return errors.New(T("password.palindrome"))
+	}
+
+	if p.MaxRepeat > 0 && longestRun(b, 0) > p.MaxRepeat {
+		return errors.New(T("password.too_many_repeats"))
+	}
+	if p.MaxSequence > 0 && max(longestRun(b, 1), longestRun(b, -1)) > p.MaxSequence {
+		return errors.New(T("password.sequence"))
+	}
+
+	if user := strings.ToLower(username); p.UserCheck && len(user) >= 4 {
+		resu := []byte(user)
+		slices.Reverse(resu)
+		if bytes.Contains(mono, []byte(user)) || bytes.Contains(mono, resu) {
+			return errors.New(T("password.contains_username"))
+		}
+	}
+
+	return nil
+}
+
+// longestRun is the length of the longest stretch of b in which each byte
+// is the previous one plus step. libpwquality compares signed chars.
+func longestRun(b []byte, step int) int {
+	longest, run := min(len(b), 1), 1
+	for i := 1; i < len(b); i++ {
+		if int(int8(b[i]))-int(int8(b[i-1])) == step {
+			run++
+		} else {
+			run = 1
+		}
+		longest = max(longest, run)
+	}
+	return longest
+}
+
+func validatePassword(password, passwordConfirm, username string, policy *PwPolicy) error {
 	if password == "" {
 		return errors.New(T("password.enter_new"))
 	}
@@ -98,14 +198,14 @@ func validatePassword(password, passwordConfirm string, policy *PwPolicy) error 
 		return errors.New("Password do not match. Please confirm your password.")
 	}
 
-	if err := checkPassword(password, policy); err != nil {
+	if err := checkPassword(password, username, policy); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validatePasswordChange(passwordCurrent, password, passwordConfirm string, policy *PwPolicy) error {
+func validatePasswordChange(passwordCurrent, password, passwordConfirm, username string, policy *PwPolicy) error {
 	if passwordCurrent == "" {
 		return errors.New(T("password.enter_current"))
 	}
@@ -114,7 +214,20 @@ func validatePasswordChange(passwordCurrent, password, passwordConfirm string, p
 		return errors.New(T("password.same_as_new"))
 	}
 
-	return validatePassword(password, passwordConfirm, policy)
+	return validatePassword(password, passwordConfirm, username, policy)
+}
+
+// pwPolicyVars puts the user's password policy on the page, if FreeIPA
+// returns it
+func (r *Router) pwPolicyVars(username string, vars fiber.Map) {
+	if policy, err := pwPolicyShow(r.adminClient, username); err == nil {
+		vars["pwpolicy"] = policy
+	} else {
+		log.WithFields(log.Fields{
+			"username": username,
+			"err":      err,
+		}).Warn("Failed to fetch password policy for display")
+	}
 }
 
 func (r *Router) PasswordChange(c *fiber.Ctx) error {
@@ -127,14 +240,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 
 	// every render of this page shows the policy, including the one that
 	// reports a rejected password — that is when the user needs it most
-	if policy, err := pwPolicyShow(r.adminClient, user.Username); err == nil {
-		vars["pwpolicy"] = policy
-	} else {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      err,
-		}).Warn("Failed to fetch password policy for display")
-	}
+	r.pwPolicyVars(user.Username, vars)
 
 	if c.Method() == fiber.MethodGet {
 		return c.Render("password.html", vars)
@@ -151,7 +257,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 	}
 
 	policy, _ := vars["pwpolicy"].(*PwPolicy)
-	if err := validatePasswordChange(password, newpass, newpass2, policy); err != nil {
+	if err := validatePasswordChange(password, newpass, newpass2, user.Username, policy); err != nil {
 		vars["message"] = err.Error()
 		return c.Render("password.html", vars)
 	}
@@ -318,7 +424,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.enter_6_digit_code_help"))
 	}
 
-	if err := validatePassword(password, passwordConfirm, policy); err != nil {
+	if err := validatePassword(password, passwordConfirm, user.Username, policy); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
@@ -416,7 +522,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		policy = nil
 	}
 
-	if err := validatePasswordChange(password, newpass, newpass2, policy); err != nil {
+	if err := validatePasswordChange(password, newpass, newpass2, user.Username, policy); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
