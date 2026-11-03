@@ -37,6 +37,19 @@ type PwPolicy struct {
 	MaxLifeDays  int // pwpolicy_show reports max lifetime in days
 	MinLifeHours int // ...and min lifetime in hours
 	MaxFailure   int
+
+	// libpwquality options, FreeIPA 4.13+. A negative credit -N requires
+	// at least N characters of that class.
+	MaxRepeat, MaxSequence                             int
+	DictCheck, UserCheck                               bool
+	DigitCredit, UpperCredit, LowerCredit, OtherCredit int
+}
+
+// pwquality reports whether FreeIPA hands passwords under this policy to
+// libpwquality, which it does once any of its options is set
+func (p *PwPolicy) pwquality() bool {
+	return p.MaxRepeat != 0 || p.MaxSequence != 0 || p.DictCheck || p.UserCheck ||
+		p.DigitCredit != 0 || p.UpperCredit != 0 || p.LowerCredit != 0 || p.OtherCredit != 0
 }
 
 // pwPolicyShow fetches the effective password policy for the user via the
@@ -64,6 +77,14 @@ func pwPolicyShow(client *ipa.Client, username string) (*PwPolicy, error) {
 		MaxLifeDays:  int(p.MaxLife / (24 * time.Hour)),
 		MinLifeHours: int(p.MinLife / time.Hour),
 		MaxFailure:   p.MaxFailures,
+		MaxRepeat:    p.MaxRepeat,
+		MaxSequence:  p.MaxSequence,
+		DictCheck:    p.DictCheck,
+		UserCheck:    p.UserCheck,
+		DigitCredit:  p.DigitCredit,
+		UpperCredit:  p.UpperCredit,
+		LowerCredit:  p.LowerCredit,
+		OtherCredit:  p.OtherCredit,
 	}, nil
 }
 

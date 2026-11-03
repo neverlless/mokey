@@ -276,6 +276,11 @@ func TestPasswordChangePolicyVisibleOnError(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Contains(readBody(t, resp), T("password.policy_title"))
 
+	// and on the full page a browser loads first
+	resp = tc.get("/password")
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(readBody(t, resp), T("password.policy_title"))
+
 	// and must still render when the submission is rejected
 	resp = tc.postForm("/password/change", url.Values{
 		"password":     {"Secret123!"},
@@ -433,4 +438,55 @@ func TestSignupSurfacesFreeIPAPolicyRejection(t *testing.T) {
 	}, nil)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.NotNil(fakeUser(fake, "jesse"))
+}
+
+// stageuser_add applies no policy at all, so for a staged signup mokey's
+// libpwquality pre-check is the only one there is
+func TestStagedSignupEnforcesPwquality(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("accounts.enable_captcha", false)
+		viper.Set("accounts.staged_signup", true)
+	})
+	policy, _ := fake.PwPolicy("global_policy")
+	policy.OtherCredit = -1
+	policy.DigitCredit = -2
+	policy.MaxRepeat = 2
+	policy.MaxSequence = 3
+	policy.UserCheck = true
+	policy.DictCheck = true
+	fake.SetPwPolicy("global_policy", policy)
+
+	tc := newTestClient(t, app)
+	body := readBody(t, tc.get("/signup"))
+	for _, want := range []string{
+		T("password.policy_min_special_part2"),
+		T("password.policy_min_digits_part1") + "2" + T("password.policy_min_digits_part2"),
+		T("password.policy_max_repeat_part1") + "2",
+		T("password.policy_max_sequence_part1") + "3",
+		T("password.policy_no_username"),
+		T("password.policy_no_dictionary"),
+	} {
+		assert.Contains(body, want)
+	}
+
+	signup := func(password string) *http.Response {
+		tc.getCSRF("/signup")
+		return tc.postForm("/signup", url.Values{
+			"username":  {"jesse"},
+			"email":     {"jesse@example.com"},
+			"first":     {"Jesse"},
+			"last":      {"Pinkman"},
+			"password":  {password},
+			"password2": {password},
+		}, nil)
+	}
+
+	resp := signup("Pinkman1972")
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Equal(T("password.too_few_special"), readBody(t, resp))
+	assert.Nil(fakeStageUser(fake, "jesse"))
+
+	assert.Equal(fiber.StatusOK, signup("Pinkman-1972").StatusCode)
+	assert.NotNil(fakeStageUser(fake, "jesse"))
 }

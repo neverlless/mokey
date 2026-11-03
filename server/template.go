@@ -30,6 +30,7 @@ var funcMap = template.FuncMap{
 	"PhoneCountries":         PhoneCountries,
 	"PhoneFlag":              PhoneFlag,
 	"T":                      T,
+	"Neg":                    func(n int) int { return -n },
 }
 
 type TemplateRenderer struct {

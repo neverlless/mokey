@@ -210,7 +210,7 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string,
 		policy = nil
 	}
 
-	if err := validatePassword(password, passwordConfirm, policy); err != nil {
+	if err := validatePassword(password, passwordConfirm, user.Username, policy); err != nil {
 		return err
 	}
 
