@@ -5,6 +5,11 @@
 - Optional breached-password check against Have I Been Pwned
   (`accounts.check_breached_passwords`, off by default). It uses the
   k-anonymity range API and accepts the password if the API is unreachable
+- A user who loses the group that admits them to a `[[hydra.clients]]`
+  client has their Hydra consent sessions for it revoked, so their refresh
+  tokens stop working: at once for removals made in mokey, and through a
+  sweep (`hydra.consent_sweep_interval`, default `1h`) or their next
+  sign-in attempt for removals made directly in FreeIPA
 - `[[hydra.clients]]` group checks and the Access page count membership
   through nested groups, not only direct membership
 - Passwords are checked against FreeIPA 4.13's libpwquality rules:

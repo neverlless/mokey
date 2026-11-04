@@ -318,6 +318,11 @@ driver = "memory"
 # every FreeIPA user may sign in to every client.
 # default_deny = false
 
+# How often to revoke consent sessions of users removed from a client's
+# groups directly in FreeIPA. Removals made in mokey revoke at once.
+# "0" disables the sweep. Default: "1h".
+# consent_sweep_interval = "1h"
+
 # Limit an OAuth client to members of FreeIPA groups (direct membership,
 # names compared case-insensitively). Repeat the block per client.
 # [[hydra.clients]]

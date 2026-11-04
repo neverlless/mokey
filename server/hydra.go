@@ -68,7 +68,7 @@ type hydraClientPolicy struct {
 
 // clientAllowed reports whether user may sign in to the OAuth client.
 // Clients without a [[hydra.clients]] entry are open to every user unless
-// hydra.default_deny is set. Only direct group membership is checked.
+// hydra.default_deny is set. Nested groups count (memberOf).
 func clientAllowed(clientID string, user *ipa.User) bool {
 	var policies []hydraClientPolicy
 	if err := viper.UnmarshalKey("hydra.clients", &policies); err != nil {
@@ -158,6 +158,9 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 				"err":      err,
 				"username": subject,
 			}).Error("Failed to reject the consent challenge")
+		}
+		if clientGroupsEnforced() {
+			r.revokeDisallowedConsents(user)
 		}
 
 		log.WithFields(log.Fields{

@@ -230,6 +230,9 @@ func (r *Router) GroupApprove(c *fiber.Ctx) error {
 	}).Info(action)
 
 	r.sendGroupDecision(req.Username, g.Name, true, req.Type)
+	if req.Type == groupRequestLeave {
+		r.goBG(func() { r.revokeConsentsOf(req.Username) })
+	}
 
 	vars := fiber.Map{"user": r.user(c)}
 	r.groupsVars(c, vars)
@@ -297,6 +300,7 @@ func (r *Router) GroupRemoveMember(c *fiber.Ctx) error {
 	}).Info("AUDIT group member removed")
 
 	r.goBG(func() { r.notifyGroupRemoved(target, g.Name) })
+	r.goBG(func() { r.revokeConsentsOf(target) })
 
 	vars := fiber.Map{"user": user}
 	r.groupsVars(c, vars)

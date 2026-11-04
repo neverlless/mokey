@@ -324,9 +324,12 @@ Known limits:
   still refuse a user mokey let through.
 - Clients registered in Hydra with `skip_consent: true` never reach mokey's
   consent endpoint, so the check does not apply to them.
-- Removing a user from a group does not revoke tokens already issued. Refresh
-  tokens keep working until they expire or the consent is revoked (on the
-  Security page or via the Hydra admin API).
+- Tokens already issued are revoked when a user loses the group that admits
+  them: at once when a sponsor removes them or approves their leave request
+  in mokey, and for removals made directly in FreeIPA at the next sweep
+  (`hydra.consent_sweep_interval`, hourly by default) or when the user next
+  tries that client. Until then their tokens keep working, and a client
+  that validates JWT access tokens itself accepts them until they expire.
 
 ## Localization
 

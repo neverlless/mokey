@@ -371,7 +371,7 @@ quality credits, so these items are mostly mokey-side work.
       so the portal does not drift from the server again (#15, #16)
 - [x] Optional breached-password check against Have I Been Pwned
       (k-anonymity range API, off by default) — LTB SSP and PWM have it
-- [ ] Revoke a user's Hydra consent sessions for a client when they lose
+- [x] Revoke a user's Hydra consent sessions for a client when they lose
       the group that admits them to it
 - [ ] Clear handling of AD-trust and external-IdP users, who cannot reset
       or change a password in FreeIPA
