@@ -1,0 +1,9 @@
+# Overlay on the demo stand for the integration and e2e tests: signup and
+# forgot-password cannot be driven through a CAPTCHA.
+#
+#   docker compose -f examples/demo/compose.yml -f test/compose.yml up -d
+
+services:
+  mokey:
+    environment:
+      MOKEY_ACCOUNTS_ENABLE_CAPTCHA: "false"

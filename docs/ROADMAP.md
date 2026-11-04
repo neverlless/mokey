@@ -404,7 +404,7 @@ quality credits, so these items are mostly mokey-side work.
       logrus (maintenance mode); stdlib validation replacing govalidator
 - [x] Tests: goipa's `ipatest`, checked against real FreeIPA 4.9–4.13,
       replaces the hand-written fake FreeIPA — done in v2.5
-- [ ] Integration tests against the demo's FreeIPA container and browser
+- [x] Integration tests against the demo's FreeIPA container and browser
       end-to-end tests including passkey enrollment
 - [x] Redis over TLS with a private CA (`[storage.redis]` CA and client
       certificate options)

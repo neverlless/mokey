@@ -1,0 +1,61 @@
+name: Integration
+
+# Runs the integration and browser tests in test/ against the demo stand:
+# a real FreeIPA (its first install takes 5-10 minutes), mokey built from
+# this commit, and Mailpit. Too slow for every push.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  stand:
+    name: Demo stand tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      MOKEY_IMAGE: mokey:ci
+      MOKEY_IT_URL: http://localhost:8866
+      COMPOSE: docker compose -f examples/demo/compose.yml -f test/compose.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: test/integration/go.mod
+          cache-dependency-path: test/integration/go.sum
+
+      - name: Build mokey
+        run: docker build -t mokey:ci .
+
+      - name: Start the demo stand
+        run: $COMPOSE up -d --wait --wait-timeout 1800 mokey
+
+      - name: Wait for mokey
+        run: |
+          for i in $(seq 1 90); do
+            curl -sf "$MOKEY_IT_URL/healthz" && exit 0
+            sleep 2
+          done
+          exit 1
+
+      - name: Integration tests
+        working-directory: test/integration
+        run: go test -count=1 -v -tags integration ./...
+
+      - name: Install Chromium
+        working-directory: test/integration
+        run: go run github.com/mxschmitt/playwright-go/cmd/playwright install --with-deps chromium
+
+      - name: Browser tests
+        working-directory: test/integration
+        run: go test -count=1 -v -tags e2e ./...
+
+      - name: Stand logs
+        if: failure()
+        run: $COMPOSE logs --no-color ipa setup mokey | tail -n 500
