@@ -113,6 +113,14 @@ func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
 // SendPasswordElsewhereEmail answers a reset request from a user whose
 // password FreeIPA does not manage: reason says where it is managed.
 func (e *Emailer) SendPasswordElsewhereEmail(user *ipa.User, reason string, ctx *fiber.Ctx) error {
+	// same resend cooldown as a reset link, so the form cannot flood the inbox
+	marker := TokenPasswordReset + TokenIssuedPrefix + user.Username
+	if sent, err := e.storage.Get(marker); err != nil || sent != nil {
+		return err
+	}
+	if err := e.storage.Set(marker, []byte("true"), time.Duration(viper.GetInt("email.resend_cooldown"))*time.Second); err != nil {
+		return err
+	}
 	return e.sendEmail(user, ctx, T("email_template.password_elsewhere_subject"), "password-elsewhere", map[string]interface{}{"reason": reason})
 }
 

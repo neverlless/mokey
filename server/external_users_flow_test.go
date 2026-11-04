@@ -122,6 +122,8 @@ func TestForgotPasswordForIdPUser(t *testing.T) {
 	external := readBody(t, tc.postForm("/auth/forgotpw", url.Values{"username": {"walter"}}, nil))
 	unknown := readBody(t, tc.postForm("/auth/forgotpw", url.Values{"username": {"nobody"}}, nil))
 	assert.Equal(unknown, external, "the page must not single out external users")
+	// a repeat inside the resend cooldown sends nothing more
+	tc.postForm("/auth/forgotpw", url.Values{"username": {"walter"}}, nil)
 
 	msgs := sink.all()
 	if assert.Len(msgs, 1) {
@@ -130,6 +132,7 @@ func TestForgotPasswordForIdPUser(t *testing.T) {
 	}
 
 	// a reset link issued before the switch to the IdP no longer works
+	assert.NoError(router.storage.Delete(TokenPasswordReset + TokenIssuedPrefix + "walter"))
 	token, err := NewToken("walter", "walter@example.com", TokenPasswordReset, router.storage)
 	assert.NoError(err)
 	assert.Equal(fiber.StatusNotFound, tc.get("/auth/resetpw/"+token).StatusCode)
