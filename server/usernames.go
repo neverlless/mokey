@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/mail"
 	"regexp"
 	"strings"
 
-	valid "github.com/asaskevich/govalidator"
 	"github.com/gofiber/fiber/v2"
 	"github.com/neverlless/goipa"
 	"github.com/spf13/viper"
@@ -19,7 +19,20 @@ var (
 
 	usernameRegx = regexp.MustCompile("^[a-zA-Z0-9_.][a-zA-Z0-9_.-]{0,31}$")
 	rxUsername   = regexp.MustCompile("[^a-zA-Z0-9_.-]")
+	// dotted hostname, non-ASCII labels allowed
+	rxEmailDomain = regexp.MustCompile(`^(?:[\p{L}\p{N}](?:[\p{L}\p{N}._~-]*[\p{L}\p{N}])?\.)+[\p{L}](?:[\p{L}\p{N}_~-]*[\p{L}])?$`)
 )
+
+// isEmail accepts a bare addr-spec (no display name, no quoted local part)
+// with a dotted domain
+func isEmail(s string) bool {
+	addr, err := mail.ParseAddress(s)
+	if err != nil || addr.Address != s {
+		return false
+	}
+	at := strings.LastIndex(s, "@")
+	return rxEmailDomain.MatchString(s[at+1:])
+}
 
 func defaultUsernameGenerator(username string) string {
 	return rxUsername.ReplaceAllString(username, "")
@@ -62,7 +75,7 @@ func generateUsernameFromEmail(user *ipa.User, allowedDomains map[string]string)
 }
 
 func validateEmail(user *ipa.User, allowedDomains map[string]string) error {
-	if !valid.IsEmail(user.Email) {
+	if !isEmail(user.Email) {
 		return errors.New("Please provide a valid email address")
 	}
 
@@ -95,7 +108,7 @@ func validateUsername(user *ipa.User) error {
 		return fmt.Errorf("%w: %s", ErrInvalidUsername, user.Username)
 	}
 
-	if valid.IsNumeric(user.Username) {
+	if isDigits(user.Username) {
 		return errors.New("Username must include at least one letter")
 	}
 
@@ -123,7 +136,7 @@ func (r *Router) UsernameForgot(c *fiber.Ctx) error {
 	}
 
 	email := strings.TrimSpace(strings.ToLower(c.FormValue("email")))
-	if email == "" || !valid.IsEmail(email) {
+	if email == "" || !isEmail(email) {
 		return c.Render("username-forgot-success.html", fiber.Map{})
 	}
 

@@ -6,6 +6,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// isE164 replaced govalidator.IsE164 for the "+<digits>" values joinPhone builds
+func TestIsE164(t *testing.T) {
+	for _, tt := range []struct {
+		n    string
+		want bool
+	}{
+		{"+15055550100", true},
+		{"+12", true},
+		{"+123456789012345", true},
+		{"+1", false},
+		{"+1234567890123456", false},
+		{"+0123", false},
+		{"+", false},
+		{"+1a", false},
+		{"+٣٤٥", false},
+	} {
+		assert.Equal(t, tt.want, isE164(tt.n), "%q", tt.n)
+	}
+}
+
 func TestJoinPhone(t *testing.T) {
 	assert := assert.New(t)
 
