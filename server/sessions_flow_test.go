@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"encoding/gob"
 	"net/url"
 	"regexp"
 	"testing"
@@ -193,4 +195,30 @@ func TestNewLoginEmailOptIn(t *testing.T) {
 	if assert.Equal(1, sink.count()) {
 		assert.Contains(sink.all()[0], "New sign-in")
 	}
+}
+
+// A session saved by Fiber v2 (redis, sqlite3) must survive the upgrade
+func TestFiberV2SessionStaysSignedIn(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	id := tc.cookies["session_id"]
+
+	raw, err := router.storage.Get(id)
+	assert.NoError(err)
+	var data map[any]any
+	assert.NoError(gob.NewDecoder(bytes.NewReader(raw)).Decode(&data))
+	v2 := make(map[string]interface{}, len(data))
+	for k, v := range data {
+		v2[k.(string)] = v
+	}
+	var buf bytes.Buffer
+	assert.NoError(gob.NewEncoder(&buf).Encode(&v2))
+	assert.NoError(router.storage.Set(id, buf.Bytes(), time.Minute))
+
+	resp := tc.get("/")
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
 }
