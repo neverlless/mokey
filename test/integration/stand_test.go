@@ -55,6 +55,10 @@ func TestMain(m *testing.M) {
 	if ipaAdminPw == "" {
 		ipaAdminPw = demoAdminSecret()
 	}
+	if err := waitReady(2 * time.Minute); err != nil {
+		fmt.Fprintln(os.Stderr, "mokey not ready:", err)
+		os.Exit(1)
+	}
 	if err := setupStand(); err != nil {
 		fmt.Fprintln(os.Stderr, "stand setup:", err)
 		os.Exit(1)
@@ -63,6 +67,26 @@ func TestMain(m *testing.M) {
 	_, _ = ipaCmd("", "pwpolicy-del", policyGroup)
 	_, _ = ipaCmd("", "group-del", policyGroup)
 	os.Exit(code)
+}
+
+// waitReady polls /healthz: a freshly started mokey container enrolls in
+// FreeIPA before it listens, and compose --wait does not cover that
+func waitReady(timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		resp, err := http.Get(baseURL + "/healthz")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+			err = fmt.Errorf("healthz: %s", resp.Status)
+		}
+		if time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(time.Second)
+	}
 }
 
 // demoAdminSecret reads the admin password from the demo compose file, so it

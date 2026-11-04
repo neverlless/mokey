@@ -84,10 +84,6 @@ func TestPasskeyEnrollment(t *testing.T) {
 		t.Skip("passkeys need a secure context: use http://localhost")
 	}
 	u := newUser(t)
-	// FreeIPA adds this object class on the first passkey, and the
-	// self-service rule lets users write ipapasskey only, not objectclass:
-	// without it a user's first registration fails with "Insufficient access"
-	mustIPA(t, "user-mod", u.uid, "--addattr=objectclass=ipapasskeyuser")
 	ctx, page := newPage(t)
 
 	cdp, err := ctx.NewCDPSession(page)
