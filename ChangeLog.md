@@ -13,6 +13,9 @@
 - **Upgrade:** a Redis ACL user limited to specific commands now also
   needs `+incr +eval`
 - `memory` and `sqlite3` guard the same rewrites with an in-process lock
+- Removing a passkey reloads the Passkeys tab; the swapped-in list had its
+  script blocked by CSP, so registering another passkey did nothing until
+  a reload
 
 ## [v2.6.0] - 2026-11-04
 

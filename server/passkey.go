@@ -221,13 +221,8 @@ func (r *Router) PasskeyRemove(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to send passkey removed email")
 	}
 
-	passkeys, err := r.passkeyList(c)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
-	}
-
-	return c.Render("passkey-list.html", fiber.Map{
-		"user":     r.user(c),
-		"passkeys": passkeys,
-	})
+	// The list carries an inline script, which CSP blocks when htmx swaps it
+	// in with a fresh nonce; reload the tab like registration does
+	c.Set("HX-Refresh", "true")
+	return c.SendStatus(fiber.StatusOK)
 }
