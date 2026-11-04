@@ -1,0 +1,131 @@
+# Install mokey for FreeIPA
+
+This page covers trying mokey in a throwaway FreeIPA, then installing it
+against your own FreeIPA with Kubernetes (Helm), a container or a Linux
+package.
+
+## Requirements
+
+- FreeIPA 4.6.8 or newer, or Red Hat IdM. Passkeys need FreeIPA 4.11 or newer.
+- Linux x86_64 or aarch64
+- Redis or Valkey (optional; needed for more than one replica)
+- Ory Hydra v2.x (optional; for OIDC sign-in)
+
+## Try it: the demo
+
+The demo starts a throwaway FreeIPA server, mokey enrolled into it, and
+[Mailpit](https://mailpit.axllent.org/) to catch every email. You only need
+Docker. From a checkout of the repository:
+
+```sh
+docker compose -f examples/demo/compose.yml up -d
+```
+
+The first start installs FreeIPA and takes 5–10 minutes. Then open
+<http://localhost:8866> and log in as `demo` / `demo-Passw0rd`. Emails show up
+at <http://localhost:8025>. The demo also has `alice`, the sponsor of the
+`developers` group, and `admin`, who sees the admin panel.
+[examples/demo](https://github.com/neverlless/mokey/tree/main/examples/demo)
+lists what to try, how to reset it and which Docker runtimes work.
+
+!!! warning
+    The demo's passwords and secrets are fixed and public. Never expose it or
+    reuse its config.
+
+## 1. Create the service account in FreeIPA
+
+mokey signs in to FreeIPA as a service principal with a keytab. Run these
+commands on a host with `ipa-admintools`, as a FreeIPA administrator:
+
+```sh
+mkdir -p /etc/mokey/private
+kinit adminuser
+ipa role-add 'Mokey User Manager' --desc='Mokey User management'
+ipa role-add-privilege 'Mokey User Manager' --privilege='User Administrators'
+ipa role-add-privilege 'Mokey User Manager' --privilege='Password Policy Readers'
+ipa service-add mokey/$(hostname -f)
+ipa service-add-principal mokey/$(hostname -f) mokey/mokey
+ipa role-add-member 'Mokey User Manager' --services=mokey/$(hostname -f)
+ipa permission-mod 'System: Modify Users' --includedattrs=ipauserauthtype
+ipa privilege-add 'Mokey UPG Read' --desc='Read UPG definition'
+ipa privilege-add-permission 'Mokey UPG Read' --permissions='System: Read UPG Definition'
+ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey UPG Read'
+# Only needed with accounts.staged_signup enabled:
+ipa role-add-privilege 'Mokey User Manager' --privilege='Stage User Administrators'
+# Only needed with accounts.enable_subid enabled:
+ipa role-add-privilege 'Mokey User Manager' --privilege='Subordinate ID Administrators'
+ipa-getkeytab -s ipa.example.com -p mokey/mokey -k /etc/mokey/private/mokeyapp.keytab
+chmod 640 /etc/mokey/private/mokeyapp.keytab
+chgrp mokey /etc/mokey/private/mokeyapp.keytab
+kdestroy
+```
+
+The guides list which of these privileges each feature relies on. Features
+that act with the signed-in user's own FreeIPA session (OTP tokens, passkeys,
+group approvals, the Access page) need no extra privilege.
+
+## 2. Write the config
+
+Start from
+[mokey.toml.sample](https://github.com/neverlless/mokey/blob/main/mokey.toml.sample).
+At minimum set:
+
+- `site.keytab` (and `site.ktuser` if your principal is not `mokeyapp`)
+- the `[email]` SMTP settings and `email.from`; `email.base_url` when mokey
+  runs behind a proxy
+- `email.token_secret` and `server.csrf_secret`, so links and sessions survive
+  a restart
+- a persistent `[storage]` driver: `sqlite3` for one instance, `redis` for
+  several
+
+Every option is in the [configuration reference](configuration.md). Serve
+mokey over HTTPS, either with `server.ssl_cert` / `server.ssl_key` or behind a
+reverse proxy (then set `server.trusted_proxies`).
+
+## 3. Run it
+
+=== "Kubernetes (Helm)"
+
+    ```sh
+    kubectl create secret generic mokey-config --from-file=mokey.toml
+    kubectl create secret generic mokey-keytab --from-file=mokeyapp.keytab
+    helm install mokey oci://ghcr.io/neverlless/charts/mokey \
+      --set existingConfigSecret=mokey-config \
+      --set existingKeytabSecret=mokey-keytab
+    ```
+
+    The chart is versioned with mokey; add `--version X.Y.Z` to pin it. Its
+    `ipa.enroll` mode enrolls the container itself, but rotates the keytab on
+    every start and so supports one replica only. See the
+    [chart README](https://github.com/neverlless/mokey/tree/main/charts/mokey).
+
+=== "Container"
+
+    ```sh
+    docker pull ghcr.io/neverlless/mokey:latest
+    ```
+
+    Images exist for linux/amd64 and linux/arm64, signed with cosign. See
+    [examples/production/docker-compose.yml](https://github.com/neverlless/mokey/blob/main/examples/production/docker-compose.yml).
+
+=== "deb / rpm"
+
+    Download a package from the
+    [releases page](https://github.com/neverlless/mokey/releases), then:
+
+    ```sh
+    sudo dpkg -i mokey_VERSION_amd64.deb      # or: sudo rpm -ivh mokey-VERSION-amd64.rpm
+    sudo systemctl enable --now mokey
+    ```
+
+    The host must already be enrolled in FreeIPA.
+
+Releases are signed; the
+[README](https://github.com/neverlless/mokey#verifying-releases) shows how to
+verify checksums, SBOMs, provenance and container signatures.
+
+## Running more than one replica
+
+Use `storage.driver = "redis"` so all replicas share sessions, tokens and
+request queues. `memory` and `sqlite3` are per instance. With `memory`, every
+restart logs everyone out and drops pending group and OTP recovery requests.

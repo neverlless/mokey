@@ -35,8 +35,8 @@ enrollment, SSH keys) alongside it.
 
 ## Prerequisites
 
-- Working mokey + Hydra setup (see the
-  [Hydra section in the README](../README.md#hydra-consent-and-login-endpoint-for-oauthopenid-connect)),
+- Working mokey + Hydra setup (see
+  [OIDC / SSO with Ory Hydra](guides/oidc-hydra.md)),
   including `urls.logout` pointing at mokey's `/auth/logout`
 - A Keycloak instance and realm for your applications
 

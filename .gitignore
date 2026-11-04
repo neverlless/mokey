@@ -17,3 +17,6 @@ docs/superpowers/
 .playwright-mcp/
 .superpowers
 .claude
+
+# MkDocs build output
+/site/
