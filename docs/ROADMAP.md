@@ -411,8 +411,12 @@ quality credits, so these items are mostly mokey-side work.
 - [ ] Storage safe for several replicas on one Redis: the audit sequence
       and the session, group-request and OTP-recovery indexes are read and
       rewritten without locking, so concurrent writers can lose an update
-- [ ] HTTP stack decision: Fiber v3 or `net/http`, made before Fiber v2
-      stops receiving fixes
+- [x] HTTP stack decision: Fiber v3. Fiber v2 no longer gets security
+      fixes (its security policy supports only >= 3.0.0, and v2.52.16 marks
+      the module deprecated). Moving to `net/http` would mean rewriting every
+      handler plus sessions, CSRF and rate limiting; Fiber v3 keeps the
+      handler shape and has an official migration tool
+- [ ] Move to Fiber v3
 
 ## v2.8 — Integrations
 
