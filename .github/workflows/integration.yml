@@ -2,9 +2,15 @@ name: Integration
 
 # Runs the integration and browser tests in test/ against the demo stand:
 # a real FreeIPA (its first install takes 5-10 minutes), mokey built from
-# this commit, and Mailpit. Too slow for every push.
+# this commit, and Mailpit. Too slow for every push: weekly, on demand, and
+# on pull requests that change the tests or the stand.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "test/**"
+      - "examples/demo/**"
+      - ".github/workflows/integration.yml"
   schedule:
     - cron: "0 4 * * 1"
 
