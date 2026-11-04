@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.7.0] - 2026-11-04
 
 - Redis over TLS with a private CA: `storage.redis.ca_file`, and
   `cert_file`/`key_file` for mutual TLS. Either one turns TLS on; an
