@@ -68,6 +68,8 @@ func (r *Router) saveSessionIndex(username string, sessions []UserSession) {
 
 // recordUserSession registers a fresh login in the user's session index
 func (r *Router) recordUserSession(c *fiber.Ctx, username, sid string) {
+	defer r.lock.hold(userSessionsPrefix + username)()
+
 	ua := useragent.Parse(c.Get(fiber.HeaderUserAgent))
 
 	sessions := r.loadSessionIndex(username)
@@ -102,6 +104,8 @@ func (r *Router) sessionAlive(sid string) bool {
 // dead index entries along the way. currentSID marks the caller's own
 // session.
 func (r *Router) userSessions(username, currentSID string) []UserSession {
+	defer r.lock.hold(userSessionsPrefix + username)()
+
 	sessions := r.loadSessionIndex(username)
 
 	live := make([]UserSession, 0, len(sessions))
@@ -132,6 +136,8 @@ func (r *Router) userSessions(username, currentSID string) []UserSession {
 // revokeUserSession destroys one of the user's own sessions. Ownership is
 // enforced through the index — foreign sids are ignored.
 func (r *Router) revokeUserSession(username, sid string) bool {
+	defer r.lock.hold(userSessionsPrefix + username)()
+
 	sessions := r.loadSessionIndex(username)
 	kept := sessions[:0]
 	found := false
@@ -159,6 +165,8 @@ func (r *Router) revokeUserSession(username, sid string) bool {
 // revokeOtherUserSessions destroys every session except the current one
 // and returns how many were revoked
 func (r *Router) revokeOtherUserSessions(username, currentSID string) int {
+	defer r.lock.hold(userSessionsPrefix + username)()
+
 	sessions := r.loadSessionIndex(username)
 	kept := sessions[:0]
 	revoked := 0
@@ -178,6 +186,8 @@ func (r *Router) revokeOtherUserSessions(username, currentSID string) int {
 // dropSessionFromIndex removes an index entry without touching session
 // data (used on logout, where fiber destroys the session itself)
 func (r *Router) dropSessionFromIndex(username, sid string) {
+	defer r.lock.hold(userSessionsPrefix + username)()
+
 	sessions := r.loadSessionIndex(username)
 	kept := sessions[:0]
 	for _, s := range sessions {

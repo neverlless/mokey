@@ -15,8 +15,6 @@ import (
 
 // OTP recovery request queue: single storage key holding a JSON list,
 // same durability as the session index (memory/sqlite3/redis).
-// ponytail: no cross-instance lock — a concurrent removal loses at worst
-// a redundant queue write; OTP recovery itself is idempotent.
 
 const (
 	otpRecoveryKey = "otprecovery"
@@ -57,6 +55,8 @@ func (r *Router) saveOTPRecoveryRequests(reqs []OTPRecoveryRequest) {
 
 // addOTPRecoveryRequest queues a recovery request; false when already queued
 func (r *Router) addOTPRecoveryRequest(username string) bool {
+	defer r.lock.hold(otpRecoveryKey)()
+
 	reqs := r.loadOTPRecoveryRequests()
 	for _, req := range reqs {
 		if req.Username == username {
@@ -69,6 +69,8 @@ func (r *Router) addOTPRecoveryRequest(username string) bool {
 
 // removeOTPRecoveryRequest drops a queued request; false when absent
 func (r *Router) removeOTPRecoveryRequest(username string) bool {
+	defer r.lock.hold(otpRecoveryKey)()
+
 	reqs := r.loadOTPRecoveryRequests()
 	kept := reqs[:0]
 	for _, req := range reqs {

@@ -21,6 +21,7 @@ type Router struct {
 	sessionStore *session.Store
 	emailer      *Emailer
 	storage      fiber.Storage
+	lock         *storeLock
 
 	// Hydra consent app support
 	hydraClient *hydra.APIClient
@@ -46,6 +47,7 @@ func (r *Router) goBG(fn func()) {
 func NewRouter(storage fiber.Storage) (*Router, error) {
 	r := &Router{
 		storage: storage,
+		lock:    newStoreLock(storage),
 	}
 
 	log.AddHook(NewAuditHook(storage))

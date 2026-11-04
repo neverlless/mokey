@@ -1,5 +1,18 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- Redis over TLS with a private CA: `storage.redis.ca_file`, and
+  `cert_file`/`key_file` for mutual TLS. Either one turns TLS on; an
+  unreadable or invalid file stops mokey at startup
+- A storage driver that fails to start now stops mokey with the driver's
+  error instead of a generic one
+- Several replicas on one Redis no longer lose updates to the session
+  index, group join requests or the OTP recovery queue: each rewrite holds
+  a short Redis lock. The audit sequence is a Redis `INCR`. The Redis ACL
+  user now also needs `+incr +eval`
+- `memory` and `sqlite3` guard the same rewrites with an in-process lock
+
 ## [v2.6.0] - 2026-11-04
 
 - Passkeys are registered for the FreeIPA domain as WebAuthn relying party

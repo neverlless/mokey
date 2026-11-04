@@ -13,8 +13,6 @@ import (
 
 // Join-request queue: one storage key per group holding a JSON list,
 // same durability as the session index (memory/sqlite3/redis).
-// ponytail: no cross-instance lock — a concurrent approve loses at worst
-// a redundant queue write; group membership itself is idempotent in IPA.
 
 const (
 	groupRequestsPrefix = "grouprequests-"
@@ -62,6 +60,8 @@ func (r *Router) saveGroupRequests(group string, reqs []GroupRequest) {
 
 // addGroupRequest queues a join or leave request; false when already queued
 func (r *Router) addGroupRequest(group, username, reqType string) bool {
+	defer r.lock.hold(groupRequestsPrefix + group)()
+
 	reqs := r.loadGroupRequests(group)
 	for _, req := range reqs {
 		if req.Username == username {
@@ -74,6 +74,8 @@ func (r *Router) addGroupRequest(group, username, reqType string) bool {
 
 // removeGroupRequest drops a queued request; false when absent
 func (r *Router) removeGroupRequest(group, username string) bool {
+	defer r.lock.hold(groupRequestsPrefix + group)()
+
 	reqs := r.loadGroupRequests(group)
 	kept := reqs[:0]
 	for _, req := range reqs {
