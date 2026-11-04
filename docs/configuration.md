@@ -196,15 +196,30 @@ The unauthenticated health check endpoint `/healthz` is always enabled.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | string | — | Redis URL, e.g. `redis://user:password@localhost:6379/0`. |
+| `ca_file` | string | — | PEM bundle of the CA(s) that sign the Redis server certificate. Replaces the system trust store for Redis. |
+| `cert_file` | string | — | Client certificate (PEM) for mutual TLS. Set together with `key_file`. |
+| `key_file` | string | — | Private key (PEM) for `cert_file`. |
 
 Tested with Redis 8.10 and Valkey 9.1. Only the user, password, database
 number and the `rediss://` scheme (TLS) are read from the URL; other query
 options such as timeouts are ignored, except `?skip_verify=true`, which turns
-off certificate checks. With `rediss://` the server certificate must chain to
-the system trust store; there is no option for a private CA yet. An ACL user
-needs only `~* +get +set +del +ping +select`. mokey writes keys without a
-prefix and never flushes the database, so give it a database of its own on a
-shared server.
+off certificate checks. With `rediss://` and no `ca_file` the server
+certificate must chain to the system trust store. Setting `ca_file` or a
+client certificate turns TLS on even for a `redis://` URL; the host name in
+the URL must match the server certificate. mokey refuses to start when any of
+these files cannot be read or holds no usable certificate or key.
+
+An ACL user needs only `~* +get +set +del +incr +eval +ping +select`. mokey
+writes keys without a prefix and never flushes the database, so give it a
+database of its own on a shared server.
+
+Several replicas can share one Redis database. The shared lists (each user's
+active sessions, group join requests, the OTP recovery queue) are rewritten
+under a short Redis lock (`lock-<key>`, released by the holder, expiring after
+5 seconds if a replica dies), and the audit log sequence is a Redis `INCR`. A
+replica that cannot take a lock within 6 seconds logs a warning and goes ahead
+without it. `memory` and `sqlite3` are for a single mokey process: one sqlite3
+file shared by several replicas is not supported.
 
 ## `[hydra]`
 

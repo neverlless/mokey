@@ -406,9 +406,9 @@ quality credits, so these items are mostly mokey-side work.
       replaces the hand-written fake FreeIPA — done in v2.5
 - [ ] Integration tests against the demo's FreeIPA container and browser
       end-to-end tests including passkey enrollment
-- [ ] Redis over TLS with a private CA (`[storage.redis]` CA and client
+- [x] Redis over TLS with a private CA (`[storage.redis]` CA and client
       certificate options); today only the system trust store works
-- [ ] Storage safe for several replicas on one Redis: the audit sequence
+- [x] Storage safe for several replicas on one Redis: the audit sequence
       and the session, group-request and OTP-recovery indexes are read and
       rewritten without locking, so concurrent writers can lose an update
 - [x] HTTP stack decision: Fiber v3. Fiber v2 no longer gets security

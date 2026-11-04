@@ -20,8 +20,6 @@ import (
 // or redis) — no separate schema. Events are captured by a logrus hook, so
 // every existing and future log line starting with "AUDIT" lands here
 // without touching call sites.
-// ponytail: the ring counter is not atomic — fine for a single mokey
-// instance; move to a proper store if multi-instance audit is ever needed.
 const (
 	auditRingSize  = 1000
 	auditSeqKey    = "audit-seq"
@@ -39,10 +37,11 @@ type AuditEvent struct {
 
 type AuditHook struct {
 	storage fiber.Storage
+	lock    *storeLock
 }
 
 func NewAuditHook(storage fiber.Storage) *AuditHook {
-	return &AuditHook{storage: storage}
+	return &AuditHook{storage: storage, lock: newStoreLock(storage)}
 }
 
 func (h *AuditHook) Levels() []log.Level {
@@ -83,16 +82,11 @@ func (h *AuditHook) Fire(entry *log.Entry) error {
 		return nil
 	}
 
-	seq := int64(0)
-	if raw, _ := h.storage.Get(auditSeqKey); raw != nil {
-		seq, _ = strconv.ParseInt(string(raw), 10, 64)
-	}
-	seq++
-
-	if err := h.storage.Set(fmt.Sprintf("%s%d", auditEntryKey, seq%auditRingSize), b, auditRetention); err != nil {
+	seq, err := h.lock.incr(auditSeqKey)
+	if err != nil {
 		return err
 	}
-	return h.storage.Set(auditSeqKey, []byte(strconv.FormatInt(seq, 10)), 0)
+	return h.storage.Set(fmt.Sprintf("%s%d", auditEntryKey, seq%auditRingSize), b, auditRetention)
 }
 
 // auditRecent returns up to n most recent audit events, newest first.
