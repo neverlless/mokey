@@ -338,6 +338,7 @@ Set the interface language in `mokey.toml`:
 ```toml
 [site]
 default_language = "dutch"   # built-in: english (default), dutch
+languages = ["dutch", "english"]   # optional: pick per request from Accept-Language
 ```
 
 To add or customize a language, point `site.translations_dir` at a directory

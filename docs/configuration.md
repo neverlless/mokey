@@ -24,7 +24,8 @@ Addresses upstream request
 | `ktuser` | string | `"mokeyapp"` | FreeIPA service account used by mokey. |
 | `keytab` | string | — | **Required.** Path to the keytab file for `ktuser`. |
 | `default_language` | string | `"english"` | Interface and email language. Built-in: `english`, `dutch`. |
-| `translations_dir` | string | — | Directory with additional `<language>.toml` translation files. A file named after a built-in language fully replaces it. Missing keys fall back to English. |
+| `languages` | list of strings | `[default_language]` | Languages offered to visitors, e.g. `["english", "dutch"]`. With more than one, each request gets the best match for the browser's `Accept-Language` (q-values honoured, `nl-BE` matches `nl`), else `default_language`, which is always offered. Emails sent while serving a request use the request's language; emails sent in the background or on someone else's action (group requests and decisions, OTP recovery decisions, new-login and password-expiry notices) use the recipient's FreeIPA `preferredlanguage` when it names an offered language, else `default_language`. An unknown name is a startup error. |
+| `translations_dir` | string | — | Directory with additional `<language>.toml` translation files. A file named after a built-in language fully replaces it. Missing keys fall back to English. A new language offered through `languages` must declare its BCP 47 code with a top-level `language_code = "de"` before the first `[section]`; the built-in codes are `en` (english), `nl` (dutch), `ru` (russian) and `uk` (ukrainian). The code sets `<html lang>` and is what `Accept-Language` and `preferredlanguage` are matched against. |
 
 ## `[accounts]`
 

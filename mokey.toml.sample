@@ -12,9 +12,15 @@ name = "Identity Management"
 # Interface language. Built-in languages: "english" (default), "dutch".
 # default_language = "english"
 
+# Languages offered to visitors. With more than one, each request uses the
+# best match for the browser's Accept-Language, and background emails the
+# recipient's FreeIPA preferredlanguage; default_language otherwise.
+# languages = ["english", "dutch"]
+
 # Directory with additional <language>.toml translation files. A file with
 # the same name as a built-in language fully replaces it. See
-# server/translations/english.toml for the full list of keys.
+# server/translations/english.toml for the full list of keys. A new language
+# listed in languages needs a top-level language_code = "de" (BCP 47).
 # translations_dir = "/etc/mokey/translations"
 
 # Homepage of your organization
