@@ -14,6 +14,17 @@
   with Russian/Ukrainian plural forms; go-humanize is gone
 - A test checks that every built-in language has exactly English's keys
   and printf verbs
+- Built-in Dutch translation is complete; Russian and Ukrainian are new
+  built-in languages
+- Documentation site at <https://neverlless.github.io/mokey/> (MkDocs
+  Material, built from `docs/`): task guides for password reset, signup,
+  OTP tokens, passkeys, OIDC with Hydra, group self-service and the Access
+  page, an install page, and comparisons with upstream mokey, noggin, LTB
+  Self Service Password and Keycloak
+- Companion guide: mokey next to any OIDC provider
+- The Docs workflow builds the site with `mkdocs build --strict` on pull
+  requests and publishes it to GitHub Pages from `main`; CI skips changes
+  that only touch `mkdocs.yml`
 
 ## [v2.5.0] - 2026-11-03
 
