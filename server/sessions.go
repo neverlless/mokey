@@ -200,7 +200,7 @@ func (r *Router) SessionRevoke(c *fiber.Ctx) error {
 	}
 
 	if sid == "" || sid == sess.ID() {
-		vars["message"] = T("security.cannot_revoke_current")
+		vars["message"] = TC(c, "security.cannot_revoke_current")
 		return r.securityList(c, vars)
 	}
 

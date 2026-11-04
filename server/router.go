@@ -317,7 +317,7 @@ func (r *Router) Index(c *fiber.Ctx) error {
 	}
 
 	if path == "password" {
-		if msg := r.passwordElsewhere(user); msg != "" {
+		if msg := r.passwordElsewhere(requestLanguage(c), user); msg != "" {
 			vars["password_elsewhere"] = msg
 		} else {
 			r.pwPolicyVars(user.Username, vars)

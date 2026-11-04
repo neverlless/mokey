@@ -15,14 +15,14 @@ func TestPasswordCheck(t *testing.T) {
 	assert := assert.New(t)
 
 	// Too short
-	assert.Error(checkPassword("123", "", nil))
+	assert.Error(checkPassword("english", "123", "", nil))
 	// Not enough classes
-	assert.Error(checkPassword("123456789", "", nil))
+	assert.Error(checkPassword("english", "123456789", "", nil))
 	// Not enough classes
-	assert.Error(checkPassword("test1234", "", nil))
+	assert.Error(checkPassword("english", "test1234", "", nil))
 
 	// Good
-	assert.NoError(checkPassword("test!1234", "", nil))
+	assert.NoError(checkPassword("english", "test!1234", "", nil))
 }
 
 // Semantics must match FreeIPA's util/ipa_pwd.c (ubccr/mokey#170)
@@ -34,17 +34,17 @@ func TestPasswordCheckMatchesFreeIPA(t *testing.T) {
 
 	// 4 classes, a doubled character ("ss") — FreeIPA only penalizes runs
 	// of 3+, so this must pass
-	assert.NoError(checkPassword("Password1!", "", nil))
+	assert.NoError(checkPassword("english", "Password1!", "", nil))
 	// 4 classes, tripled character — penalized down to 3, must fail
-	assert.Error(checkPassword("Passsword1!", "", nil))
+	assert.Error(checkPassword("english", "Passsword1!", "", nil))
 	// 4 classes via the 8-bit category (lower, upper, digit, non-ASCII)
-	assert.NoError(checkPassword("aBcdef17п", "", nil))
+	assert.NoError(checkPassword("english", "aBcdef17п", "", nil))
 	// only 3 classes at min 4 — fail
-	assert.Error(checkPassword("abcdef17x", "", nil))
+	assert.Error(checkPassword("english", "abcdef17x", "", nil))
 
 	viper.Set("accounts.min_passwd_classes", 5)
 	// all 5 FreeIPA categories present
-	assert.NoError(checkPassword("aB1!пxyz", "", nil))
+	assert.NoError(checkPassword("english", "aB1!пxyz", "", nil))
 }
 
 // Measured against FreeIPA 4.13.4 with libpwquality 1.4.4 via
@@ -102,14 +102,14 @@ func TestPasswordCheckPwquality(t *testing.T) {
 	}
 	for _, tc := range cases {
 		for _, pass := range tc.ok {
-			assert.NoError(t, checkPassword(pass, tc.user, &tc.policy), "%+v %q", tc.policy, pass)
+			assert.NoError(t, checkPassword("english", pass, tc.user, &tc.policy), "%+v %q", tc.policy, pass)
 		}
 		for pass, msg := range tc.bad {
-			assert.EqualError(t, checkPassword(pass, tc.user, &tc.policy), msg, "%+v %q", tc.policy, pass)
+			assert.EqualError(t, checkPassword("english", pass, tc.user, &tc.policy), msg, "%+v %q", tc.policy, pass)
 		}
 	}
 
 	// without libpwquality options the plain length applies, credits or not
-	assert.Error(t, checkPassword("abcdefg12", "", &PwPolicy{MinLength: 10}))
-	assert.NoError(t, checkPassword("abccba", "", &PwPolicy{MinLength: 6}))
+	assert.Error(t, checkPassword("english", "abcdefg12", "", &PwPolicy{MinLength: 10}))
+	assert.NoError(t, checkPassword("english", "abccba", "", &PwPolicy{MinLength: 6}))
 }

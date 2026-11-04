@@ -22,7 +22,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/dustin/go-humanize"
 	"github.com/gofiber/fiber/v2"
 	"github.com/mileusna/useragent"
 	ipa "github.com/neverlless/goipa"
@@ -34,6 +33,7 @@ const crlf = "\r\n"
 
 type Emailer struct {
 	templates     *template.Template
+	byLang        map[string]*template.Template
 	storage       fiber.Storage
 	slackNotifier *SlackNotifier
 }
@@ -49,7 +49,7 @@ func BaseURL(ctx *fiber.Ctx) string {
 
 func NewEmailer(storage fiber.Storage) (*Emailer, error) {
 	tmpl := template.New("")
-	tmpl.Funcs(funcMap)
+	tmpl.Funcs(funcMap).Funcs(template.FuncMap(languageFuncs(defaultLanguage())))
 
 	for _, ext := range []string{"txt", "html"} {
 		var err error
@@ -72,19 +72,42 @@ func NewEmailer(storage fiber.Storage) (*Emailer, error) {
 		}
 	}
 
+	byLang := make(map[string]*template.Template)
+	for _, lang := range languages {
+		clone, err := tmpl.Clone()
+		if err != nil {
+			return nil, err
+		}
+		byLang[lang] = clone.Funcs(template.FuncMap(languageFuncs(lang)))
+	}
+
 	return &Emailer{
 		storage:       storage,
 		templates:     tmpl,
+		byLang:        byLang,
 		slackNotifier: NewSlackNotifier(),
 	}, nil
+}
+
+// emailLanguage is the request language for mail sent while serving one,
+// else the recipient's preferred language.
+func emailLanguage(user *ipa.User, ctx *fiber.Ctx) string {
+	if ctx != nil {
+		return requestLanguage(ctx)
+	}
+	return userLanguage(user)
+}
+
+func linkExpires(lang string) string {
+	return formatDuration(lang, time.Duration(viper.GetInt("email.token_max_age"))*time.Second)
 }
 
 // sendTokenEmail delivers a mail carrying a single-use token, rolling back the
 // "token issued" marker when delivery fails. Without the rollback a rejected or
 // undeliverable address locks the user out of retrying until the token expires,
 // every attempt failing with "token already issued".
-func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *fiber.Ctx, subject, tmpl string, data map[string]interface{}) error {
-	err := e.sendEmail(user, ctx, subject, tmpl, data)
+func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
+	err := e.sendEmail(user, ctx, lang, subject, tmpl, data)
 	if err != nil {
 		if derr := e.storage.Delete(prefix + TokenIssuedPrefix + tokenKey); derr != nil {
 			log.WithFields(log.Fields{
@@ -97,6 +120,7 @@ func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *f
 }
 
 func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, user.Email, TokenPasswordReset, e.storage)
 	if err != nil {
 		return err
@@ -104,15 +128,16 @@ func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
 
 	vars := map[string]interface{}{
 		"link":         fmt.Sprintf("%s/auth/resetpw/%s", BaseURL(ctx), token),
-		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+		"link_expires": linkExpires(lang),
 	}
 
-	return e.sendTokenEmail(user, user.Username, TokenPasswordReset, ctx, T("email_template.password_reset_subject"), "password-reset", vars)
+	return e.sendTokenEmail(user, user.Username, TokenPasswordReset, ctx, lang, TL(lang, "email_template.password_reset_subject"), "password-reset", vars)
 }
 
 // SendPasswordElsewhereEmail answers a reset request from a user whose
 // password FreeIPA does not manage: reason says where it is managed.
 func (e *Emailer) SendPasswordElsewhereEmail(user *ipa.User, reason string, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	// same resend cooldown as a reset link, so the form cannot flood the inbox
 	marker := TokenPasswordReset + TokenIssuedPrefix + user.Username
 	if sent, err := e.storage.Get(marker); err != nil || sent != nil {
@@ -121,10 +146,11 @@ func (e *Emailer) SendPasswordElsewhereEmail(user *ipa.User, reason string, ctx 
 	if err := e.storage.Set(marker, []byte("true"), time.Duration(viper.GetInt("email.resend_cooldown"))*time.Second); err != nil {
 		return err
 	}
-	return e.sendEmail(user, ctx, T("email_template.password_elsewhere_subject"), "password-elsewhere", map[string]interface{}{"reason": reason})
+	return e.sendEmail(user, ctx, lang, TL(lang, "email_template.password_elsewhere_subject"), "password-elsewhere", map[string]interface{}{"reason": reason})
 }
 
 func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, user.Email, TokenAccountVerify, e.storage)
 	if err != nil {
 		return err
@@ -132,29 +158,31 @@ func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
 
 	vars := map[string]interface{}{
 		"link":         fmt.Sprintf("%s/auth/verify/%s", BaseURL(ctx), token),
-		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+		"link_expires": linkExpires(lang),
 	}
 
-	return e.sendTokenEmail(user, user.Username, TokenAccountVerify, ctx, T("email_template.account_verify_subject"), "account-verify", vars)
+	return e.sendTokenEmail(user, user.Username, TokenAccountVerify, ctx, lang, TL(lang, "email_template.account_verify_subject"), "account-verify", vars)
 }
 
 // SendOTPRecoveryConfirmEmail sends the confirm-before-queue link for an
 // OTP lockout recovery request
 func (e *Emailer) SendOTPRecoveryConfirmEmail(user *ipa.User, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, user.Email, TokenOTPRecovery, e.storage)
 	if err != nil {
 		return err
 	}
 	vars := map[string]interface{}{
 		"link":         fmt.Sprintf("%s/auth/otprecovery/%s", BaseURL(ctx), token),
-		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+		"link_expires": linkExpires(lang),
 	}
-	return e.sendTokenEmail(user, user.Username, TokenOTPRecovery, ctx, T("email_template.otprecovery_confirm_subject"), "otprecovery-confirm", vars)
+	return e.sendTokenEmail(user, user.Username, TokenOTPRecovery, ctx, lang, TL(lang, "email_template.otprecovery_confirm_subject"), "otprecovery-confirm", vars)
 }
 
 // SendEmailChangeConfirmEmail sends a confirmation link to the NEW email
 // address. The change is only applied after the link is visited.
 func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, newEmail, TokenEmailChange, e.storage)
 	if err != nil {
 		return err
@@ -162,7 +190,7 @@ func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, c
 
 	vars := map[string]interface{}{
 		"link":         fmt.Sprintf("%s/auth/email/confirm/%s", BaseURL(ctx), token),
-		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+		"link_expires": linkExpires(lang),
 		"new_email":    newEmail,
 	}
 
@@ -170,25 +198,28 @@ func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, c
 	recipient := *user
 	recipient.Email = newEmail
 
-	return e.sendTokenEmail(&recipient, user.Username, TokenEmailChange, ctx, T("email_template.email_change_subject"), "email-change", vars)
+	return e.sendTokenEmail(&recipient, user.Username, TokenEmailChange, ctx, lang, TL(lang, "email_template.email_change_subject"), "email-change", vars)
 }
 
 // SendEmailChangedNotification notifies the OLD address that the account
 // email was changed.
 func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	vars := map[string]interface{}{
-		"event": T("email_template.email_changed_event"),
+		"event": TL(lang, "email_template.email_changed_event"),
 	}
 
 	recipient := *user
 	recipient.Email = oldEmail
 
-	return e.sendEmail(&recipient, ctx, T("email_template.email_changed_event"), "account-updated", vars)
+	return e.sendEmail(&recipient, ctx, lang, TL(lang, "email_template.email_changed_event"), "account-updated", vars)
 }
 
 // SendInviteEmail sends an account invitation to an email address. The
 // recipient completes their profile via the /auth/invite/:token link.
 func (e *Emailer) SendInviteEmail(email string, ctx *fiber.Ctx) error {
+	recipient := &ipa.User{Email: email}
+	lang := emailLanguage(recipient, ctx)
 	token, err := NewToken(email, email, TokenInvite, e.storage)
 	if err != nil {
 		return err
@@ -196,119 +227,125 @@ func (e *Emailer) SendInviteEmail(email string, ctx *fiber.Ctx) error {
 
 	vars := map[string]interface{}{
 		"link":         fmt.Sprintf("%s/auth/invite/%s", BaseURL(ctx), token),
-		"link_expires": strings.TrimSpace(humanize.RelTime(time.Now(), time.Now().Add(time.Duration(viper.GetInt("email.token_max_age"))*time.Second), "", "")),
+		"link_expires": linkExpires(lang),
 	}
 
-	recipient := &ipa.User{Email: email}
-
-	return e.sendTokenEmail(recipient, email, TokenInvite, ctx, T("email_template.invite_subject"), "invite", vars)
+	return e.sendTokenEmail(recipient, email, TokenInvite, ctx, lang, TL(lang, "email_template.invite_subject"), "invite", vars)
 }
 
 func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	vars := map[string]interface{}{
 		"getting_started_url": viper.GetString("site.getting_started_url"),
 	}
 
-	subject := T("email_template.welcome_subject") + viper.GetString("site.name")
+	subject := TL(lang, "email_template.welcome_subject") + viper.GetString("site.name")
 
-	return e.sendEmail(user, ctx, subject, "welcome", vars)
+	return e.sendEmail(user, ctx, lang, subject, "welcome", vars)
 }
 
 func (e *Emailer) SendMFAChangedEmail(enabled bool, user *ipa.User, ctx *fiber.Ctx) error {
-	verb := T("email_template.two_factor_auth_disabled")
+	lang := emailLanguage(user, ctx)
+	verb := TL(lang, "email_template.two_factor_auth_disabled")
 	if enabled {
-		verb = T("email_template.two_factor_auth_enabled")
+		verb = TL(lang, "email_template.two_factor_auth_enabled")
 	}
-	event := T("email_template.two_factor_auth_event") + verb
+	event := TL(lang, "email_template.two_factor_auth_event") + verb
 
 	vars := map[string]interface{}{
 		"event": event,
 	}
 
-	return e.sendEmail(user, ctx, event, "account-updated", vars)
+	return e.sendEmail(user, ctx, lang, event, "account-updated", vars)
 }
 
 func (e *Emailer) SendPasskeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
-	verb := T("email_template.passkey_removed")
+	lang := emailLanguage(user, ctx)
+	verb := TL(lang, "email_template.passkey_removed")
 	if added {
-		verb = T("email_template.passkey_added")
+		verb = TL(lang, "email_template.passkey_added")
 	}
-	event := T("email_template.passkey_event") + verb
+	event := TL(lang, "email_template.passkey_event") + verb
 
 	vars := map[string]interface{}{
 		"event": event,
 	}
 
-	return e.sendEmail(user, ctx, event, "account-updated", vars)
+	return e.sendEmail(user, ctx, lang, event, "account-updated", vars)
 }
 
 func (e *Emailer) SendSSHKeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
-	verb := T("email_template.ssh_key_removed")
+	lang := emailLanguage(user, ctx)
+	verb := TL(lang, "email_template.ssh_key_removed")
 	if added {
-		verb = T("email_template.ssh_key_added")
+		verb = TL(lang, "email_template.ssh_key_added")
 	}
-	event := T("email_template.ssh_key_event") + verb
+	event := TL(lang, "email_template.ssh_key_event") + verb
 
 	vars := map[string]interface{}{
 		"event": event,
 	}
 
-	return e.sendEmail(user, ctx, event, "account-updated", vars)
+	return e.sendEmail(user, ctx, lang, event, "account-updated", vars)
 }
 
 func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
-	verb := T("email_template.otp_token_removed")
+	lang := emailLanguage(user, ctx)
+	verb := TL(lang, "email_template.otp_token_removed")
 	if added {
-		verb = T("email_template.otp_token_added")
+		verb = TL(lang, "email_template.otp_token_added")
 	}
-	event := T("email_template.otp_token_event") + verb
+	event := TL(lang, "email_template.otp_token_event") + verb
 
 	vars := map[string]interface{}{
 		"event": event,
 	}
 
-	return e.sendEmail(user, ctx, event, "account-updated", vars)
+	return e.sendEmail(user, ctx, lang, event, "account-updated", vars)
 }
 
 // SendNewLoginEmail notifies about a fresh sign-in. Called from a
 // goroutine after the login response — no request context.
 func (e *Emailer) SendNewLoginEmail(user *ipa.User, browser, os, ip string) error {
-	event := T("email_template.new_login_event_part1") + browser + " (" + os + ")" +
-		T("email_template.new_login_event_part2") + ip
+	lang := userLanguage(user)
+	event := TL(lang, "email_template.new_login_event_part1") + browser + " (" + os + ")" +
+		TL(lang, "email_template.new_login_event_part2") + ip
 
 	vars := map[string]interface{}{
 		"event": event,
 	}
 
-	return e.sendEmail(user, nil, T("email_template.new_login_subject"), "account-updated", vars)
+	return e.sendEmail(user, nil, lang, TL(lang, "email_template.new_login_subject"), "account-updated", vars)
 }
 
 // SendPasswordExpiryReminderEmail warns a user their password expires in
 // the given number of days. Sent from the background sweep — no request
 // context.
 func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) error {
+	lang := userLanguage(user)
 	vars := map[string]interface{}{
 		"days": days,
 	}
 
-	return e.sendEmail(user, nil, T("email_template.password_expiry_subject"), "password-expiry", vars)
+	return e.sendEmail(user, nil, lang, TL(lang, "email_template.password_expiry_subject"), "password-expiry", vars)
 }
 
 // SendGroupRequestEmail notifies a group sponsor about a pending join or
 // leave request. Called from a goroutine after the handler returns — no
 // request context, mirrors SendNewLoginEmail.
 func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group, reqType string) error {
+	lang := userLanguage(manager)
 	vars := map[string]interface{}{
 		"requester": requester,
 		"group":     group,
 		"type":      reqType,
 	}
 
-	subject := T("email_template.group_request_subject")
+	subject := TL(lang, "email_template.group_request_subject")
 	if reqType == groupRequestLeave {
-		subject = T("email_template.group_leave_request_subject")
+		subject = TL(lang, "email_template.group_leave_request_subject")
 	}
-	return e.sendEmail(manager, nil, subject+group, "group-request", vars)
+	return e.sendEmail(manager, nil, lang, subject+group, "group-request", vars)
 }
 
 // SendGroupDecisionEmail notifies the requester that a sponsor approved or
@@ -317,31 +354,33 @@ func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group, req
 // URL comes from config rather than the request — mirrors
 // SendNewLoginEmail's nil-ctx mechanism.
 func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved bool, reqType string) error {
+	lang := userLanguage(user)
 	vars := map[string]interface{}{
 		"group":    group,
 		"approved": approved,
 		"type":     reqType,
 	}
 	leave := reqType == groupRequestLeave
-	subject := T("email_template.group_denied_subject")
+	subject := TL(lang, "email_template.group_denied_subject")
 	switch {
 	case approved && leave:
-		subject = T("email_template.group_leave_approved_subject")
+		subject = TL(lang, "email_template.group_leave_approved_subject")
 	case !approved && leave:
-		subject = T("email_template.group_leave_denied_subject")
+		subject = TL(lang, "email_template.group_leave_denied_subject")
 	case approved:
-		subject = T("email_template.group_approved_subject")
+		subject = TL(lang, "email_template.group_approved_subject")
 	}
-	return e.sendEmail(user, nil, subject+group, "group-decision", vars)
+	return e.sendEmail(user, nil, lang, subject+group, "group-decision", vars)
 }
 
 // SendGroupRemovedEmail notifies a member that a sponsor removed them from
 // a group directly (not via a leave request they initiated).
 func (e *Emailer) SendGroupRemovedEmail(user *ipa.User, group string) error {
+	lang := userLanguage(user)
 	vars := map[string]interface{}{
 		"group": group,
 	}
-	return e.sendEmail(user, nil, T("email_template.group_removed_subject")+group, "group-removed", vars)
+	return e.sendEmail(user, nil, lang, TL(lang, "email_template.group_removed_subject")+group, "group-removed", vars)
 }
 
 // SendOTPRecoveryDecisionEmail notifies the requester that an admin approved
@@ -349,14 +388,15 @@ func (e *Emailer) SendGroupRemovedEmail(user *ipa.User, group string) error {
 // AdminUserAction in the request path with a nil ctx, so the base URL comes
 // from config rather than the request — mirrors SendGroupDecisionEmail.
 func (e *Emailer) SendOTPRecoveryDecisionEmail(user *ipa.User, approved bool) error {
+	lang := userLanguage(user)
 	vars := map[string]interface{}{
 		"approved": approved,
 	}
-	subject := T("email_template.otprecovery_denied_subject")
+	subject := TL(lang, "email_template.otprecovery_denied_subject")
 	if approved {
-		subject = T("email_template.otprecovery_approved_subject")
+		subject = TL(lang, "email_template.otprecovery_approved_subject")
 	}
-	return e.sendEmail(user, nil, subject, "otprecovery-decision", vars)
+	return e.sendEmail(user, nil, lang, subject, "otprecovery-decision", vars)
 }
 
 // SendUsernameReminderEmail mails the username(s) associated with an address.
@@ -364,24 +404,26 @@ func (e *Emailer) SendOTPRecoveryDecisionEmail(user *ipa.User, approved bool) er
 // the delivery metadata.
 func (e *Emailer) SendUsernameReminderEmail(email string, usernames []string, ctx *fiber.Ctx) error {
 	recipient := &ipa.User{Email: email}
+	lang := emailLanguage(recipient, ctx)
 	vars := map[string]interface{}{
 		"usernames": usernames,
 	}
 
-	return e.sendEmail(recipient, ctx, T("email_template.username_reminder_subject"), "username-reminder", vars)
+	return e.sendEmail(recipient, ctx, lang, TL(lang, "email_template.username_reminder_subject"), "username-reminder", vars)
 }
 
 func (e *Emailer) SendPasswordChangedEmail(user *ipa.User, ctx *fiber.Ctx) error {
+	lang := emailLanguage(user, ctx)
 	// Opt-in: password-change notification emails are off by default
 	if !viper.GetBool("email.notify_password_change") {
 		return nil
 	}
 
 	vars := map[string]interface{}{
-		"event": T("email_template.password_changed_event"),
+		"event": TL(lang, "email_template.password_changed_event"),
 	}
 
-	return e.sendEmail(user, ctx, T("email_template.account_updated_subject"), "account-updated", vars)
+	return e.sendEmail(user, ctx, lang, TL(lang, "email_template.account_updated_subject"), "account-updated", vars)
 }
 
 func (e *Emailer) quotedBody(body []byte) ([]byte, error) {
@@ -423,7 +465,7 @@ func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ip
 	}
 }
 
-func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string, data map[string]interface{}) error {
+func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
 	log.WithFields(log.Fields{
 		"email":    user.Email,
 		"username": user.Username,
@@ -451,8 +493,13 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 	data["homepage"] = viper.GetString("site.homepage")
 	data["base_url"] = BaseURL(ctx)
 
+	templates := e.templates
+	if t, ok := e.byLang[lang]; ok {
+		templates = t
+	}
+
 	var text bytes.Buffer
-	err := e.templates.ExecuteTemplate(&text, tmpl+".txt", data)
+	err := templates.ExecuteTemplate(&text, tmpl+".txt", data)
 	if err != nil {
 		return err
 	}
@@ -463,7 +510,7 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, subject, tmpl string
 	}
 
 	var html bytes.Buffer
-	err = e.templates.ExecuteTemplate(&html, tmpl+".html", data)
+	err = templates.ExecuteTemplate(&html, tmpl+".html", data)
 	if err != nil {
 		return err
 	}

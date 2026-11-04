@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
+	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/viper"
 )
 
@@ -19,7 +19,6 @@ var templateFiles embed.FS
 // Template functions
 var funcMap = template.FuncMap{
 	"SplitSSHFP":             SplitSSHFP,
-	"TimeAgo":                TimeAgo,
 	"ConfigValueString":      ConfigValueString,
 	"ConfigValueBool":        ConfigValueBool,
 	"ConfigValueStringSlice": ConfigValueStringSlice,
@@ -29,18 +28,27 @@ var funcMap = template.FuncMap{
 	"PhoneNumber":            PhoneNumber,
 	"PhoneCountries":         PhoneCountries,
 	"PhoneFlag":              PhoneFlag,
-	"T":                      T,
 	"Neg":                    func(n int) int { return -n },
+}
+
+// languageFuncs binds the language-dependent template functions to lang.
+func languageFuncs(lang string) template.FuncMap {
+	return template.FuncMap{
+		"T":            func(key string) string { return TL(lang, key) },
+		"TimeAgo":      func(t time.Time) string { return timeAgo(lang, t) },
+		"LanguageCode": func() string { return languageCodes[lang] },
+	}
 }
 
 type TemplateRenderer struct {
 	templates *template.Template
+	byLang    map[string]*template.Template
 }
 
 func NewTemplateRenderer() (*TemplateRenderer, error) {
 
 	tmpl := template.New("")
-	tmpl.Funcs(funcMap)
+	tmpl.Funcs(funcMap).Funcs(languageFuncs(defaultLanguage()))
 	tmpl, err := tmpl.ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
 		return nil, err
@@ -61,10 +69,16 @@ func NewTemplateRenderer() (*TemplateRenderer, error) {
 		}
 	}
 
-	tmpl.Funcs(funcMap)
-
 	t := &TemplateRenderer{
 		templates: tmpl,
+		byLang:    make(map[string]*template.Template),
+	}
+	for _, lang := range languages {
+		clone, err := tmpl.Clone()
+		if err != nil {
+			return nil, err
+		}
+		t.byLang[lang] = clone.Funcs(languageFuncs(lang))
 	}
 
 	return t, nil
@@ -74,8 +88,16 @@ func (t *TemplateRenderer) Load() error {
 	return nil
 }
 
+// Render executes name in the template set of the language SetLanguage
+// stored in the locals.
 func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, layouts ...string) error {
-	return t.templates.ExecuteTemplate(w, name, data)
+	tmpl := t.templates
+	if m, ok := data.(fiber.Map); ok {
+		if lang, ok := m["lang"].(string); ok && t.byLang[lang] != nil {
+			tmpl = t.byLang[lang]
+		}
+	}
+	return tmpl.ExecuteTemplate(w, name, data)
 }
 
 func AllowedDomains() string {
@@ -103,10 +125,6 @@ func ConfigValueBool(key string) bool {
 
 func ConfigValueStringSlice(key string) []string {
 	return viper.GetStringSlice(key)
-}
-
-func TimeAgo(t time.Time) string {
-	return humanize.Time(t)
 }
 
 func SplitSSHFP(fp string) []string {

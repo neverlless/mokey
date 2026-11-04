@@ -283,3 +283,6 @@ func (tc *testClient) login(username, password string) {
 		tc.t.Fatalf("login for %s: expected 204, got %d: %s", username, resp.StatusCode, readBody(tc.t, resp))
 	}
 }
+
+// T translates key into the default language.
+func T(key string) string { return TL(defaultLanguage(), key) }

@@ -22,7 +22,7 @@ import (
 // from the directory (ubccr/mokey#16), and stageuser_add applies no policy at
 // all, so a staged signup would otherwise accept a password FreeIPA rejects.
 // A nil policy means the lookup failed; fall back to the config.
-func checkPassword(pass, username string, policy *PwPolicy) error {
+func checkPassword(lang, pass, username string, policy *PwPolicy) error {
 	minLength := viper.GetInt("accounts.min_passwd_len")
 	minClasses := viper.GetInt("accounts.min_passwd_classes")
 
@@ -39,7 +39,7 @@ func checkPassword(pass, username string, policy *PwPolicy) error {
 
 	l := len([]rune(pass))
 	if l < minLength {
-		return fmt.Errorf(T("password.min_length"), minLength)
+		return fmt.Errorf(TL(lang, "password.min_length"), minLength)
 	}
 
 	// Category counting mirrors FreeIPA's util/ipa_pwd.c: five classes
@@ -85,11 +85,11 @@ func checkPassword(pass, username string, policy *PwPolicy) error {
 	}
 
 	if numCategories < minClasses {
-		return errors.New(T("password.policy_not_met"))
+		return errors.New(TL(lang, "password.policy_not_met"))
 	}
 
 	if pwquality {
-		return checkPwquality(pass, username, policy)
+		return checkPwquality(lang, pass, username, policy)
 	}
 
 	return nil
@@ -99,7 +99,7 @@ func checkPassword(pass, username string, policy *PwPolicy) error {
 // them, in libpwquality's order. Like libpwquality it works on bytes:
 // counting runes would reject non-ASCII passwords FreeIPA accepts. The
 // dictionary check (cracklib) is left to FreeIPA.
-func checkPwquality(pass, username string, p *PwPolicy) error {
+func checkPwquality(lang, pass, username string, p *PwPolicy) error {
 	b := []byte(pass)
 	mono := slices.Clone(b)
 	for i, c := range mono {
@@ -136,7 +136,7 @@ func checkPwquality(pass, username string, p *PwPolicy) error {
 		{others, p.OtherCredit, "password.too_few_special"},
 	} {
 		if class.count < -class.credit {
-			return errors.New(T(class.tooFew))
+			return errors.New(TL(lang, class.tooFew))
 		}
 		if class.credit > 0 {
 			size += min(class.count, class.credit)
@@ -144,27 +144,27 @@ func checkPwquality(pass, username string, p *PwPolicy) error {
 	}
 	// libpwquality's floor; FreeIPA refuses a lower minlength for such policies anyway
 	if minLength := max(p.MinLength, 6); size < minLength {
-		return fmt.Errorf(T("password.min_length"), minLength)
+		return fmt.Errorf(TL(lang, "password.min_length"), minLength)
 	}
 
 	rev := slices.Clone(mono)
 	slices.Reverse(rev)
 	if bytes.Equal(mono, rev) {
-		return errors.New(T("password.palindrome"))
+		return errors.New(TL(lang, "password.palindrome"))
 	}
 
 	if p.MaxRepeat > 0 && longestRun(b, 0) > p.MaxRepeat {
-		return errors.New(T("password.too_many_repeats"))
+		return errors.New(TL(lang, "password.too_many_repeats"))
 	}
 	if p.MaxSequence > 0 && max(longestRun(b, 1), longestRun(b, -1)) > p.MaxSequence {
-		return errors.New(T("password.sequence"))
+		return errors.New(TL(lang, "password.sequence"))
 	}
 
 	if user := strings.ToLower(username); p.UserCheck && len(user) >= 4 {
 		resu := []byte(user)
 		slices.Reverse(resu)
 		if bytes.Contains(mono, []byte(user)) || bytes.Contains(mono, resu) {
-			return errors.New(T("password.contains_username"))
+			return errors.New(TL(lang, "password.contains_username"))
 		}
 	}
 
@@ -186,20 +186,20 @@ func longestRun(b []byte, step int) int {
 	return longest
 }
 
-func validatePassword(password, passwordConfirm, username string, policy *PwPolicy) error {
+func validatePassword(lang, password, passwordConfirm, username string, policy *PwPolicy) error {
 	if password == "" {
-		return errors.New(T("password.enter_new"))
+		return errors.New(TL(lang, "password.enter_new"))
 	}
 
 	if passwordConfirm == "" {
-		return errors.New(T("password.confirm_new"))
+		return errors.New(TL(lang, "password.confirm_new"))
 	}
 
 	if password != passwordConfirm {
 		return errors.New("Password do not match. Please confirm your password.")
 	}
 
-	if err := checkPassword(password, username, policy); err != nil {
+	if err := checkPassword(lang, password, username, policy); err != nil {
 		return err
 	}
 
@@ -212,23 +212,23 @@ func validatePassword(password, passwordConfirm, username string, policy *PwPoli
 				"err":      err,
 			}).Warn("Breached-password check failed, accepting password")
 		} else if breached {
-			return errors.New(T("password.breached"))
+			return errors.New(TL(lang, "password.breached"))
 		}
 	}
 
 	return nil
 }
 
-func validatePasswordChange(passwordCurrent, password, passwordConfirm, username string, policy *PwPolicy) error {
+func validatePasswordChange(lang, passwordCurrent, password, passwordConfirm, username string, policy *PwPolicy) error {
 	if passwordCurrent == "" {
-		return errors.New(T("password.enter_current"))
+		return errors.New(TL(lang, "password.enter_current"))
 	}
 
 	if passwordCurrent == passwordConfirm {
-		return errors.New(T("password.same_as_new"))
+		return errors.New(TL(lang, "password.same_as_new"))
 	}
 
-	return validatePassword(password, passwordConfirm, username, policy)
+	return validatePassword(lang, password, passwordConfirm, username, policy)
 }
 
 // usesFreeIPAPassword reports whether ipauserauthtype values let the user
@@ -251,7 +251,7 @@ func usesFreeIPAPassword(types []string) bool {
 // reset, or returns "" when they have one. The user's ipauserauthtype falls
 // back to the server-wide default, which also wins outright when it
 // contains "disabled" (per-user types switched off).
-func (r *Router) passwordElsewhere(user *ipa.User) string {
+func (r *Router) passwordElsewhere(lang string, user *ipa.User) string {
 	types := user.AuthTypes
 	if global := r.defaultAuthTypes(); len(types) == 0 || slices.Contains(global, "disabled") {
 		types = slices.DeleteFunc(global, func(t string) bool { return t == "disabled" })
@@ -261,11 +261,11 @@ func (r *Router) passwordElsewhere(user *ipa.User) string {
 	case usesFreeIPAPassword(types):
 		return ""
 	case slices.Contains(types, "idp"):
-		return T("password.managed_by_idp")
+		return TL(lang, "password.managed_by_idp")
 	case slices.Contains(types, "radius"):
-		return T("password.managed_by_radius")
+		return TL(lang, "password.managed_by_radius")
 	}
-	return T("password.not_used")
+	return TL(lang, "password.not_used")
 }
 
 // defaultAuthTypes is the server-wide ipauserauthtype; nil when FreeIPA
@@ -327,7 +327,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 		"user": user,
 	}
 
-	if msg := r.passwordElsewhere(user); msg != "" {
+	if msg := r.passwordElsewhere(requestLanguage(c), user); msg != "" {
 		if c.Method() != fiber.MethodGet {
 			return c.Status(fiber.StatusForbidden).SendString(msg)
 		}
@@ -349,12 +349,12 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 	otp := c.FormValue("otpcode")
 
 	if user.OTPOnly() && otp == "" {
-		vars["message"] = T("otptoken.enter_6_digit_code_help")
+		vars["message"] = TC(c, "otptoken.enter_6_digit_code_help")
 		return c.Render("password.html", vars)
 	}
 
 	policy, _ := vars["pwpolicy"].(*PwPolicy)
-	if err := validatePasswordChange(password, newpass, newpass2, user.Username, policy); err != nil {
+	if err := validatePasswordChange(requestLanguage(c), password, newpass, newpass2, user.Username, policy); err != nil {
 		vars["message"] = err.Error()
 		return c.Render("password.html", vars)
 	}
@@ -373,7 +373,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 				"username": user.Username,
 				"error":    err.Error(),
 			}).Error("Failed to change password")
-			vars["message"] = T("account.fatal_system_error")
+			vars["message"] = TC(c, "account.fatal_system_error")
 		}
 	} else {
 		// Kill other active sessions; keep this one by refreshing its
@@ -415,7 +415,7 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 
 	username := c.FormValue("username")
 	if r.adTrustUsername(username) {
-		return c.Status(fiber.StatusBadRequest).SendString(T("password.managed_by_ad"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "password.managed_by_ad"))
 	}
 
 	err := r.verifyCaptcha(c.FormValue("captcha_id"), c.FormValue("captcha_sol"))
@@ -448,7 +448,7 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 	}
 
 	// no reset link: a FreeIPA password would not let them sign in
-	if reason := r.passwordElsewhere(user); reason != "" {
+	if reason := r.passwordElsewhere(requestLanguage(c), user); reason != "" {
 		log.WithFields(log.Fields{
 			"username": username,
 		}).Warn("AUDIT Forgot password attempt for user without a FreeIPA password")
@@ -510,7 +510,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
-	if r.passwordElsewhere(user) != "" {
+	if r.passwordElsewhere(requestLanguage(c), user) != "" {
 		log.WithFields(log.Fields{
 			"username": claims.Username,
 		}).Warn("AUDIT Attempt to reset password for user without a FreeIPA password")
@@ -543,16 +543,16 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 	otp := c.FormValue("otpcode")
 
 	if user.OTPOnly() && otp == "" {
-		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.enter_6_digit_code_help"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "otptoken.enter_6_digit_code_help"))
 	}
 
-	if err := validatePassword(password, passwordConfirm, user.Username, policy); err != nil {
+	if err := validatePassword(requestLanguage(c), password, passwordConfirm, user.Username, policy); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
 	rand, err := r.adminClient.ResetPassword(user.Username)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.system_error"))
 	}
 
 	err = r.adminClient.SetPassword(user.Username, rand, password, otp)
@@ -563,19 +563,19 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 				"username": user.Username,
 				"error":    err,
 			}).Error("Password does not conform to policy")
-			return c.Status(fiber.StatusBadRequest).SendString(T("account.weak_password"))
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "account.weak_password"))
 		case errors.Is(err, ipa.ErrInvalidPassword):
 			log.WithFields(log.Fields{
 				"username": user.Username,
 				"error":    err,
 			}).Error("invalid password from FreeIPA")
-			return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.invalid_otp"))
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "otptoken.invalid_otp"))
 		default:
 			log.WithFields(log.Fields{
 				"username": user.Username,
 				"error":    err,
 			}).Error("failed to set user password in FreeIPA")
-			return c.Status(fiber.StatusInternalServerError).SendString(T("account.system_error"))
+			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.system_error"))
 		}
 	}
 
@@ -630,7 +630,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		return r.redirectLogin(c)
 	}
 
-	if r.passwordElsewhere(user) != "" {
+	if r.passwordElsewhere(requestLanguage(c), user) != "" {
 		return r.redirectLogin(c)
 	}
 
@@ -640,7 +640,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	otp := c.FormValue("otp")
 
 	if user.OTPOnly() && otp == "" {
-		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.enter_6_digit_code_help"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "otptoken.enter_6_digit_code_help"))
 	}
 
 	policy, perr := pwPolicyShow(r.adminClient, user.Username)
@@ -648,7 +648,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		policy = nil
 	}
 
-	if err := validatePasswordChange(password, newpass, newpass2, user.Username, policy); err != nil {
+	if err := validatePasswordChange(requestLanguage(c), password, newpass, newpass2, user.Username, policy); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
@@ -664,9 +664,9 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 		// that into a generic error for the user (ubccr/mokey#18)
 		switch {
 		case errors.Is(err, ipa.ErrPasswordPolicy):
-			return c.Status(fiber.StatusBadRequest).SendString(T("password.rejected_by_policy"))
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "password.rejected_by_policy"))
 		case errors.Is(err, ipa.ErrInvalidPassword):
-			return c.Status(fiber.StatusBadRequest).SendString(T("password.invalid_current"))
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "password.invalid_current"))
 		}
 		return c.Status(fiber.StatusInternalServerError).SendString("")
 	}
@@ -706,7 +706,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 			"username":         user.Username,
 			"ipa_client_error": err,
 		}).Error("Failed to login after expired password change")
-		return c.Status(fiber.StatusUnauthorized).SendString(T("login.failed"))
+		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "login.failed"))
 	}
 
 	_, err = client.Ping()
@@ -715,7 +715,7 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 			"username":         user.Username,
 			"ipa_client_error": err,
 		}).Error("Failed to ping FreeIPA after expired password change")
-		return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
+		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_credentials"))
 	}
 
 	// Rotate the session id on privilege elevation, mirroring Authenticate

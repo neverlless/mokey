@@ -209,7 +209,7 @@ func (r *Router) RequireMFA(c *fiber.Ctx) error {
 
 	user := r.user(c)
 	if !user.OTPOnly() {
-		return c.Status(fiber.StatusUnauthorized).SendString(T("account.you_must_enable_two_factor_authentication_first"))
+		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.you_must_enable_two_factor_authentication_first"))
 	}
 
 	return c.Next()
@@ -219,11 +219,11 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 	username := c.FormValue("username")
 
 	if username == "" {
-		return c.Status(fiber.StatusBadRequest).SendString(T("account.please_provide_username"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "account.please_provide_username"))
 	}
 
 	if r.adTrustUsername(username) {
-		return c.Status(fiber.StatusBadRequest).SendString(T("password.managed_by_ad"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "password.managed_by_ad"))
 	}
 
 	if isBlocked(username) {
@@ -234,7 +234,7 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 		// With hidden username errors, show the password form anyway —
 		// Authenticate rejects blocked users with the generic message
 		if !viper.GetBool("accounts.hide_invalid_username_error") {
-			return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_username"))
+			return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_username"))
 		}
 		userRec := new(ipa.User)
 		userRec.Username = username
@@ -254,7 +254,7 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 
 			if !viper.GetBool("accounts.hide_invalid_username_error") {
 				r.metrics.totalFailedLogins.Inc()
-				return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_username"))
+				return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_username"))
 			}
 			userRec = new(ipa.User)
 			userRec.Username = username
@@ -264,7 +264,7 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 				"username": username,
 			}).Error("Failed to fetch user info from FreeIPA")
 			r.metrics.totalFailedLogins.Inc()
-			return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 		}
 	}
 
@@ -277,14 +277,14 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 		// distinguishable either — FreeIPA rejects the login attempt with
 		// the same error as a bad password
 		if !viper.GetBool("accounts.hide_invalid_username_error") {
-			return c.Status(fiber.StatusUnauthorized).SendString(T("account.user_account_is_locked"))
+			return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.user_account_is_locked"))
 		}
 	}
 
 	// mokey signs in with the FreeIPA password only; say why it cannot
 	// work where account state may be shown anyway
 	if !viper.GetBool("accounts.hide_invalid_username_error") {
-		if msg := r.passwordElsewhere(userRec); msg != "" {
+		if msg := r.passwordElsewhere(requestLanguage(c), userRec); msg != "" {
 			r.metrics.totalFailedLogins.Inc()
 			return c.Status(fiber.StatusUnauthorized).SendString(msg)
 		}
@@ -310,15 +310,15 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 	otp := c.FormValue("otp")
 
 	if username == "" {
-		return c.Status(fiber.StatusBadRequest).SendString(T("account.please_provide_username"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "account.please_provide_username"))
 	}
 
 	if password == "" {
-		return c.Status(fiber.StatusBadRequest).SendString(T("account.please_provide_password"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "account.please_provide_password"))
 	}
 
 	if r.adTrustUsername(username) {
-		return c.Status(fiber.StatusBadRequest).SendString(T("password.managed_by_ad"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "password.managed_by_ad"))
 	}
 
 	if isBlocked(username) {
@@ -326,7 +326,7 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 			"username": username,
 		}).Warn("AUDIT User account is blocked from logging in")
 		r.metrics.totalFailedLogins.Inc()
-		return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
+		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_credentials"))
 	}
 
 	client, err := newIPAClient()
@@ -388,10 +388,10 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 					"username": username,
 					"ip":       RemoteIP(c),
 				}).Warn("AUDIT Login attempt for locked-out account")
-				return c.Status(fiber.StatusUnauthorized).SendString(T("login.account_locked_temporarily"))
+				return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "login.account_locked_temporarily"))
 			}
 
-			return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
+			return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_credentials"))
 		}
 	}
 
@@ -402,7 +402,7 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 			"err":      err,
 		}).Error("Failed to ping FreeIPA")
 		r.metrics.totalFailedLogins.Inc()
-		return c.Status(fiber.StatusUnauthorized).SendString(T("account.invalid_credentials"))
+		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_credentials"))
 	}
 
 	sess, err := r.session(c)

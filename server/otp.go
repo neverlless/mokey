@@ -40,7 +40,7 @@ func otpReadonly(user *ipa.User) bool {
 // buttons are hidden in the UI, but enforcement lives here.
 func (r *Router) RequireOTPSelfService(c *fiber.Ctx) error {
 	if otpReadonly(r.user(c)) {
-		return c.Status(fiber.StatusForbidden).SendString(T("otptoken.readonly_notice"))
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "otptoken.readonly_notice"))
 	}
 	return c.Next()
 }
@@ -181,7 +181,7 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 				"err":      err,
 			}).Error("Failed to remove unverified OTP token")
 		}
-		vars["message"] = T("otptoken.failed_to_verify_token")
+		vars["message"] = TC(c, "otptoken.failed_to_verify_token")
 		return r.tokenList(c, vars)
 	}
 
@@ -201,7 +201,7 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 			"uuid":     uuid,
 			"username": user.Username,
 		}).Error("Failed to verify OTP token")
-		return c.Status(fiber.StatusBadRequest).SendString(T("otptoken.invalid_6_digit_code"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "otptoken.invalid_6_digit_code"))
 	}
 
 	autoMFA := false

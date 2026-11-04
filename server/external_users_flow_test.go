@@ -46,7 +46,7 @@ func TestPasswordElsewhere(t *testing.T) {
 			if tc.wantKey != "" {
 				want = T(tc.wantKey)
 			}
-			assert.Equal(t, want, router.passwordElsewhere(&ipa.User{AuthTypes: tc.user}))
+			assert.Equal(t, want, router.passwordElsewhere("english", &ipa.User{AuthTypes: tc.user}))
 		})
 	}
 }

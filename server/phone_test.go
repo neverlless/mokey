@@ -11,40 +11,40 @@ func TestJoinPhone(t *testing.T) {
 
 	// #22: arbitrary text used to be stored as-is
 	for _, bad := range []string{"not a phone", "call me", "555-CALL", "++1"} {
-		_, err := joinPhone("1", bad)
+		_, err := joinPhone("english", "1", bad)
 		assert.Error(err, "should reject %q", bad)
 	}
 
-	v, err := joinPhone("1", "505 555 0100")
+	v, err := joinPhone("english", "1", "505 555 0100")
 	assert.NoError(err)
 	assert.Equal("+1 505 555 0100", v)
 
 	// a leading + on the code is tolerated
-	v, err = joinPhone("+46", "701234567")
+	v, err = joinPhone("english", "+46", "701234567")
 	assert.NoError(err)
 	assert.Equal("+46 701234567", v)
 
 	// clearing the number clears the attribute, no country code needed
-	v, err = joinPhone("1", "")
+	v, err = joinPhone("english", "1", "")
 	assert.NoError(err)
 	assert.Equal("", v)
-	v, err = joinPhone("", "")
+	v, err = joinPhone("english", "", "")
 	assert.NoError(err)
 	assert.Equal("", v)
 
 	// a number without a country code is refused...
-	_, err = joinPhone("", "5055550100")
+	_, err = joinPhone("english", "", "5055550100")
 	assert.Error(err)
 
 	// ...unless it carries its own
-	v, err = joinPhone("", "+1 505 555 0100")
+	v, err = joinPhone("english", "", "+1 505 555 0100")
 	assert.NoError(err)
 	assert.Equal("+1 5055550100", v)
 
 	// the country code itself has to look like one
-	_, err = joinPhone("abc", "5055550100")
+	_, err = joinPhone("english", "abc", "5055550100")
 	assert.Error(err)
-	_, err = joinPhone("12345", "5055550100")
+	_, err = joinPhone("english", "12345", "5055550100")
 	assert.Error(err)
 }
 
@@ -73,7 +73,7 @@ func TestPhoneRoundTrip(t *testing.T) {
 	assert := assert.New(t)
 	for _, stored := range []string{"+1 505 555 0100", "+46 701234567", "+380 671234567"} {
 		code, national := splitPhone(stored)
-		again, err := joinPhone(code, national)
+		again, err := joinPhone("english", code, national)
 		assert.NoError(err)
 		assert.Equal(stored, again)
 	}
