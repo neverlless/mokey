@@ -3,7 +3,7 @@ package server
 import (
 	"sync"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -84,7 +84,7 @@ func newMetrics() *Metrics {
 	return m
 }
 
-func (m *Metrics) Handler(c *fiber.Ctx) error {
-	m.handler(c.Context())
+func (m *Metrics) Handler(c fiber.Ctx) error {
+	m.handler(c.RequestCtx())
 	return nil
 }

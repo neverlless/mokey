@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/essentialkaos/branca/v2"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/spf13/viper"
 )
 

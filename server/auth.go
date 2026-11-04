@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 )
@@ -23,7 +23,7 @@ func isBlocked(username string) bool {
 	return false
 }
 
-func (r *Router) isLoggedIn(c *fiber.Ctx) (bool, error) {
+func (r *Router) isLoggedIn(c fiber.Ctx) (bool, error) {
 	sess, err := r.session(c)
 	if err != nil {
 		return false, errors.New("Failed to get session")
@@ -72,7 +72,7 @@ func (r *Router) isLoggedIn(c *fiber.Ctx) (bool, error) {
 	c.Locals(ContextKeyIPAClient, client)
 
 	// Update session expiry time
-	sess.SetExpiry(time.Duration(viper.GetInt("server.session_idle_timeout")) * time.Second)
+	sess.SetIdleTimeout(time.Duration(viper.GetInt("server.session_idle_timeout")) * time.Second)
 
 	_ = r.sessionSave(c, sess)
 
@@ -105,12 +105,12 @@ func (r *Router) invalidateUserSessions(username string) {
 	}
 }
 
-func (r *Router) Login(c *fiber.Ctx) error {
+func (r *Router) Login(c fiber.Ctx) error {
 	vars := fiber.Map{}
 	return c.Render("login.html", vars)
 }
 
-func (r *Router) Logout(c *fiber.Ctx) error {
+func (r *Router) Logout(c fiber.Ctx) error {
 	if viper.IsSet("hydra.admin_url") && c.Query("logout_challenge") != "" {
 		return r.HydraLogout(c)
 	}
@@ -119,13 +119,13 @@ func (r *Router) Logout(c *fiber.Ctx) error {
 	// CSRF, so without a challenge they must not destroy the session — a
 	// third-party page could force-logout users otherwise
 	if c.Method() == fiber.MethodGet {
-		return c.Redirect("/auth/login")
+		return c.Redirect().Status(fiber.StatusFound).To("/auth/login")
 	}
 
 	return r.redirectLogin(c)
 }
 
-func (r *Router) logout(c *fiber.Ctx) {
+func (r *Router) logout(c fiber.Ctx) {
 	sess, err := r.session(c)
 	if err != nil {
 		return
@@ -165,7 +165,7 @@ func (r *Router) logout(c *fiber.Ctx) {
 	}
 }
 
-func (r *Router) redirectLogin(c *fiber.Ctx) error {
+func (r *Router) redirectLogin(c fiber.Ctx) error {
 	r.logout(c)
 
 	if c.Get("HX-Request", "false") == "true" {
@@ -173,23 +173,23 @@ func (r *Router) redirectLogin(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNoContent).SendString("")
 	}
 
-	return c.Redirect("/auth/login")
+	return c.Redirect().Status(fiber.StatusFound).To("/auth/login")
 }
 
-func (r *Router) RequireNoLogin(c *fiber.Ctx) error {
+func (r *Router) RequireNoLogin(c fiber.Ctx) error {
 	if ok, _ := r.isLoggedIn(c); ok {
 		if c.Get("HX-Request", "false") == "true" {
 			c.Set("HX-Redirect", "/")
 			return c.Status(fiber.StatusNoContent).SendString("")
 		}
 
-		return c.Redirect("/")
+		return c.Redirect().Status(fiber.StatusFound).To("/")
 	}
 
 	return c.Next()
 }
 
-func (r *Router) RequireLogin(c *fiber.Ctx) error {
+func (r *Router) RequireLogin(c fiber.Ctx) error {
 	if ok, err := r.isLoggedIn(c); !ok {
 		slog.Info("Login required and no authenticated session found.",
 			"path", c.Path(),
@@ -202,7 +202,7 @@ func (r *Router) RequireLogin(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func (r *Router) RequireMFA(c *fiber.Ctx) error {
+func (r *Router) RequireMFA(c fiber.Ctx) error {
 	if !viper.GetBool("accounts.require_mfa") {
 		return c.Next()
 	}
@@ -215,7 +215,7 @@ func (r *Router) RequireMFA(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func (r *Router) CheckUser(c *fiber.Ctx) error {
+func (r *Router) CheckUser(c fiber.Ctx) error {
 	username := c.FormValue("username")
 
 	if username == "" {
@@ -303,7 +303,7 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 	return c.Render("login-form.html", vars)
 }
 
-func (r *Router) Authenticate(c *fiber.Ctx) error {
+func (r *Router) Authenticate(c fiber.Ctx) error {
 	username := c.FormValue("username")
 	password := c.FormValue("password")
 	challenge := c.FormValue("challenge")

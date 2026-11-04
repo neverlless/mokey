@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/neverlless/goipa"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -40,14 +40,14 @@ func otpReadonly(user *ipa.User) bool {
 
 // RequireOTPSelfService blocks OTP mutations for read-only users. The
 // buttons are hidden in the UI, but enforcement lives here.
-func (r *Router) RequireOTPSelfService(c *fiber.Ctx) error {
+func (r *Router) RequireOTPSelfService(c fiber.Ctx) error {
 	if otpReadonly(r.user(c)) {
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "otptoken.readonly_notice"))
 	}
 	return c.Next()
 }
 
-func (r *Router) tokenList(c *fiber.Ctx, vars fiber.Map) error {
+func (r *Router) tokenList(c fiber.Ctx, vars fiber.Map) error {
 	client := r.userClient(c)
 	user := r.user(c)
 
@@ -62,16 +62,16 @@ func (r *Router) tokenList(c *fiber.Ctx, vars fiber.Map) error {
 	return c.Render("otptoken-list.html", vars)
 }
 
-func (r *Router) OTPTokenList(c *fiber.Ctx) error {
+func (r *Router) OTPTokenList(c fiber.Ctx) error {
 	return r.tokenList(c, fiber.Map{})
 }
 
-func (r *Router) OTPTokenModal(c *fiber.Ctx) error {
+func (r *Router) OTPTokenModal(c fiber.Ctx) error {
 	vars := fiber.Map{}
 	return c.Render("otptoken-new.html", vars)
 }
 
-func (r *Router) OTPTokenRemove(c *fiber.Ctx) error {
+func (r *Router) OTPTokenRemove(c fiber.Ctx) error {
 	uuid := c.FormValue("uuid")
 	client := r.userClient(c)
 	user := r.user(c)
@@ -103,7 +103,7 @@ func (r *Router) OTPTokenRemove(c *fiber.Ctx) error {
 	return r.tokenList(c, vars)
 }
 
-func (r *Router) OTPTokenEnable(c *fiber.Ctx) error {
+func (r *Router) OTPTokenEnable(c fiber.Ctx) error {
 	uuid := c.FormValue("uuid")
 	client := r.userClient(c)
 	username := r.username(c)
@@ -122,7 +122,7 @@ func (r *Router) OTPTokenEnable(c *fiber.Ctx) error {
 	return r.tokenList(c, vars)
 }
 
-func (r *Router) OTPTokenDisable(c *fiber.Ctx) error {
+func (r *Router) OTPTokenDisable(c fiber.Ctx) error {
 	uuid := c.FormValue("uuid")
 	client := r.userClient(c)
 	username := r.username(c)
@@ -146,7 +146,7 @@ func (r *Router) OTPTokenDisable(c *fiber.Ctx) error {
 	return r.tokenList(c, vars)
 }
 
-func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
+func (r *Router) OTPTokenVerify(c fiber.Ctx) error {
 	otpcode := c.FormValue("otpcode")
 	uri := c.FormValue("uri")
 	uuid := c.FormValue("uuid")
@@ -252,7 +252,7 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 	return r.tokenList(c, vars)
 }
 
-func (r *Router) OTPTokenAdd(c *fiber.Ctx) error {
+func (r *Router) OTPTokenAdd(c fiber.Ctx) error {
 	client := r.userClient(c)
 
 	desc := c.FormValue("desc")

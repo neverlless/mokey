@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 const SessionKeyWebAuthn = "webauthn_registration"
@@ -43,8 +43,8 @@ var errPasskeyHost = errors.New("hostname is not usable as a WebAuthn relying pa
 // against it, so a credential scoped to any other id fails on the hosts.
 var errPasskeyDomain = errors.New("portal hostname is outside the IPA domain")
 
-func (r *Router) webAuthn(c *fiber.Ctx) (*webauthn.WebAuthn, error) {
-	host := c.Hostname()
+func (r *Router) webAuthn(c fiber.Ctx) (*webauthn.WebAuthn, error) {
+	host := c.Host()
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h
 	}
@@ -68,7 +68,7 @@ func (r *Router) webAuthn(c *fiber.Ctx) (*webauthn.WebAuthn, error) {
 	})
 }
 
-func (r *Router) passkeyList(c *fiber.Ctx) ([]fiber.Map, error) {
+func (r *Router) passkeyList(c fiber.Ctx) ([]fiber.Map, error) {
 	mappings, err := userPasskeys(r.userClient(c), r.username(c))
 	if err != nil {
 		return nil, err
@@ -89,10 +89,10 @@ func (r *Router) passkeyList(c *fiber.Ctx) ([]fiber.Map, error) {
 	return list, nil
 }
 
-func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
+func (r *Router) PasskeyBegin(c fiber.Ctx) error {
 	w, err := r.webAuthn(c)
 	if err != nil {
-		slog.Error("Failed to init webauthn", "err", err, "host", c.Hostname())
+		slog.Error("Failed to init webauthn", "err", err, "host", c.Host())
 		if errors.Is(err, errPasskeyHost) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
 		}
@@ -127,7 +127,7 @@ func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
 	return c.JSON(options)
 }
 
-func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
+func (r *Router) PasskeyFinish(c fiber.Ctx) error {
 	username := r.username(c)
 
 	sess, err := r.session(c)
@@ -158,7 +158,7 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 
 	w, err := r.webAuthn(c)
 	if err != nil {
-		slog.Error("Failed to init webauthn", "err", err, "host", c.Hostname())
+		slog.Error("Failed to init webauthn", "err", err, "host", c.Host())
 		if errors.Is(err, errPasskeyHost) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
 		}
@@ -199,7 +199,7 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func (r *Router) PasskeyRemove(c *fiber.Ctx) error {
+func (r *Router) PasskeyRemove(c fiber.Ctx) error {
 	username := r.username(c)
 	mapping := c.FormValue("mapping")
 

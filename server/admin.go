@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 )
@@ -39,7 +39,7 @@ func isAdmin(user *ipa.User) bool {
 	return false
 }
 
-func (r *Router) RequireAdmin(c *fiber.Ctx) error {
+func (r *Router) RequireAdmin(c fiber.Ctx) error {
 	if !isAdmin(r.user(c)) {
 		slog.Warn("AUDIT non-admin user attempted to access admin route",
 			"username", r.username(c),
@@ -55,7 +55,7 @@ func (r *Router) RequireAdmin(c *fiber.Ctx) error {
 // InviteSend handles the admin invite form. An invite token is emailed to
 // the address; the invited user completes their own profile via
 // InviteAccept. Works regardless of accounts.enable_signup.
-func (r *Router) InviteSend(c *fiber.Ctx) error {
+func (r *Router) InviteSend(c fiber.Ctx) error {
 	email := strings.TrimSpace(strings.ToLower(c.FormValue("email")))
 
 	vars := fiber.Map{
@@ -90,7 +90,7 @@ func (r *Router) InviteSend(c *fiber.Ctx) error {
 // InviteAccept lets an invited user complete their own account. The token
 // proves ownership of the invited email address, so the account is created
 // enabled with no further email verification.
-func (r *Router) InviteAccept(c *fiber.Ctx) error {
+func (r *Router) InviteAccept(c fiber.Ctx) error {
 	token := c.Params("token")
 
 	claims, err := ParseToken(token, TokenInvite, r.storage)
@@ -150,7 +150,7 @@ const adminUserListLimit = 50
 // adminUserVars builds the template vars for the admin user table.
 // ponytail: fetches up to 500 users and filters substring in Go — fine for
 // typical directories; server-side criteria search if this becomes slow.
-func (r *Router) adminUserVars(c *fiber.Ctx, search string) fiber.Map {
+func (r *Router) adminUserVars(c fiber.Ctx, search string) fiber.Map {
 	vars := fiber.Map{
 		"user":   r.user(c),
 		"search": search,
@@ -183,11 +183,11 @@ func (r *Router) adminUserVars(c *fiber.Ctx, search string) fiber.Map {
 	return vars
 }
 
-func (r *Router) AdminUserList(c *fiber.Ctx) error {
+func (r *Router) AdminUserList(c fiber.Ctx) error {
 	return c.Render("admin-users.html", r.adminUserVars(c, c.Query("search")))
 }
 
-func (r *Router) AdminUserAction(c *fiber.Ctx) error {
+func (r *Router) AdminUserAction(c fiber.Ctx) error {
 	username := strings.TrimSpace(c.FormValue("username"))
 	action := c.Params("action")
 	search := c.FormValue("search")
@@ -350,7 +350,7 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 
 // AdminPendingList renders signups that confirmed their email and now wait
 // for admin approval (require_admin_verify)
-func (r *Router) AdminPendingList(c *fiber.Ctx) error {
+func (r *Router) AdminPendingList(c fiber.Ctx) error {
 	users, err := r.adminClient.UserFind(ipa.Options{
 		"userclass": UserCategoryPending,
 	})
@@ -398,7 +398,7 @@ type otpRecoveryView struct {
 // AdminOTPRecoveryList renders the OTP recovery queue for admin review.
 // Always visible (unlike the pending-signup queue, which is gated by
 // accounts.require_admin_verify).
-func (r *Router) AdminOTPRecoveryList(c *fiber.Ctx) error {
+func (r *Router) AdminOTPRecoveryList(c fiber.Ctx) error {
 	requests := []otpRecoveryView{}
 	for _, req := range r.loadOTPRecoveryRequests() {
 		user, err := r.adminClient.UserShow(req.Username)
@@ -442,7 +442,7 @@ func (r *Router) sendOTPRecoveryDecision(username string, approved bool) {
 	}
 }
 
-func (r *Router) AdminAuditList(c *fiber.Ctx) error {
+func (r *Router) AdminAuditList(c fiber.Ctx) error {
 	return c.Render("admin-audit.html", fiber.Map{
 		"user":   r.user(c),
 		"events": auditRecent(r.storage, 50),

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	hydra "github.com/ory/hydra-client-go/v26"
 	"github.com/spf13/viper"
@@ -104,7 +104,7 @@ func (ftt *FakeTLSTransport) RoundTrip(req *http.Request) (*http.Response, error
 	return ftt.T.RoundTrip(req)
 }
 
-func (r *Router) ConsentGet(c *fiber.Ctx) error {
+func (r *Router) ConsentGet(c fiber.Ctx) error {
 	// Get the challenge from the query.
 	challenge := c.Query("consent_challenge")
 	if challenge == "" {
@@ -204,10 +204,10 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 	r.metrics.totalHydraLogins.Inc()
 
 	c.Set("HX-Redirect", redirect.GetRedirectTo())
-	return c.Redirect(redirect.GetRedirectTo())
+	return c.Redirect().Status(fiber.StatusFound).To(redirect.GetRedirectTo())
 }
 
-func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
+func (r *Router) LoginOAuthGet(c fiber.Ctx) error {
 	// Get the challenge from the query.
 	challenge := c.Query("login_challenge")
 	if challenge == "" {
@@ -265,7 +265,7 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 		)
 
 		c.Set("HX-Redirect", redirect.GetRedirectTo())
-		return c.Redirect(redirect.GetRedirectTo())
+		return c.Redirect().Status(fiber.StatusFound).To(redirect.GetRedirectTo())
 	}
 
 	if ok, _ := r.isLoggedIn(c); ok {
@@ -279,7 +279,7 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 	return c.Render("login.html", vars)
 }
 
-func (r *Router) LoginOAuthPost(username, challenge string, c *fiber.Ctx) error {
+func (r *Router) LoginOAuthPost(username, challenge string, c fiber.Ctx) error {
 	acceptBody := hydra.NewAcceptOAuth2LoginRequest(username)
 	acceptBody.SetRemember(true) // TODO: make this configurable
 	acceptBody.SetRememberFor(viper.GetInt64("hydra.login_timeout"))
@@ -303,10 +303,10 @@ func (r *Router) LoginOAuthPost(username, challenge string, c *fiber.Ctx) error 
 		return c.Status(fiber.StatusNoContent).SendString("")
 	}
 
-	return c.Redirect(redirect.GetRedirectTo())
+	return c.Redirect().Status(fiber.StatusFound).To(redirect.GetRedirectTo())
 }
 
-func (r *Router) HydraError(c *fiber.Ctx) error {
+func (r *Router) HydraError(c fiber.Ctx) error {
 	message := c.Query("error")
 	desc := c.Query("error_description")
 	hint := c.Query("error_hint")
@@ -324,7 +324,7 @@ func (r *Router) HydraError(c *fiber.Ctx) error {
 // user here with a logout_challenge; we destroy the local session, accept
 // the challenge, and redirect the user back (e.g. to the client's
 // post_logout_redirect_uri). See https://www.ory.sh/docs/hydra/concepts/logout
-func (r *Router) HydraLogout(c *fiber.Ctx) error {
+func (r *Router) HydraLogout(c fiber.Ctx) error {
 	challenge := c.Query("logout_challenge")
 
 	logoutRequest, _, err := r.hydraClient.OAuth2API.GetOAuth2LogoutRequest(context.Background()).
@@ -356,7 +356,7 @@ func (r *Router) HydraLogout(c *fiber.Ctx) error {
 		"ip", RemoteIP(c),
 	)
 
-	return c.Redirect(redirect.GetRedirectTo())
+	return c.Redirect().Status(fiber.StatusFound).To(redirect.GetRedirectTo())
 }
 
 func (r *Router) revokeHydraAuthenticationSession(username string) error {

@@ -11,10 +11,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func SecureHeaders(c *fiber.Ctx) error {
+func SecureHeaders(c fiber.Ctx) error {
 	// Per-request CSP nonce; templates stamp it on inline <script> tags via
 	// nonce="{{ .cspNonce }}" (PassLocalsToViews). Inline styles stay
 	// allowed — the templates rely on style attributes throughout.
@@ -33,7 +33,7 @@ func SecureHeaders(c *fiber.Ctx) error {
 		"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-"+nonce+"'")
 
 	// Direct TLS or an X-Forwarded-Proto from a trusted proxy
-	if c.Protocol() == "https" {
+	if c.Scheme() == "https" {
 		c.Set(fiber.HeaderStrictTransportSecurity, "max-age=31536000")
 	}
 
@@ -44,7 +44,7 @@ func SecureHeaders(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func NotFoundHandler(c *fiber.Ctx) error {
+func NotFoundHandler(c fiber.Ctx) error {
 	slog.Info("Requested path not found",
 		"path", c.Path(),
 		"ip", RemoteIP(c),
@@ -66,7 +66,7 @@ func NotFoundHandler(c *fiber.Ctx) error {
 	return c.Render("404.html", fiber.Map{})
 }
 
-func HTTPErrorHandler(c *fiber.Ctx, err error) error {
+func HTTPErrorHandler(c fiber.Ctx, err error) error {
 	username := c.Locals(ContextKeyUser)
 	path := c.Path()
 	code := fiber.StatusInternalServerError
@@ -113,14 +113,14 @@ func HTTPErrorHandler(c *fiber.Ctx, err error) error {
 	return nil
 }
 
-func LimitReachedHandler(c *fiber.Ctx) error {
+func LimitReachedHandler(c fiber.Ctx) error {
 	slog.Warn("Limit reached",
 		"ip", RemoteIP(c),
 	)
 	return c.Status(fiber.StatusTooManyRequests).SendString("Too many requests. Please try again later.")
 }
 
-func (r *Router) RequireHTMX(c *fiber.Ctx) error {
+func (r *Router) RequireHTMX(c fiber.Ctx) error {
 	if c.Get("HX-Request", "false") == "true" {
 		return c.Next()
 	}

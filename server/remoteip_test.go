@@ -4,7 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,7 +14,7 @@ import (
 func echoIP(t *testing.T, xff string) string {
 	t.Helper()
 	app := fiber.New()
-	app.Get("/ip", func(c *fiber.Ctx) error {
+	app.Get("/ip", func(c fiber.Ctx) error {
 		return c.SendString(RemoteIP(c))
 	})
 

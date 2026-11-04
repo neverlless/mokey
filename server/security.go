@@ -3,13 +3,13 @@ package server
 import (
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // securityVars fills the Security page sections: sessions, activity, and
 // (when Hydra is configured) connected apps. Shared by the HTMX partial
 // render and the non-HTMX full-page Index render.
-func (r *Router) securityVars(c *fiber.Ctx, vars fiber.Map) {
+func (r *Router) securityVars(c fiber.Ctx, vars fiber.Map) {
 	user := r.user(c)
 	vars["user"] = user
 
@@ -32,17 +32,17 @@ func (r *Router) securityVars(c *fiber.Ctx, vars fiber.Map) {
 	}
 }
 
-func (r *Router) securityList(c *fiber.Ctx, vars fiber.Map) error {
+func (r *Router) securityList(c fiber.Ctx, vars fiber.Map) error {
 	r.securityVars(c, vars)
 	return c.Render("security.html", vars)
 }
 
-func (r *Router) SecurityList(c *fiber.Ctx) error {
+func (r *Router) SecurityList(c fiber.Ctx) error {
 	return r.securityList(c, fiber.Map{})
 }
 
 // AppRevoke revokes the caller's consent for one connected OAuth client.
-func (r *Router) AppRevoke(c *fiber.Ctx) error {
+func (r *Router) AppRevoke(c fiber.Ctx) error {
 	vars := fiber.Map{}
 	user := r.user(c)
 	clientID := c.FormValue("client")
@@ -65,7 +65,7 @@ func (r *Router) AppRevoke(c *fiber.Ctx) error {
 	return r.securityList(c, vars)
 }
 
-func (r *Router) TwoFactorDisable(c *fiber.Ctx) error {
+func (r *Router) TwoFactorDisable(c fiber.Ctx) error {
 	vars := fiber.Map{}
 	user := r.user(c)
 
@@ -92,7 +92,7 @@ func (r *Router) TwoFactorDisable(c *fiber.Ctx) error {
 	return r.securityList(c, vars)
 }
 
-func (r *Router) TwoFactorEnable(c *fiber.Ctx) error {
+func (r *Router) TwoFactorEnable(c fiber.Ctx) error {
 	client := r.userClient(c)
 	vars := fiber.Map{}
 	user := r.user(c)

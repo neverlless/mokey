@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	ipa "github.com/neverlless/goipa"
 	hydra "github.com/ory/hydra-client-go/v26"
 	"github.com/spf13/viper"
@@ -67,9 +67,9 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 
 	r.adminClient.StickySession(false)
 
-	r.sessionStore = session.New(session.Config{
+	r.sessionStore = session.NewStore(session.Config{
 		Storage:        storage,
-		Expiration:     time.Duration(viper.GetInt("server.session_idle_timeout")) * time.Second,
+		IdleTimeout:    time.Duration(viper.GetInt("server.session_idle_timeout")) * time.Second,
 		CookieSameSite: "Strict",
 		CookieSecure:   viper.GetBool("server.secure_cookies"),
 		CookieHTTPOnly: true,
@@ -123,8 +123,8 @@ func trustedProxyContains(ip net.IP) bool {
 // configured trusted proxy (server.trusted_proxies), and entries are walked
 // right to left skipping further trusted proxies — the leftmost values are
 // client-supplied and forgeable.
-func RemoteIP(c *fiber.Ctx) string {
-	peer := c.Context().RemoteIP()
+func RemoteIP(c fiber.Ctx) string {
+	peer := c.RequestCtx().RemoteIP()
 	if !trustedProxyContains(peer) {
 		return peer.String()
 	}
@@ -143,24 +143,32 @@ func RemoteIP(c *fiber.Ctx) string {
 	return peer.String()
 }
 
+// get registers a GET route and its HEAD twin in place, as Fiber v2's
+// app.Get did. Fiber v3's automatic HEAD routes are appended after the
+// catch-all 404 handler and after CSRF, which would answer HEAD with 404 and
+// give /healthz probes a session.
+func get(app *fiber.App, path string, handler any, handlers ...any) {
+	app.Add([]string{fiber.MethodGet, fiber.MethodHead}, path, handler, handlers...)
+}
+
 func (r *Router) SetupRoutes(app *fiber.App) {
 	// Health check (no auth, no CSRF/session - must be registered first)
-	app.Get("/healthz", r.Healthz)
+	get(app, "/healthz", r.Healthz)
 
 	// CSRF tokens stored in sessions
 	app.Use(r.CSRF)
 
-	app.Get("/", r.RequireLogin, r.Index)
-	app.Get("/account", r.RequireLogin, r.Index)
-	app.Get("/password", r.RequireLogin, r.Index)
-	app.Get("/security", r.RequireLogin, r.Index)
-	app.Get("/sshkey", r.RequireLogin, r.Index)
-	app.Get("/passkey", r.RequireLogin, r.Index)
-	app.Get("/otp", r.RequireLogin, r.Index)
+	get(app, "/", r.RequireLogin, r.Index)
+	get(app, "/account", r.RequireLogin, r.Index)
+	get(app, "/password", r.RequireLogin, r.Index)
+	get(app, "/security", r.RequireLogin, r.Index)
+	get(app, "/sshkey", r.RequireLogin, r.Index)
+	get(app, "/passkey", r.RequireLogin, r.Index)
+	get(app, "/otp", r.RequireLogin, r.Index)
 	// Group self-service and the access page are whole features an operator
 	// can switch off; hiding the tab is not enough, the routes go too (#27)
 	if viper.GetBool("accounts.enable_groups") {
-		app.Get("/groups", r.RequireLogin, r.Index)
+		get(app, "/groups", r.RequireLogin, r.Index)
 		app.Post("/groups/request", r.RequireLogin, r.RequireHTMX, r.GroupRequestJoin)
 		app.Post("/groups/leave", r.RequireLogin, r.RequireHTMX, r.GroupRequestLeave)
 		app.Post("/groups/approve", r.RequireLogin, r.RequireHTMX, r.GroupApprove)
@@ -169,7 +177,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	}
 
 	if viper.GetBool("accounts.enable_access") {
-		app.Get("/access", r.RequireLogin, r.Index)
+		get(app, "/access", r.RequireLogin, r.Index)
 		app.Post("/access/test", r.RequireLogin, r.RequireHTMX, r.AccessTest)
 	}
 
@@ -180,46 +188,46 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 
 	// Account Create
 	if viper.GetBool("accounts.enable_signup") {
-		app.Get("/signup", r.RequireNoLogin, r.AccountCreate)
+		get(app, "/signup", r.RequireNoLogin, r.AccountCreate)
 		app.Post("/signup", r.RequireNoLogin, r.AccountCreate)
 	}
 
 	// Auth
-	app.Get("/auth/login", r.RequireNoLogin, r.Login)
+	get(app, "/auth/login", r.RequireNoLogin, r.Login)
 	app.Post("/auth/login", r.RequireNoLogin, r.CheckUser)
 	app.Post("/auth/authenticate", r.RequireNoLogin, r.Authenticate)
 	app.Post("/auth/expiredpw", r.RequireNoLogin, r.PasswordExpired)
-	app.Get("/auth/forgotpw", r.RequireNoLogin, r.PasswordForgot)
+	get(app, "/auth/forgotpw", r.RequireNoLogin, r.PasswordForgot)
 	app.Post("/auth/forgotpw", r.RequireNoLogin, r.PasswordForgot)
-	app.Get("/auth/forgotuser", r.RequireNoLogin, r.UsernameForgot)
+	get(app, "/auth/forgotuser", r.RequireNoLogin, r.UsernameForgot)
 	app.Post("/auth/forgotuser", r.RequireNoLogin, r.UsernameForgot)
-	app.Get("/auth/verify", r.RequireNoLogin, r.AccountVerifyResend)
+	get(app, "/auth/verify", r.RequireNoLogin, r.AccountVerifyResend)
 	app.Post("/auth/verify", r.RequireNoLogin, r.AccountVerifyResend)
-	app.Get("/auth/resetpw/:token", r.PasswordReset)
+	get(app, "/auth/resetpw/:token", r.PasswordReset)
 	app.Post("/auth/resetpw/:token", r.PasswordReset)
-	app.Get("/auth/verify/:token", r.AccountVerify)
+	get(app, "/auth/verify/:token", r.AccountVerify)
 	app.Post("/auth/verify/:token", r.AccountVerify)
-	app.Get("/auth/otprecovery", r.RequireNoLogin, r.OTPRecoveryRequest)
+	get(app, "/auth/otprecovery", r.RequireNoLogin, r.OTPRecoveryRequest)
 	app.Post("/auth/otprecovery", r.RequireNoLogin, r.OTPRecoveryRequest)
-	app.Get("/auth/otprecovery/:token", r.OTPRecoveryConfirm)
+	get(app, "/auth/otprecovery/:token", r.OTPRecoveryConfirm)
 	app.Post("/auth/otprecovery/:token", r.OTPRecoveryConfirm)
 	app.Post("/auth/logout", r.Logout)
 	// Hydra redirects the browser here with a logout_challenge (OIDC logout)
-	app.Get("/auth/logout", r.Logout)
-	app.Get("/auth/captcha/:id.png", r.Captcha)
+	get(app, "/auth/logout", r.Logout)
+	get(app, "/auth/captcha/:id.png", r.Captcha)
 
 	// Account Settings
-	app.Get("/account/settings", r.RequireLogin, r.RequireHTMX, r.AccountSettings)
+	get(app, "/account/settings", r.RequireLogin, r.RequireHTMX, r.AccountSettings)
 	app.Post("/account/settings", r.RequireLogin, r.RequireHTMX, r.AccountSettings)
-	app.Get("/auth/email/confirm/:token", r.EmailChangeConfirm)
+	get(app, "/auth/email/confirm/:token", r.EmailChangeConfirm)
 	app.Post("/auth/email/confirm/:token", r.EmailChangeConfirm)
 
 	// Password
-	app.Get("/password/change", r.RequireLogin, r.RequireHTMX, r.PasswordChange)
+	get(app, "/password/change", r.RequireLogin, r.RequireHTMX, r.PasswordChange)
 	app.Post("/password/change", r.RequireLogin, r.RequireHTMX, r.PasswordChange)
 
 	// Security
-	app.Get("/security/settings", r.RequireLogin, r.RequireHTMX, r.SecurityList)
+	get(app, "/security/settings", r.RequireLogin, r.RequireHTMX, r.SecurityList)
 	app.Post("/security/session/revoke", r.RequireLogin, r.RequireHTMX, r.SessionRevoke)
 	app.Post("/security/sessions/revoke-others", r.RequireLogin, r.RequireHTMX, r.SessionRevokeOthers)
 	app.Post("/security/mfa/enable", r.RequireLogin, r.RequireHTMX, r.TwoFactorEnable)
@@ -227,14 +235,14 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 
 	// SSH Keys
 	// Admin
-	app.Get("/admin", r.RequireLogin, r.Index)
+	get(app, "/admin", r.RequireLogin, r.Index)
 	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
-	app.Get("/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
-	app.Get("/admin/pending", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminPendingList)
-	app.Get("/admin/otprecovery", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminOTPRecoveryList)
-	app.Get("/admin/audit", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAuditList)
+	get(app, "/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
+	get(app, "/admin/pending", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminPendingList)
+	get(app, "/admin/otprecovery", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminOTPRecoveryList)
+	get(app, "/admin/audit", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAuditList)
 	app.Post("/admin/user/:action", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserAction)
-	app.Get("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
+	get(app, "/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
 	app.Post("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
 
 	// Passkeys
@@ -242,14 +250,14 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Post("/passkey/finish", r.RequireLogin, r.PasskeyFinish)
 	app.Post("/passkey/remove", r.RequireLogin, r.RequireHTMX, r.PasskeyRemove)
 
-	app.Get("/sshkey/list", r.RequireLogin, r.RequireHTMX, r.SSHKeyList)
-	app.Get("/sshkey/modal", r.RequireLogin, r.RequireHTMX, r.SSHKeyModal)
+	get(app, "/sshkey/list", r.RequireLogin, r.RequireHTMX, r.SSHKeyList)
+	get(app, "/sshkey/modal", r.RequireLogin, r.RequireHTMX, r.SSHKeyModal)
 	app.Post("/sshkey/add", r.RequireLogin, r.RequireMFA, r.RequireHTMX, r.SSHKeyAdd)
 	app.Post("/sshkey/remove", r.RequireLogin, r.RequireMFA, r.RequireHTMX, r.SSHKeyRemove)
 
 	// OTP Tokens
-	app.Get("/otptoken/list", r.RequireLogin, r.RequireHTMX, r.OTPTokenList)
-	app.Get("/otptoken/modal", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenModal)
+	get(app, "/otptoken/list", r.RequireLogin, r.RequireHTMX, r.OTPTokenList)
+	get(app, "/otptoken/modal", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenModal)
 	app.Post("/otptoken/add", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenAdd)
 	app.Post("/otptoken/verify", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenVerify)
 	app.Post("/otptoken/remove", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenRemove)
@@ -257,39 +265,39 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Post("/otptoken/disable", r.RequireLogin, r.RequireHTMX, r.RequireOTPSelfService, r.OTPTokenDisable)
 
 	if viper.IsSet("site.logo") {
-		app.Get("/images/logo", r.Logo)
+		get(app, "/images/logo", r.Logo)
 	}
 
 	if viper.IsSet("site.css") {
-		app.Get("/css/styles", r.Styles)
+		get(app, "/css/styles", r.Styles)
 	}
 
 	if viper.IsSet("hydra.admin_url") {
-		app.Get("/oauth/consent", r.ConsentGet)
-		app.Get("/oauth/login", r.LoginOAuthGet)
-		app.Get("/oauth/error", r.HydraError)
+		get(app, "/oauth/consent", r.ConsentGet)
+		get(app, "/oauth/login", r.LoginOAuthGet)
+		get(app, "/oauth/error", r.HydraError)
 		app.Post("/security/apps/revoke", r.RequireLogin, r.RequireHTMX, r.AppRevoke)
 	}
 
 	// Prometheus metrics
 	if viper.GetBool("server.enable_metrics") {
-		app.Get("/metrics", r.Metrics)
+		get(app, "/metrics", r.Metrics)
 	}
 }
 
-func (r *Router) userClient(c *fiber.Ctx) *ipa.Client {
+func (r *Router) userClient(c fiber.Ctx) *ipa.Client {
 	return c.Locals(ContextKeyIPAClient).(*ipa.Client)
 }
 
-func (r *Router) username(c *fiber.Ctx) string {
+func (r *Router) username(c fiber.Ctx) string {
 	return c.Locals(ContextKeyUsername).(string)
 }
 
-func (r *Router) user(c *fiber.Ctx) *ipa.User {
+func (r *Router) user(c fiber.Ctx) *ipa.User {
 	return c.Locals(ContextKeyUser).(*ipa.User)
 }
 
-func (r *Router) Index(c *fiber.Ctx) error {
+func (r *Router) Index(c fiber.Ctx) error {
 	user := r.user(c)
 
 	path := strings.TrimPrefix(c.Path(), "/")
@@ -356,22 +364,22 @@ func (r *Router) Index(c *fiber.Ctx) error {
 	return c.Render("index.html", vars)
 }
 
-func (r *Router) Logo(c *fiber.Ctx) error {
+func (r *Router) Logo(c fiber.Ctx) error {
 	if viper.IsSet("site.logo") {
-		return c.SendFile(viper.GetString("site.logo"))
+		return c.SendFile(viper.GetString("site.logo"), fiber.SendFile{ByteRange: true})
 	}
 
 	return c.Status(fiber.StatusNotFound).SendString("")
 }
 
-func (r *Router) Styles(c *fiber.Ctx) error {
+func (r *Router) Styles(c fiber.Ctx) error {
 	if viper.IsSet("site.css") {
-		return c.SendFile(viper.GetString("site.css"))
+		return c.SendFile(viper.GetString("site.css"), fiber.SendFile{ByteRange: true})
 	}
 
 	return c.Status(fiber.StatusNotFound).SendString("")
 }
 
-func (r *Router) Metrics(c *fiber.Ctx) error {
+func (r *Router) Metrics(c fiber.Ctx) error {
 	return r.metrics.Handler(c)
 }

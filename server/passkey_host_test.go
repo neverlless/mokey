@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -9,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/neverlless/goipa/ipatest"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,6 +68,10 @@ func (s *failingSetStorage) Set(key string, val []byte, exp time.Duration) error
 	return errors.New("storage backend down")
 }
 
+func (s *failingSetStorage) SetWithContext(_ context.Context, key string, val []byte, exp time.Duration) error {
+	return s.Set(key, val, exp)
+}
+
 // The registration challenge is single use: PasskeyFinish removes it from the
 // session before verifying. If that removal cannot be saved, the challenge
 // stays valid in storage, so the request must stop instead of carrying on.
@@ -90,7 +95,7 @@ func TestPasskeyFinishStopsWhenChallengeNotConsumed(t *testing.T) {
 	resp := post("/passkey/begin")
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 
-	router.sessionStore = session.New(session.Config{
+	router.sessionStore = session.NewStore(session.Config{
 		Storage: &failingSetStorage{router.storage},
 	})
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"

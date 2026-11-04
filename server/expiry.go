@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 )

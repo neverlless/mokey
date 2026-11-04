@@ -8,14 +8,14 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // accessVars fills the Access tab: HBAC and sudo rules that apply to the
 // logged-in user. Both reads run under the user's own session — default
 // FreeIPA permissions make the rule sets world-readable to authenticated
 // users, so no admin client and no extra privileges are involved.
-func (r *Router) accessVars(c *fiber.Ctx, vars fiber.Map) {
+func (r *Router) accessVars(c fiber.Ctx, vars fiber.Map) {
 	user := r.user(c)
 	client := r.userClient(c)
 
@@ -61,7 +61,7 @@ func (r *Router) accessVars(c *fiber.Ctx, vars fiber.Map) {
 // AccessTest runs FreeIPA's hbactest for the SESSION user against a
 // host/service from the form. The username never comes from the form —
 // users can only simulate their own access.
-func (r *Router) AccessTest(c *fiber.Ctx) error {
+func (r *Router) AccessTest(c fiber.Ctx) error {
 	username := r.username(c)
 
 	host := strings.TrimSpace(c.FormValue("host"))

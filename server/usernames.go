@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 )
@@ -123,7 +123,7 @@ func validateUsername(user *ipa.User) error {
 
 // UsernameForgot emails the username(s) tied to an address. The response is
 // identical whether or not the address matches an account — no enumeration.
-func (r *Router) UsernameForgot(c *fiber.Ctx) error {
+func (r *Router) UsernameForgot(c fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		return c.Render("username-forgot.html", fiber.Map{
 			"captchaID": newCaptchaID(),

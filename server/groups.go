@@ -7,7 +7,7 @@ package server
 import (
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type managedGroup struct {
@@ -39,7 +39,7 @@ type myGroupRequest struct {
 }
 
 // groupsVars fills the /groups template sections from one group_find
-func (r *Router) groupsVars(c *fiber.Ctx, vars fiber.Map) {
+func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 	user := r.user(c)
 	vars["my_groups"] = user.Groups
 
@@ -117,7 +117,7 @@ func (r *Router) groupsVars(c *fiber.Ctx, vars fiber.Map) {
 
 // GroupRequestJoin queues a join request for a managed group and notifies
 // its sponsors
-func (r *Router) GroupRequestJoin(c *fiber.Ctx) error {
+func (r *Router) GroupRequestJoin(c fiber.Ctx) error {
 	user := r.user(c)
 	groupName := c.FormValue("group")
 
@@ -148,7 +148,7 @@ func (r *Router) GroupRequestJoin(c *fiber.Ctx) error {
 // and notifies its sponsors. Membership can only be mutated by a sponsor's
 // session (see groupAddMember), so leaving goes through the same approval
 // queue as joining rather than executing instantly.
-func (r *Router) GroupRequestLeave(c *fiber.Ctx) error {
+func (r *Router) GroupRequestLeave(c fiber.Ctx) error {
 	user := r.user(c)
 	groupName := c.FormValue("group")
 
@@ -177,7 +177,7 @@ func (r *Router) GroupRequestLeave(c *fiber.Ctx) error {
 
 // groupDecision validates that the caller sponsors the group and the
 // target is queued; shared by approve and deny
-func (r *Router) groupDecision(c *fiber.Ctx) (*ipaGroup, GroupRequest, error) {
+func (r *Router) groupDecision(c fiber.Ctx) (*ipaGroup, GroupRequest, error) {
 	user := r.user(c)
 	groupName := c.FormValue("group")
 	target := c.FormValue("username")
@@ -197,7 +197,7 @@ func (r *Router) groupDecision(c *fiber.Ctx) (*ipaGroup, GroupRequest, error) {
 	return nil, GroupRequest{}, fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.no_such_request"))
 }
 
-func (r *Router) GroupApprove(c *fiber.Ctx) error {
+func (r *Router) GroupApprove(c fiber.Ctx) error {
 	g, req, err := r.groupDecision(c)
 	if err != nil {
 		ferr := err.(*fiber.Error)
@@ -240,7 +240,7 @@ func (r *Router) GroupApprove(c *fiber.Ctx) error {
 	return c.Render("groups-list.html", vars)
 }
 
-func (r *Router) GroupDeny(c *fiber.Ctx) error {
+func (r *Router) GroupDeny(c fiber.Ctx) error {
 	g, req, err := r.groupDecision(c)
 	if err != nil {
 		ferr := err.(*fiber.Error)
@@ -269,7 +269,7 @@ func (r *Router) GroupDeny(c *fiber.Ctx) error {
 // GroupRemoveMember lets a sponsor remove a member directly, independent of
 // the leave-request queue — the sponsor already holds standing authority
 // over the group, the same authority Approve exercises.
-func (r *Router) GroupRemoveMember(c *fiber.Ctx) error {
+func (r *Router) GroupRemoveMember(c fiber.Ctx) error {
 	user := r.user(c)
 	groupName := c.FormValue("group")
 	target := c.FormValue("username")

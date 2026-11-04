@@ -9,9 +9,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/dchest/captcha"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
@@ -210,7 +211,7 @@ func (tc *testClient) do(req *http.Request) *http.Response {
 		req.AddCookie(&http.Cookie{Name: name, Value: value})
 	}
 
-	resp, err := tc.app.Test(req, 10000)
+	resp, err := tc.app.Test(req, fiber.TestConfig{Timeout: 10 * time.Second, FailOnTimeout: true})
 	if err != nil {
 		tc.t.Fatalf("request %s %s failed: %s", req.Method, req.URL.Path, err)
 	}
