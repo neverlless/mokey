@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	valid "github.com/asaskevich/govalidator"
 	"github.com/biter777/countries"
 )
 
@@ -49,7 +48,7 @@ func joinPhone(lang, code, national string) (string, error) {
 
 	if code == "" {
 		// a full international number pasted into the number field
-		if strings.HasPrefix(national, "+") && isPhoneish(national[1:]) && valid.IsE164(compactPhone(national)) {
+		if strings.HasPrefix(national, "+") && isPhoneish(national[1:]) && isE164(compactPhone(national)) {
 			code, national = splitCompact(compactPhone(national))
 			return "+" + code + " " + national, nil
 		}
@@ -62,7 +61,7 @@ func joinPhone(lang, code, national string) (string, error) {
 
 	// Check the characters before compacting: digitsOnly would quietly
 	// strip the letters out of "555-CALL" and accept what is left.
-	if !isPhoneish(national) || !valid.IsE164("+"+code+digitsOnly(national)) {
+	if !isPhoneish(national) || !isE164("+"+code+digitsOnly(national)) {
 		return "", errors.New(TL(lang, "account.phone_invalid"))
 	}
 
@@ -106,6 +105,12 @@ func isPhoneish(s string) bool {
 		}
 	}
 	return seenDigit
+}
+
+// isE164 checks the "+<digits>" form only: callers always add the plus
+func isE164(s string) bool {
+	d, ok := strings.CutPrefix(s, "+")
+	return ok && len(d) >= 2 && len(d) <= 15 && d[0] != '0' && isDigits(d)
 }
 
 func isDigits(s string) bool {
