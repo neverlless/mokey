@@ -222,6 +222,10 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(T("account.please_provide_username"))
 	}
 
+	if r.adTrustUsername(username) {
+		return c.Status(fiber.StatusBadRequest).SendString(T("password.managed_by_ad"))
+	}
+
 	if isBlocked(username) {
 		log.WithFields(log.Fields{
 			"username": username,
@@ -277,6 +281,15 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 		}
 	}
 
+	// mokey signs in with the FreeIPA password only; say why it cannot
+	// work where account state may be shown anyway
+	if !viper.GetBool("accounts.hide_invalid_username_error") {
+		if msg := r.passwordElsewhere(userRec); msg != "" {
+			r.metrics.totalFailedLogins.Inc()
+			return c.Status(fiber.StatusUnauthorized).SendString(msg)
+		}
+	}
+
 	log.WithFields(log.Fields{
 		"username": username,
 		"ip":       RemoteIP(c),
@@ -302,6 +315,10 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 
 	if password == "" {
 		return c.Status(fiber.StatusBadRequest).SendString(T("account.please_provide_password"))
+	}
+
+	if r.adTrustUsername(username) {
+		return c.Status(fiber.StatusBadRequest).SendString(T("password.managed_by_ad"))
 	}
 
 	if isBlocked(username) {

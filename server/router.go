@@ -317,7 +317,11 @@ func (r *Router) Index(c *fiber.Ctx) error {
 	}
 
 	if path == "password" {
-		r.pwPolicyVars(user.Username, vars)
+		if msg := r.passwordElsewhere(user); msg != "" {
+			vars["password_elsewhere"] = msg
+		} else {
+			r.pwPolicyVars(user.Username, vars)
+		}
 	}
 
 	if path == "sshkey" {

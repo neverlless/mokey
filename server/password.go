@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -230,6 +231,81 @@ func validatePasswordChange(passwordCurrent, password, passwordConfirm, username
 	return validatePassword(password, passwordConfirm, username, policy)
 }
 
+// usesFreeIPAPassword reports whether ipauserauthtype values let the user
+// sign in with their FreeIPA password: otp is that password plus a token,
+// hardened the same password over FAST. No values means password.
+func usesFreeIPAPassword(types []string) bool {
+	if len(types) == 0 {
+		return true
+	}
+	for _, t := range types {
+		switch t {
+		case "password", "otp", "hardened":
+			return true
+		}
+	}
+	return false
+}
+
+// passwordElsewhere explains why user has no FreeIPA password to change or
+// reset, or returns "" when they have one. The user's ipauserauthtype falls
+// back to the server-wide default, which also wins outright when it
+// contains "disabled" (per-user types switched off).
+func (r *Router) passwordElsewhere(user *ipa.User) string {
+	types := user.AuthTypes
+	if global := r.defaultAuthTypes(); len(types) == 0 || slices.Contains(global, "disabled") {
+		types = slices.DeleteFunc(global, func(t string) bool { return t == "disabled" })
+	}
+
+	switch {
+	case usesFreeIPAPassword(types):
+		return ""
+	case slices.Contains(types, "idp"):
+		return T("password.managed_by_idp")
+	case slices.Contains(types, "radius"):
+		return T("password.managed_by_radius")
+	}
+	return T("password.not_used")
+}
+
+// defaultAuthTypes is the server-wide ipauserauthtype; nil when FreeIPA
+// does not answer, so mokey then goes by the user's own types
+func (r *Router) defaultAuthTypes() []string {
+	// goipa has no typed config_show yet (neverlless/goipa#23)
+	res, err := r.adminClient.RPC("config_show", nil, nil)
+	if err != nil || res.Result == nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Warn("Failed to fetch the default user authentication types")
+		return nil
+	}
+
+	var config struct {
+		AuthTypes []string `json:"ipauserauthtype"`
+	}
+	if err := json.Unmarshal(res.Result.Data, &config); err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Warn("Failed to decode the default user authentication types")
+		return nil
+	}
+	return config.AuthTypes
+}
+
+// adTrustUsername reports whether username is qualified with a domain other
+// than FreeIPA's own (user@ad.example.com, AD\user): a trusted Active
+// Directory user, whose password FreeIPA cannot change. It goes by the
+// input alone, so answering differently for it reveals no account.
+func (r *Router) adTrustUsername(username string) bool {
+	if strings.Contains(username, `\`) {
+		return true
+	}
+	at := strings.LastIndex(username, "@")
+	// shortcut: assumes the IPA domain is the realm in lowercase; compare
+	// against the IPA domain too if a site's differ
+	return at >= 0 && !strings.EqualFold(username[at+1:], r.adminClient.Realm())
+}
+
 // pwPolicyVars puts the user's password policy on the page, if FreeIPA
 // returns it
 func (r *Router) pwPolicyVars(username string, vars fiber.Map) {
@@ -249,6 +325,14 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 
 	vars := fiber.Map{
 		"user": user,
+	}
+
+	if msg := r.passwordElsewhere(user); msg != "" {
+		if c.Method() != fiber.MethodGet {
+			return c.Status(fiber.StatusForbidden).SendString(msg)
+		}
+		vars["password_elsewhere"] = msg
+		return c.Render("password.html", vars)
 	}
 
 	// every render of this page shows the policy, including the one that
@@ -329,13 +413,16 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 		return c.Render("password-forgot.html", vars)
 	}
 
+	username := c.FormValue("username")
+	if r.adTrustUsername(username) {
+		return c.Status(fiber.StatusBadRequest).SendString(T("password.managed_by_ad"))
+	}
+
 	err := r.verifyCaptcha(c.FormValue("captcha_id"), c.FormValue("captcha_sol"))
 	if err != nil {
 		c.Append("HX-Trigger", "{\"reloadCaptcha\":\""+captcha.New()+"\"}")
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
-
-	username := c.FormValue("username")
 
 	if isBlocked(username) {
 		log.WithFields(log.Fields{
@@ -357,6 +444,21 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{
 			"username": username,
 		}).Warn("AUDIT Forgot password attempt for disabled/locked user")
+		return c.Render("password-forgot-success.html", fiber.Map{})
+	}
+
+	// no reset link: a FreeIPA password would not let them sign in
+	if reason := r.passwordElsewhere(user); reason != "" {
+		log.WithFields(log.Fields{
+			"username": username,
+		}).Warn("AUDIT Forgot password attempt for user without a FreeIPA password")
+		if err := r.emailer.SendPasswordElsewhereEmail(user, reason, c); err != nil {
+			log.WithFields(log.Fields{
+				"err":      err,
+				"username": user.Username,
+				"email":    user.Email,
+			}).Error("Failed to send password managed elsewhere email")
+		}
 		return c.Render("password-forgot-success.html", fiber.Map{})
 	}
 
@@ -405,6 +507,13 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 			"username": claims.Username,
 			"email":    claims.Email,
 		}).Warn("AUDIT Attempt to reset password for disabled/locked user")
+		return c.Status(fiber.StatusNotFound).SendString("")
+	}
+
+	if r.passwordElsewhere(user) != "" {
+		log.WithFields(log.Fields{
+			"username": claims.Username,
+		}).Warn("AUDIT Attempt to reset password for user without a FreeIPA password")
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
@@ -518,6 +627,10 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 			"username": username,
 			"err":      err,
 		}).Warn("Password expired attempt for unknown username")
+		return r.redirectLogin(c)
+	}
+
+	if r.passwordElsewhere(user) != "" {
 		return r.redirectLogin(c)
 	}
 

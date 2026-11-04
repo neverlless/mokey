@@ -373,7 +373,7 @@ quality credits, so these items are mostly mokey-side work.
       (k-anonymity range API, off by default) — LTB SSP and PWM have it
 - [x] Revoke a user's Hydra consent sessions for a client when they lose
       the group that admits them to it
-- [ ] Clear handling of AD-trust and external-IdP users, who cannot reset
+- [x] Clear handling of AD-trust and external-IdP users, who cannot reset
       or change a password in FreeIPA
 
 ## v2.6 — Languages and docs
