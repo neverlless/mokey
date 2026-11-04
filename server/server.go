@@ -80,6 +80,7 @@ func SetDefaults() {
 	viper.SetDefault("server.rate_limit_max", 10)
 	viper.SetDefault("server.read_buffer_size", 16384)
 	viper.SetDefault("storage.driver", "memory")
+	viper.SetDefault("hydra.consent_sweep_interval", "1h")
 }
 
 func NewServer(address string) (*Server, error) {
@@ -215,6 +216,7 @@ func newFiber() (*fiber.App, *Router, error) {
 
 	router.SetupRoutes(app)
 	router.StartExpiryReminders()
+	router.StartConsentSweep()
 
 	assetsFS := getAssetsFS()
 	app.Use("/static", filesystem.New(filesystem.Config{

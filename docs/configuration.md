@@ -189,6 +189,7 @@ OAuth2/OIDC. All options unset = disabled.
 | `admin_url` | string | — | Hydra admin API URL, e.g. `http://127.0.0.1:4445`. Setting this enables the Hydra integration. |
 | `login_timeout` | int | `0` | How long (seconds) Hydra remembers the login session (`remember_for`). |
 | `fake_tls_termination` | bool | `false` | Send `X-Forwarded-Proto: https` to Hydra when TLS is terminated elsewhere. |
+| `consent_sweep_interval` | duration | `"1h"` | How often to revoke Hydra consent sessions of users who lost the group that admits them to a client, for removals made directly in FreeIPA. Runs only when `[[hydra.clients]]` or `default_deny` is set; `"0"` disables it. |
 
 ## `[admin]`
 
