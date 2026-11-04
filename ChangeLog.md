@@ -23,6 +23,20 @@
 - Removing a passkey reloads the Passkeys tab; the swapped-in list had its
   script blocked by CSP, so registering another passkey did nothing until
   a reload
+- Logging moved from logrus to `log/slog`. Lines are still logfmt on
+  stderr with the same field names, but levels are upper case
+  (`level=INFO`), timestamps carry milliseconds
+  (`time=2026-11-04T10:15:00.123Z`), there is no colour on a TTY,
+  and a few formatted messages became a fixed message plus fields
+  (`msg=Listening url=http://0.0.0.0:8866`). `--loglevel trace` now
+  means `debug`. Anything that parses the log lines should be checked
+- Secrets are redacted in logs: values under keys such as `password`,
+  `otp`, `token` or `*_secret`, and the password of any
+  `scheme://user:pass@` URL, including inside error messages. A bad
+  `storage.redis.url` no longer prints its password at startup, and a
+  malformed OTP URI is no longer logged with its secret
+- govalidator replaced by standard library checks; an email address with
+  a trailing dot in the domain (`user@example.com.`) is now rejected
 
 ## [v2.6.0] - 2026-11-04
 
