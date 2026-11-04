@@ -30,6 +30,9 @@
   the typed `stageuser_add` call
 - Redis: documented which URL options apply, the minimal ACL and the
   versions tested (Redis 8.10, Valkey 9.1)
+- Dependencies: Fiber 2.52.16, fasthttp 1.77.0, slack-go 0.33.0,
+  golang.org/x/net 0.62.0. Fiber v2 is now marked deprecated upstream in
+  favour of v3; the HTTP stack decision is on the v2.7 roadmap
 
 ## [v2.4.3] - 2026-10-26
 
