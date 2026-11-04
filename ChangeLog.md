@@ -37,6 +37,16 @@
   malformed OTP URI is no longer logged with its secret
 - govalidator replaced by standard library checks; an email address with
   a trailing dot in the domain (`user@example.com.`) is now rejected
+- HTTP stack moved to Fiber v3.6.1; Fiber v2 no longer gets security
+  fixes. Routes, status codes, cookies and config keys are unchanged.
+  Sessions saved in redis or sqlite3 by earlier versions stay signed in.
+  New session ids are 43-character tokens instead of UUIDs
+- Small differences from the Fiber v3 file server: a directory under
+  `/static` answers 404 instead of 403, and static files and `/healthz`
+  carry `charset=utf-8` in `Content-Type`
+- The rate limiter now also counts `/auth` and `/signup` POSTs rejected
+  with an error, such as a missing CSRF token; before only failed
+  responses written by the handler counted
 
 ## [v2.6.0] - 2026-11-04
 
