@@ -3,11 +3,15 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,6 +23,7 @@ import (
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/gofiber/storage/sqlite3/v2"
+	goredis "github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -112,20 +117,24 @@ func getAssetsFS() http.FileSystem {
 	return http.FS(fsys)
 }
 
-func recoverInvalidStorage() {
-	if r := recover(); r != nil {
-		log.Errorf("Failed initialize storage driver %s: %s", viper.GetString("storage.driver"), r)
-	}
-}
-
-func newStorage() fiber.Storage {
-	var storage fiber.Storage
-
+func newStorage() (storage fiber.Storage, err error) {
 	if viper.IsSet("storage.sqlite3.dbpath") && viper.GetString("storage.driver") == "memory" {
 		viper.Set("storage.driver", "sqlite3")
 	}
 
-	defer recoverInvalidStorage()
+	var redisTLS *tls.Config
+	if viper.GetString("storage.driver") == "redis" {
+		if redisTLS, err = redisTLSConfig(viper.GetString("storage.redis.url")); err != nil {
+			return nil, fmt.Errorf("storage.redis: %w", err)
+		}
+	}
+
+	// the storage drivers panic when they cannot connect
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failed to initialize storage driver %s: %v", viper.GetString("storage.driver"), r)
+		}
+	}()
 	switch viper.GetString("storage.driver") {
 	case "sqlite3":
 		storage = sqlite3.New(sqlite3.Config{
@@ -134,15 +143,65 @@ func newStorage() fiber.Storage {
 		})
 	case "redis":
 		storage = redis.New(redis.Config{
-			URL:   viper.GetString("storage.redis.url"),
-			Reset: false,
+			URL:       viper.GetString("storage.redis.url"),
+			TLSConfig: redisTLS,
+			Reset:     false,
 		})
 
 	default:
 		storage = memory.New()
 	}
 
-	return storage
+	return storage, nil
+}
+
+// redisTLSConfig builds the TLS config for a private CA and/or client
+// certificate. nil when neither is set, leaving TLS to the URL scheme.
+// Setting either turns TLS on even for a redis:// URL.
+func redisTLSConfig(redisURL string) (*tls.Config, error) {
+	caFile := viper.GetString("storage.redis.ca_file")
+	certFile := viper.GetString("storage.redis.cert_file")
+	keyFile := viper.GetString("storage.redis.key_file")
+	if caFile == "" && certFile == "" && keyFile == "" {
+		return nil, nil
+	}
+	if (certFile == "") != (keyFile == "") {
+		return nil, errors.New("cert_file and key_file must be set together")
+	}
+
+	opts, err := goredis.ParseURL(redisURL)
+	if err != nil {
+		return nil, err
+	}
+	cfg := opts.TLSConfig
+	if cfg == nil {
+		host, _, err := net.SplitHostPort(opts.Addr)
+		if err != nil {
+			return nil, fmt.Errorf("TLS needs a host:port url: %w", err)
+		}
+		cfg = &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}
+	}
+
+	if caFile != "" {
+		pem, err := os.ReadFile(filepath.Clean(caFile))
+		if err != nil {
+			return nil, fmt.Errorf("ca_file: %w", err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("ca_file: no PEM certificates in %s", caFile)
+		}
+		cfg.RootCAs = pool
+	}
+	if certFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, fmt.Errorf("cert_file/key_file: %w", err)
+		}
+		cfg.Certificates = []tls.Certificate{cert}
+	}
+
+	return cfg, nil
 }
 
 func newFiber() (*fiber.App, *Router, error) {
@@ -155,9 +214,9 @@ func newFiber() (*fiber.App, *Router, error) {
 		log.Fatal(err)
 	}
 
-	storage := newStorage()
-	if storage == nil {
-		return nil, nil, errors.New("Failed to open mokey storage database")
+	storage, err := newStorage()
+	if err != nil {
+		return nil, nil, err
 	}
 
 	app := fiber.New(fiber.Config{

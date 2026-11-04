@@ -311,6 +311,11 @@ driver = "memory"
 [storage.redis]
 # Redis URL
 # url = "redis://<user>:<pass>@127.0.0.1:6379/<db>"
+# Private CA for the Redis server certificate; setting it turns TLS on
+# ca_file = "/etc/mokey/redis-ca.pem"
+# Client certificate and key for mutual TLS
+# cert_file = "/etc/mokey/redis-client.pem"
+# key_file = "/etc/mokey/redis-client.key"
 
 #------------------------------------------------------------------------------
 # Hydra
