@@ -407,7 +407,7 @@ quality credits, so these items are mostly mokey-side work.
 - [ ] Integration tests against the demo's FreeIPA container and browser
       end-to-end tests including passkey enrollment
 - [x] Redis over TLS with a private CA (`[storage.redis]` CA and client
-      certificate options); today only the system trust store works
+      certificate options)
 - [x] Storage safe for several replicas on one Redis: the audit sequence
       and the session, group-request and OTP-recovery indexes are read and
       rewritten without locking, so concurrent writers can lose an update
