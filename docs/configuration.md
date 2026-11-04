@@ -1,7 +1,7 @@
 # Configuration reference
 
 mokey is configured with a TOML file (default `/etc/mokey/mokey.toml`, override
-with `--config`). See [mokey.toml.sample](../mokey.toml.sample) for a ready
+with `--config`). See [mokey.toml.sample](https://github.com/neverlless/mokey/blob/main/mokey.toml.sample) for a ready
 starting point. Every option below is optional unless marked **required**.
 
 Addresses upstream request
