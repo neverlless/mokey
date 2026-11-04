@@ -16,11 +16,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/favicon"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
-	frecover "github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/favicon"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
+	frecover "github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/gofiber/storage/sqlite3/v2"
@@ -102,11 +102,11 @@ func NewServer(address string) (*Server, error) {
 	return s, nil
 }
 
-func getAssetsFS() http.FileSystem {
+func getAssetsFS() fs.FS {
 	staticLocalPath := viper.GetString("site.static_assets_dir")
 	if staticLocalPath != "" {
 		slog.Debug("Using local static assets dir", "path", staticLocalPath)
-		return http.FS(os.DirFS(staticLocalPath))
+		return os.DirFS(staticLocalPath)
 	}
 
 	fsys, err := fs.Sub(staticFS, "templates/static")
@@ -115,7 +115,7 @@ func getAssetsFS() http.FileSystem {
 		os.Exit(1)
 	}
 
-	return http.FS(fsys)
+	return fsys
 }
 
 func newStorage() (storage fiber.Storage, err error) {
@@ -228,23 +228,22 @@ func newFiber() (*fiber.App, *Router, error) {
 	}
 
 	app := fiber.New(fiber.Config{
-		Prefork:               false,
-		Network:               fiber.NetworkTCP,
-		CaseSensitive:         true,
-		StrictRouting:         true,
-		ReadTimeout:           time.Duration(viper.GetInt("server.read_timeout")) * time.Second,
-		WriteTimeout:          time.Duration(viper.GetInt("server.write_timeout")) * time.Second,
-		IdleTimeout:           time.Duration(viper.GetInt("server.idle_timeout")) * time.Second,
-		ReadBufferSize:        viper.GetInt("server.read_buffer_size"),
-		AppName:               "mokey",
-		DisableStartupMessage: true,
-		PassLocalsToViews:     true,
-		ErrorHandler:          HTTPErrorHandler,
-		Views:                 engine,
-		// Only honor X-Forwarded-* headers (c.Protocol, c.Hostname) when
+		CaseSensitive:     true,
+		StrictRouting:     true,
+		ReadTimeout:       time.Duration(viper.GetInt("server.read_timeout")) * time.Second,
+		WriteTimeout:      time.Duration(viper.GetInt("server.write_timeout")) * time.Second,
+		IdleTimeout:       time.Duration(viper.GetInt("server.idle_timeout")) * time.Second,
+		ReadBufferSize:    viper.GetInt("server.read_buffer_size"),
+		AppName:           "mokey",
+		PassLocalsToViews: true,
+		ErrorHandler:      HTTPErrorHandler,
+		Views:             engine,
+		// mokey sends no flash messages; skip the fiber_flash cookie on every request
+		DisableFlashMessages: true,
+		// Only honor X-Forwarded-* headers (c.Scheme, c.Host) when
 		// the request comes from a configured trusted proxy
-		EnableTrustedProxyCheck: true,
-		TrustedProxies:          viper.GetStringSlice("server.trusted_proxies"),
+		TrustProxy:       true,
+		TrustProxyConfig: fiber.TrustProxyConfig{Proxies: viper.GetStringSlice("server.trusted_proxies")},
 	})
 
 	app.Use(frecover.New())
@@ -260,7 +259,7 @@ func newFiber() (*fiber.App, *Router, error) {
 		// Key on the non-forgeable client address — X-Forwarded-For is
 		// only honored behind a configured trusted proxy (see RemoteIP)
 		KeyGenerator: RemoteIP,
-		Next: func(c *fiber.Ctx) bool {
+		Next: func(c fiber.Ctx) bool {
 			if c.Method() != fiber.MethodPost {
 				return true
 			}
@@ -287,18 +286,36 @@ func newFiber() (*fiber.App, *Router, error) {
 	router.StartConsentSweep()
 
 	assetsFS := getAssetsFS()
-	app.Use("/static", filesystem.New(filesystem.Config{
-		Root:   assetsFS,
+	app.Use("/static", static.New("", static.Config{
+		FS:     assetsFS,
 		Browse: false,
 		MaxAge: 900,
+		// fasthttp answers a directory by resetting the response, security
+		// headers included; leave directories to the 404 handler
+		Next: func(c fiber.Ctx) bool {
+			name := strings.Trim(strings.TrimPrefix(c.Path(), "/static"), "/")
+			if name == "" {
+				name = "."
+			}
+			fi, err := fs.Stat(assetsFS, name)
+			return err == nil && fi.IsDir()
+		},
+		// Embedded files have no modification time. A year-1 Last-Modified
+		// would answer every revalidation with 304, stale after an upgrade.
+		ModifyResponse: func(c fiber.Ctx) error {
+			if t, err := http.ParseTime(c.GetRespHeader(fiber.HeaderLastModified)); err == nil && t.IsZero() {
+				c.Response().Header.Del(fiber.HeaderLastModified)
+			}
+			return nil
+		},
 	}))
 
 	// SendFile derives the Content-Type from the extension; the favicon
 	// middleware would announce a configured .png or .svg as image/x-icon
 	if custom := viper.GetString("site.favicon"); custom != "" {
-		app.Get("/favicon.ico", func(c *fiber.Ctx) error {
+		get(app, "/favicon.ico", func(c fiber.Ctx) error {
 			c.Set(fiber.HeaderCacheControl, "public, max-age=31536000")
-			return c.SendFile(custom)
+			return c.SendFile(custom, fiber.SendFile{ByteRange: true})
 		})
 	} else {
 		app.Use(favicon.New(favicon.Config{
@@ -311,6 +328,11 @@ func newFiber() (*fiber.App, *Router, error) {
 	app.Use(NotFoundHandler)
 
 	return app, router, nil
+}
+
+var listenConfig = fiber.ListenConfig{
+	ListenerNetwork:       fiber.NetworkTCP,
+	DisableStartupMessage: true,
 }
 
 func (s *Server) Serve() error {
@@ -327,12 +349,12 @@ func (s *Server) Serve() error {
 		}
 
 		slog.Info("Listening", "url", s.Scheme+"://"+s.ListenAddress)
-		return s.app.Listener(ln)
+		return s.app.Listener(ln, listenConfig)
 	}
 
 	s.Scheme = "http"
 	slog.Info("Listening", "url", s.Scheme+"://"+s.ListenAddress)
-	if err := s.app.Listen(s.ListenAddress); err != nil {
+	if err := s.app.Listen(s.ListenAddress, listenConfig); err != nil {
 		return err
 	}
 

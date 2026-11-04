@@ -3,13 +3,13 @@ package server
 import (
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // Healthz is an unauthenticated health check endpoint. It verifies the
 // session storage backend and FreeIPA are reachable. Registered before the
 // CSRF middleware so probes don't create sessions.
-func (r *Router) Healthz(c *fiber.Ctx) error {
+func (r *Router) Healthz(c fiber.Ctx) error {
 	if _, err := r.storage.Get("healthz"); err != nil {
 		slog.Error("healthz: session storage check failed",
 			"error", err,

@@ -3,11 +3,11 @@ package server
 import (
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 )
 
-func (r *Router) SSHKeyList(c *fiber.Ctx) error {
+func (r *Router) SSHKeyList(c fiber.Ctx) error {
 	user := r.user(c)
 	vars := fiber.Map{
 		"user": user,
@@ -15,12 +15,12 @@ func (r *Router) SSHKeyList(c *fiber.Ctx) error {
 	return c.Render("sshkey-list.html", vars)
 }
 
-func (r *Router) SSHKeyModal(c *fiber.Ctx) error {
+func (r *Router) SSHKeyModal(c fiber.Ctx) error {
 	vars := fiber.Map{}
 	return c.Render("sshkey-new.html", vars)
 }
 
-func (r *Router) SSHKeyAdd(c *fiber.Ctx) error {
+func (r *Router) SSHKeyAdd(c fiber.Ctx) error {
 	user := r.user(c)
 
 	title := c.FormValue("title")
@@ -64,7 +64,7 @@ func (r *Router) SSHKeyAdd(c *fiber.Ctx) error {
 	return r.SSHKeyList(c)
 }
 
-func (r *Router) SSHKeyRemove(c *fiber.Ctx) error {
+func (r *Router) SSHKeyRemove(c fiber.Ctx) error {
 	fp := c.FormValue("fp")
 	user := r.user(c)
 

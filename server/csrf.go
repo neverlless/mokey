@@ -3,12 +3,12 @@ package server
 import (
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/spf13/viper"
 	"golang.org/x/net/xsrftoken"
 )
 
-func (r *Router) CSRF(c *fiber.Ctx) error {
+func (r *Router) CSRF(c fiber.Ctx) error {
 	sess, err := r.session(c)
 	if err != nil {
 		return err

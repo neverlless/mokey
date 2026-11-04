@@ -23,7 +23,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/mileusna/useragent"
 	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
@@ -38,7 +38,7 @@ type Emailer struct {
 	slackNotifier *SlackNotifier
 }
 
-func BaseURL(ctx *fiber.Ctx) string {
+func BaseURL(ctx fiber.Ctx) string {
 	baseURL := viper.GetString("email.base_url")
 	if baseURL == "" && ctx != nil {
 		baseURL = ctx.BaseURL()
@@ -91,7 +91,7 @@ func NewEmailer(storage fiber.Storage) (*Emailer, error) {
 
 // emailLanguage is the request language for mail sent while serving one,
 // else the recipient's preferred language.
-func emailLanguage(user *ipa.User, ctx *fiber.Ctx) string {
+func emailLanguage(user *ipa.User, ctx fiber.Ctx) string {
 	if ctx != nil {
 		return requestLanguage(ctx)
 	}
@@ -106,7 +106,7 @@ func linkExpires(lang string) string {
 // "token issued" marker when delivery fails. Without the rollback a rejected or
 // undeliverable address locks the user out of retrying until the token expires,
 // every attempt failing with "token already issued".
-func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
+func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
 	err := e.sendEmail(user, ctx, lang, subject, tmpl, data)
 	if err != nil {
 		if derr := e.storage.Delete(prefix + TokenIssuedPrefix + tokenKey); derr != nil {
@@ -119,7 +119,7 @@ func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *f
 	return err
 }
 
-func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, user.Email, TokenPasswordReset, e.storage)
 	if err != nil {
@@ -136,7 +136,7 @@ func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
 
 // SendPasswordElsewhereEmail answers a reset request from a user whose
 // password FreeIPA does not manage: reason says where it is managed.
-func (e *Emailer) SendPasswordElsewhereEmail(user *ipa.User, reason string, ctx *fiber.Ctx) error {
+func (e *Emailer) SendPasswordElsewhereEmail(user *ipa.User, reason string, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	// same resend cooldown as a reset link, so the form cannot flood the inbox
 	marker := TokenPasswordReset + TokenIssuedPrefix + user.Username
@@ -149,7 +149,7 @@ func (e *Emailer) SendPasswordElsewhereEmail(user *ipa.User, reason string, ctx 
 	return e.sendEmail(user, ctx, lang, TL(lang, "email_template.password_elsewhere_subject"), "password-elsewhere", map[string]interface{}{"reason": reason})
 }
 
-func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, user.Email, TokenAccountVerify, e.storage)
 	if err != nil {
@@ -166,7 +166,7 @@ func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
 
 // SendOTPRecoveryConfirmEmail sends the confirm-before-queue link for an
 // OTP lockout recovery request
-func (e *Emailer) SendOTPRecoveryConfirmEmail(user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendOTPRecoveryConfirmEmail(user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, user.Email, TokenOTPRecovery, e.storage)
 	if err != nil {
@@ -181,7 +181,7 @@ func (e *Emailer) SendOTPRecoveryConfirmEmail(user *ipa.User, ctx *fiber.Ctx) er
 
 // SendEmailChangeConfirmEmail sends a confirmation link to the NEW email
 // address. The change is only applied after the link is visited.
-func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, ctx *fiber.Ctx) error {
+func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	token, err := NewToken(user.Username, newEmail, TokenEmailChange, e.storage)
 	if err != nil {
@@ -203,7 +203,7 @@ func (e *Emailer) SendEmailChangeConfirmEmail(user *ipa.User, newEmail string, c
 
 // SendEmailChangedNotification notifies the OLD address that the account
 // email was changed.
-func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	vars := map[string]interface{}{
 		"event": TL(lang, "email_template.email_changed_event"),
@@ -217,7 +217,7 @@ func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, 
 
 // SendInviteEmail sends an account invitation to an email address. The
 // recipient completes their profile via the /auth/invite/:token link.
-func (e *Emailer) SendInviteEmail(email string, ctx *fiber.Ctx) error {
+func (e *Emailer) SendInviteEmail(email string, ctx fiber.Ctx) error {
 	recipient := &ipa.User{Email: email}
 	lang := emailLanguage(recipient, ctx)
 	token, err := NewToken(email, email, TokenInvite, e.storage)
@@ -233,7 +233,7 @@ func (e *Emailer) SendInviteEmail(email string, ctx *fiber.Ctx) error {
 	return e.sendTokenEmail(recipient, email, TokenInvite, ctx, lang, TL(lang, "email_template.invite_subject"), "invite", vars)
 }
 
-func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	vars := map[string]interface{}{
 		"getting_started_url": viper.GetString("site.getting_started_url"),
@@ -244,7 +244,7 @@ func (e *Emailer) SendWelcomeEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	return e.sendEmail(user, ctx, lang, subject, "welcome", vars)
 }
 
-func (e *Emailer) SendMFAChangedEmail(enabled bool, user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendMFAChangedEmail(enabled bool, user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	verb := TL(lang, "email_template.two_factor_auth_disabled")
 	if enabled {
@@ -259,7 +259,7 @@ func (e *Emailer) SendMFAChangedEmail(enabled bool, user *ipa.User, ctx *fiber.C
 	return e.sendEmail(user, ctx, lang, event, "account-updated", vars)
 }
 
-func (e *Emailer) SendPasskeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendPasskeyUpdatedEmail(added bool, user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	verb := TL(lang, "email_template.passkey_removed")
 	if added {
@@ -274,7 +274,7 @@ func (e *Emailer) SendPasskeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber
 	return e.sendEmail(user, ctx, lang, event, "account-updated", vars)
 }
 
-func (e *Emailer) SendSSHKeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendSSHKeyUpdatedEmail(added bool, user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	verb := TL(lang, "email_template.ssh_key_removed")
 	if added {
@@ -289,7 +289,7 @@ func (e *Emailer) SendSSHKeyUpdatedEmail(added bool, user *ipa.User, ctx *fiber.
 	return e.sendEmail(user, ctx, lang, event, "account-updated", vars)
 }
 
-func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendOTPTokenUpdatedEmail(added bool, user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	verb := TL(lang, "email_template.otp_token_removed")
 	if added {
@@ -402,7 +402,7 @@ func (e *Emailer) SendOTPRecoveryDecisionEmail(user *ipa.User, approved bool) er
 // SendUsernameReminderEmail mails the username(s) associated with an address.
 // The recipient is identified only by email — no account context is leaked in
 // the delivery metadata.
-func (e *Emailer) SendUsernameReminderEmail(email string, usernames []string, ctx *fiber.Ctx) error {
+func (e *Emailer) SendUsernameReminderEmail(email string, usernames []string, ctx fiber.Ctx) error {
 	recipient := &ipa.User{Email: email}
 	lang := emailLanguage(recipient, ctx)
 	vars := map[string]interface{}{
@@ -412,7 +412,7 @@ func (e *Emailer) SendUsernameReminderEmail(email string, usernames []string, ct
 	return e.sendEmail(recipient, ctx, lang, TL(lang, "email_template.username_reminder_subject"), "username-reminder", vars)
 }
 
-func (e *Emailer) SendPasswordChangedEmail(user *ipa.User, ctx *fiber.Ctx) error {
+func (e *Emailer) SendPasswordChangedEmail(user *ipa.User, ctx fiber.Ctx) error {
 	lang := emailLanguage(user, ctx)
 	// Opt-in: password-change notification emails are off by default
 	if !viper.GetBool("email.notify_password_change") {
@@ -465,7 +465,7 @@ func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ip
 	}
 }
 
-func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
+func (e *Emailer) sendEmail(user *ipa.User, ctx fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
 	slog.Debug("Sending email to user",
 		"email", user.Email,
 		"username", user.Username,

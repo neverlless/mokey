@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/dchest/captcha"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/spf13/viper"
 )
 
@@ -21,7 +21,7 @@ func newCaptchaID() string {
 }
 
 // Captcha handler displays captcha image
-func (r *Router) Captcha(c *fiber.Ctx) error {
+func (r *Router) Captcha(c fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.Status(fiber.StatusNotFound).SendString("")

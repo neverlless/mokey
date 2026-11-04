@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // The audit store is a ring buffer of the last auditRingSize AUDIT log

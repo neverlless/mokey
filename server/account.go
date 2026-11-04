@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/dchest/captcha"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 )
 
-func (r *Router) AccountSettings(c *fiber.Ctx) error {
+func (r *Router) AccountSettings(c fiber.Ctx) error {
 	user := r.user(c)
 
 	vars := fiber.Map{
@@ -128,7 +128,7 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 	return c.Render("account.html", vars)
 }
 
-func (r *Router) AccountCreate(c *fiber.Ctx) error {
+func (r *Router) AccountCreate(c fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
 			"captchaID":         newCaptchaID(),
@@ -329,7 +329,7 @@ func (r *Router) verifyStagedUser(username string, su *ipa.User) error {
 	return stageUserActivate(r.adminClient, username)
 }
 
-func (r *Router) AccountVerify(c *fiber.Ctx) error {
+func (r *Router) AccountVerify(c fiber.Ctx) error {
 	token := c.Params("token")
 
 	claims, err := ParseToken(token, TokenAccountVerify, r.storage)
@@ -374,7 +374,7 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 
 // verifyLegacyUser finishes email verification for a disabled-until-verified
 // signup (the pre-staged_signup backend)
-func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) error {
+func (r *Router) verifyLegacyUser(c fiber.Ctx, claims *Token, token string) error {
 	user, err := r.adminClient.UserShow(claims.Username)
 	if err != nil {
 		slog.Error("Verifying account failed while fetching user from FreeIPA",
@@ -421,7 +421,7 @@ func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) err
 
 // finishAccountVerify marks the verify token used, sends the welcome email
 // and renders the success page — shared by the staged and legacy paths
-func (r *Router) finishAccountVerify(c *fiber.Ctx, claims *Token, user *ipa.User, token string) error {
+func (r *Router) finishAccountVerify(c fiber.Ctx, claims *Token, user *ipa.User, token string) error {
 	MarkTokenUsed(token, TokenAccountVerify, claims, r.storage)
 
 	err := r.emailer.SendWelcomeEmail(user, c)
@@ -445,7 +445,7 @@ func (r *Router) finishAccountVerify(c *fiber.Ctx, claims *Token, user *ipa.User
 	})
 }
 
-func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
+func (r *Router) AccountVerifyResend(c fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
 			"captchaID": newCaptchaID(),
@@ -514,7 +514,7 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 
 // sendVerifyResendEmail sends the account verification email and reports
 // whether it made it out, so callers can stop promising mail that failed
-func (r *Router) sendVerifyResendEmail(user *ipa.User, c *fiber.Ctx) error {
+func (r *Router) sendVerifyResendEmail(user *ipa.User, c fiber.Ctx) error {
 	err := r.emailer.SendAccountVerifyEmail(user, c)
 	if err != nil {
 		slog.Error("Failed to send verify account email",
@@ -536,7 +536,7 @@ func (r *Router) sendVerifyResendEmail(user *ipa.User, c *fiber.Ctx) error {
 
 // EmailChangeConfirm applies a pending email change. GET renders a
 // confirmation page, POST performs the change.
-func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
+func (r *Router) EmailChangeConfirm(c fiber.Ctx) error {
 	token := c.Params("token")
 
 	claims, err := ParseToken(token, TokenEmailChange, r.storage)

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dchest/captcha"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // OTP recovery request queue: single storage key holding a JSON list,
@@ -88,7 +88,7 @@ func (r *Router) removeOTPRecoveryRequest(username string) bool {
 // OTPRecoveryRequest renders and handles the "Lost OTP token?" form.
 // Every POST outcome renders the same success page — unknown, blocked,
 // and non-OTP accounts are indistinguishable from a real request.
-func (r *Router) OTPRecoveryRequest(c *fiber.Ctx) error {
+func (r *Router) OTPRecoveryRequest(c fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		return c.Render("otprecovery-forgot.html", fiber.Map{"captchaID": newCaptchaID()})
 	}
@@ -125,7 +125,7 @@ func (r *Router) OTPRecoveryRequest(c *fiber.Ctx) error {
 
 // OTPRecoveryConfirm queues the recovery request after the emailed link
 // is confirmed — mailbox possession is the identity proof
-func (r *Router) OTPRecoveryConfirm(c *fiber.Ctx) error {
+func (r *Router) OTPRecoveryConfirm(c fiber.Ctx) error {
 	token := c.Params("token")
 	claims, err := ParseToken(token, TokenOTPRecovery, r.storage)
 	if err != nil {

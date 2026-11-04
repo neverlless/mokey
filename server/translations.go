@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 )
@@ -168,11 +168,11 @@ func TL(lang, key string) string {
 }
 
 // TC translates key into the language picked for the request.
-func TC(c *fiber.Ctx, key string) string {
+func TC(c fiber.Ctx, key string) string {
 	return TL(requestLanguage(c), key)
 }
 
-func requestLanguage(c *fiber.Ctx) string {
+func requestLanguage(c fiber.Ctx) string {
 	if lang, ok := c.Locals("lang").(string); ok && lang != "" {
 		return lang
 	}
@@ -190,7 +190,7 @@ func userLanguage(user *ipa.User) string {
 
 // SetLanguage picks the request language from Accept-Language among
 // site.languages.
-func SetLanguage(c *fiber.Ctx) error {
+func SetLanguage(c fiber.Ctx) error {
 	lang := defaultLanguage()
 	if len(languages) > 1 {
 		c.Vary(fiber.HeaderAcceptLanguage)

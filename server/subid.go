@@ -7,7 +7,7 @@ package server
 import (
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 )
 
@@ -30,7 +30,7 @@ func (r *Router) subidVars(username string, vars fiber.Map) {
 // SubidGenerate allocates the subordinate id range for the logged-in user
 // and re-renders the subid card. Generation is one-shot per user; a
 // duplicate error just renders the existing range.
-func (r *Router) SubidGenerate(c *fiber.Ctx) error {
+func (r *Router) SubidGenerate(c fiber.Ctx) error {
 	username := r.username(c)
 
 	err := subidGenerate(r.adminClient, username)

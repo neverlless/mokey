@@ -11,7 +11,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/mileusna/useragent"
 	"github.com/spf13/viper"
 )
@@ -67,7 +67,7 @@ func (r *Router) saveSessionIndex(username string, sessions []UserSession) {
 }
 
 // recordUserSession registers a fresh login in the user's session index
-func (r *Router) recordUserSession(c *fiber.Ctx, username, sid string) {
+func (r *Router) recordUserSession(c fiber.Ctx, username, sid string) {
 	defer r.lock.hold(userSessionsPrefix + username)()
 
 	ua := useragent.Parse(c.Get(fiber.HeaderUserAgent))
@@ -199,7 +199,7 @@ func (r *Router) dropSessionFromIndex(username, sid string) {
 }
 
 // SessionRevoke handles per-device revocation from the security page
-func (r *Router) SessionRevoke(c *fiber.Ctx) error {
+func (r *Router) SessionRevoke(c fiber.Ctx) error {
 	username := r.username(c)
 	sid := c.FormValue("sid")
 	vars := fiber.Map{}
@@ -225,7 +225,7 @@ func (r *Router) SessionRevoke(c *fiber.Ctx) error {
 }
 
 // SessionRevokeOthers signs the user out everywhere except this device
-func (r *Router) SessionRevokeOthers(c *fiber.Ctx) error {
+func (r *Router) SessionRevokeOthers(c fiber.Ctx) error {
 	username := r.username(c)
 
 	sess, err := r.session(c)
@@ -247,7 +247,7 @@ func (r *Router) SessionRevokeOthers(c *fiber.Ctx) error {
 
 // notifyNewLogin emails the user about a fresh sign-in when enabled.
 // Sent from a goroutine — SMTP hiccups must not block the login response.
-func (r *Router) notifyNewLogin(c *fiber.Ctx, username string) {
+func (r *Router) notifyNewLogin(c fiber.Ctx, username string) {
 	if !viper.GetBool("email.notify_new_login") {
 		return
 	}

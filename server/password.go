@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dchest/captcha"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/spf13/viper"
 )
@@ -324,7 +324,7 @@ func (r *Router) pwPolicyVars(username string, vars fiber.Map) {
 	}
 }
 
-func (r *Router) PasswordChange(c *fiber.Ctx) error {
+func (r *Router) PasswordChange(c fiber.Ctx) error {
 	user := r.user(c)
 	client := r.userClient(c)
 
@@ -409,7 +409,7 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 	return c.Render("password.html", vars)
 }
 
-func (r *Router) PasswordForgot(c *fiber.Ctx) error {
+func (r *Router) PasswordForgot(c fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
 			"captchaID": newCaptchaID(),
@@ -490,7 +490,7 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 	return c.Render("password-forgot-success.html", fiber.Map{})
 }
 
-func (r *Router) PasswordReset(c *fiber.Ctx) error {
+func (r *Router) PasswordReset(c fiber.Ctx) error {
 	token := c.Params("token")
 
 	claims, err := ParseToken(token, TokenPasswordReset, r.storage)
@@ -604,7 +604,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 	return c.Render("password-reset-success.html", fiber.Map{})
 }
 
-func (r *Router) PasswordExpired(c *fiber.Ctx) error {
+func (r *Router) PasswordExpired(c fiber.Ctx) error {
 	sess, err := r.session(c)
 	if err != nil {
 		slog.Warn("Failed to get user session. Logging out")

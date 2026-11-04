@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"github.com/neverlless/goipa/ipatest"
 	"math"
 	"os"
 	"path/filepath"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gofiber/fiber/v3"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 )
 
@@ -52,7 +53,7 @@ func TestUIPreviewServe(t *testing.T) {
 	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
 
 	t.Logf("UI preview on http://%s (walter / Secret123!)", addr)
-	if err := app.Listen(addr); err != nil {
+	if err := app.Listen(addr, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {
 		t.Fatal(err)
 	}
 }
