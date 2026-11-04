@@ -1,5 +1,20 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- Per-request interface language: `site.languages` lists the languages on
+  offer and each request gets the best match for the browser's
+  `Accept-Language`, falling back to `site.default_language`. Emails sent
+  in the background or on someone else's action use the recipient's
+  FreeIPA `preferredlanguage`. Unset, mokey behaves as before
+- `<html lang>` follows the page language instead of always saying `en`
+- Translation files outside the built-in set declare their BCP 47 code
+  with a top-level `language_code`
+- Durations ("1 hour" in emails, "3 hours ago" on pages) are translated,
+  with Russian/Ukrainian plural forms; go-humanize is gone
+- A test checks that every built-in language has exactly English's keys
+  and printf verbs
+
 ## [v2.5.0] - 2026-11-03
 
 - Optional breached-password check against Have I Been Pwned
