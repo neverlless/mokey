@@ -416,7 +416,7 @@ quality credits, so these items are mostly mokey-side work.
       the module deprecated). Moving to `net/http` would mean rewriting every
       handler plus sessions, CSRF and rate limiting; Fiber v3 keeps the
       handler shape and has an official migration tool
-- [ ] Move to Fiber v3
+- [x] Move to Fiber v3
 
 ## v2.8 — Integrations
 
