@@ -1,4 +1,5 @@
 [common]
+identity_management = "Identity Management"
 powered_by = "Powered by"
 add = "Add"
 cancel = "Cancel"
@@ -34,6 +35,7 @@ verify_account = "Verify Account"
 too_many_requests = "Too many requests. Please try again later."
 
 [account]
+eyebrow = "account / profile"
 search_country = "Search"
 no_country_match = "No country matches that"
 select_country = "Country"
@@ -241,6 +243,7 @@ failed_to_accept_login = "Failed to accept login"
 oauth2_error = "OAuth2 Error"
 
 [login]
+eyebrow = "sign in"
 failed = "Login failed"
 account_locked_temporarily = "Your account is temporarily locked after too many failed login attempts. Wait a few minutes and try again, or contact your administrator."
 title = "Login"

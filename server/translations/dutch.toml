@@ -1,4 +1,5 @@
 [common]
+identity_management = "Identiteitsbeheer"
 powered_by = "Aangedreven door"
 add = "Toevoegen"
 cancel = "Annuleren"
@@ -34,6 +35,7 @@ verify_account = "Verifieer Account"
 too_many_requests = "Te veel verzoeken. Probeer het later opnieuw."
 
 [account]
+eyebrow = "account / profiel"
 search_country = "Zoeken"
 no_country_match = "Geen land komt overeen"
 select_country = "Land"
@@ -241,6 +243,7 @@ failed_to_accept_login = "Mislukt bij het accepteren van inloggen"
 oauth2_error = "OAuth2 Fout"
 
 [login]
+eyebrow = "inloggen"
 failed = "Inloggen mislukt"
 account_locked_temporarily = "Uw account is tijdelijk vergrendeld na te veel mislukte inlogpogingen. Wacht enkele minuten en probeer het opnieuw, of neem contact op met uw beheerder."
 title = "Inloggen"
