@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.5.0] - 2026-11-03
 
 - Optional breached-password check against Have I Been Pwned
   (`accounts.check_breached_passwords`, off by default). It uses the
@@ -9,14 +9,15 @@
   client has their Hydra consent sessions for it revoked, so their refresh
   tokens stop working: at once for removals made in mokey, and through a
   sweep (`hydra.consent_sweep_interval`, default `1h`) or their next
-  sign-in attempt for removals made directly in FreeIPA
+  sign-in attempt for removals made directly in FreeIPA. The sweep is on
+  by default wherever `[[hydra.clients]]` or `default_deny` is configured
 - `[[hydra.clients]]` group checks and the Access page count membership
   through nested groups, not only direct membership
 - Passwords are checked against FreeIPA 4.13's libpwquality rules:
   required digits, upper- and lowercase letters and special characters
   (negative credits), length credits, `maxrepeat`, `maxsequence`,
-  palindromes and `usercheck`. The requirements list shows them, and the
-  dictionary check (`dictcheck`), which only FreeIPA can run
+  palindromes and `usercheck`. The requirements list shows them, along
+  with the dictionary check (`dictcheck`), which only FreeIPA can run
 - The password requirements now show when the Password page is first
   opened, not only after a rejected change
 - Users who sign in through an external identity provider, RADIUS, or a
@@ -27,6 +28,8 @@
   [Users without a FreeIPA password](docs/configuration.md#users-without-a-freeipa-password)
 - mokey uses neverlless/goipa v1.1.0; stage users get their password from
   the typed `stageuser_add` call
+- Redis: documented which URL options apply, the minimal ACL and the
+  versions tested (Redis 8.10, Valkey 9.1)
 
 ## [v2.4.3] - 2026-10-26
 
