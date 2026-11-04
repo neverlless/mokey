@@ -301,9 +301,14 @@ func (r *Router) adTrustUsername(username string) bool {
 		return true
 	}
 	at := strings.LastIndex(username, "@")
-	// shortcut: assumes the IPA domain is the realm in lowercase; compare
-	// against the IPA domain too if a site's differ
-	return at >= 0 && !strings.EqualFold(username[at+1:], r.adminClient.Realm())
+	return at >= 0 && !strings.EqualFold(username[at+1:], r.ipaDomain())
+}
+
+// ipaDomain is FreeIPA's DNS domain.
+// shortcut: the realm in lowercase, wrong where a site's differ; read
+// default.conf's domain once goipa exposes it (neverlless/goipa#24)
+func (r *Router) ipaDomain() string {
+	return strings.ToLower(r.adminClient.Realm())
 }
 
 // pwPolicyVars puts the user's password policy on the page, if FreeIPA

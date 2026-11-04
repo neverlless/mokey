@@ -471,6 +471,7 @@ success_message = "Uw e-mailadres is succesvol gewijzigd."
 
 [passkey]
 bad_hostname = "Passkeys vereisen dat het portaal via de domeinnaam wordt benaderd. Dit adres kan niet worden gebruikt — open mokey via de hostnaam en probeer het opnieuw."
+outside_domain = "Passkeys die hier worden geregistreerd moeten op uw FreeIPA-hosts werken, en die accepteren ze alleen voor het domein %s. Open dit portaal via %s of een hostnaam daaronder en probeer het opnieuw."
 title = "Passkeys"
 new_passkey = "Passkey registreren"
 no_passkeys = "Geen passkeys gevonden"

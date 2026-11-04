@@ -38,6 +38,11 @@ func (u *passkeyUser) WebAuthnCredentials() []webauthn.Credential { return nil }
 // because a browser could never complete the ceremony against one anyway.
 var errPasskeyHost = errors.New("hostname is not usable as a WebAuthn relying party id")
 
+// errPasskeyDomain reports a portal address outside the IPA domain. FreeIPA
+// registers passkeys with the IPA domain as relying party ID and SSSD asserts
+// against it, so a credential scoped to any other id fails on the hosts.
+var errPasskeyDomain = errors.New("portal hostname is outside the IPA domain")
+
 func (r *Router) webAuthn(c *fiber.Ctx) (*webauthn.WebAuthn, error) {
 	host := c.Hostname()
 	if h, _, err := net.SplitHostPort(host); err == nil {
@@ -48,9 +53,17 @@ func (r *Router) webAuthn(c *fiber.Ctx) (*webauthn.WebAuthn, error) {
 		return nil, fmt.Errorf("%w: %q", errPasskeyHost, host)
 	}
 
+	host = strings.ToLower(host)
+	rpID := host
+	if domain := r.ipaDomain(); host == domain || strings.HasSuffix(host, "."+domain) {
+		rpID = domain
+	} else if host != "localhost" {
+		return nil, fmt.Errorf("%w: %q not under %q", errPasskeyDomain, host, domain)
+	}
+
 	return webauthn.New(&webauthn.Config{
 		RPDisplayName: TC(c, "passkey.rp_display_name"),
-		RPID:          host,
+		RPID:          rpID,
 		RPOrigins:     []string{c.BaseURL()},
 	})
 }
@@ -82,6 +95,9 @@ func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
 		if errors.Is(err, errPasskeyHost) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
+		}
+		if errors.Is(err, errPasskeyDomain) {
+			return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf(TC(c, "passkey.outside_domain"), r.ipaDomain(), r.ipaDomain()))
 		}
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
@@ -145,6 +161,9 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
 		if errors.Is(err, errPasskeyHost) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
+		}
+		if errors.Is(err, errPasskeyDomain) {
+			return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf(TC(c, "passkey.outside_domain"), r.ipaDomain(), r.ipaDomain()))
 		}
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}

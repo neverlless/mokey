@@ -471,6 +471,7 @@ success_message = "Your email address has been successfully changed."
 
 [passkey]
 bad_hostname = "Passkeys need the portal to be reached by its domain name. This address cannot be used — open mokey by hostname and try again."
+outside_domain = "Passkeys registered here must work on your FreeIPA hosts, which only accept them for the domain %s. Open this portal at %s or a host name under it and try again."
 title = "Passkeys"
 new_passkey = "Register Passkey"
 no_passkeys = "No Passkeys Found"
