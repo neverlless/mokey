@@ -39,7 +39,7 @@ func (r *Router) SubidGenerate(c *fiber.Ctx) error {
 				"username": username,
 				"err":      err,
 			}).Error("Failed to generate subordinate id range")
-			return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 		}
 	} else {
 		log.WithFields(log.Fields{

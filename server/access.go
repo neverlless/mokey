@@ -70,7 +70,7 @@ func (r *Router) AccessTest(c *fiber.Ctx) error {
 		service = "sshd"
 	}
 	if host == "" || len(host) > 255 || len(service) > 255 {
-		return c.Status(fiber.StatusBadRequest).SendString(T("access.host_required"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "access.host_required"))
 	}
 
 	res, err := hbacTest(r.userClient(c), username, host, service)
@@ -80,7 +80,7 @@ func (r *Router) AccessTest(c *fiber.Ctx) error {
 			"host":     host,
 			"err":      err,
 		}).Error("hbactest failed")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	log.WithFields(log.Fields{

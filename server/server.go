@@ -182,6 +182,7 @@ func newFiber() (*fiber.App, *Router, error) {
 
 	app.Use(frecover.New())
 	app.Use(SecureHeaders)
+	app.Use(SetLanguage)
 
 	app.Use(limiter.New(limiter.Config{
 		Max:                    viper.GetInt("server.rate_limit_max"),

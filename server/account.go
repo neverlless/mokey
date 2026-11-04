@@ -40,11 +40,11 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 		return c.Render("account.html", vars)
 	}
 
-	mobile, err := joinPhone(c.FormValue("phone_cc"), c.FormValue("phone"))
+	mobile, err := joinPhone(requestLanguage(c), c.FormValue("phone_cc"), c.FormValue("phone"))
 	if err != nil {
 		return phoneRejected(err)
 	}
-	telephone, err := joinPhone(c.FormValue("telephone_cc"), c.FormValue("telephone"))
+	telephone, err := joinPhone(requestLanguage(c), c.FormValue("telephone_cc"), c.FormValue("telephone"))
 	if err != nil {
 		return phoneRejected(err)
 	}
@@ -79,7 +79,7 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 	if emailChangeRequested {
 		check := &ipa.User{Email: newEmail}
 		if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
-			vars["message"] = T("account.email_invalid")
+			vars["message"] = TC(c, "account.email_invalid")
 			return c.Render("account.html", vars)
 		}
 	}
@@ -98,7 +98,7 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 				"username": user.Username,
 				"error":    err.Error(),
 			}).Error("Failed to update account settings")
-			vars["message"] = T("account.fatal_system_error")
+			vars["message"] = TC(c, "account.fatal_system_error")
 		}
 	} else {
 		vars["user"] = userUpdated
@@ -114,7 +114,7 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 				// one banner, not a contradictory success+error pair: the
 				// profile fields did save, the email change did not
 				delete(vars, "success")
-				vars["message"] = T("account.email_change_send_failed")
+				vars["message"] = TC(c, "account.email_change_send_failed")
 			} else {
 				log.WithFields(log.Fields{
 					"username":  user.Username,
@@ -153,7 +153,7 @@ func (r *Router) AccountCreate(c *fiber.Ctx) error {
 
 	err := r.verifyCaptcha(captchaID, captchaSol)
 	if err == nil {
-		err = r.accountCreate(user, password, passwordConfirm, false)
+		err = r.accountCreate(requestLanguage(c), user, password, passwordConfirm, false)
 	}
 	if err != nil {
 		c.Append("HX-Trigger", "{\"reloadCaptcha\":\""+captcha.New()+"\"}")
@@ -182,7 +182,7 @@ func (r *Router) AccountCreate(c *fiber.Ctx) error {
 // accountCreate does the work of validation and creating the account in
 // FreeIPA. When verified is true (invited users whose email is already
 // proven) the account is enabled immediately and skips email verification.
-func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string, verified bool) error {
+func (r *Router) accountCreate(lang string, user *ipa.User, password, passwordConfirm string, verified bool) error {
 	if err := validateUsername(user); err != nil {
 		return err
 	}
@@ -210,7 +210,7 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string,
 		policy = nil
 	}
 
-	if err := validatePassword(password, passwordConfirm, user.Username, policy); err != nil {
+	if err := validatePassword(lang, password, passwordConfirm, user.Username, policy); err != nil {
 		return err
 	}
 
@@ -242,7 +242,7 @@ func (r *Router) accountCreate(user *ipa.User, password, passwordConfirm string,
 			}
 			// FreeIPA rejected the password after the local check passed;
 			// say so instead of "contact your administrator" (#18)
-			return errors.New(T("password.rejected_by_policy"))
+			return errors.New(TL(lang, "password.rejected_by_policy"))
 		default:
 			log.WithFields(log.Fields{
 				"err":      err,
@@ -359,7 +359,7 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 					"email":    claims.Email,
 					"error":    verr,
 				}).Error("Verify account failed to update staged user in FreeIPA")
-				return c.Status(fiber.StatusInternalServerError).SendString(T("account.failed_to_verify_account"))
+				return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 			}
 			user = su
 		}
@@ -382,7 +382,7 @@ func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) err
 			"email":    claims.Email,
 			"err":      err,
 		}).Error("Verifying account failed while fetching user from FreeIPA")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.failed_to_verify_account"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 	}
 
 	if user.Locked && !viper.GetBool("accounts.require_admin_verify") {
@@ -393,7 +393,7 @@ func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) err
 				"email":    claims.Email,
 				"error":    err,
 			}).Error("Verify account failed to enable user in FreeIPA")
-			return c.Status(fiber.StatusInternalServerError).SendString(T("account.failed_to_verify_account"))
+			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 		}
 	}
 
@@ -412,7 +412,7 @@ func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) err
 				"email":    claims.Email,
 				"error":    err,
 			}).Error("Verify account failed to modify user category in FreeIPA")
-			return c.Status(fiber.StatusInternalServerError).SendString(T("account.failed_to_verify_account"))
+			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 		}
 	}
 
@@ -562,7 +562,7 @@ func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
 			"email":    claims.Email,
 			"err":      err,
 		}).Error("Email change failed while fetching user from FreeIPA")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	oldEmail := user.Email
@@ -574,7 +574,7 @@ func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
 			"email":    claims.Email,
 			"err":      err,
 		}).Error("Email change failed to modify user in FreeIPA")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	MarkTokenUsed(token, TokenEmailChange, claims, r.storage)

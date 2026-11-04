@@ -64,7 +64,7 @@ func (r *Router) InviteSend(c *fiber.Ctx) error {
 
 	check := &ipa.User{Email: email}
 	if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
-		vars["message"] = T("account.email_invalid")
+		vars["message"] = TC(c, "account.email_invalid")
 		return c.Render("admin.html", vars)
 	}
 
@@ -73,7 +73,7 @@ func (r *Router) InviteSend(c *fiber.Ctx) error {
 			"email": email,
 			"err":   err,
 		}).Error("Failed to send invite email")
-		vars["message"] = T("account.fatal_system_error")
+		vars["message"] = TC(c, "account.fatal_system_error")
 		return c.Render("admin.html", vars)
 	}
 
@@ -119,7 +119,7 @@ func (r *Router) InviteAccept(c *fiber.Ctx) error {
 	user.First = strings.TrimSpace(c.FormValue("first"))
 	user.Last = strings.TrimSpace(c.FormValue("last"))
 
-	if err := r.accountCreate(user, c.FormValue("password"), c.FormValue("password2"), true); err != nil {
+	if err := r.accountCreate(requestLanguage(c), user, c.FormValue("password"), c.FormValue("password2"), true); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
@@ -159,7 +159,7 @@ func (r *Router) adminUserVars(c *fiber.Ctx, search string) fiber.Map {
 	users, err := r.adminClient.UserFind(ipa.Options{"sizelimit": 500})
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Error("Failed to list users from FreeIPA")
-		vars["users_message"] = T("account.fatal_system_error")
+		vars["users_message"] = TC(c, "account.fatal_system_error")
 		return vars
 	}
 
@@ -197,7 +197,7 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 	}
 
 	if username == r.username(c) && action != "reset" {
-		return c.Status(fiber.StatusBadRequest).SendString(T("admin.cannot_block_self"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.cannot_block_self"))
 	}
 
 	var err error
@@ -322,7 +322,7 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 			"action":   action,
 			"admin":    r.username(c),
 		}).Error("Admin user action failed")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	log.WithFields(log.Fields{
@@ -358,7 +358,7 @@ func (r *Router) AdminPendingList(c *fiber.Ctx) error {
 		log.WithFields(log.Fields{
 			"err": err,
 		}).Error("Failed to list pending users")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	// user_find matches loosely; keep only exact pending accounts

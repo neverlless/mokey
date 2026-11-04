@@ -49,7 +49,7 @@ func (r *Router) webAuthn(c *fiber.Ctx) (*webauthn.WebAuthn, error) {
 	}
 
 	return webauthn.New(&webauthn.Config{
-		RPDisplayName: T("passkey.rp_display_name"),
+		RPDisplayName: TC(c, "passkey.rp_display_name"),
 		RPID:          host,
 		RPOrigins:     []string{c.BaseURL()},
 	})
@@ -81,9 +81,9 @@ func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
 		if errors.Is(err, errPasskeyHost) {
-			return c.Status(fiber.StatusBadRequest).SendString(T("passkey.bad_hostname"))
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
 		}
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	user := &passkeyUser{username: r.username(c), displayName: r.user(c).DisplayName}
@@ -91,21 +91,21 @@ func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
 	options, sessionData, err := w.BeginRegistration(user)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "username": user.username}).Error("Failed to begin passkey registration")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	sd, err := json.Marshal(sessionData)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	sess, err := r.session(c)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 	sess.Set(SessionKeyWebAuthn, string(sd))
 	if err := r.sessionSave(c, sess); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	return c.JSON(options)
@@ -116,37 +116,37 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 
 	sess, err := r.session(c)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	sd, _ := sess.Get(SessionKeyWebAuthn).(string)
 	if sd == "" {
-		return c.Status(fiber.StatusBadRequest).SendString(T("passkey.registration_failed"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.registration_failed"))
 	}
 	// the challenge is single use: stop if consuming it cannot be persisted
 	sess.Delete(SessionKeyWebAuthn)
 	if err := r.sessionSave(c, sess); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	var sessionData webauthn.SessionData
 	if err := json.Unmarshal([]byte(sd), &sessionData); err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(T("passkey.registration_failed"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.registration_failed"))
 	}
 
 	pcc, err := protocol.ParseCredentialCreationResponseBody(bytes.NewReader(c.Body()))
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to parse passkey registration response")
-		return c.Status(fiber.StatusBadRequest).SendString(T("passkey.registration_failed"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.registration_failed"))
 	}
 
 	w, err := r.webAuthn(c)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
 		if errors.Is(err, errPasskeyHost) {
-			return c.Status(fiber.StatusBadRequest).SendString(T("passkey.bad_hostname"))
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
 		}
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	user := &passkeyUser{username: username, displayName: r.user(c).DisplayName}
@@ -154,18 +154,18 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 	cred, err := w.CreateCredential(user, sessionData, pcc)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to verify passkey registration")
-		return c.Status(fiber.StatusBadRequest).SendString(T("passkey.registration_failed"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.registration_failed"))
 	}
 
 	mapping, err := passkeyMapping(cred.ID, cred.PublicKey)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to build passkey mapping")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	if err := userAddPasskey(r.userClient(c), username, mapping); err != nil {
 		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to add passkey in FreeIPA")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("passkey.freeipa_add_failed"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "passkey.freeipa_add_failed"))
 	}
 
 	log.WithFields(log.Fields{
@@ -190,7 +190,7 @@ func (r *Router) PasskeyRemove(c *fiber.Ctx) error {
 
 	if err := userRemovePasskey(r.userClient(c), username, mapping); err != nil {
 		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to remove passkey in FreeIPA")
-		return c.Status(fiber.StatusInternalServerError).SendString(T("passkey.freeipa_remove_failed"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "passkey.freeipa_remove_failed"))
 	}
 
 	log.WithFields(log.Fields{
@@ -204,7 +204,7 @@ func (r *Router) PasskeyRemove(c *fiber.Ctx) error {
 
 	passkeys, err := r.passkeyList(c)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(T("account.fatal_system_error"))
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	return c.Render("passkey-list.html", fiber.Map{

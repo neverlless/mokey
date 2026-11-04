@@ -56,7 +56,7 @@ func TestBreachedPasswordRefused(t *testing.T) {
 		fmt.Fprintf(w, "0018A45C4D1DEF81644B54AB7F969B88D65:1\r\n%s:42\r\n", suffix)
 	})
 
-	err := validatePassword(pwnedFixture, pwnedFixture, "walter", nil)
+	err := validatePassword("english", pwnedFixture, pwnedFixture, "walter", nil)
 	assert.EqualError(t, err, T("password.breached"))
 }
 
@@ -66,7 +66,7 @@ func TestBreachedPasswordNotPresent(t *testing.T) {
 		fmt.Fprint(w, "0018A45C4D1DEF81644B54AB7F969B88D65:1\r\n")
 	})
 
-	assert.NoError(t, validatePassword(pwnedFixture, pwnedFixture, "walter", nil))
+	assert.NoError(t, validatePassword("english", pwnedFixture, pwnedFixture, "walter", nil))
 	assert.EqualValues(t, 1, hits.Load())
 }
 
@@ -76,7 +76,7 @@ func TestBreachedPasswordPaddingIgnored(t *testing.T) {
 		fmt.Fprintf(w, "%s:0\r\n", suffix)
 	})
 
-	assert.NoError(t, validatePassword(pwnedFixture, pwnedFixture, "walter", nil))
+	assert.NoError(t, validatePassword("english", pwnedFixture, pwnedFixture, "walter", nil))
 }
 
 func TestBreachedPasswordFailsOpen(t *testing.T) {
@@ -87,7 +87,7 @@ func TestBreachedPasswordFailsOpen(t *testing.T) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			fmt.Fprintf(w, "%s:42\r\n", suffix)
 		})
-		assert.NoError(t, validatePassword(pwnedFixture, pwnedFixture, "walter", nil))
+		assert.NoError(t, validatePassword("english", pwnedFixture, pwnedFixture, "walter", nil))
 	})
 
 	t.Run("timeout", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestBreachedPasswordFailsOpen(t *testing.T) {
 			time.Sleep(200 * time.Millisecond)
 			fmt.Fprintf(w, "%s:42\r\n", suffix)
 		})
-		assert.NoError(t, validatePassword(pwnedFixture, pwnedFixture, "walter", nil))
+		assert.NoError(t, validatePassword("english", pwnedFixture, pwnedFixture, "walter", nil))
 	})
 }
 
@@ -109,7 +109,7 @@ func TestBreachedPasswordCheckOffByDefault(t *testing.T) {
 		fmt.Fprintf(w, "%s:42\r\n", suffix)
 	})
 
-	assert.NoError(t, validatePassword(pwnedFixture, pwnedFixture, "walter", nil))
+	assert.NoError(t, validatePassword("english", pwnedFixture, pwnedFixture, "walter", nil))
 	assert.Zero(t, hits.Load())
 }
 
@@ -119,6 +119,6 @@ func TestBreachedPasswordSkippedWhenPolicyFails(t *testing.T) {
 		fmt.Fprintf(w, "%s:42\r\n", suffix)
 	})
 
-	assert.Error(t, validatePassword("short", "short", "walter", nil))
+	assert.Error(t, validatePassword("english", "short", "short", "walter", nil))
 	assert.Zero(t, hits.Load())
 }

@@ -122,10 +122,10 @@ func (r *Router) GroupRequestJoin(c *fiber.Ctx) error {
 
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil || !g.Managed() {
-		return c.Status(fiber.StatusBadRequest).SendString(T("groups.not_joinable"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))
 	}
 	if user.HasGroup(g.Name) {
-		return c.Status(fiber.StatusBadRequest).SendString(T("groups.already_member"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.already_member"))
 	}
 
 	if r.addGroupRequest(g.Name, user.Username, groupRequestJoin) {
@@ -153,10 +153,10 @@ func (r *Router) GroupRequestLeave(c *fiber.Ctx) error {
 
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil || !g.Managed() {
-		return c.Status(fiber.StatusBadRequest).SendString(T("groups.not_joinable"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))
 	}
 	if !user.HasGroup(g.Name) {
-		return c.Status(fiber.StatusBadRequest).SendString(T("groups.not_a_member"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_a_member"))
 	}
 
 	if r.addGroupRequest(g.Name, user.Username, groupRequestLeave) {
@@ -183,17 +183,17 @@ func (r *Router) groupDecision(c *fiber.Ctx) (*ipaGroup, GroupRequest, error) {
 
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil {
-		return nil, GroupRequest{}, fiber.NewError(fiber.StatusBadRequest, T("groups.not_joinable"))
+		return nil, GroupRequest{}, fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.not_joinable"))
 	}
 	if !isManagerOf(user.Username, user.Groups, g) {
-		return nil, GroupRequest{}, fiber.NewError(fiber.StatusForbidden, T("groups.not_a_manager"))
+		return nil, GroupRequest{}, fiber.NewError(fiber.StatusForbidden, TC(c, "groups.not_a_manager"))
 	}
 	for _, req := range r.loadGroupRequests(g.Name) {
 		if req.Username == target {
 			return g, req, nil
 		}
 	}
-	return nil, GroupRequest{}, fiber.NewError(fiber.StatusBadRequest, T("groups.no_such_request"))
+	return nil, GroupRequest{}, fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.no_such_request"))
 }
 
 func (r *Router) GroupApprove(c *fiber.Ctx) error {
@@ -218,7 +218,7 @@ func (r *Router) GroupApprove(c *fiber.Ctx) error {
 			"sponsor":  r.username(c),
 			"err":      err,
 		}).Error("Group approve failed in FreeIPA")
-		return c.Status(fiber.StatusForbidden).SendString(T("groups.approve_failed"))
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.approve_failed"))
 	}
 
 	r.removeGroupRequest(g.Name, req.Username)
@@ -275,10 +275,10 @@ func (r *Router) GroupRemoveMember(c *fiber.Ctx) error {
 
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(T("groups.not_joinable"))
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))
 	}
 	if !isManagerOf(user.Username, user.Groups, g) {
-		return c.Status(fiber.StatusForbidden).SendString(T("groups.not_a_manager"))
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.not_a_manager"))
 	}
 
 	if err := groupRemoveMember(r.userClient(c), g.Name, target); err != nil {
@@ -288,7 +288,7 @@ func (r *Router) GroupRemoveMember(c *fiber.Ctx) error {
 			"sponsor":  user.Username,
 			"err":      err,
 		}).Error("Group member removal failed in FreeIPA")
-		return c.Status(fiber.StatusForbidden).SendString(T("groups.remove_failed"))
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.remove_failed"))
 	}
 
 	r.removeGroupRequest(g.Name, target)

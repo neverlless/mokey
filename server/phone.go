@@ -39,7 +39,7 @@ func splitPhone(stored string) (code, national string) {
 // joinPhone builds the stored value from the two form fields. An empty
 // national number clears the attribute. A number given on its own is accepted
 // only when it already carries its own country code.
-func joinPhone(code, national string) (string, error) {
+func joinPhone(lang, code, national string) (string, error) {
 	code = strings.TrimPrefix(strings.TrimSpace(code), "+")
 	national = strings.TrimSpace(national)
 
@@ -53,17 +53,17 @@ func joinPhone(code, national string) (string, error) {
 			code, national = splitCompact(compactPhone(national))
 			return "+" + code + " " + national, nil
 		}
-		return "", errors.New(T("account.phone_needs_country_code"))
+		return "", errors.New(TL(lang, "account.phone_needs_country_code"))
 	}
 
 	if !isDigits(code) || len(code) > 4 {
-		return "", errors.New(T("account.phone_invalid_country_code"))
+		return "", errors.New(TL(lang, "account.phone_invalid_country_code"))
 	}
 
 	// Check the characters before compacting: digitsOnly would quietly
 	// strip the letters out of "555-CALL" and accept what is left.
 	if !isPhoneish(national) || !valid.IsE164("+"+code+digitsOnly(national)) {
-		return "", errors.New(T("account.phone_invalid"))
+		return "", errors.New(TL(lang, "account.phone_invalid"))
 	}
 
 	return "+" + code + " " + national, nil

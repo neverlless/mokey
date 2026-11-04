@@ -52,7 +52,7 @@ func (r *Router) AppRevoke(c *fiber.Ctx) error {
 			"client":   clientID,
 			"err":      err,
 		}).Error("Failed to revoke connected app")
-		vars["message"] = T("security.apps_revoke_failed")
+		vars["message"] = TC(c, "security.apps_revoke_failed")
 	} else {
 		log.WithFields(log.Fields{
 			"username": user.Username,

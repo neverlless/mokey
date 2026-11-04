@@ -4,7 +4,6 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/biter777/countries v1.7.5
 	github.com/dchest/captcha v1.1.0
-	github.com/dustin/go-humanize v1.1.0
 	github.com/essentialkaos/branca/v2 v2.0.9
 	github.com/go-webauthn/webauthn v0.18.2
 	github.com/gofiber/fiber/v2 v2.52.16
