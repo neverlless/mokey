@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	pwnedRangeURL = "https://api.pwnedpasswords.com/range/"
+	pwnedRangeURL = "https://api.pwnedpasswords.com/range/" // #nosec G101 -- public API URL
 	pwnedClient   = &http.Client{Timeout: 5 * time.Second}
 )
 

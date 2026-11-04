@@ -176,7 +176,7 @@ func checkPwquality(pass, username string, p *PwPolicy) error {
 func longestRun(b []byte, step int) int {
 	longest, run := min(len(b), 1), 1
 	for i := 1; i < len(b); i++ {
-		if int(int8(b[i]))-int(int8(b[i-1])) == step {
+		if int(int8(b[i]))-int(int8(b[i-1])) == step { // #nosec G115 -- wraps on purpose, as C char
 			run++
 		} else {
 			run = 1
