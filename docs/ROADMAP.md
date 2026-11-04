@@ -378,18 +378,23 @@ quality credits, so these items are mostly mokey-side work.
 
 ## v2.6 — Languages and docs
 
-- [ ] Translation workflow: completeness test, `Accept-Language` selection,
-      a "help translate" call to fork authors who already translated
-      upstream; Russian and Ukrainian first-party
-- [ ] Localized durations in emails ("link expires in …"), replacing
-      go-humanize, which only speaks English
-- [ ] Documentation site with one page per task people search for
+- [x] Translation workflow: completeness test (keys and printf verbs),
+      `Accept-Language` selection (`site.languages`), recipient's
+      `preferredlanguage` for emails; Dutch completed, Russian and
+      Ukrainian first-party
+- [x] Localized durations in emails ("link expires in …") and pages,
+      replacing go-humanize, which only speaks English
+- [x] Documentation site with one page per task people search for
       (FreeIPA self-service password reset, signup, OTP, passkeys, OIDC)
       and honest comparisons with upstream mokey, noggin, LTB SSP and
       Keycloak-in-front-of-FreeIPA
-- [ ] Companion-mode guides: mokey next to Keycloak (exists), next to any
-      OIDC provider, and next to FreeIPA's own OIDC provider when it ships
-      a release
+- [x] Companion-mode guides: mokey next to Keycloak and next to any OIDC
+      provider
+- [ ] Companion guide for FreeIPA's own OIDC provider, once it ships a
+      release (none tagged as of November 2026)
+- [x] Passkeys registered for the FreeIPA domain as relying party ID, so
+      they work for host logins through SSSD (found while writing the
+      passkeys guide)
 
 ## v2.7 — Foundations
 
