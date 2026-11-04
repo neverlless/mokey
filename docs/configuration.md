@@ -100,6 +100,32 @@ in and re-enroll a token; their existing tokens are left in place.
 Nothing to configure; the form only acts on accounts that actually
 require OTP, and all responses are enumeration-safe.
 
+### Users without a FreeIPA password
+
+mokey changes and resets FreeIPA passwords only, so it leaves out users
+whose password lives elsewhere. Nothing to configure.
+
+- A user has a FreeIPA password when their effective authentication
+  types (`ipauserauthtype`) include `password`, `otp` (password plus
+  token) or `hardened`, or are empty. The effective types are the user's
+  own, or the server-wide default from `ipa config-mod --user-auth-type`
+  when the user has none or when the default contains `disabled`.
+  Anyone else signs in through an external identity provider (`idp`), a
+  RADIUS server (`radius`) or with a smart card or passkey only
+  (`pkinit`, `passkey`).
+- For those users the Password page explains where the password is
+  managed instead of showing the form, and the change is refused. Forgot
+  password sends them an email with the same explanation instead of a
+  reset link; the page they see is the same as for any other username.
+  Reset links issued earlier no longer open.
+- The login form says why such a user cannot sign in to mokey, unless
+  `hide_invalid_username_error` is on.
+- Usernames qualified with a domain other than FreeIPA's realm
+  (`jane@ad.example.com`, `AD\jane`) belong to trusted Active Directory
+  users. The login and forgot-password forms tell them to change their
+  password in Active Directory. That answer comes from the input alone,
+  so it reveals no account.
+
 ## `[email]`
 
 | Option | Type | Default | Description |

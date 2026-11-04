@@ -110,6 +110,12 @@ func (e *Emailer) SendPasswordResetEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	return e.sendTokenEmail(user, user.Username, TokenPasswordReset, ctx, T("email_template.password_reset_subject"), "password-reset", vars)
 }
 
+// SendPasswordElsewhereEmail answers a reset request from a user whose
+// password FreeIPA does not manage: reason says where it is managed.
+func (e *Emailer) SendPasswordElsewhereEmail(user *ipa.User, reason string, ctx *fiber.Ctx) error {
+	return e.sendEmail(user, ctx, T("email_template.password_elsewhere_subject"), "password-elsewhere", map[string]interface{}{"reason": reason})
+}
+
 func (e *Emailer) SendAccountVerifyEmail(user *ipa.User, ctx *fiber.Ctx) error {
 	token, err := NewToken(user.Username, user.Email, TokenAccountVerify, e.storage)
 	if err != nil {
@@ -399,6 +405,8 @@ func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ip
 		)
 	case "account-updated":
 		return "Your password has been reset successfully."
+	case "password-elsewhere":
+		return fmt.Sprintf("Notification from %s: %s\n\n%s", data["site_name"], subject, data["reason"])
 	case "username-reminder":
 		usernames, _ := data["usernames"].([]string)
 		return fmt.Sprintf("Notification from %s: %s\n\n%s", data["site_name"], subject, strings.Join(usernames, "\n"))

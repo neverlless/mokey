@@ -19,6 +19,12 @@
   dictionary check (`dictcheck`), which only FreeIPA can run
 - The password requirements now show when the Password page is first
   opened, not only after a rejected change
+- Users who sign in through an external identity provider, RADIUS, or a
+  smart card or passkey only see why on the Password page instead of a
+  form that cannot work, and get an explanatory email instead of a reset
+  link. Active Directory usernames (`user@ad.example.com`, `AD\user`) are
+  told to change their password in Active Directory. See
+  [Users without a FreeIPA password](docs/configuration.md#users-without-a-freeipa-password)
 - mokey uses neverlless/goipa v1.1.0; stage users get their password from
   the typed `stageuser_add` call
 
