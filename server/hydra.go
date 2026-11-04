@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
 	hydra "github.com/ory/hydra-client-go/v26"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -72,15 +72,15 @@ type hydraClientPolicy struct {
 func clientAllowed(clientID string, user *ipa.User) bool {
 	var policies []hydraClientPolicy
 	if err := viper.UnmarshalKey("hydra.clients", &policies); err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("Invalid hydra.clients config, denying OAuth client access")
+		slog.Error("Invalid hydra.clients config, denying OAuth client access",
+			"err", err,
+		)
 		return false
 	}
 
 	for _, p := range policies {
 		if p.ClientID == "" {
-			log.Error("Invalid hydra.clients config: entry without client_id, denying OAuth client access")
+			slog.Error("Invalid hydra.clients config: entry without client_id, denying OAuth client access")
 			return false
 		}
 		if p.ClientID != clientID {
@@ -108,9 +108,9 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 	// Get the challenge from the query.
 	challenge := c.Query("consent_challenge")
 	if challenge == "" {
-		log.WithFields(log.Fields{
-			"ip": RemoteIP(c),
-		}).Error("Consent endpoint was called without a consent challenge")
+		slog.Error("Consent endpoint was called without a consent challenge",
+			"ip", RemoteIP(c),
+		)
 		r.metrics.totalHydraFailedLogins.Inc()
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "hydra.consent_without_challenge"))
 	}
@@ -118,9 +118,9 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 	consent, _, err := r.hydraClient.OAuth2API.GetOAuth2ConsentRequest(context.Background()).
 		ConsentChallenge(challenge).Execute()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("Failed to validate the consent challenge")
+		slog.Error("Failed to validate the consent challenge",
+			"error", err,
+		)
 		r.metrics.totalHydraFailedLogins.Inc()
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_validate_consent"))
 	}
@@ -129,10 +129,10 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 
 	user, err := r.adminClient.UserShow(subject)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error":    err,
-			"username": subject,
-		}).Warn("Failed to find User record for consent")
+		slog.Warn("Failed to find User record for consent",
+			"error", err,
+			"username", subject,
+		)
 		r.metrics.totalHydraFailedLogins.Inc()
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_validate_consent"))
 	}
@@ -154,20 +154,20 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 		_, _, err := r.hydraClient.OAuth2API.RejectOAuth2ConsentRequest(context.Background()).
 			ConsentChallenge(challenge).RejectOAuth2Request(*rejectBody).Execute()
 		if err != nil {
-			log.WithFields(log.Fields{
-				"err":      err,
-				"username": subject,
-			}).Error("Failed to reject the consent challenge")
+			slog.Error("Failed to reject the consent challenge",
+				"err", err,
+				"username", subject,
+			)
 		}
 		if clientGroupsEnforced() {
 			r.revokeDisallowedConsents(user)
 		}
 
-		log.WithFields(log.Fields{
-			"username": subject,
-			"client":   clientID,
-			"ip":       RemoteIP(c),
-		}).Warn("AUDIT OAuth2 client denied, user not in an allowed group")
+		slog.Warn("AUDIT OAuth2 client denied, user not in an allowed group",
+			"username", subject,
+			"client", clientID,
+			"ip", RemoteIP(c),
+		)
 		r.metrics.totalHydraFailedLogins.Inc()
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "hydra.client_not_allowed"))
 	}
@@ -191,16 +191,16 @@ func (r *Router) ConsentGet(c *fiber.Ctx) error {
 	redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2ConsentRequest(context.Background()).
 		ConsentChallenge(challenge).AcceptOAuth2ConsentRequest(*acceptBody).Execute()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("Failed to accept the consent challenge")
+		slog.Error("Failed to accept the consent challenge",
+			"error", err,
+		)
 		r.metrics.totalHydraFailedLogins.Inc()
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_accept_consent"))
 	}
 
-	log.WithFields(log.Fields{
-		"username": subject,
-	}).Info("AUDIT User logged in via Hydra OAuth2 successfully")
+	slog.Info("AUDIT User logged in via Hydra OAuth2 successfully",
+		"username", subject,
+	)
 	r.metrics.totalHydraLogins.Inc()
 
 	c.Set("HX-Redirect", redirect.GetRedirectTo())
@@ -211,35 +211,35 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 	// Get the challenge from the query.
 	challenge := c.Query("login_challenge")
 	if challenge == "" {
-		log.WithFields(log.Fields{
-			"ip": RemoteIP(c),
-		}).Error("Login OAuth endpoint was called without a challenge")
+		slog.Error("Login OAuth endpoint was called without a challenge",
+			"ip", RemoteIP(c),
+		)
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "hydra.login_without_challenge"))
 	}
 
 	login, _, err := r.hydraClient.OAuth2API.GetOAuth2LoginRequest(context.Background()).
 		LoginChallenge(challenge).Execute()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("Failed to validate the login challenge")
+		slog.Error("Failed to validate the login challenge",
+			"error", err,
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_validate_login"))
 	}
 
 	if login.GetSkip() {
 		subject := login.GetSubject()
 
-		log.WithFields(log.Fields{
-			"user": subject,
-		}).Debug("Hydra requested we skip login")
+		slog.Debug("Hydra requested we skip login",
+			"user", subject,
+		)
 
 		// Check to make sure we have a valid user id
 		user, err := r.adminClient.UserShow(subject)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error":    err,
-				"username": subject,
-			}).Warn("Failed to find User record for login")
+			slog.Warn("Failed to find User record for login",
+				"error", err,
+				"username", subject,
+			)
 			r.metrics.totalHydraFailedLogins.Inc()
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_validate_login"))
 		}
@@ -253,16 +253,16 @@ func (r *Router) LoginOAuthGet(c *fiber.Ctx) error {
 			LoginChallenge(challenge).
 			AcceptOAuth2LoginRequest(*hydra.NewAcceptOAuth2LoginRequest(subject)).Execute()
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).Error("Failed to accept the GET login challenge")
+			slog.Error("Failed to accept the GET login challenge",
+				"error", err,
+			)
 			r.metrics.totalHydraFailedLogins.Inc()
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_accept_login"))
 		}
 
-		log.WithFields(log.Fields{
-			"username": subject,
-		}).Debug("Hydra OAuth login GET challenge signed successfully")
+		slog.Debug("Hydra OAuth login GET challenge signed successfully",
+			"username", subject,
+		)
 
 		c.Set("HX-Redirect", redirect.GetRedirectTo())
 		return c.Redirect(redirect.GetRedirectTo())
@@ -287,16 +287,16 @@ func (r *Router) LoginOAuthPost(username, challenge string, c *fiber.Ctx) error 
 	redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2LoginRequest(context.Background()).
 		LoginChallenge(challenge).AcceptOAuth2LoginRequest(*acceptBody).Execute()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"error":    err,
-		}).Error("Failed to accept the POST login challenge")
+		slog.Error("Failed to accept the POST login challenge",
+			"username", username,
+			"error", err,
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_accept_login"))
 	}
 
-	log.WithFields(log.Fields{
-		"username": username,
-	}).Debug("Hydra OAuth2 login POST challenge signed successfully")
+	slog.Debug("Hydra OAuth2 login POST challenge signed successfully",
+		"username", username,
+	)
 
 	if c.Get("HX-Request", "false") == "true" {
 		c.Set("HX-Redirect", redirect.GetRedirectTo())
@@ -311,11 +311,11 @@ func (r *Router) HydraError(c *fiber.Ctx) error {
 	desc := c.Query("error_description")
 	hint := c.Query("error_hint")
 
-	log.WithFields(log.Fields{
-		"message": message,
-		"desc":    desc,
-		"hint":    hint,
-	}).Error("OAuth2 request failed")
+	slog.Error("OAuth2 request failed",
+		"message", message,
+		"desc", desc,
+		"hint", hint,
+	)
 
 	return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.oauth2_error"))
 }
@@ -330,10 +330,10 @@ func (r *Router) HydraLogout(c *fiber.Ctx) error {
 	logoutRequest, _, err := r.hydraClient.OAuth2API.GetOAuth2LogoutRequest(context.Background()).
 		LogoutChallenge(challenge).Execute()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"ip":    RemoteIP(c),
-		}).Error("Failed to validate hydra logout challenge")
+		slog.Error("Failed to validate hydra logout challenge",
+			"error", err,
+			"ip", RemoteIP(c),
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_validate_logout"))
 	}
 
@@ -344,17 +344,17 @@ func (r *Router) HydraLogout(c *fiber.Ctx) error {
 	redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2LogoutRequest(context.Background()).
 		LogoutChallenge(challenge).Execute()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"ip":    RemoteIP(c),
-		}).Error("Failed to accept hydra logout request")
+		slog.Error("Failed to accept hydra logout request",
+			"error", err,
+			"ip", RemoteIP(c),
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "hydra.failed_to_accept_logout"))
 	}
 
-	log.WithFields(log.Fields{
-		"subject": logoutRequest.GetSubject(),
-		"ip":      RemoteIP(c),
-	}).Info("Completed hydra logout flow")
+	slog.Info("Completed hydra logout flow",
+		"subject", logoutRequest.GetSubject(),
+		"ip", RemoteIP(c),
+	)
 
 	return c.Redirect(redirect.GetRedirectTo())
 }
@@ -366,9 +366,9 @@ func (r *Router) revokeHydraAuthenticationSession(username string) error {
 		return err
 	}
 
-	log.WithFields(log.Fields{
-		"user": username,
-	}).Info("Successfully revoked hydra authentication session")
+	slog.Info("Successfully revoked hydra authentication session",
+		"user", username,
+	)
 
 	return nil
 }

@@ -7,6 +7,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"slices"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -88,10 +88,10 @@ func (r *Router) consentClientIDs(username string) ([]string, error) {
 func (r *Router) revokeDisallowedConsents(user *ipa.User) int {
 	ids, err := r.consentClientIDs(user.Username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      err,
-		}).Error("Failed to list Hydra consent sessions")
+		slog.Error("Failed to list Hydra consent sessions",
+			"username", user.Username,
+			"err", err,
+		)
 		return 0
 	}
 
@@ -101,17 +101,17 @@ func (r *Router) revokeDisallowedConsents(user *ipa.User) int {
 			continue
 		}
 		if err := r.revokeConnectedApp(user.Username, id); err != nil {
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"client":   id,
-				"err":      err,
-			}).Error("Failed to revoke Hydra consent session")
+			slog.Error("Failed to revoke Hydra consent session",
+				"username", user.Username,
+				"client", id,
+				"err", err,
+			)
 			continue
 		}
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"client":   id,
-		}).Info("AUDIT OAuth2 consent revoked, user no longer in an allowed group")
+		slog.Info("AUDIT OAuth2 consent revoked, user no longer in an allowed group",
+			"username", user.Username,
+			"client", id,
+		)
 		revoked++
 	}
 	return revoked
@@ -125,10 +125,10 @@ func (r *Router) revokeConsentsOf(username string) {
 	}
 	user, err := r.adminClient.UserShow(username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Error("Failed to fetch user for Hydra consent revocation")
+		slog.Error("Failed to fetch user for Hydra consent revocation",
+			"username", username,
+			"err", err,
+		)
 		return
 	}
 	r.revokeDisallowedConsents(user)
@@ -151,9 +151,9 @@ func (r *Router) StartConsentSweep() {
 		return
 	}
 
-	log.WithFields(log.Fields{
-		"interval": interval,
-	}).Info("Hydra consent sweep enabled")
+	slog.Info("Hydra consent sweep enabled",
+		"interval", interval,
+	)
 
 	go func() {
 		for {
@@ -171,9 +171,9 @@ func (r *Router) consentSweep() {
 		"timelimit": 0,
 	})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("Hydra consent sweep failed to list users")
+		slog.Error("Hydra consent sweep failed to list users",
+			"err", err,
+		)
 		return
 	}
 
@@ -182,8 +182,8 @@ func (r *Router) consentSweep() {
 		revoked += r.revokeDisallowedConsents(user)
 	}
 
-	log.WithFields(log.Fields{
-		"users":   len(users),
-		"revoked": revoked,
-	}).Info("Hydra consent sweep complete")
+	slog.Info("Hydra consent sweep complete",
+		"users", len(users),
+		"revoked", revoked,
+	)
 }

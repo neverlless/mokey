@@ -5,10 +5,10 @@
 package server
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 // accessVars fills the Access tab: HBAC and sudo rules that apply to the
@@ -21,19 +21,19 @@ func (r *Router) accessVars(c *fiber.Ctx, vars fiber.Map) {
 
 	hbac, hbacTruncated, err := hbacRuleFind(client)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      err,
-		}).Error("Failed to list HBAC rules")
+		slog.Error("Failed to list HBAC rules",
+			"username", user.Username,
+			"err", err,
+		)
 		vars["access_error"] = true
 		return
 	}
 	sudo, sudoTruncated, err := sudoRuleFind(client)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      err,
-		}).Error("Failed to list sudo rules")
+		slog.Error("Failed to list sudo rules",
+			"username", user.Username,
+			"err", err,
+		)
 		vars["access_error"] = true
 		return
 	}
@@ -75,20 +75,20 @@ func (r *Router) AccessTest(c *fiber.Ctx) error {
 
 	res, err := hbacTest(r.userClient(c), username, host, service)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"host":     host,
-			"err":      err,
-		}).Error("hbactest failed")
+		slog.Error("hbactest failed",
+			"username", username,
+			"host", host,
+			"err", err,
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
-	log.WithFields(log.Fields{
-		"username": username,
-		"host":     host,
-		"service":  service,
-		"granted":  res.Granted,
-	}).Debug("hbactest simulated")
+	slog.Debug("hbactest simulated",
+		"username", username,
+		"host", host,
+		"service", service,
+		"granted", res.Granted,
+	)
 
 	return c.Render("access-test-result.html", fiber.Map{
 		"granted": res.Granted,

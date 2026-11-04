@@ -9,13 +9,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"strings"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 const SessionKeyWebAuthn = "webauthn_registration"
@@ -92,7 +92,7 @@ func (r *Router) passkeyList(c *fiber.Ctx) ([]fiber.Map, error) {
 func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
 	w, err := r.webAuthn(c)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
+		slog.Error("Failed to init webauthn", "err", err, "host", c.Hostname())
 		if errors.Is(err, errPasskeyHost) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
 		}
@@ -106,7 +106,7 @@ func (r *Router) PasskeyBegin(c *fiber.Ctx) error {
 
 	options, sessionData, err := w.BeginRegistration(user)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err, "username": user.username}).Error("Failed to begin passkey registration")
+		slog.Error("Failed to begin passkey registration", "err", err, "username", user.username)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
@@ -152,13 +152,13 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 
 	pcc, err := protocol.ParseCredentialCreationResponseBody(bytes.NewReader(c.Body()))
 	if err != nil {
-		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to parse passkey registration response")
+		slog.Error("Failed to parse passkey registration response", "err", err, "username", username)
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.registration_failed"))
 	}
 
 	w, err := r.webAuthn(c)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err, "host": c.Hostname()}).Error("Failed to init webauthn")
+		slog.Error("Failed to init webauthn", "err", err, "host", c.Hostname())
 		if errors.Is(err, errPasskeyHost) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.bad_hostname"))
 		}
@@ -172,28 +172,28 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 
 	cred, err := w.CreateCredential(user, sessionData, pcc)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to verify passkey registration")
+		slog.Error("Failed to verify passkey registration", "err", err, "username", username)
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "passkey.registration_failed"))
 	}
 
 	mapping, err := passkeyMapping(cred.ID, cred.PublicKey)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to build passkey mapping")
+		slog.Error("Failed to build passkey mapping", "err", err, "username", username)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
 	if err := addPasskey(r.userClient(c), r.adminClient, username, mapping); err != nil {
-		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to add passkey in FreeIPA")
+		slog.Error("Failed to add passkey in FreeIPA", "err", err, "username", username)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "passkey.freeipa_add_failed"))
 	}
 
-	log.WithFields(log.Fields{
-		"username": username,
-		"ip":       RemoteIP(c),
-	}).Info("AUDIT passkey added successfully")
+	slog.Info("AUDIT passkey added successfully",
+		"username", username,
+		"ip", RemoteIP(c),
+	)
 
 	if err := r.emailer.SendPasskeyUpdatedEmail(true, r.user(c), c); err != nil {
-		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to send passkey added email")
+		slog.Error("Failed to send passkey added email", "err", err, "username", username)
 	}
 
 	return c.SendStatus(fiber.StatusOK)
@@ -208,17 +208,17 @@ func (r *Router) PasskeyRemove(c *fiber.Ctx) error {
 	}
 
 	if err := userRemovePasskey(r.userClient(c), username, mapping); err != nil {
-		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to remove passkey in FreeIPA")
+		slog.Error("Failed to remove passkey in FreeIPA", "err", err, "username", username)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "passkey.freeipa_remove_failed"))
 	}
 
-	log.WithFields(log.Fields{
-		"username": username,
-		"ip":       RemoteIP(c),
-	}).Info("AUDIT passkey removed successfully")
+	slog.Info("AUDIT passkey removed successfully",
+		"username", username,
+		"ip", RemoteIP(c),
+	)
 
 	if err := r.emailer.SendPasskeyUpdatedEmail(false, r.user(c), c); err != nil {
-		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to send passkey removed email")
+		slog.Error("Failed to send passkey removed email", "err", err, "username", username)
 	}
 
 	// The list carries an inline script, which CSP blocks when htmx swaps it

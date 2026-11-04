@@ -6,11 +6,11 @@ package server
 
 import (
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 // OTP recovery request queue: single storage key holding a JSON list,
@@ -49,7 +49,7 @@ func (r *Router) saveOTPRecoveryRequests(reqs []OTPRecoveryRequest) {
 		}
 	}
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Error("Failed to save OTP recovery requests")
+		slog.Error("Failed to save OTP recovery requests", "err", err)
 	}
 }
 
@@ -102,23 +102,23 @@ func (r *Router) OTPRecoveryRequest(c *fiber.Ctx) error {
 	generic := func() error { return c.Render("otprecovery-forgot-success.html", fiber.Map{}) }
 
 	if isBlocked(username) {
-		log.WithFields(log.Fields{"username": username}).Warn("AUDIT OTP recovery attempt for blocked username")
+		slog.Warn("AUDIT OTP recovery attempt for blocked username", "username", username)
 		return generic()
 	}
 	user, err := r.adminClient.UserShow(username)
 	if err != nil {
-		log.WithFields(log.Fields{"username": username}).Warn("AUDIT OTP recovery attempt for unknown username")
+		slog.Warn("AUDIT OTP recovery attempt for unknown username", "username", username)
 		return generic()
 	}
 	if user.Locked || !user.OTPOnly() {
-		log.WithFields(log.Fields{"username": username}).Warn("AUDIT OTP recovery attempt for non-OTP or locked user")
+		slog.Warn("AUDIT OTP recovery attempt for non-OTP or locked user", "username", username)
 		return generic()
 	}
 
 	if err := r.emailer.SendOTPRecoveryConfirmEmail(user, c); err != nil {
-		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to send OTP recovery confirm email")
+		slog.Error("Failed to send OTP recovery confirm email", "username", username, "err", err)
 	} else {
-		log.WithFields(log.Fields{"username": username, "ip": RemoteIP(c)}).Info("AUDIT OTP recovery confirm email sent")
+		slog.Info("AUDIT OTP recovery confirm email sent", "username", username, "ip", RemoteIP(c))
 	}
 	return generic()
 }
@@ -129,7 +129,7 @@ func (r *Router) OTPRecoveryConfirm(c *fiber.Ctx) error {
 	token := c.Params("token")
 	claims, err := ParseToken(token, TokenOTPRecovery, r.storage)
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Debug("Invalid OTP recovery token")
+		slog.Debug("Invalid OTP recovery token", "err", err)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
@@ -141,12 +141,12 @@ func (r *Router) OTPRecoveryConfirm(c *fiber.Ctx) error {
 	// release the issued-token lock now that this request is confirmed and
 	// queued, so a future recovery attempt isn't blocked until TTL expiry
 	if err := r.storage.Delete(TokenOTPRecovery + TokenIssuedPrefix + claims.Username); err != nil {
-		log.WithFields(log.Fields{
-			"username": claims.Username,
-			"err":      err,
-		}).Error("Failed to release OTP recovery issued-token marker")
+		slog.Error("Failed to release OTP recovery issued-token marker",
+			"username", claims.Username,
+			"err", err,
+		)
 	}
 	r.addOTPRecoveryRequest(claims.Username)
-	log.WithFields(log.Fields{"username": claims.Username, "ip": RemoteIP(c)}).Info("AUDIT OTP recovery requested")
+	slog.Info("AUDIT OTP recovery requested", "username", claims.Username, "ip", RemoteIP(c))
 	return c.Render("otprecovery-submitted.html", fiber.Map{})
 }

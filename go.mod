@@ -16,7 +16,6 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/redis/go-redis/v9 v9.23.0
-	github.com/sirupsen/logrus v1.10.2
 	github.com/slack-go/slack v0.33.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0

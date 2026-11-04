@@ -1,9 +1,10 @@
 package server
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 )
 
 func (r *Router) SSHKeyList(c *fiber.Ctx) error {
@@ -31,10 +32,10 @@ func (r *Router) SSHKeyAdd(c *fiber.Ctx) error {
 
 	authKey, err := ipa.NewSSHAuthorizedKey(key)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      err,
-		}).Error("Failed to add new ssh key")
+		slog.Error("Failed to add new ssh key",
+			"username", user.Username,
+			"err", err,
+		)
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "sshkey_new.invalid_key"))
 	}
 
@@ -54,10 +55,10 @@ func (r *Router) SSHKeyAdd(c *fiber.Ctx) error {
 
 	err = r.emailer.SendSSHKeyUpdatedEmail(true, user, c)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-		}).Error("Failed to send sshkey added email")
+		slog.Error("Failed to send sshkey added email",
+			"err", err,
+			"username", user.Username,
+		)
 	}
 
 	return r.SSHKeyList(c)
@@ -79,10 +80,10 @@ func (r *Router) SSHKeyRemove(c *fiber.Ctx) error {
 
 	err = r.emailer.SendSSHKeyUpdatedEmail(false, user, c)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-		}).Error("Failed to send sshkey removed email")
+		slog.Error("Failed to send sshkey removed email",
+			"err", err,
+			"username", user.Username,
+		)
 	}
 
 	return r.SSHKeyList(c)

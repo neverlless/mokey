@@ -1,7 +1,8 @@
 package server
 
 import (
-	log "github.com/sirupsen/logrus"
+	"log/slog"
+
 	"github.com/slack-go/slack"
 	"github.com/spf13/viper"
 )
@@ -36,6 +37,6 @@ func (s *SlackNotifier) SendSlackMessage(email, message string) error {
 		return err
 	}
 
-	log.Infof("Message successfully sent to channel %s at %s", channelID, timestamp)
+	slog.Info("Message successfully sent", "channel", channelID, "timestamp", timestamp)
 	return nil
 }

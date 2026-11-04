@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io"
 	golog "log"
+	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/neverlless/mokey/v2/server"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -28,11 +28,13 @@ var (
 
 func Execute() {
 	if err := Root.Execute(); err != nil {
-		logrus.Fatal(err)
+		fatal(err.Error())
 	}
 }
 
 func init() {
+	// set before initConfig so its fatal errors are formatted and redacted too
+	slog.SetDefault(slog.New(server.NewLogHandler(os.Stderr)))
 	cobra.OnInitialize(initConfig)
 
 	Root.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file")
@@ -45,16 +47,15 @@ func init() {
 
 func SetupLogging() error {
 	switch logLevel {
-	case "trace":
-		logrus.SetLevel(logrus.TraceLevel)
-	case "debug":
-		logrus.SetLevel(logrus.DebugLevel)
+	// slog has no trace level; nothing logs below debug anyway
+	case "trace", "debug":
+		server.LogLevel.Set(slog.LevelDebug)
 	case "info":
-		logrus.SetLevel(logrus.InfoLevel)
+		server.LogLevel.Set(slog.LevelInfo)
 	case "warn":
-		logrus.SetLevel(logrus.WarnLevel)
+		server.LogLevel.Set(slog.LevelWarn)
 	case "error":
-		logrus.SetLevel(logrus.ErrorLevel)
+		server.LogLevel.Set(slog.LevelError)
 	default:
 		return fmt.Errorf("Unknown log level: %s", logLevel)
 	}
@@ -62,7 +63,7 @@ func SetupLogging() error {
 	golog.SetOutput(io.Discard)
 
 	if cfgFileUsed != "" {
-		logrus.Infof("Using config file: %s", cfgFileUsed)
+		slog.Info("Using config file", "path", cfgFileUsed)
 	}
 
 	Root.SilenceUsage = true
@@ -78,7 +79,7 @@ func initConfig() {
 	} else {
 		cwd, err := os.Getwd()
 		if err != nil {
-			logrus.Fatal(err)
+			fatal(err.Error())
 		}
 
 		viper.AddConfigPath("/etc/mokey/")
@@ -93,7 +94,7 @@ func initConfig() {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			logrus.Fatalf("Failed parsing config file %s: %s", viper.ConfigFileUsed(), err)
+			fatal("Failed parsing config file", "path", viper.ConfigFileUsed(), "err", err)
 		}
 	} else {
 		cfgFileUsed = viper.ConfigFileUsed()
@@ -102,7 +103,7 @@ func initConfig() {
 	if !viper.IsSet("email.token_secret") {
 		secret, err := server.GenerateSecret(32)
 		if err != nil {
-			logrus.Fatal(err)
+			fatal(err.Error())
 		}
 
 		viper.Set("email.token_secret", secret)
@@ -111,14 +112,14 @@ func initConfig() {
 	if !viper.IsSet("server.csrf_secret") {
 		secret, err := server.GenerateSecretString(16)
 		if err != nil {
-			logrus.Fatal(err)
+			fatal(err.Error())
 		}
 
 		viper.Set("server.csrf_secret", secret)
 	}
 
 	if !viper.IsSet("site.keytab") {
-		logrus.Fatalf("Please provide path to keytab file")
+		fatal("Please provide path to keytab file")
 	}
 
 	if viper.IsSet("accounts.otp_hash_algorithm") {
@@ -132,7 +133,12 @@ func initConfig() {
 		}
 
 		if !validAlgo {
-			logrus.Fatalf("Invalid otp hash algorithm: %s", algo)
+			fatal("Invalid otp hash algorithm", "algorithm", algo)
 		}
 	}
+}
+
+func fatal(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
 }

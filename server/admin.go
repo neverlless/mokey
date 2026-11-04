@@ -6,12 +6,12 @@ package server
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -41,11 +41,11 @@ func isAdmin(user *ipa.User) bool {
 
 func (r *Router) RequireAdmin(c *fiber.Ctx) error {
 	if !isAdmin(r.user(c)) {
-		log.WithFields(log.Fields{
-			"username": r.username(c),
-			"path":     c.Path(),
-			"ip":       RemoteIP(c),
-		}).Warn("AUDIT non-admin user attempted to access admin route")
+		slog.Warn("AUDIT non-admin user attempted to access admin route",
+			"username", r.username(c),
+			"path", c.Path(),
+			"ip", RemoteIP(c),
+		)
 		return c.Status(fiber.StatusForbidden).SendString("")
 	}
 
@@ -69,19 +69,19 @@ func (r *Router) InviteSend(c *fiber.Ctx) error {
 	}
 
 	if err := r.emailer.SendInviteEmail(email, c); err != nil {
-		log.WithFields(log.Fields{
-			"email": email,
-			"err":   err,
-		}).Error("Failed to send invite email")
+		slog.Error("Failed to send invite email",
+			"email", email,
+			"err", err,
+		)
 		vars["message"] = TC(c, "account.fatal_system_error")
 		return c.Render("admin.html", vars)
 	}
 
-	log.WithFields(log.Fields{
-		"email":      email,
-		"invited_by": r.username(c),
-		"ip":         RemoteIP(c),
-	}).Info("AUDIT user invite sent")
+	slog.Info("AUDIT user invite sent",
+		"email", email,
+		"invited_by", r.username(c),
+		"ip", RemoteIP(c),
+	)
 
 	vars["invite_sent"] = email
 	return c.Render("admin.html", vars)
@@ -95,9 +95,9 @@ func (r *Router) InviteAccept(c *fiber.Ctx) error {
 
 	claims, err := ParseToken(token, TokenInvite, r.storage)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Debug("Invalid invite token")
+		slog.Debug("Invalid invite token",
+			"err", err,
+		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
@@ -125,18 +125,18 @@ func (r *Router) InviteAccept(c *fiber.Ctx) error {
 
 	MarkTokenUsed(token, TokenInvite, claims, r.storage)
 
-	log.WithFields(log.Fields{
-		"username": user.Username,
-		"email":    user.Email,
-		"ip":       RemoteIP(c),
-	}).Info("AUDIT invited user account created successfully")
+	slog.Info("AUDIT invited user account created successfully",
+		"username", user.Username,
+		"email", user.Email,
+		"ip", RemoteIP(c),
+	)
 	r.metrics.totalSignups.Inc()
 
 	if err := r.emailer.SendWelcomeEmail(user, c); err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-		}).Error("Failed to send welcome email to invited user")
+		slog.Error("Failed to send welcome email to invited user",
+			"err", err,
+			"username", user.Username,
+		)
 	}
 
 	return c.Render("signup-success.html", fiber.Map{
@@ -158,7 +158,7 @@ func (r *Router) adminUserVars(c *fiber.Ctx, search string) fiber.Map {
 
 	users, err := r.adminClient.UserFind(ipa.Options{"sizelimit": 500})
 	if err != nil {
-		log.WithFields(log.Fields{"err": err}).Error("Failed to list users from FreeIPA")
+		slog.Error("Failed to list users from FreeIPA", "err", err)
 		vars["users_message"] = TC(c, "account.fatal_system_error")
 		return vars
 	}
@@ -234,10 +234,10 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 			if err == nil {
 				staged.Category = ""
 				if werr := r.emailer.SendWelcomeEmail(staged, c); werr != nil {
-					log.WithFields(log.Fields{
-						"username": username,
-						"err":      werr,
-					}).Error("Failed to send welcome email to approved user")
+					slog.Error("Failed to send welcome email to approved user",
+						"username", username,
+						"err", werr,
+					)
 				}
 			}
 			break
@@ -256,10 +256,10 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 		}
 		if err == nil {
 			if werr := r.emailer.SendWelcomeEmail(target, c); werr != nil {
-				log.WithFields(log.Fields{
-					"username": username,
-					"err":      werr,
-				}).Error("Failed to send welcome email to approved user")
+				slog.Error("Failed to send welcome email to approved user",
+					"username", username,
+					"err", werr,
+				)
 			}
 		}
 	case "deny":
@@ -316,21 +316,21 @@ func (r *Router) AdminUserAction(c *fiber.Ctx) error {
 	}
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": username,
-			"action":   action,
-			"admin":    r.username(c),
-		}).Error("Admin user action failed")
+		slog.Error("Admin user action failed",
+			"err", err,
+			"username", username,
+			"action", action,
+			"admin", r.username(c),
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
-	log.WithFields(log.Fields{
-		"username": username,
-		"action":   action,
-		"admin":    r.username(c),
-		"ip":       RemoteIP(c),
-	}).Info("AUDIT admin user action")
+	slog.Info("AUDIT admin user action",
+		"username", username,
+		"action", action,
+		"admin", r.username(c),
+		"ip", RemoteIP(c),
+	)
 
 	// approve/deny buttons live in the pending queue; re-render it
 	if action == "approve" || action == "deny" {
@@ -355,9 +355,9 @@ func (r *Router) AdminPendingList(c *fiber.Ctx) error {
 		"userclass": UserCategoryPending,
 	})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("Failed to list pending users")
+		slog.Error("Failed to list pending users",
+			"err", err,
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
@@ -369,9 +369,9 @@ func (r *Router) AdminPendingList(c *fiber.Ctx) error {
 	if viper.GetBool("accounts.staged_signup") {
 		staged, serr := stageUserFindPending(r.adminClient)
 		if serr != nil {
-			log.WithFields(log.Fields{
-				"err": serr,
-			}).Error("Failed to list pending staged users")
+			slog.Error("Failed to list pending staged users",
+				"err", serr,
+			)
 		} else {
 			pending = append(pending, staged...)
 		}
@@ -410,10 +410,10 @@ func (r *Router) AdminOTPRecoveryList(c *fiber.Ctx) error {
 			}
 			// transient error (e.g. FreeIPA outage) — keep the entry for
 			// the next render instead of dropping a legitimate request
-			log.WithFields(log.Fields{
-				"username": req.Username,
-				"err":      err,
-			}).Error("Failed to look up user for OTP recovery queue")
+			slog.Error("Failed to look up user for OTP recovery queue",
+				"username", req.Username,
+				"err", err,
+			)
 			continue
 		}
 		if !user.OTPOnly() {
@@ -434,11 +434,11 @@ func (r *Router) AdminOTPRecoveryList(c *fiber.Ctx) error {
 func (r *Router) sendOTPRecoveryDecision(username string, approved bool) {
 	target, err := r.adminClient.UserShow(username)
 	if err != nil {
-		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to fetch requester for OTP recovery decision email")
+		slog.Error("Failed to fetch requester for OTP recovery decision email", "username", username, "err", err)
 		return
 	}
 	if err := r.emailer.SendOTPRecoveryDecisionEmail(target, approved); err != nil {
-		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to send OTP recovery decision email")
+		slog.Error("Failed to send OTP recovery decision email", "username", username, "err", err)
 	}
 }
 

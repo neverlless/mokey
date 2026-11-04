@@ -6,10 +6,10 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 )
 
 // The service account needs the "Stage User Administrators" privilege for
@@ -82,10 +82,10 @@ func clearNewPasswordExpiry(client *ipa.Client, username string) {
 
 	_, err := client.Modify("user_mod", username).Set("krbPasswordExpiration", expiration).Run(context.Background())
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Warn("Failed to clear new-password expiry; user will be asked to change it on first login")
+		slog.Warn("Failed to clear new-password expiry; user will be asked to change it on first login",
+			"username", username,
+			"err", err,
+		)
 	}
 }
 

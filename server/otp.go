@@ -1,6 +1,9 @@
 package server
 
 import (
+	"errors"
+	"log/slog"
+	"net/url"
 	"strings"
 	"time"
 
@@ -8,7 +11,6 @@ import (
 	"github.com/neverlless/goipa"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -77,11 +79,11 @@ func (r *Router) OTPTokenRemove(c *fiber.Ctx) error {
 
 	err := client.RemoveOTPToken(uuid)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"uuid":     uuid,
-			"username": user.Username,
-			"err":      err,
-		}).Error("Failed to remove OTP token")
+		slog.Error("Failed to remove OTP token",
+			"uuid", uuid,
+			"username", user.Username,
+			"err", err,
+		)
 
 		if ierr, ok := err.(*ipa.IpaError); ok && ierr.Code == 4203 {
 			vars["message"] = "You can't remove your last active token while Two-Factor auth is enabled"
@@ -91,10 +93,10 @@ func (r *Router) OTPTokenRemove(c *fiber.Ctx) error {
 	} else {
 		err = r.emailer.SendOTPTokenUpdatedEmail(false, user, c)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"err":      err,
-				"username": user.Username,
-			}).Error("Failed to send otp token removed email")
+			slog.Error("Failed to send otp token removed email",
+				"err", err,
+				"username", user.Username,
+			)
 		}
 	}
 
@@ -109,11 +111,11 @@ func (r *Router) OTPTokenEnable(c *fiber.Ctx) error {
 
 	err := client.EnableOTPToken(uuid)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"uuid":     uuid,
-			"username": username,
-			"err":      err,
-		}).Error("Failed to enable OTP token")
+		slog.Error("Failed to enable OTP token",
+			"uuid", uuid,
+			"username", username,
+			"err", err,
+		)
 		vars["message"] = "Failed to enable token"
 	}
 
@@ -128,11 +130,11 @@ func (r *Router) OTPTokenDisable(c *fiber.Ctx) error {
 
 	err := client.DisableOTPToken(uuid)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"uuid":     uuid,
-			"username": username,
-			"err":      err,
-		}).Error("Failed to enable OTP token")
+		slog.Error("Failed to enable OTP token",
+			"uuid", uuid,
+			"username", username,
+			"err", err,
+		)
 
 		if ierr, ok := err.(*ipa.IpaError); ok && ierr.Code == 4203 {
 			vars["message"] = "You can't disable your last active token while Two-Factor auth is enabled"
@@ -158,28 +160,33 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 	// (ubccr/mokey#20)
 	if action == "cancel" {
 		if err := client.RemoveOTPToken(uuid); err != nil {
-			log.WithFields(log.Fields{
-				"uuid":     uuid,
-				"username": user.Username,
-				"err":      err,
-			}).Error("Failed to remove unverified OTP token")
+			slog.Error("Failed to remove unverified OTP token",
+				"uuid", uuid,
+				"username", user.Username,
+				"err", err,
+			)
 		}
 		return r.tokenList(c, vars)
 	}
 
 	key, err := otp.NewKeyFromURL(uri)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"uuid":     uuid,
-			"username": user.Username,
-			"err":      err,
-		}).Error("Failed to parse OTP token URI")
+		// the url.Error would quote the URI, and with it the TOTP secret
+		var uerr *url.Error
+		if errors.As(err, &uerr) {
+			err = uerr.Err
+		}
+		slog.Error("Failed to parse OTP token URI",
+			"uuid", uuid,
+			"username", user.Username,
+			"err", err,
+		)
 		if err := client.RemoveOTPToken(uuid); err != nil {
-			log.WithFields(log.Fields{
-				"uuid":     uuid,
-				"username": user.Username,
-				"err":      err,
-			}).Error("Failed to remove unverified OTP token")
+			slog.Error("Failed to remove unverified OTP token",
+				"uuid", uuid,
+				"username", user.Username,
+				"err", err,
+			)
 		}
 		vars["message"] = TC(c, "otptoken.failed_to_verify_token")
 		return r.tokenList(c, vars)
@@ -197,10 +204,10 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 		},
 	)
 	if !valid {
-		log.WithFields(log.Fields{
-			"uuid":     uuid,
-			"username": user.Username,
-		}).Error("Failed to verify OTP token")
+		slog.Error("Failed to verify OTP token",
+			"uuid", uuid,
+			"username", user.Username,
+		)
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "otptoken.invalid_6_digit_code"))
 	}
 
@@ -212,10 +219,10 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 			otpOnly := []string{"otp"}
 			err = r.adminClient.SetAuthTypes(user.Username, otpOnly)
 			if err != nil {
-				log.WithFields(log.Fields{
-					"username": user.Username,
-					"err":      err,
-				}).Error("Failed to automatically enable Two-Factor auth")
+				slog.Error("Failed to automatically enable Two-Factor auth",
+					"username", user.Username,
+					"err", err,
+				)
 			} else {
 				autoMFA = true
 				user.AuthTypes = otpOnly
@@ -223,10 +230,10 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 
 				err = r.emailer.SendMFAChangedEmail(true, user, c)
 				if err != nil {
-					log.WithFields(log.Fields{
-						"err":      err,
-						"username": user.Username,
-					}).Error("Failed to send mfa automatically enabled email")
+					slog.Error("Failed to send mfa automatically enabled email",
+						"err", err,
+						"username", user.Username,
+					)
 				}
 			}
 		}
@@ -235,10 +242,10 @@ func (r *Router) OTPTokenVerify(c *fiber.Ctx) error {
 	if !autoMFA {
 		err = r.emailer.SendOTPTokenUpdatedEmail(true, user, c)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"err":      err,
-				"username": user.Username,
-			}).Error("Failed to send otp token added email")
+			slog.Error("Failed to send otp token added email",
+				"err", err,
+				"username", user.Username,
+			)
 		}
 	}
 

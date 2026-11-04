@@ -1,8 +1,9 @@
 package server
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/net/xsrftoken"
 )
@@ -30,10 +31,10 @@ func (r *Router) CSRF(c *fiber.Ctx) error {
 		}
 	default:
 		if token == "" || token != c.Get("X-CSRF-Token") {
-			log.WithFields(log.Fields{
-				"path": c.Path(),
-				"ip":   RemoteIP(c),
-			}).Error("Invalid CSRF token in POST request")
+			slog.Error("Invalid CSRF token in POST request",
+				"path", c.Path(),
+				"ip", RemoteIP(c),
+			)
 			return fiber.ErrForbidden
 		}
 	}

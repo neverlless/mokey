@@ -5,8 +5,9 @@
 package server
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 type managedGroup struct {
@@ -44,10 +45,10 @@ func (r *Router) groupsVars(c *fiber.Ctx, vars fiber.Map) {
 
 	groups, err := groupFindManaged(r.userClient(c))
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      err,
-		}).Error("Failed to list managed groups")
+		slog.Error("Failed to list managed groups",
+			"username", user.Username,
+			"err", err,
+		)
 		vars["groups_error"] = true
 		return
 	}
@@ -129,11 +130,11 @@ func (r *Router) GroupRequestJoin(c *fiber.Ctx) error {
 	}
 
 	if r.addGroupRequest(g.Name, user.Username, groupRequestJoin) {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"group":    g.Name,
-			"ip":       RemoteIP(c),
-		}).Info("AUDIT group join requested")
+		slog.Info("AUDIT group join requested",
+			"username", user.Username,
+			"group", g.Name,
+			"ip", RemoteIP(c),
+		)
 
 		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestJoin) })
 	}
@@ -160,11 +161,11 @@ func (r *Router) GroupRequestLeave(c *fiber.Ctx) error {
 	}
 
 	if r.addGroupRequest(g.Name, user.Username, groupRequestLeave) {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"group":    g.Name,
-			"ip":       RemoteIP(c),
-		}).Info("AUDIT group leave requested")
+		slog.Info("AUDIT group leave requested",
+			"username", user.Username,
+			"group", g.Name,
+			"ip", RemoteIP(c),
+		)
 
 		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestLeave) })
 	}
@@ -212,22 +213,22 @@ func (r *Router) GroupApprove(c *fiber.Ctx) error {
 		action = "AUDIT group leave approved"
 	}
 	if err := mutate(r.userClient(c), g.Name, req.Username); err != nil {
-		log.WithFields(log.Fields{
-			"group":    g.Name,
-			"username": req.Username,
-			"sponsor":  r.username(c),
-			"err":      err,
-		}).Error("Group approve failed in FreeIPA")
+		slog.Error("Group approve failed in FreeIPA",
+			"group", g.Name,
+			"username", req.Username,
+			"sponsor", r.username(c),
+			"err", err,
+		)
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.approve_failed"))
 	}
 
 	r.removeGroupRequest(g.Name, req.Username)
-	log.WithFields(log.Fields{
-		"group":    g.Name,
-		"username": req.Username,
-		"sponsor":  r.username(c),
-		"ip":       RemoteIP(c),
-	}).Info(action)
+	slog.Info(action,
+		"group", g.Name,
+		"username", req.Username,
+		"sponsor", r.username(c),
+		"ip", RemoteIP(c),
+	)
 
 	r.sendGroupDecision(req.Username, g.Name, true, req.Type)
 	if req.Type == groupRequestLeave {
@@ -251,12 +252,12 @@ func (r *Router) GroupDeny(c *fiber.Ctx) error {
 	if req.Type == groupRequestLeave {
 		action = "AUDIT group leave denied"
 	}
-	log.WithFields(log.Fields{
-		"group":    g.Name,
-		"username": req.Username,
-		"sponsor":  r.username(c),
-		"ip":       RemoteIP(c),
-	}).Info(action)
+	slog.Info(action,
+		"group", g.Name,
+		"username", req.Username,
+		"sponsor", r.username(c),
+		"ip", RemoteIP(c),
+	)
 
 	r.sendGroupDecision(req.Username, g.Name, false, req.Type)
 
@@ -282,22 +283,22 @@ func (r *Router) GroupRemoveMember(c *fiber.Ctx) error {
 	}
 
 	if err := groupRemoveMember(r.userClient(c), g.Name, target); err != nil {
-		log.WithFields(log.Fields{
-			"group":    g.Name,
-			"username": target,
-			"sponsor":  user.Username,
-			"err":      err,
-		}).Error("Group member removal failed in FreeIPA")
+		slog.Error("Group member removal failed in FreeIPA",
+			"group", g.Name,
+			"username", target,
+			"sponsor", user.Username,
+			"err", err,
+		)
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.remove_failed"))
 	}
 
 	r.removeGroupRequest(g.Name, target)
-	log.WithFields(log.Fields{
-		"group":    g.Name,
-		"username": target,
-		"sponsor":  user.Username,
-		"ip":       RemoteIP(c),
-	}).Info("AUDIT group member removed")
+	slog.Info("AUDIT group member removed",
+		"group", g.Name,
+		"username", target,
+		"sponsor", user.Username,
+		"ip", RemoteIP(c),
+	)
 
 	r.goBG(func() { r.notifyGroupRemoved(target, g.Name) })
 	r.goBG(func() { r.revokeConsentsOf(target) })
@@ -311,11 +312,11 @@ func (r *Router) GroupRemoveMember(c *fiber.Ctx) error {
 func (r *Router) sendGroupDecision(username, group string, approved bool, reqType string) {
 	target, err := r.adminClient.UserShow(username)
 	if err != nil {
-		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to fetch requester for decision email")
+		slog.Error("Failed to fetch requester for decision email", "username", username, "err", err)
 		return
 	}
 	if err := r.emailer.SendGroupDecisionEmail(target, group, approved, reqType); err != nil {
-		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to send group decision email")
+		slog.Error("Failed to send group decision email", "username", username, "err", err)
 	}
 }
 
@@ -325,11 +326,11 @@ func (r *Router) sendGroupDecision(username, group string, approved bool, reqTyp
 func (r *Router) notifyGroupRemoved(username, group string) {
 	target, err := r.adminClient.UserShow(username)
 	if err != nil {
-		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to fetch removed member for notification")
+		slog.Error("Failed to fetch removed member for notification", "username", username, "err", err)
 		return
 	}
 	if err := r.emailer.SendGroupRemovedEmail(target, group); err != nil {
-		log.WithFields(log.Fields{"username": username, "err": err}).Error("Failed to send group removed email")
+		slog.Error("Failed to send group removed email", "username", username, "err", err)
 	}
 }
 
@@ -344,11 +345,11 @@ func (r *Router) notifyGroupSponsors(g *ipaGroup, requester, reqType string) {
 	for _, m := range g.ManagerUsers {
 		manager, err := r.adminClient.UserShow(m)
 		if err != nil {
-			log.WithFields(log.Fields{"manager": m, "err": err}).Error("Failed to fetch group manager for notification")
+			slog.Error("Failed to fetch group manager for notification", "manager", m, "err", err)
 			continue
 		}
 		if err := r.emailer.SendGroupRequestEmail(manager, requester, g.Name, reqType); err != nil {
-			log.WithFields(log.Fields{"manager": m, "err": err}).Error("Failed to send group request email")
+			slog.Error("Failed to send group request email", "manager", m, "err", err)
 		}
 	}
 }

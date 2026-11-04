@@ -8,10 +8,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 func SecureHeaders(c *fiber.Ctx) error {
@@ -45,19 +45,19 @@ func SecureHeaders(c *fiber.Ctx) error {
 }
 
 func NotFoundHandler(c *fiber.Ctx) error {
-	log.WithFields(log.Fields{
-		"path": c.Path(),
-		"ip":   RemoteIP(c),
-	}).Info("Requested path not found")
+	slog.Info("Requested path not found",
+		"path", c.Path(),
+		"ip", RemoteIP(c),
+	)
 
 	c.Status(fiber.StatusNotFound)
 
 	if c.Get("HX-Request", "false") == "true" {
 		err := c.Render("404-partial.html", nil)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).Error("Failed to render custom error partial")
+			slog.Error("Failed to render custom error partial",
+				"error", err,
+			)
 			return c.SendString("")
 		}
 		return nil
@@ -75,12 +75,13 @@ func HTTPErrorHandler(c *fiber.Ctx, err error) error {
 		code = e.Code
 	}
 
-	log.WithFields(log.Fields{
-		"code":     code,
-		"username": username,
-		"path":     path,
-		"ip":       RemoteIP(c),
-	}).Error(err)
+	slog.Error("Request failed",
+		"err", err,
+		"code", code,
+		"username", username,
+		"path", path,
+		"ip", RemoteIP(c),
+	)
 
 	c.Status(code)
 
@@ -92,9 +93,9 @@ func HTTPErrorHandler(c *fiber.Ctx, err error) error {
 		errorPage := fmt.Sprintf("%d-partial.html", code)
 		err := c.Render(errorPage, nil)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).Error("Failed to render custom error partial")
+			slog.Error("Failed to render custom error partial",
+				"error", err,
+			)
 			return c.Status(code).SendString("")
 		}
 		return nil
@@ -103,9 +104,9 @@ func HTTPErrorHandler(c *fiber.Ctx, err error) error {
 	errorPage := fmt.Sprintf("%d.html", code)
 	err = c.Render(errorPage, nil)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("Failed to render custom error page")
+		slog.Error("Failed to render custom error page",
+			"error", err,
+		)
 		return c.Status(code).SendString("")
 	}
 
@@ -113,9 +114,9 @@ func HTTPErrorHandler(c *fiber.Ctx, err error) error {
 }
 
 func LimitReachedHandler(c *fiber.Ctx) error {
-	log.WithFields(log.Fields{
-		"ip": RemoteIP(c),
-	}).Warn("Limit reached")
+	slog.Warn("Limit reached",
+		"ip", RemoteIP(c),
+	)
 	return c.Status(fiber.StatusTooManyRequests).SendString("Too many requests. Please try again later.")
 }
 

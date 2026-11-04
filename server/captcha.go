@@ -3,10 +3,10 @@ package server
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -39,9 +39,9 @@ func (r *Router) Captcha(c *fiber.Ctx) error {
 	c.Append(fiber.HeaderContentType, "image/png")
 	err := captcha.WriteImage(&content, id, captcha.StdWidth, captcha.StdHeight)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"id": id,
-		}).Warn("Captcha not found")
+		slog.Warn("Captcha not found",
+			"id", id,
+		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 

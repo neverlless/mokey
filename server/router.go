@@ -1,9 +1,12 @@
 package server
 
 import (
+	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +15,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/session"
 	ipa "github.com/neverlless/goipa"
 	hydra "github.com/ory/hydra-client-go/v26"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -50,7 +52,7 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 		lock:    newStoreLock(storage),
 	}
 
-	log.AddHook(NewAuditHook(storage))
+	slog.SetDefault(slog.New(NewAuditHandler(NewLogHandler(os.Stderr), storage)))
 
 	var err error
 	r.adminClient, err = newIPAClient()
@@ -81,7 +83,7 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	if viper.IsSet("hydra.admin_url") {
 		adminURL, err := url.Parse(viper.GetString("hydra.admin_url"))
 		if err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("hydra.admin_url: %w", err)
 		}
 
 		cfg := hydra.NewConfiguration()
@@ -333,10 +335,10 @@ func (r *Router) Index(c *fiber.Ctx) error {
 	} else if path == "passkey" {
 		passkeys, err := r.passkeyList(c)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"username": r.username(c),
-				"err":      err,
-			}).Error("Failed to fetch passkeys from FreeIPA")
+			slog.Error("Failed to fetch passkeys from FreeIPA",
+				"username", r.username(c),
+				"err", err,
+			)
 		}
 		vars["passkeys"] = passkeys
 	} else if path == "otp" {

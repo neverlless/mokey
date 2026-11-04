@@ -5,9 +5,10 @@
 package server
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 )
 
 // subidVars adds the user's subordinate id range (nil when none) to the
@@ -16,10 +17,10 @@ import (
 func (r *Router) subidVars(username string, vars fiber.Map) {
 	sub, err := subidFind(r.adminClient, username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Error("Failed to fetch subordinate id range")
+		slog.Error("Failed to fetch subordinate id range",
+			"username", username,
+			"err", err,
+		)
 		return
 	}
 	vars["subid_enabled"] = true
@@ -35,17 +36,17 @@ func (r *Router) SubidGenerate(c *fiber.Ctx) error {
 	err := subidGenerate(r.adminClient, username)
 	if err != nil {
 		if ierr, ok := err.(*ipa.IpaError); !ok || ierr.Code != 4002 {
-			log.WithFields(log.Fields{
-				"username": username,
-				"err":      err,
-			}).Error("Failed to generate subordinate id range")
+			slog.Error("Failed to generate subordinate id range",
+				"username", username,
+				"err", err,
+			)
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 		}
 	} else {
-		log.WithFields(log.Fields{
-			"username": username,
-			"ip":       RemoteIP(c),
-		}).Info("AUDIT subordinate id range generated")
+		slog.Info("AUDIT subordinate id range generated",
+			"username", username,
+			"ip", RemoteIP(c),
+		)
 	}
 
 	vars := fiber.Map{}

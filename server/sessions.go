@@ -8,11 +8,11 @@ package server
 
 import (
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/mileusna/useragent"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -59,10 +59,10 @@ func (r *Router) saveSessionIndex(username string, sessions []UserSession) {
 		}
 	}
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Error("Failed to save session index")
+		slog.Error("Failed to save session index",
+			"username", username,
+			"err", err,
+		)
 	}
 }
 
@@ -153,10 +153,10 @@ func (r *Router) revokeUserSession(username, sid string) bool {
 	}
 
 	if err := r.storage.Delete(sid); err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Error("Failed to delete session data on revoke")
+		slog.Error("Failed to delete session data on revoke",
+			"username", username,
+			"err", err,
+		)
 	}
 	r.saveSessionIndex(username, kept)
 	return true
@@ -215,10 +215,10 @@ func (r *Router) SessionRevoke(c *fiber.Ctx) error {
 	}
 
 	if r.revokeUserSession(username, sid) {
-		log.WithFields(log.Fields{
-			"username": username,
-			"ip":       RemoteIP(c),
-		}).Info("AUDIT User revoked a session")
+		slog.Info("AUDIT User revoked a session",
+			"username", username,
+			"ip", RemoteIP(c),
+		)
 	}
 
 	return r.securityList(c, vars)
@@ -235,11 +235,11 @@ func (r *Router) SessionRevokeOthers(c *fiber.Ctx) error {
 
 	revoked := r.revokeOtherUserSessions(username, sess.ID())
 	if revoked > 0 {
-		log.WithFields(log.Fields{
-			"username": username,
-			"revoked":  revoked,
-			"ip":       RemoteIP(c),
-		}).Info("AUDIT User signed out all other sessions")
+		slog.Info("AUDIT User signed out all other sessions",
+			"username", username,
+			"revoked", revoked,
+			"ip", RemoteIP(c),
+		)
 	}
 
 	return r.securityList(c, fiber.Map{})
@@ -261,10 +261,10 @@ func (r *Router) notifyNewLogin(c *fiber.Ctx, username string) {
 			return
 		}
 		if err := r.emailer.SendNewLoginEmail(user, ua.Name, ua.OS, ip); err != nil {
-			log.WithFields(log.Fields{
-				"username": username,
-				"err":      err,
-			}).Error("Failed to send new login email")
+			slog.Error("Failed to send new login email",
+				"username", username,
+				"err", err,
+			)
 		}
 	})
 }

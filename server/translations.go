@@ -8,6 +8,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -113,7 +113,7 @@ func LoadTranslations() error {
 			if err := parseTranslationFile(lang, filepath.Join(dir, file.Name()), nil); err != nil {
 				return err
 			}
-			log.Debugf("Loaded translations for language %s from %s", lang, dir)
+			slog.Debug("Loaded translations", "lang", lang, "dir", dir)
 		}
 	}
 
@@ -139,7 +139,7 @@ func LoadTranslations() error {
 		}
 	}
 
-	log.Infof("Using languages: %s (default %s)", strings.Join(languages, ", "), lang)
+	slog.Info("Using languages", "languages", strings.Join(languages, ", "), "default", lang)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func TL(lang, key string) string {
 		return value
 	}
 
-	log.Warnf("Missing translation for key '%s' in language '%s'", key, lang)
+	slog.Warn("Missing translation", "key", key, "lang", lang)
 	return key
 }
 

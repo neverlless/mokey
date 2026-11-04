@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -207,10 +207,10 @@ func validatePassword(lang, password, passwordConfirm, username string, policy *
 		breached, err := passwordBreached(password)
 		if err != nil {
 			// fail open: an unreachable API must not lock users out of password changes
-			log.WithFields(log.Fields{
-				"username": username,
-				"err":      err,
-			}).Warn("Breached-password check failed, accepting password")
+			slog.Warn("Breached-password check failed, accepting password",
+				"username", username,
+				"err", err,
+			)
 		} else if breached {
 			return errors.New(TL(lang, "password.breached"))
 		}
@@ -274,9 +274,9 @@ func (r *Router) defaultAuthTypes() []string {
 	// goipa has no typed config_show yet (neverlless/goipa#23)
 	res, err := r.adminClient.RPC("config_show", nil, nil)
 	if err != nil || res.Result == nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Warn("Failed to fetch the default user authentication types")
+		slog.Warn("Failed to fetch the default user authentication types",
+			"err", err,
+		)
 		return nil
 	}
 
@@ -284,9 +284,9 @@ func (r *Router) defaultAuthTypes() []string {
 		AuthTypes []string `json:"ipauserauthtype"`
 	}
 	if err := json.Unmarshal(res.Result.Data, &config); err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Warn("Failed to decode the default user authentication types")
+		slog.Warn("Failed to decode the default user authentication types",
+			"err", err,
+		)
 		return nil
 	}
 	return config.AuthTypes
@@ -317,10 +317,10 @@ func (r *Router) pwPolicyVars(username string, vars fiber.Map) {
 	if policy, err := pwPolicyShow(r.adminClient, username); err == nil {
 		vars["pwpolicy"] = policy
 	} else {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Warn("Failed to fetch password policy for display")
+		slog.Warn("Failed to fetch password policy for display",
+			"username", username,
+			"err", err,
+		)
 	}
 }
 
@@ -367,17 +367,17 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 	err := client.ChangePassword(user.Username, password, newpass, otp)
 	if err != nil {
 		if ierr, ok := err.(*ipa.IpaError); ok {
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"message":  ierr.Message,
-				"code":     ierr.Code,
-			}).Error("Failed to change password")
+			slog.Error("Failed to change password",
+				"username", user.Username,
+				"message", ierr.Message,
+				"code", ierr.Code,
+			)
 			vars["message"] = ierr.Message
 		} else {
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"error":    err.Error(),
-			}).Error("Failed to change password")
+			slog.Error("Failed to change password",
+				"username", user.Username,
+				"error", err.Error(),
+			)
 			vars["message"] = TC(c, "account.fatal_system_error")
 		}
 	} else {
@@ -387,20 +387,20 @@ func (r *Router) PasswordChange(c *fiber.Ctx) error {
 		if sess, serr := r.session(c); serr == nil {
 			sess.Set(SessionKeyLoginTime, time.Now().Unix())
 			if serr := r.sessionSave(c, sess); serr != nil {
-				log.WithFields(log.Fields{
-					"username": user.Username,
-					"err":      serr,
-				}).Error("Failed to refresh session after password change")
+				slog.Error("Failed to refresh session after password change",
+					"username", user.Username,
+					"err", serr,
+				)
 			}
 		}
 
 		err = r.emailer.SendPasswordChangedEmail(user, c)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"err":      err,
-				"username": user.Username,
-				"email":    user.Email,
-			}).Error("Failed to send password changed email")
+			slog.Error("Failed to send password changed email",
+				"err", err,
+				"username", user.Username,
+				"email", user.Email,
+			)
 		}
 
 		vars["success"] = true
@@ -430,39 +430,39 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 	}
 
 	if isBlocked(username) {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("AUDIT Forgot password attempt for blocked username")
+		slog.Warn("AUDIT Forgot password attempt for blocked username",
+			"username", username,
+		)
 		return c.Render("password-forgot-success.html", fiber.Map{})
 	}
 
 	user, err := r.adminClient.UserShow(username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Warn("AUDIT Forgot password attempt for unknown username")
+		slog.Warn("AUDIT Forgot password attempt for unknown username",
+			"username", username,
+			"err", err,
+		)
 		return c.Render("password-forgot-success.html", fiber.Map{})
 	}
 
 	if user.Locked {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("AUDIT Forgot password attempt for disabled/locked user")
+		slog.Warn("AUDIT Forgot password attempt for disabled/locked user",
+			"username", username,
+		)
 		return c.Render("password-forgot-success.html", fiber.Map{})
 	}
 
 	// no reset link: a FreeIPA password would not let them sign in
 	if reason := r.passwordElsewhere(requestLanguage(c), user); reason != "" {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("AUDIT Forgot password attempt for user without a FreeIPA password")
+		slog.Warn("AUDIT Forgot password attempt for user without a FreeIPA password",
+			"username", username,
+		)
 		if err := r.emailer.SendPasswordElsewhereEmail(user, reason, c); err != nil {
-			log.WithFields(log.Fields{
-				"err":      err,
-				"username": user.Username,
-				"email":    user.Email,
-			}).Error("Failed to send password managed elsewhere email")
+			slog.Error("Failed to send password managed elsewhere email",
+				"err", err,
+				"username", user.Username,
+				"email", user.Email,
+			)
 		}
 		return c.Render("password-forgot-success.html", fiber.Map{})
 	}
@@ -470,16 +470,16 @@ func (r *Router) PasswordForgot(c *fiber.Ctx) error {
 	// Send user a reset password email
 	err = r.emailer.SendPasswordResetEmail(user, c)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to send reset password email")
+		slog.Error("Failed to send reset password email",
+			"err", err,
+			"username", user.Username,
+			"email", user.Email,
+		)
 	} else {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"email":    user.Email,
-		}).Info("Password reset email sent successfully")
+		slog.Info("Password reset email sent successfully",
+			"username", user.Username,
+			"email", user.Email,
+		)
 		r.metrics.totalPasswordResetsSent.Inc()
 	}
 
@@ -500,34 +500,34 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 
 	user, err := r.adminClient.UserShow(claims.Username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": claims.Username,
-			"email":    claims.Email,
-		}).Warn("Attempt to reset password for non-existent username")
+		slog.Warn("Attempt to reset password for non-existent username",
+			"username", claims.Username,
+			"email", claims.Email,
+		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
 	if user.Locked {
-		log.WithFields(log.Fields{
-			"username": claims.Username,
-			"email":    claims.Email,
-		}).Warn("AUDIT Attempt to reset password for disabled/locked user")
+		slog.Warn("AUDIT Attempt to reset password for disabled/locked user",
+			"username", claims.Username,
+			"email", claims.Email,
+		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
 	if r.passwordElsewhere(requestLanguage(c), user) != "" {
-		log.WithFields(log.Fields{
-			"username": claims.Username,
-		}).Warn("AUDIT Attempt to reset password for user without a FreeIPA password")
+		slog.Warn("AUDIT Attempt to reset password for user without a FreeIPA password",
+			"username", claims.Username,
+		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
 	policy, err := pwPolicyShow(r.adminClient, user.Username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      err,
-		}).Warn("Failed to fetch password policy")
+		slog.Warn("Failed to fetch password policy",
+			"username", user.Username,
+			"err", err,
+		)
 		policy = nil
 	}
 
@@ -564,22 +564,22 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, ipa.ErrPasswordPolicy):
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"error":    err,
-			}).Error("Password does not conform to policy")
+			slog.Error("Password does not conform to policy",
+				"username", user.Username,
+				"error", err,
+			)
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "account.weak_password"))
 		case errors.Is(err, ipa.ErrInvalidPassword):
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"error":    err,
-			}).Error("invalid password from FreeIPA")
+			slog.Error("invalid password from FreeIPA",
+				"username", user.Username,
+				"error", err,
+			)
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "otptoken.invalid_otp"))
 		default:
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"error":    err,
-			}).Error("failed to set user password in FreeIPA")
+			slog.Error("failed to set user password in FreeIPA",
+				"username", user.Username,
+				"error", err,
+			)
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.system_error"))
 		}
 	}
@@ -589,16 +589,16 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 
 	err = r.emailer.SendPasswordChangedEmail(user, c)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to send password changed email")
+		slog.Error("Failed to send password changed email",
+			"err", err,
+			"username", user.Username,
+			"email", user.Email,
+		)
 	}
 
-	log.WithFields(log.Fields{
-		"username": user.Username,
-	}).Info("AUDIT User password changed successfully")
+	slog.Info("AUDIT User password changed successfully",
+		"username", user.Username,
+	)
 	r.metrics.totalPasswordResets.Inc()
 
 	return c.Render("password-reset-success.html", fiber.Map{})
@@ -607,7 +607,7 @@ func (r *Router) PasswordReset(c *fiber.Ctx) error {
 func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	sess, err := r.session(c)
 	if err != nil {
-		log.Warn("Failed to get user session. Logging out")
+		slog.Warn("Failed to get user session. Logging out")
 		return r.redirectLogin(c)
 	}
 
@@ -622,16 +622,16 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	}
 
 	if _, ok := username.(string); !ok {
-		log.Error("Invalid user in session")
+		slog.Error("Invalid user in session")
 		return r.redirectLogin(c)
 	}
 
 	user, err := r.adminClient.UserShow(username.(string))
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Warn("Password expired attempt for unknown username")
+		slog.Warn("Password expired attempt for unknown username",
+			"username", username,
+			"err", err,
+		)
 		return r.redirectLogin(c)
 	}
 
@@ -659,11 +659,11 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 
 	err = r.adminClient.SetPassword(user.Username, password, newpass, otp)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to change expired password for user")
+		slog.Error("Failed to change expired password for user",
+			"err", err,
+			"username", user.Username,
+			"email", user.Email,
+		)
 
 		// FreeIPA says why it refused; answering with an empty 500 turned
 		// that into a generic error for the user (ubccr/mokey#18)
@@ -680,11 +680,11 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 
 	err = r.emailer.SendPasswordChangedEmail(user, c)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to send password changed email")
+		slog.Error("Failed to send password changed email",
+			"err", err,
+			"username", user.Username,
+			"email", user.Email,
+		)
 	}
 
 	// A TOTP code is single-use and was just consumed by SetPassword.
@@ -693,9 +693,9 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	// password was changed (ubccr/mokey#127). Skip auto-login for OTP
 	// users and ask them to log in with a fresh code instead.
 	if user.OTPOnly() {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-		}).Info("AUDIT User changed expired password successfully")
+		slog.Info("AUDIT User changed expired password successfully",
+			"username", user.Username,
+		)
 		r.metrics.totalPasswordResets.Inc()
 		c.Set("HX-Redirect", "/auth/login")
 		return c.Status(fiber.StatusNoContent).SendString("")
@@ -707,19 +707,19 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	}
 	err = client.RemoteLogin(user.Username, newpass+otp)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username":         user.Username,
-			"ipa_client_error": err,
-		}).Error("Failed to login after expired password change")
+		slog.Error("Failed to login after expired password change",
+			"username", user.Username,
+			"ipa_client_error", err,
+		)
 		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "login.failed"))
 	}
 
 	_, err = client.Ping()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username":         user.Username,
-			"ipa_client_error": err,
-		}).Error("Failed to ping FreeIPA after expired password change")
+		slog.Error("Failed to ping FreeIPA after expired password change",
+			"username", user.Username,
+			"ipa_client_error", err,
+		)
 		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_credentials"))
 	}
 
@@ -743,9 +743,9 @@ func (r *Router) PasswordExpired(c *fiber.Ctx) error {
 	r.recordUserSession(c, user.Username, sid)
 	r.notifyNewLogin(c, user.Username)
 
-	log.WithFields(log.Fields{
-		"username": user.Username,
-	}).Info("AUDIT User logged in and changed expired password successfully")
+	slog.Info("AUDIT User logged in and changed expired password successfully",
+		"username", user.Username,
+	)
 	r.metrics.totalPasswordResets.Inc()
 
 	c.Set("HX-Redirect", "/")
