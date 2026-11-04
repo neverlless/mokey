@@ -400,7 +400,7 @@ quality credits, so these items are mostly mokey-side work.
 
 - [x] FreeIPA client moves to a maintained fork of goipa with typed calls
       — done in v2.4.2–v2.4.3
-- [ ] Structured logging on `log/slog` with secrets redacted, replacing
+- [x] Structured logging on `log/slog` with secrets redacted, replacing
       logrus (maintenance mode); stdlib validation replacing govalidator
 - [x] Tests: goipa's `ipatest`, checked against real FreeIPA 4.9–4.13,
       replaces the hand-written fake FreeIPA — done in v2.5
