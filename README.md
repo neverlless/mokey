@@ -13,6 +13,10 @@ and a "what can I access" view. It is a standalone web application that talks
 to the FreeIPA JSON-RPC API, needs no LDAP schema changes, and can act as the
 login and consent provider for Ory Hydra (OAuth 2.0 / OpenID Connect).
 
+**Documentation: <https://neverlless.github.io/mokey/>** — task guides
+(password reset, signup, OTP, passkeys, OIDC), companion setups and
+comparisons with other FreeIPA portals.
+
 > **Note:** This project began as a fork of [ubccr/mokey](https://github.com/ubccr/mokey)
 > and is now maintained independently. See
 > [Differences from upstream](#differences-from-upstream) for what has changed.
