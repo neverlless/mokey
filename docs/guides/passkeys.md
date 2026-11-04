@@ -25,8 +25,15 @@ reach mokey:
 - The browser must reach mokey over HTTPS by a DNS name. `http://localhost`
   also works, for testing. An IP address or a single-label hostname cannot be
   a WebAuthn relying party, and mokey refuses to start registration on one.
-- mokey uses the hostname from the request as the WebAuthn relying party ID.
-  Behind a reverse proxy, make sure the original `Host` reaches mokey.
+- Serve mokey under the FreeIPA domain: at the domain itself or at a host
+  name under it (`idm.ipa.example.com` for the domain `ipa.example.com`).
+  FreeIPA registers passkeys with the IPA domain as the WebAuthn relying
+  party ID and SSSD checks them against it, so mokey registers them for the
+  same ID. On any other address mokey refuses to register a passkey, since
+  the hosts would not accept it. `localhost` works for testing only.
+- Behind a reverse proxy, make sure the original `Host` reaches mokey.
+- mokey takes the IPA domain to be the realm in lowercase. Where the two
+  differ, passkey registration is refused until that is configurable.
 
 ## FreeIPA prerequisites
 
@@ -42,9 +49,9 @@ reach mokey:
 
 ## Limits
 
-- The relying party ID is mokey's hostname. A credential is bound to the
-  relying party ID it was created for, so test that a passkey registered in
-  mokey works with your hosts' SSSD before rolling it out to everyone.
+- Passkeys registered with mokey before v2.6 used the portal's host name as
+  relying party ID, which SSSD does not accept. Users should remove those
+  and register them again.
 - No passkey sign-in to mokey itself.
 - mokey does not show which authenticator a passkey came from, nor when it
   was last used; FreeIPA stores only the credential ID and public key.

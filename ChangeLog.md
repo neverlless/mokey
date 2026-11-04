@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Passkeys are registered for the FreeIPA domain as WebAuthn relying party
+  ID, as FreeIPA itself does and SSSD expects. mokey used the portal's host
+  name, so passkeys registered in mokey did not work for logins to enrolled
+  hosts; users should register them again. mokey must be served at the IPA
+  domain or a host name under it to register passkeys (`localhost` for
+  testing)
 - Per-request interface language: `site.languages` lists the languages on
   offer and each request gets the best match for the browser's
   `Accept-Language`, falling back to `site.default_language`. Emails sent

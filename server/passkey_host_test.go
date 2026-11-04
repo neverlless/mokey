@@ -42,11 +42,22 @@ func TestPasskeyRejectsUnusableHostname(t *testing.T) {
 		assert.Equal(T("passkey.bad_hostname"), readBody(t, resp), "host %q", host)
 	}
 
-	// a fully qualified name is fine, and so is localhost for development
-	for _, host := range []string{"idm.example.com", "localhost", "localhost:8080"} {
+	// FreeIPA hosts accept passkeys only for the IPA domain (test.local here),
+	// so the portal registers them for it; localhost stays open for development
+	for host, rpID := range map[string]string{
+		"idm.test.local": "test.local", "TEST.local:8443": "test.local",
+		"localhost": "localhost", "localhost:8080": "localhost",
+	} {
 		resp := begin(host)
-		assert.NotEqual(fiber.StatusBadRequest, resp.StatusCode, "host %q", host)
+		if assert.Equal(fiber.StatusOK, resp.StatusCode, "host %q", host) {
+			assert.Contains(readBody(t, resp), `"id":"`+rpID+`"`, "host %q", host)
+		}
 	}
+
+	// a credential for any other id would fail on the hosts
+	resp := begin("idm.example.com")
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Contains(readBody(t, resp), "test.local")
 }
 
 // failingSetStorage accepts reads but cannot persist writes
@@ -72,7 +83,7 @@ func TestPasskeyFinishStopsWhenChallengeNotConsumed(t *testing.T) {
 		req := httptest.NewRequest("POST", path, strings.NewReader("{}"))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-CSRF-Token", tc.csrf)
-		req.Host = "idm.example.com"
+		req.Host = "idm.test.local"
 		return tc.do(req)
 	}
 
