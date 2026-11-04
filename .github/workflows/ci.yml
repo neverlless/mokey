@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+      - "mkdocs.yml"
       - "LICENSE"
       - ".github/ISSUE_TEMPLATE/**"
   pull_request:
@@ -13,6 +14,7 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+      - "mkdocs.yml"
       - "LICENSE"
       - ".github/ISSUE_TEMPLATE/**"
 
