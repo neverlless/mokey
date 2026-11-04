@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/go-webauthn/webauthn/protocol/webauthncbor"
+	ipa "github.com/neverlless/goipa"
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -113,4 +115,34 @@ func TestPasskeyMappingCurves(t *testing.T) {
 		_, err = passkeyMapping([]byte("id"), cose(append([]byte{0}, x...)))
 		assert.Error(err, name)
 	}
+}
+
+func TestAddPasskeyAddsObjectClass(t *testing.T) {
+	assert := assert.New(t)
+	_, router, fake := newTestApp(t)
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	const mapping = "passkey:Y3JlZA==,a2V5"
+
+	// stock FreeIPA: self-service may not add the ipapasskeyuser class
+	classAdded := false
+	fake.Handle("user_add_passkey", func(c ipatest.Call) (any, *ipa.IpaError) {
+		if !classAdded {
+			return nil, ipa.ErrACI
+		}
+		return map[string]any{"result": map[string]any{"uid": []any{"walter"}, "ipapasskey": []any{mapping}}, "value": "walter", "summary": nil}, nil
+	})
+	fake.Handle("user_mod", func(c ipatest.Call) (any, *ipa.IpaError) {
+		if c.User != keytabUser || c.Options["addattr"] != "objectclass=ipapasskeyuser" {
+			return nil, ipa.ErrACI
+		}
+		classAdded = true
+		return map[string]any{"result": map[string]any{"uid": []any{"walter"}}, "value": "walter", "summary": nil}, nil
+	})
+
+	assert.NoError(addPasskey(fake.ClientAs("walter"), router.adminClient, "walter", mapping))
+	assert.True(classAdded)
+
+	// any other failure is not retried
+	fake.Handle("user_add_passkey", func(ipatest.Call) (any, *ipa.IpaError) { return nil, ipa.ErrNotFound })
+	assert.ErrorIs(addPasskey(fake.ClientAs("walter"), router.adminClient, "walter", mapping), ipa.ErrNotFound)
 }

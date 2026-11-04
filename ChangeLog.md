@@ -15,6 +15,11 @@
 - `memory` and `sqlite3` guard the same rewrites with an in-process lock
 - Integration tests against the demo stand's FreeIPA and browser tests
   with passkey registration (`test/`), run weekly in CI
+- A user's first passkey can be registered on stock FreeIPA: its
+  self-service rule may write `ipapasskey` but not the `ipapasskeyuser`
+  object class FreeIPA adds on the first passkey, so registration failed
+  with "Insufficient access". mokey's service account now adds the class
+  (covered by the User Administrators privilege it already needs)
 - Removing a passkey reloads the Passkeys tab; the swapped-in list had its
   script blocked by CSP, so registering another passkey did nothing until
   a reload

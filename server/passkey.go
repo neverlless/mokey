@@ -182,7 +182,7 @@ func (r *Router) PasskeyFinish(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
-	if err := userAddPasskey(r.userClient(c), username, mapping); err != nil {
+	if err := addPasskey(r.userClient(c), r.adminClient, username, mapping); err != nil {
 		log.WithFields(log.Fields{"err": err, "username": username}).Error("Failed to add passkey in FreeIPA")
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "passkey.freeipa_add_failed"))
 	}

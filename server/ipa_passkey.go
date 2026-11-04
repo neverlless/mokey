@@ -11,6 +11,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -22,6 +23,22 @@ import (
 // permission introduced with passkey support in FreeIPA 4.11.
 func userAddPasskey(client *ipa.Client, uid, mapping string) error {
 	return client.UserAddPasskey(uid, mapping)
+}
+
+// addPasskey adds the user's passkey with their own client. FreeIPA's
+// self-service rule covers ipapasskey but not the ipapasskeyuser object
+// class that user_add_passkey adds to entries lacking it, so on a user's
+// first passkey the service account adds the class and the call is retried
+func addPasskey(user, admin *ipa.Client, uid, mapping string) error {
+	err := userAddPasskey(user, uid, mapping)
+	if !errors.Is(err, ipa.ErrACI) {
+		return err
+	}
+	// shortcut: raw user_mod until goipa has a typed call (neverlless/goipa#25)
+	if _, err := admin.RPC("user_mod", []string{uid}, ipa.Options{"addattr": "objectclass=ipapasskeyuser"}); err != nil && !errors.Is(err, ipa.ErrEmptyModlist) {
+		return err
+	}
+	return userAddPasskey(user, uid, mapping)
 }
 
 func userRemovePasskey(client *ipa.Client, uid, mapping string) error {
