@@ -14,7 +14,7 @@ repository and documentation.
 | --- | --- | --- | --- | --- | --- |
 | Language | Go | Go | Python (Flask) | PHP | Java |
 | License | BSD-3-Clause | BSD-3-Clause | MIT | GPL-3.0 | Apache-2.0 |
-| Latest release | v2.5.0, Nov 2026 | v0.6.6, Nov 2025 | v1.11.0, Nov 2025 | v1.8.2, Sep 2026 | 26.8.1, Oct 2026 |
+| Latest release | v2.6.0, Nov 2026 | v0.6.6, Nov 2025 | v1.11.0, Nov 2025 | v1.8.2, Sep 2026 | 26.8.1, Oct 2026 |
 | Last commit | Nov 2026 | Oct 2026 | Aug 2026 | Nov 2026 | Nov 2026 |
 | GitHub stars | 10 | 217 | 147 | 1,349 | 37,685 |
 | Talks to FreeIPA via | JSON-RPC API | JSON-RPC API | JSON-RPC API | LDAP | LDAP, Kerberos |
@@ -60,7 +60,7 @@ GPG keys, OTP tokens, and groups run by sponsors.
   service.
 - Richer profiles (the freeipa-fas fields such as time zone, locale and chat
   nicknames) and GPG key IDs.
-- Many more translations: 34 language directories against mokey's 2.
+- Many more translations: 34 language directories against mokey's 4.
 
 **Where it is weaker for a typical FreeIPA site:** it needs the freeipa-fas
 schema extension installed on your FreeIPA servers. Joining a group is

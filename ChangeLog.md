@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.6.0] - 2026-11-04
 
 - Passkeys are registered for the FreeIPA domain as WebAuthn relying party
   ID, as FreeIPA itself does and SSSD expects. mokey used the portal's host
