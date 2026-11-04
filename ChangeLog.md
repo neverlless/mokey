@@ -9,8 +9,9 @@
   error instead of a generic one
 - Several replicas on one Redis no longer lose updates to the session
   index, group join requests or the OTP recovery queue: each rewrite holds
-  a short Redis lock. The audit sequence is a Redis `INCR`. The Redis ACL
-  user now also needs `+incr +eval`
+  a short Redis lock. The audit sequence is a Redis `INCR`
+- **Upgrade:** a Redis ACL user limited to specific commands now also
+  needs `+incr +eval`
 - `memory` and `sqlite3` guard the same rewrites with an in-process lock
 
 ## [v2.6.0] - 2026-11-04
