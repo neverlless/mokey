@@ -3,12 +3,12 @@ package server
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -98,10 +98,10 @@ func sessionInvalidatedByPasswordChange(loginTime int64, marker []byte) bool {
 func (r *Router) invalidateUserSessions(username string) {
 	ttl := time.Duration(viper.GetInt("server.session_idle_timeout"))*time.Second + time.Minute
 	if err := r.storage.Set(PasswordChangedPrefix+username, []byte(strconv.FormatInt(time.Now().Unix(), 10)), ttl); err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Error("Failed to invalidate sessions after password change")
+		slog.Error("Failed to invalidate sessions after password change",
+			"username", username,
+			"err", err,
+		)
 	}
 }
 
@@ -133,11 +133,11 @@ func (r *Router) logout(c *fiber.Ctx) {
 
 	username := sess.Get(SessionKeyUsername)
 	if username != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"ip":       RemoteIP(c),
-			"path":     c.Path(),
-		}).Info("User logging out")
+		slog.Info("User logging out",
+			"username", username,
+			"ip", RemoteIP(c),
+			"path", c.Path(),
+		)
 
 		if name, ok := username.(string); ok {
 			r.dropSessionFromIndex(name, sess.ID())
@@ -145,21 +145,21 @@ func (r *Router) logout(c *fiber.Ctx) {
 	}
 
 	if err := sess.Destroy(); err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"ip":       RemoteIP(c),
-			"path":     c.Path(),
-			"err":      err,
-		}).Error("Logout failed to destroy session")
+		slog.Error("Logout failed to destroy session",
+			"username", username,
+			"ip", RemoteIP(c),
+			"path", c.Path(),
+			"err", err,
+		)
 	}
 
 	if viper.IsSet("hydra.admin_url") {
 		if _, ok := username.(string); ok {
 			err := r.revokeHydraAuthenticationSession(username.(string))
 			if err != nil {
-				log.WithFields(log.Fields{
-					"error": err,
-				}).Error("Logout failed to revoke hydra authentication session")
+				slog.Error("Logout failed to revoke hydra authentication session",
+					"error", err,
+				)
 			}
 		}
 	}
@@ -191,11 +191,11 @@ func (r *Router) RequireNoLogin(c *fiber.Ctx) error {
 
 func (r *Router) RequireLogin(c *fiber.Ctx) error {
 	if ok, err := r.isLoggedIn(c); !ok {
-		log.WithFields(log.Fields{
-			"path":  c.Path(),
-			"ip":    RemoteIP(c),
-			"error": err,
-		}).Info("Login required and no authenticated session found.")
+		slog.Info("Login required and no authenticated session found.",
+			"path", c.Path(),
+			"ip", RemoteIP(c),
+			"error", err,
+		)
 		return r.redirectLogin(c)
 	}
 
@@ -227,9 +227,9 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 	}
 
 	if isBlocked(username) {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("AUDIT User account is blocked from logging in")
+		slog.Warn("AUDIT User account is blocked from logging in",
+			"username", username,
+		)
 		r.metrics.totalFailedLogins.Inc()
 		// With hidden username errors, show the password form anyway —
 		// Authenticate rejects blocked users with the generic message
@@ -247,10 +247,10 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 	userRec, err := r.adminClient.UserShow(username)
 	if err != nil {
 		if ierr, ok := err.(*ipa.IpaError); ok && ierr.Code == 4001 {
-			log.WithFields(log.Fields{
-				"error":    ierr,
-				"username": username,
-			}).Warn("Username not found in FreeIPA")
+			slog.Warn("Username not found in FreeIPA",
+				"error", ierr,
+				"username", username,
+			)
 
 			if !viper.GetBool("accounts.hide_invalid_username_error") {
 				r.metrics.totalFailedLogins.Inc()
@@ -259,19 +259,19 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 			userRec = new(ipa.User)
 			userRec.Username = username
 		} else {
-			log.WithFields(log.Fields{
-				"error":    err,
-				"username": username,
-			}).Error("Failed to fetch user info from FreeIPA")
+			slog.Error("Failed to fetch user info from FreeIPA",
+				"error", err,
+				"username", username,
+			)
 			r.metrics.totalFailedLogins.Inc()
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 		}
 	}
 
 	if userRec.Locked {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("AUDIT User account is locked in FreeIPA")
+		slog.Warn("AUDIT User account is locked in FreeIPA",
+			"username", username,
+		)
 		r.metrics.totalFailedLogins.Inc()
 		// With hidden username errors, the locked state must not be
 		// distinguishable either — FreeIPA rejects the login attempt with
@@ -290,10 +290,10 @@ func (r *Router) CheckUser(c *fiber.Ctx) error {
 		}
 	}
 
-	log.WithFields(log.Fields{
-		"username": username,
-		"ip":       RemoteIP(c),
-	}).Info("Login user attempt")
+	slog.Info("Login user attempt",
+		"username", username,
+		"ip", RemoteIP(c),
+	)
 
 	vars := fiber.Map{
 		"user":      userRec,
@@ -322,9 +322,9 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 	}
 
 	if isBlocked(username) {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("AUDIT User account is blocked from logging in")
+		slog.Warn("AUDIT User account is blocked from logging in",
+			"username", username,
+		)
 		r.metrics.totalFailedLogins.Inc()
 		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_credentials"))
 	}
@@ -337,10 +337,10 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, ipa.ErrExpiredPassword):
-			log.WithFields(log.Fields{
-				"username": username,
-				"err":      err,
-			}).Info("Password expired, forcing change")
+			slog.Info("Password expired, forcing change",
+				"username", username,
+				"err", err,
+			)
 
 			sess, err := r.session(c)
 			if err != nil {
@@ -373,21 +373,21 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 			}
 			return c.Render("login-password-expired.html", vars)
 		default:
-			log.WithFields(log.Fields{
-				"username": username,
-				"ip":       RemoteIP(c),
-				"err":      err,
-			}).Error("AUDIT Failed login attempt")
+			slog.Error("AUDIT Failed login attempt",
+				"username", username,
+				"ip", RemoteIP(c),
+				"err", err,
+			)
 			r.metrics.totalFailedLogins.Inc()
 
 			// Tell users who hit the FreeIPA failure-lockout threshold why
 			// their (possibly correct) password is rejected. Only shown
 			// after credentials were presented — no pre-auth state leak.
 			if userLockedOut(r.adminClient, username) {
-				log.WithFields(log.Fields{
-					"username": username,
-					"ip":       RemoteIP(c),
-				}).Warn("AUDIT Login attempt for locked-out account")
+				slog.Warn("AUDIT Login attempt for locked-out account",
+					"username", username,
+					"ip", RemoteIP(c),
+				)
 				return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "login.account_locked_temporarily"))
 			}
 
@@ -397,10 +397,10 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 
 	_, err = client.Ping()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Error("Failed to ping FreeIPA")
+		slog.Error("Failed to ping FreeIPA",
+			"username", username,
+			"err", err,
+		)
 		r.metrics.totalFailedLogins.Inc()
 		return c.Status(fiber.StatusUnauthorized).SendString(TC(c, "account.invalid_credentials"))
 	}
@@ -434,10 +434,10 @@ func (r *Router) Authenticate(c *fiber.Ctx) error {
 		return r.LoginOAuthPost(username, challenge, c)
 	}
 
-	log.WithFields(log.Fields{
-		"username": username,
-		"ip":       RemoteIP(c),
-	}).Info("AUDIT User logged in successfully")
+	slog.Info("AUDIT User logged in successfully",
+		"username", username,
+		"ip", RemoteIP(c),
+	)
 	r.metrics.totalLogins.Inc()
 
 	c.Set("HX-Redirect", "/")

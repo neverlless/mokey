@@ -5,19 +5,21 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 // The audit store is a ring buffer of the last auditRingSize AUDIT log
 // events, kept in the existing session storage backend (memory, sqlite3,
-// or redis) — no separate schema. Events are captured by a logrus hook, so
+// or redis) — no separate schema. Events are captured by a slog handler, so
 // every existing and future log line starting with "AUDIT" lands here
 // without touching call sites.
 const (
@@ -35,46 +37,72 @@ type AuditEvent struct {
 	IP       string    `json:"ip,omitempty"`
 }
 
-type AuditHook struct {
+// AuditHandler wraps the default slog handler and copies every AUDIT record
+// into the ring buffer before passing it on.
+type AuditHandler struct {
+	slog.Handler
 	storage fiber.Storage
 	lock    *storeLock
+	attrs   []slog.Attr
 }
 
-func NewAuditHook(storage fiber.Storage) *AuditHook {
-	return &AuditHook{storage: storage, lock: newStoreLock(storage)}
-}
-
-func (h *AuditHook) Levels() []log.Level {
-	// ErrorLevel included: failed logins are logged as AUDIT errors and
-	// belong in the trail
-	return []log.Level{log.InfoLevel, log.WarnLevel, log.ErrorLevel}
-}
-
-func (h *AuditHook) Fire(entry *log.Entry) error {
-	if !strings.HasPrefix(entry.Message, "AUDIT") {
-		return nil
+func NewAuditHandler(next slog.Handler, storage fiber.Storage) *AuditHandler {
+	// re-wrapping on every NewRouter (tests build many) must not stack hooks
+	if h, ok := next.(*AuditHandler); ok {
+		next = h.Handler
 	}
+	return &AuditHandler{Handler: next, storage: storage, lock: newStoreLock(storage)}
+}
+
+func (h *AuditHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	c := *h
+	c.Handler = h.Handler.WithAttrs(attrs)
+	c.attrs = append(slices.Clip(h.attrs), attrs...)
+	return &c
+}
+
+func (h *AuditHandler) WithGroup(name string) slog.Handler {
+	c := *h
+	c.Handler = h.Handler.WithGroup(name)
+	return &c
+}
+
+func (h *AuditHandler) Handle(ctx context.Context, r slog.Record) error {
+	// Info and above: failed logins are logged as AUDIT errors and belong in
+	// the trail
+	if r.Level >= slog.LevelInfo && strings.HasPrefix(r.Message, "AUDIT") {
+		if err := h.record(r); err != nil {
+			slog.Error("Failed to store audit event", "err", err)
+		}
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+func (h *AuditHandler) record(r slog.Record) error {
+	data := map[string]string{}
+	add := func(a slog.Attr) bool {
+		if a.Value.Kind() == slog.KindString {
+			data[a.Key] = a.Value.String()
+		}
+		return true
+	}
+	for _, a := range h.attrs {
+		add(a)
+	}
+	r.Attrs(add)
 
 	event := AuditEvent{
-		Time:    entry.Time,
-		Message: strings.TrimSpace(strings.TrimPrefix(entry.Message, "AUDIT")),
+		Time:     r.Time,
+		Message:  strings.TrimSpace(strings.TrimPrefix(r.Message, "AUDIT")),
+		Username: data["username"],
+		Actor:    data["admin"],
+		IP:       data["ip"],
 	}
-	if v, ok := entry.Data["username"].(string); ok {
-		event.Username = v
-	}
-	if v, ok := entry.Data["admin"].(string); ok {
+	if v := data["invited_by"]; v != "" {
 		event.Actor = v
-	}
-	if v, ok := entry.Data["invited_by"].(string); ok {
-		event.Actor = v
-	}
-	if v, ok := entry.Data["ip"].(string); ok {
-		event.IP = v
 	}
 	if event.Username == "" {
-		if v, ok := entry.Data["email"].(string); ok {
-			event.Username = v
-		}
+		event.Username = data["email"]
 	}
 
 	b, err := json.Marshal(event)

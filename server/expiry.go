@@ -7,12 +7,12 @@ package server
 
 import (
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -36,9 +36,9 @@ func (r *Router) StartExpiryReminders() {
 		return
 	}
 
-	log.WithFields(log.Fields{
-		"reminder_days": expiryReminderDays(),
-	}).Info("Password expiry reminders enabled")
+	slog.Info("Password expiry reminders enabled",
+		"reminder_days", expiryReminderDays(),
+	)
 
 	go func() {
 		// ponytail: single-instance sweep; multi-replica deployments send
@@ -59,9 +59,9 @@ func (r *Router) expiryReminderSweep() {
 		"timelimit": 0,
 	})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("Password expiry sweep failed to list users")
+		slog.Error("Password expiry sweep failed to list users",
+			"err", err,
+		)
 		return
 	}
 
@@ -92,32 +92,32 @@ func (r *Router) expiryReminderSweep() {
 			}
 
 			if err := r.emailer.SendPasswordExpiryReminderEmail(user, int(left.Hours()/24)+1); err != nil {
-				log.WithFields(log.Fields{
-					"username": user.Username,
-					"err":      err,
-				}).Error("Failed to send password expiry reminder")
+				slog.Error("Failed to send password expiry reminder",
+					"username", user.Username,
+					"err", err,
+				)
 				break // no marker — retried next sweep
 			}
 
 			if err := r.storage.Set(marker, []byte("sent"), time.Until(user.PasswdExpire)+24*time.Hour); err != nil {
-				log.WithFields(log.Fields{
-					"username": user.Username,
-					"err":      err,
-				}).Warn("Failed to record password expiry reminder, it may be sent again")
+				slog.Warn("Failed to record password expiry reminder, it may be sent again",
+					"username", user.Username,
+					"err", err,
+				)
 			}
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"days":     days,
-			}).Info("Password expiry reminder sent")
+			slog.Info("Password expiry reminder sent",
+				"username", user.Username,
+				"days", days,
+			)
 			sent++
 			break
 		}
 	}
 
 	if sent > 0 {
-		log.WithFields(log.Fields{
-			"sent": sent,
-		}).Info("Password expiry sweep complete")
+		slog.Info("Password expiry sweep complete",
+			"sent", sent,
+		)
 	}
 }
 

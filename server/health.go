@@ -1,8 +1,9 @@
 package server
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 // Healthz is an unauthenticated health check endpoint. It verifies the
@@ -10,9 +11,9 @@ import (
 // CSRF middleware so probes don't create sessions.
 func (r *Router) Healthz(c *fiber.Ctx) error {
 	if _, err := r.storage.Get("healthz"); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("healthz: session storage check failed")
+		slog.Error("healthz: session storage check failed",
+			"error", err,
+		)
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
 			"status":  "unavailable",
 			"storage": err.Error(),
@@ -20,9 +21,9 @@ func (r *Router) Healthz(c *fiber.Ctx) error {
 	}
 
 	if _, err := r.adminClient.Ping(); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("healthz: FreeIPA ping failed")
+		slog.Error("healthz: FreeIPA ping failed",
+			"error", err,
+		)
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
 			"status":  "unavailable",
 			"freeipa": err.Error(),

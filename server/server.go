@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/gofiber/storage/sqlite3/v2"
 	goredis "github.com/redis/go-redis/v9"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -105,19 +105,27 @@ func NewServer(address string) (*Server, error) {
 func getAssetsFS() http.FileSystem {
 	staticLocalPath := viper.GetString("site.static_assets_dir")
 	if staticLocalPath != "" {
-		log.Debugf("Using local static assets dir: %s", staticLocalPath)
+		slog.Debug("Using local static assets dir", "path", staticLocalPath)
 		return http.FS(os.DirFS(staticLocalPath))
 	}
 
 	fsys, err := fs.Sub(staticFS, "templates/static")
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Failed to load embedded static assets", "err", err)
+		os.Exit(1)
 	}
 
 	return http.FS(fsys)
 }
 
 func newStorage() (storage fiber.Storage, err error) {
+	// url.Parse errors quote the whole URL, password included
+	defer func() {
+		if u := viper.GetString("storage.redis.url"); err != nil && u != "" {
+			err = errors.New(strings.ReplaceAll(err.Error(), u, redactURL(u)))
+		}
+	}()
+
 	if viper.IsSet("storage.sqlite3.dbpath") && viper.GetString("storage.driver") == "memory" {
 		viper.Set("storage.driver", "sqlite3")
 	}
@@ -211,7 +219,7 @@ func newFiber() (*fiber.App, *Router, error) {
 
 	engine, err := NewTemplateRenderer()
 	if err != nil {
-		log.Fatal(err)
+		return nil, nil, err
 	}
 
 	storage, err := newStorage()
@@ -318,12 +326,12 @@ func (s *Server) Serve() error {
 			return err
 		}
 
-		log.Infof("Listening on %s://%s", s.Scheme, s.ListenAddress)
+		slog.Info("Listening", "url", s.Scheme+"://"+s.ListenAddress)
 		return s.app.Listener(ln)
 	}
 
 	s.Scheme = "http"
-	log.Infof("Listening on %s://%s", s.Scheme, s.ListenAddress)
+	slog.Info("Listening", "url", s.Scheme+"://"+s.ListenAddress)
 	if err := s.app.Listen(s.ListenAddress); err != nil {
 		return err
 	}

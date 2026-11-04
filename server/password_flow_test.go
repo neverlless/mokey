@@ -1,6 +1,9 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -10,8 +13,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
 	"github.com/neverlless/goipa/ipatest"
-	log "github.com/sirupsen/logrus"
-	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -249,9 +250,10 @@ func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/resetpw/" + token)
 
-	saved := log.StandardLogger().ReplaceHooks(make(log.LevelHooks))
-	t.Cleanup(func() { log.StandardLogger().ReplaceHooks(saved) })
-	hook := logtest.NewGlobal()
+	var logs bytes.Buffer
+	saved := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(saved) })
 	router.storage = &failingSetStorage{router.storage}
 
 	resp := tc.postForm("/auth/resetpw/"+token, url.Values{
@@ -262,11 +264,16 @@ func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
 	assert.Equal("NewSecret456!", fakeUser(fake, "walter").Password)
 
 	logged := false
-	for _, e := range hook.AllEntries() {
-		if e.Level == log.ErrorLevel && e.Message == "Failed to mark token used" {
+	dec := json.NewDecoder(&logs)
+	for {
+		var e map[string]any
+		if dec.Decode(&e) != nil {
+			break
+		}
+		if e["level"] == "ERROR" && e["msg"] == "Failed to mark token used" {
 			logged = true
-			assert.Equal("walter", e.Data["username"])
-			assert.Error(e.Data["err"].(error))
+			assert.Equal("walter", e["username"])
+			assert.NotEmpty(e["err"])
 		}
 	}
 	assert.True(logged, "used-marker write failure was not logged")

@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"strconv"
 	"sync"
 	"time"
@@ -21,7 +22,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/storage/redis/v3"
 	goredis "github.com/redis/go-redis/v9"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -70,10 +70,10 @@ func (l *storeLock) hold(key string) (release func()) {
 
 	token, err := l.acquire(key)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"key": key,
-			"err": err,
-		}).Warn("Proceeding without storage lock")
+		slog.Warn("Proceeding without storage lock",
+			"key", key,
+			"err", err,
+		)
 		return mu.Unlock
 	}
 	return func() {
@@ -110,10 +110,10 @@ func (l *storeLock) acquire(key string) (string, error) {
 
 func (l *storeLock) release(key, token string) {
 	if err := l.rdb.Eval(context.Background(), storeUnlockScript, []string{storeLockPrefix + key}, token).Err(); err != nil {
-		log.WithFields(log.Fields{
-			"key": key,
-			"err": err,
-		}).Warn("Failed to release storage lock, it expires on its own")
+		slog.Warn("Failed to release storage lock, it expires on its own",
+			"key", key,
+			"err", err,
+		)
 	}
 }
 

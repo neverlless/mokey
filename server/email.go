@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"mime/quotedprintable"
 	"net"
@@ -25,7 +26,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/mileusna/useragent"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -110,10 +110,10 @@ func (e *Emailer) sendTokenEmail(user *ipa.User, tokenKey, prefix string, ctx *f
 	err := e.sendEmail(user, ctx, lang, subject, tmpl, data)
 	if err != nil {
 		if derr := e.storage.Delete(prefix + TokenIssuedPrefix + tokenKey); derr != nil {
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"err":      derr,
-			}).Error("Failed to roll back issued token marker after failed delivery")
+			slog.Error("Failed to roll back issued token marker after failed delivery",
+				"username", user.Username,
+				"err", derr,
+			)
 		}
 	}
 	return err
@@ -466,10 +466,10 @@ func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ip
 }
 
 func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
-	log.WithFields(log.Fields{
-		"email":    user.Email,
-		"username": user.Username,
-	}).Debug("Sending email to user")
+	slog.Debug("Sending email to user",
+		"email", user.Email,
+		"username", user.Username,
+	)
 
 	if data == nil {
 		data = make(map[string]interface{})
@@ -616,20 +616,20 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, lang, subject, tmpl 
 		_, advertised := c.Extension("AUTH")
 		auth, err := smtpAuth(advertised, username, password, viper.GetString("email.smtp_host"), encrypted)
 		if err != nil {
-			log.Error(err)
+			slog.Error("SMTP auth setup failed", "err", err)
 			return err
 		}
 		if err = c.Auth(auth); err != nil {
-			log.Error(err)
+			slog.Error("SMTP AUTH failed", "err", err)
 			return err
 		}
 	}
 	if err = c.Mail(viper.GetString("email.from")); err != nil {
-		log.Error(err)
+		slog.Error("SMTP MAIL FROM failed", "err", err)
 		return err
 	}
 	if err = c.Rcpt(user.Email); err != nil {
-		log.Error(err)
+		slog.Error("SMTP RCPT TO failed", "err", err)
 		return err
 	}
 
@@ -658,24 +658,24 @@ func (e *Emailer) sendEmail(user *ipa.User, ctx *fiber.Ctx, lang, subject, tmpl 
 	// verdict: this is where a rejected message is reported, and dropping
 	// it used to turn every rejection into a "sent successfully"
 	if err = wc.Close(); err != nil {
-		log.Error(err)
+		slog.Error("SMTP server rejected the message", "err", err)
 		return err
 	}
 
 	if err := c.Quit(); err != nil {
 		// the message was already accepted; a botched goodbye is not a
 		// delivery failure
-		log.WithFields(log.Fields{"err": err}).Warn("SMTP QUIT failed after the message was accepted")
+		slog.Warn("SMTP QUIT failed after the message was accepted", "err", err)
 	}
 
 	if e.slackNotifier != nil {
 		err = e.slackNotifier.SendSlackMessage(user.Email, slackMessageFor(tmpl, subject, data, user))
 		if err != nil {
-			log.WithFields(log.Fields{
-				"email":    user.Email,
-				"username": user.Username,
-				"error":    err,
-			}).Error("Failed to send Slack notification")
+			slog.Error("Failed to send Slack notification",
+				"email", user.Email,
+				"username", user.Username,
+				"error", err,
+			)
 		}
 	}
 

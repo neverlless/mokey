@@ -2,13 +2,13 @@ package serve
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/neverlless/mokey/v2/cmd"
 	"github.com/neverlless/mokey/v2/server"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -65,9 +65,9 @@ func serve() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		logrus.Debug("Shutting down server")
+		slog.Debug("Shutting down server")
 		if err := srv.Shutdown(ctx); err != nil {
-			logrus.WithFields(logrus.Fields{"err": err}).Error("Server shutdown failed")
+			slog.Error("Server shutdown failed", "err", err)
 		}
 	}()
 

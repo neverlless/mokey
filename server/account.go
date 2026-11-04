@@ -3,13 +3,13 @@ package server
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 
 	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v2"
 	ipa "github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -87,17 +87,17 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 	userUpdated, err := r.adminClient.UserMod(user)
 	if err != nil {
 		if ierr, ok := err.(*ipa.IpaError); ok {
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"message":  ierr.Message,
-				"code":     ierr.Code,
-			}).Error("Failed to update account settings")
+			slog.Error("Failed to update account settings",
+				"username", user.Username,
+				"message", ierr.Message,
+				"code", ierr.Code,
+			)
 			vars["message"] = "Failed to save account settings"
 		} else {
-			log.WithFields(log.Fields{
-				"username": user.Username,
-				"error":    err.Error(),
-			}).Error("Failed to update account settings")
+			slog.Error("Failed to update account settings",
+				"username", user.Username,
+				"error", err.Error(),
+			)
 			vars["message"] = TC(c, "account.fatal_system_error")
 		}
 	} else {
@@ -106,21 +106,21 @@ func (r *Router) AccountSettings(c *fiber.Ctx) error {
 
 		if emailChangeRequested {
 			if err := r.emailer.SendEmailChangeConfirmEmail(user, newEmail, c); err != nil {
-				log.WithFields(log.Fields{
-					"username": user.Username,
-					"email":    newEmail,
-					"err":      err,
-				}).Error("Failed to send email change confirmation email")
+				slog.Error("Failed to send email change confirmation email",
+					"username", user.Username,
+					"email", newEmail,
+					"err", err,
+				)
 				// one banner, not a contradictory success+error pair: the
 				// profile fields did save, the email change did not
 				delete(vars, "success")
 				vars["message"] = TC(c, "account.email_change_send_failed")
 			} else {
-				log.WithFields(log.Fields{
-					"username":  user.Username,
-					"new_email": newEmail,
-					"ip":        RemoteIP(c),
-				}).Info("AUDIT email change requested")
+				slog.Info("AUDIT email change requested",
+					"username", user.Username,
+					"new_email", newEmail,
+					"ip", RemoteIP(c),
+				)
 				vars["email_change_sent"] = true
 			}
 		}
@@ -160,10 +160,10 @@ func (r *Router) AccountCreate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	log.WithFields(log.Fields{
-		"username": user.Username,
-		"email":    user.Email,
-	}).Info("AUDIT user account created successfully")
+	slog.Info("AUDIT user account created successfully",
+		"username", user.Username,
+		"email", user.Email,
+	)
 	r.metrics.totalSignups.Inc()
 
 	// Send user an email to verify their account
@@ -203,10 +203,10 @@ func (r *Router) accountCreate(lang string, user *ipa.User, password, passwordCo
 	// better than trusting the config to mirror FreeIPA
 	policy, perr := pwPolicyShow(r.adminClient, "")
 	if perr != nil {
-		log.WithFields(log.Fields{
-			"username": user.Username,
-			"err":      perr,
-		}).Warn("Failed to fetch password policy, falling back to configured minimums")
+		slog.Warn("Failed to fetch password policy, falling back to configured minimums",
+			"username", user.Username,
+			"err", perr,
+		)
 		policy = nil
 	}
 
@@ -235,34 +235,34 @@ func (r *Router) accountCreate(lang string, user *ipa.User, password, passwordCo
 			// holding a random password. Left behind it would block the
 			// retry we are about to invite with "username already exists".
 			if derr := r.adminClient.UserDelete(false, true, user.Username); derr != nil {
-				log.WithFields(log.Fields{
-					"err":      derr,
-					"username": user.Username,
-				}).Error("Failed to remove half-created account after password rejection")
+				slog.Error("Failed to remove half-created account after password rejection",
+					"err", derr,
+					"username", user.Username,
+				)
 			}
 			// FreeIPA rejected the password after the local check passed;
 			// say so instead of "contact your administrator" (#18)
 			return errors.New(TL(lang, "password.rejected_by_policy"))
 		default:
-			log.WithFields(log.Fields{
-				"err":      err,
-				"username": user.Username,
-				"email":    user.Email,
-				"first":    user.First,
-				"last":     user.Last,
-				"homedir":  user.HomeDir,
-			}).Error("Failed to create user account")
+			slog.Error("Failed to create user account",
+				"err", err,
+				"username", user.Username,
+				"email", user.Email,
+				"first", user.First,
+				"last", user.Last,
+				"homedir", user.HomeDir,
+			)
 			return errors.New("Failed to create account. Please contact system administrator")
 		}
 	}
 
-	log.WithFields(log.Fields{
-		"username": userRec.Username,
-		"email":    userRec.Email,
-		"first":    userRec.First,
-		"last":     userRec.Last,
-		"homedir":  userRec.HomeDir,
-	}).Debug("New user account created")
+	slog.Debug("New user account created",
+		"username", userRec.Username,
+		"email", userRec.Email,
+		"first", userRec.First,
+		"last", userRec.Last,
+		"homedir", userRec.HomeDir,
+	)
 
 	if verified {
 		return nil
@@ -271,10 +271,10 @@ func (r *Router) accountCreate(lang string, user *ipa.User, password, passwordCo
 	// Disable new users until they have verified their email address
 	err = r.adminClient.UserDisable(userRec.Username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": userRec.Username,
-		}).Error("Failed to disable user")
+		slog.Error("Failed to disable user",
+			"err", err,
+			"username", userRec.Username,
+		)
 
 		// TODO: should we tell user about this? probably not?
 	}
@@ -295,18 +295,18 @@ func (r *Router) stagedAccountCreate(user *ipa.User, password string) error {
 		if ierr, ok := err.(*ipa.IpaError); ok && ierr.Code == 4002 {
 			return fmt.Errorf("Username already exists: %s", user.Username)
 		}
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to create staged user account")
+		slog.Error("Failed to create staged user account",
+			"err", err,
+			"username", user.Username,
+			"email", user.Email,
+		)
 		return errors.New("Failed to create account. Please contact system administrator")
 	}
 
-	log.WithFields(log.Fields{
-		"username": user.Username,
-		"email":    user.Email,
-	}).Debug("New staged user account created")
+	slog.Debug("New staged user account created",
+		"username", user.Username,
+		"email", user.Email,
+	)
 
 	return nil
 }
@@ -334,9 +334,9 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 
 	claims, err := ParseToken(token, TokenAccountVerify, r.storage)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Debug("Invalid account verify token")
+		slog.Debug("Invalid account verify token",
+			"err", err,
+		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
@@ -354,11 +354,11 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 	if viper.GetBool("accounts.staged_signup") {
 		if su, serr := stageUserShow(r.adminClient, claims.Username); serr == nil {
 			if verr := r.verifyStagedUser(claims.Username, su); verr != nil {
-				log.WithFields(log.Fields{
-					"username": claims.Username,
-					"email":    claims.Email,
-					"error":    verr,
-				}).Error("Verify account failed to update staged user in FreeIPA")
+				slog.Error("Verify account failed to update staged user in FreeIPA",
+					"username", claims.Username,
+					"email", claims.Email,
+					"error", verr,
+				)
 				return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 			}
 			user = su
@@ -377,22 +377,22 @@ func (r *Router) AccountVerify(c *fiber.Ctx) error {
 func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) error {
 	user, err := r.adminClient.UserShow(claims.Username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": claims.Username,
-			"email":    claims.Email,
-			"err":      err,
-		}).Error("Verifying account failed while fetching user from FreeIPA")
+		slog.Error("Verifying account failed while fetching user from FreeIPA",
+			"username", claims.Username,
+			"email", claims.Email,
+			"err", err,
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 	}
 
 	if user.Locked && !viper.GetBool("accounts.require_admin_verify") {
 		err := r.adminClient.UserEnable(claims.Username)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"username": claims.Username,
-				"email":    claims.Email,
-				"error":    err,
-			}).Error("Verify account failed to enable user in FreeIPA")
+			slog.Error("Verify account failed to enable user in FreeIPA",
+				"username", claims.Username,
+				"email", claims.Email,
+				"error", err,
+			)
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 		}
 	}
@@ -407,11 +407,11 @@ func (r *Router) verifyLegacyUser(c *fiber.Ctx, claims *Token, token string) err
 
 		_, err = r.adminClient.UserMod(user)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"username": claims.Username,
-				"email":    claims.Email,
-				"error":    err,
-			}).Error("Verify account failed to modify user category in FreeIPA")
+			slog.Error("Verify account failed to modify user category in FreeIPA",
+				"username", claims.Username,
+				"email", claims.Email,
+				"error", err,
+			)
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.failed_to_verify_account"))
 		}
 	}
@@ -426,17 +426,17 @@ func (r *Router) finishAccountVerify(c *fiber.Ctx, claims *Token, user *ipa.User
 
 	err := r.emailer.SendWelcomeEmail(user, c)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to send welcome email")
+		slog.Error("Failed to send welcome email",
+			"err", err,
+			"username", user.Username,
+			"email", user.Email,
+		)
 	}
 
-	log.WithFields(log.Fields{
-		"username": user.Username,
-		"email":    user.Email,
-	}).Info("AUDIT user account verified successfully")
+	slog.Info("AUDIT user account verified successfully",
+		"username", user.Username,
+		"email", user.Email,
+	)
 	r.metrics.totalAccountVerifications.Inc()
 
 	return c.Render("verify-success.html", fiber.Map{
@@ -463,9 +463,9 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 	username := c.FormValue("username")
 
 	if isBlocked(username) {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("Account verify resend attempt for blocked user")
+		slog.Warn("Account verify resend attempt for blocked user",
+			"username", username,
+		)
 		return c.Render("account-verify-forgot-success.html", fiber.Map{})
 	}
 
@@ -477,32 +477,32 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 			if su.Category == UserCategoryUnverified {
 				_ = r.sendVerifyResendEmail(su, c)
 			} else {
-				log.WithFields(log.Fields{
-					"username": username,
-				}).Warnf("Refusing to send account verify email. Invalid staged user category")
+				slog.Warn("Refusing to send account verify email. Invalid staged user category",
+					"username", username,
+				)
 			}
 			return c.Render("account-verify-forgot-success.html", fiber.Map{})
 		}
 	}
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": username,
-			"err":      err,
-		}).Warn("Account verify resend attempt for unknown username")
+		slog.Warn("Account verify resend attempt for unknown username",
+			"username", username,
+			"err", err,
+		)
 		return c.Render("account-verify-forgot-success.html", fiber.Map{})
 	}
 
 	if !user.Locked && !viper.GetBool("accounts.require_admin_verify") {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warn("Account verify resend attempt for active user")
+		slog.Warn("Account verify resend attempt for active user",
+			"username", username,
+		)
 		return c.Render("account-verify-forgot-success.html", fiber.Map{})
 	}
 
 	if user.Category != UserCategoryUnverified {
-		log.WithFields(log.Fields{
-			"username": username,
-		}).Warnf("Refusing to send account verify email. Invalid user category")
+		slog.Warn("Refusing to send account verify email. Invalid user category",
+			"username", username,
+		)
 		return c.Render("account-verify-forgot-success.html", fiber.Map{})
 	}
 
@@ -517,18 +517,18 @@ func (r *Router) AccountVerifyResend(c *fiber.Ctx) error {
 func (r *Router) sendVerifyResendEmail(user *ipa.User, c *fiber.Ctx) error {
 	err := r.emailer.SendAccountVerifyEmail(user, c)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err":      err,
-			"username": user.Username,
-			"email":    user.Email,
-		}).Error("Failed to send verify account email")
+		slog.Error("Failed to send verify account email",
+			"err", err,
+			"username", user.Username,
+			"email", user.Email,
+		)
 		return err
 	}
 
-	log.WithFields(log.Fields{
-		"username": user.Username,
-		"email":    user.Email,
-	}).Info("Verify user account email sent successfully")
+	slog.Info("Verify user account email sent successfully",
+		"username", user.Username,
+		"email", user.Email,
+	)
 	r.metrics.totalAccountVerificationsSent.Inc()
 
 	return nil
@@ -541,9 +541,9 @@ func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
 
 	claims, err := ParseToken(token, TokenEmailChange, r.storage)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Debug("Invalid email change token")
+		slog.Debug("Invalid email change token",
+			"err", err,
+		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
@@ -557,11 +557,11 @@ func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
 
 	user, err := r.adminClient.UserShow(claims.Username)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"username": claims.Username,
-			"email":    claims.Email,
-			"err":      err,
-		}).Error("Email change failed while fetching user from FreeIPA")
+		slog.Error("Email change failed while fetching user from FreeIPA",
+			"username", claims.Username,
+			"email", claims.Email,
+			"err", err,
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
@@ -569,11 +569,11 @@ func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
 	user.Email = claims.Email
 
 	if _, err := r.adminClient.UserMod(user); err != nil {
-		log.WithFields(log.Fields{
-			"username": claims.Username,
-			"email":    claims.Email,
-			"err":      err,
-		}).Error("Email change failed to modify user in FreeIPA")
+		slog.Error("Email change failed to modify user in FreeIPA",
+			"username", claims.Username,
+			"email", claims.Email,
+			"err", err,
+		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
@@ -581,19 +581,19 @@ func (r *Router) EmailChangeConfirm(c *fiber.Ctx) error {
 
 	if oldEmail != "" {
 		if err := r.emailer.SendEmailChangedNotification(oldEmail, user, c); err != nil {
-			log.WithFields(log.Fields{
-				"username": claims.Username,
-				"err":      err,
-			}).Error("Failed to notify old address about email change")
+			slog.Error("Failed to notify old address about email change",
+				"username", claims.Username,
+				"err", err,
+			)
 		}
 	}
 
-	log.WithFields(log.Fields{
-		"username":  claims.Username,
-		"old_email": oldEmail,
-		"new_email": claims.Email,
-		"ip":        RemoteIP(c),
-	}).Info("AUDIT email address changed successfully")
+	slog.Info("AUDIT email address changed successfully",
+		"username", claims.Username,
+		"old_email", oldEmail,
+		"new_email", claims.Email,
+		"ip", RemoteIP(c),
+	)
 
 	return c.Render("email-change-success.html", fiber.Map{})
 }

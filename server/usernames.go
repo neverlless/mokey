@@ -3,13 +3,13 @@ package server
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 
 	valid "github.com/asaskevich/govalidator"
 	"github.com/gofiber/fiber/v2"
 	"github.com/neverlless/goipa"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -129,10 +129,10 @@ func (r *Router) UsernameForgot(c *fiber.Ctx) error {
 
 	users, err := r.adminClient.UserFind(ipa.Options{"mail": email})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"email": email,
-			"err":   err,
-		}).Error("Forgot username failed to search FreeIPA")
+		slog.Error("Forgot username failed to search FreeIPA",
+			"email", email,
+			"err", err,
+		)
 		return c.Render("username-forgot-success.html", fiber.Map{})
 	}
 
@@ -147,19 +147,19 @@ func (r *Router) UsernameForgot(c *fiber.Ctx) error {
 
 	if len(usernames) > 0 {
 		if err := r.emailer.SendUsernameReminderEmail(email, usernames, c); err != nil {
-			log.WithFields(log.Fields{
-				"email": email,
-				"err":   err,
-			}).Error("Failed to send username reminder email")
+			slog.Error("Failed to send username reminder email",
+				"email", email,
+				"err", err,
+			)
 		} else {
-			log.WithFields(log.Fields{
-				"email": email,
-			}).Info("AUDIT Username reminder email sent")
+			slog.Info("AUDIT Username reminder email sent",
+				"email", email,
+			)
 		}
 	} else {
-		log.WithFields(log.Fields{
-			"email": email,
-		}).Info("Forgot username request for unknown email")
+		slog.Info("Forgot username request for unknown email",
+			"email", email,
+		)
 	}
 
 	return c.Render("username-forgot-success.html", fiber.Map{})
