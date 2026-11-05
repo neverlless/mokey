@@ -1,0 +1,65 @@
+name: Packaging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ansible/**"
+      - "packaging/**"
+      - ".copr/**"
+      - "scripts/nfpm/**"
+      - ".github/workflows/packaging.yml"
+  pull_request:
+    paths:
+      - "ansible/**"
+      - "packaging/**"
+      - ".copr/**"
+      - "scripts/nfpm/**"
+      - ".github/workflows/packaging.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ansible-lint:
+    name: Ansible lint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Lint the role
+        working-directory: ansible
+        run: |
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install -q ansible-core==2.22.0 ansible-lint==26.11.0
+          /tmp/venv/bin/ansible-galaxy collection install -r requirements.yml
+          PATH=/tmp/venv/bin:$PATH ansible-lint --offline
+
+  rpm:
+    name: RPM (Fedora)
+    runs-on: ubuntu-24.04
+    container: fedora:43
+    steps:
+      # before checkout, so it clones with git and keeps the tags for the version
+      - name: Install build tools
+        run: dnf -y install git make golang rpm-build dnf-plugins-core systemd
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Build the SRPM
+        run: make -f .copr/Makefile srpm outdir="$PWD/dist/srpm"
+
+      - name: Build the RPM
+        run: |
+          dnf -y builddep dist/srpm/*.src.rpm
+          rpmbuild --rebuild --define "_rpmdir $PWD/dist/rpm" dist/srpm/*.src.rpm
+
+      - name: Install and check
+        run: |
+          dnf -y install dist/rpm/*/mokey-[0-9]*.rpm
+          mokey --version
+          systemd-analyze verify /usr/lib/systemd/system/mokey.service
