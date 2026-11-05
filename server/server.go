@@ -261,6 +261,11 @@ func newFiber() (*fiber.App, *Router, error) {
 		// only honored behind a configured trusted proxy (see RemoteIP)
 		KeyGenerator: RemoteIP,
 		Next: func(c fiber.Ctx) bool {
+			// failed API token checks count, as failed logins do
+			if strings.HasPrefix(c.Path(), "/api/") {
+				return false
+			}
+
 			if c.Method() != fiber.MethodPost {
 				return true
 			}

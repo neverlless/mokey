@@ -160,6 +160,13 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	// Health check (no auth, no CSRF/session - must be registered first)
 	get(app, "/healthz", r.Healthz)
 
+	// Bearer-token JSON API, also ahead of CSRF: no session, no cookie
+	if len(viper.GetStringSlice("api.tokens")) > 0 {
+		get(app, "/api/v1/events", r.RequireAPIToken, r.APIEvents)
+		get(app, "/api/v1/group-requests", r.RequireAPIToken, r.APIGroupRequests)
+		get(app, "/api/v1/otp-recovery", r.RequireAPIToken, r.APIOTPRecovery)
+	}
+
 	// CSRF tokens stored in sessions
 	app.Use(r.CSRF)
 
