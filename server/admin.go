@@ -332,6 +332,15 @@ func (r *Router) AdminUserAction(c fiber.Ctx) error {
 		"ip", RemoteIP(c),
 	)
 
+	// unlock and reset buttons also live in the helpdesk view
+	if view := c.Query("helpdesk"); view != "" {
+		vars := r.adminHelpdeskVars(c, view)
+		if action == "reset" {
+			vars["reset_sent"] = username
+		}
+		return c.Render("admin-helpdesk.html", vars)
+	}
+
 	// approve/deny buttons live in the pending queue; re-render it
 	if action == "approve" || action == "deny" {
 		return r.AdminPendingList(c)

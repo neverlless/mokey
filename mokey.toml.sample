@@ -386,3 +386,7 @@ token = "your-slack-bot-token"
 
 # Additional usernames with admin access regardless of group membership
 # users = ["jdoe"]
+
+# Helpdesk view: list accounts with no successful login for more than this
+# many days as inactive. Needs FreeIPA to record logins (see the docs).
+# inactive_days = 90

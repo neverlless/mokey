@@ -56,6 +56,7 @@ func SetDefaults() {
 	viper.SetDefault("accounts.enable_captcha", true)
 	viper.SetDefault("admin.enabled", false)
 	viper.SetDefault("admin.group", "admins")
+	viper.SetDefault("admin.inactive_days", 90)
 	viper.SetDefault("accounts.single_page_login", false)
 	viper.SetDefault("accounts.hide_invalid_username_error", false)
 	viper.SetDefault("accounts.default_homedir", "/home")
