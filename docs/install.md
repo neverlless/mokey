@@ -117,12 +117,6 @@ reverse proxy (then set `server.trusted_proxies`).
 
 === "Fedora (COPR)"
 
-    !!! note "Coming soon"
-        The `neverlless/mokey` COPR repository is not published yet. Until
-        it is, build the RPM from
-        [packaging/rpm](https://github.com/neverlless/mokey/tree/main/packaging/rpm)
-        or use the rpm from the GitHub release (the "deb / rpm" tab).
-
     ```sh
     sudo dnf copr enable neverlless/mokey
     sudo dnf install mokey
@@ -161,8 +155,8 @@ does steps 1 to 3 on an enrolled Fedora host: it creates the service
 principal, role and privileges with the `freeipa.ansible_freeipa`
 collection, installs the COPR package, fetches the keytab once (it never
 rotates a working one unless asked), writes the config and starts mokey.
-Until the COPR repository is published, set `mokey_install_method: file`
-and `mokey_rpm_file` to an RPM on the controller.
+Without access to COPR, set `mokey_install_method: file` and
+`mokey_rpm_file` to an RPM on the controller.
 
 ```yaml
 - hosts: mokey
