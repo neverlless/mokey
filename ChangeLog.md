@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## [Unreleased]
+## [v2.8.0] - 2026-11-05
 
 - App catalog (`accounts.enable_apps`, off by default, needs Hydra): an
   Apps tab lists the OAuth clients a user can sign in to. Clients limited

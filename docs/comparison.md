@@ -14,7 +14,7 @@ repository and documentation.
 | --- | --- | --- | --- | --- | --- |
 | Language | Go | Go | Python (Flask) | PHP | Java |
 | License | BSD-3-Clause | BSD-3-Clause | MIT | GPL-3.0 | Apache-2.0 |
-| Latest release | v2.7.0, Nov 2026 | v0.6.6, Nov 2025 | v1.11.0, Nov 2025 | v1.8.2, Sep 2026 | 26.8.1, Oct 2026 |
+| Latest release | v2.8.0, Nov 2026 | v0.6.6, Nov 2025 | v1.11.0, Nov 2025 | v1.8.2, Sep 2026 | 26.8.1, Oct 2026 |
 | Last commit | Nov 2026 | Oct 2026 | Aug 2026 | Nov 2026 | Nov 2026 |
 | GitHub stars | 10 | 217 | 147 | 1,349 | 37,685 |
 | Talks to FreeIPA via | JSON-RPC API | JSON-RPC API | JSON-RPC API | LDAP | LDAP, Kerberos |
