@@ -420,8 +420,8 @@ quality credits, so these items are mostly mokey-side work.
 
 ## v2.8 — Integrations
 
-- [ ] Outgoing webhooks for account events, generalizing the Slack notifier
-- [ ] A narrow JSON API for the same events and pending-approval queues
+- [x] Outgoing webhooks for account events, generalizing the Slack notifier
+- [x] A narrow JSON API for the same events and pending-approval queues
 - [x] App catalog: the OAuth clients a user may use, with "request access"
       going through the existing sponsor approval queue
 - [ ] Helpdesk view in the admin panel: expiring, expired, locked and

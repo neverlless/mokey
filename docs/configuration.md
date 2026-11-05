@@ -247,3 +247,25 @@ OAuth2/OIDC. All options unset = disabled.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `token` | string | — | Slack bot token. When set, account-event emails are also delivered to the user as a Slack direct message (matched by email address). |
+
+The Slack bot DMs users their own notifications. To post account events to a
+channel, point a [webhook](#webhooks) with `format = "slack"` at a Slack
+incoming-webhook URL.
+
+## `[[webhooks]]`
+
+POST every audit event to a URL. Repeat the block per target. See
+[Webhooks and JSON API](guides/webhooks-api.md).
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | string | — | **Required.** `http://` or `https://` endpoint. |
+| `secret` | string | — | Shared secret. When set, each request carries `X-Mokey-Timestamp` and an HMAC-SHA256 `X-Mokey-Signature`. |
+| `events` | list | all | Send only events whose message contains one of these strings (case-insensitive), e.g. `["password", "logged in"]`. |
+| `format` | string | — | `"slack"` sends `{"text": "..."}` for Slack incoming webhooks instead of the event JSON. |
+
+## `[api]`
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `tokens` | list | *(empty)* | Bearer tokens for the read-only JSON API under `/api/v1/`. Empty disables the API (its routes return 404). |
