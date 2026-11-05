@@ -241,6 +241,7 @@ OAuth2/OIDC. All options unset = disabled.
 | `enabled` | bool | `false` | Enable the admin panel. Admin routes are always enforced server-side. |
 | `group` | string | `"admins"` | FreeIPA group whose members get admin access. |
 | `users` | list | — | Additional usernames granted admin access regardless of group membership. |
+| `inactive_days` | int | `90` | Helpdesk view: an account with no successful login for more than this many days is listed as inactive. See [Helpdesk view](guides/helpdesk.md). |
 
 ## `[slack]`
 

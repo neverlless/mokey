@@ -1,0 +1,103 @@
+{{ with $.helpdesk_message }}
+<div class="alert alert-danger mx-auto fade show" role="alert">{{ . }}</div>
+{{ else }}
+{{ with $.reset_sent }}
+<div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
+  {{ T "admin.reset_sent" }} <strong>{{ . }}</strong>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+
+<div class="btn-group flex-wrap mb-3" role="group" aria-label="{{ T "admin.helpdesk_title" }}">
+  {{ range $v := $.views }}
+  <button type="button" class="btn btn-outline-secondary btn-sm{{ if eq $v $.view }} active{{ end }}"
+          aria-pressed="{{ if eq $v $.view }}true{{ else }}false{{ end }}"
+          hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+          hx-get="/admin/helpdesk?view={{ $v }}" hx-target="#admin-helpdesk">
+    {{ T (printf "admin.helpdesk_view_%s" $v) }}
+    {{ if or (ne $v "inactive") $.last_login_tracked }}<span class="badge text-bg-light ms-1">{{ index $.counts $v }}</span>{{ end }}
+  </button>
+  {{ end }}
+</div>
+
+<p class="small text-muted">
+  {{ if eq $.view "expiring" }}{{ printf (T "admin.helpdesk_help_expiring") $.expiring_days }}
+  {{ else if eq $.view "inactive" }}{{ printf (T "admin.helpdesk_help_inactive") $.inactive_days }}
+  {{ else }}{{ T (printf "admin.helpdesk_help_%s" $.view) }}{{ end }}
+</p>
+
+{{ if $.truncated }}
+<div class="alert alert-warning" role="status">{{ T "admin.helpdesk_truncated" }}</div>
+{{ end }}
+
+{{ if and (eq $.view "inactive") (not $.last_login_tracked) }}
+<div class="alert alert-info" role="status">
+  {{ T "admin.helpdesk_inactive_untracked" }}
+  <code class="d-block mt-2">ipa config-mod --delattr ipaconfigstring="KDC:Disable Last Success"</code>
+</div>
+{{ else }}
+<div class="table-responsive">
+<table class="table table-sm align-middle">
+  <caption class="visually-hidden">{{ T (printf "admin.helpdesk_view_%s" $.view) }}</caption>
+  <thead>
+    <tr>
+      <th scope="col">{{ T "common.username" }}</th>
+      <th scope="col">{{ T "common.email" }}</th>
+      <th scope="col">{{ T (printf "admin.helpdesk_date_%s" $.view) }}</th>
+      <th scope="col"><span class="visually-hidden">{{ T "admin.helpdesk_status" }}</span></th>
+      <th scope="col" class="text-end"><span class="visually-hidden">{{ T "admin.pending_actions" }}</span></th>
+    </tr>
+  </thead>
+  <tbody>
+  {{ range $r := $.rows }}
+    <tr>
+      <td>
+        <strong>{{ $r.Username }}</strong>
+        <div class="small text-muted">{{ $r.Name }}</div>
+      </td>
+      <td>{{ $r.Email }}</td>
+      <td class="text-nowrap">
+        <time datetime="{{ $r.Date.UTC.Format "2006-01-02T15:04:05Z" }}">{{ $r.Date.Format "2006-01-02" }}</time>
+        <div class="small text-muted">{{ TimeAgo $r.Date }}</div>
+      </td>
+      <td>{{ if $r.Disabled }}<span class="badge bg-danger">{{ T "admin.blocked" }}</span>{{ end }}</td>
+      <td class="text-end">
+        {{ if eq $.view "locked" }}
+        <button type="button" class="btn btn-outline-secondary btn-sm" title="{{ T "admin.unlock_help" }}"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $r.Username }}"}'
+                hx-post="/admin/user/unlock?helpdesk={{ $.view }}" hx-target="#admin-helpdesk">
+          <i class="fa fa-unlock" aria-hidden="true"></i> {{ T "admin.unlock" }}
+        </button>
+        {{ else if eq $.view "inactive" }}
+        {{ if not $r.Disabled }}
+        <button type="button" class="btn btn-outline-danger btn-sm"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $r.Username }}"}'
+                hx-post="/admin/user/block?helpdesk={{ $.view }}" hx-target="#admin-helpdesk"
+                hx-confirm="{{ T "admin.block_confirm" }}">
+          {{ T "admin.block" }}
+        </button>
+        {{ end }}
+        {{ else if $r.Email }}
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $r.Username }}"}'
+                hx-post="/admin/user/reset?helpdesk={{ $.view }}" hx-target="#admin-helpdesk"
+                hx-confirm="{{ T "admin.reset_confirm" }}">
+          {{ T "admin.reset_password" }}
+        </button>
+        {{ end }}
+      </td>
+    </tr>
+  {{ else }}
+    <tr><td colspan="5" class="text-center text-muted">{{ T "admin.helpdesk_empty" }}</td></tr>
+  {{ end }}
+  </tbody>
+</table>
+</div>
+{{ if gt $.total $.row_limit }}
+<p class="small text-muted">{{ T "admin.showing_first" }} {{ $.row_limit }} / {{ $.total }}</p>
+{{ end }}
+{{ end }}
+{{ end }}

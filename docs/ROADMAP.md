@@ -424,7 +424,7 @@ quality credits, so these items are mostly mokey-side work.
 - [x] A narrow JSON API for the same events and pending-approval queues
 - [x] App catalog: the OAuth clients a user may use, with "request access"
       going through the existing sponsor approval queue
-- [ ] Helpdesk view in the admin panel: expiring, expired, locked and
+- [x] Helpdesk view in the admin panel: expiring, expired, locked and
       inactive accounts
 - [ ] Ansible role (service account, role, keytab, config) and an RPM in
       Fedora COPR

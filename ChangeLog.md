@@ -15,6 +15,11 @@
   queue. Off by default
 - Audit log entries now keep their sequence number, level and redacted
   attributes
+- Helpdesk view in the admin panel: accounts whose password expires soon or
+  has expired, accounts locked out by failed logins and inactive accounts,
+  with unlock, password reset and block from the list. New option
+  `admin.inactive_days` (default 90). Inactive accounts need FreeIPA to
+  record logins, which it does not by default; the view says so
 
 ## [v2.7.0] - 2026-11-04
 
