@@ -67,6 +67,7 @@ nav:
       - Group self-service: guides/groups.md
       - Access page (HBAC and sudo): guides/access.md
       - App catalog: guides/app-catalog.md
+      - Webhooks and JSON API: guides/webhooks-api.md
   - Companion mode:
       - Next to any OIDC provider: companion/oidc-provider.md
       - Next to Keycloak (SAML broker): keycloak.md

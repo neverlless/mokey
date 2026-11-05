@@ -352,6 +352,29 @@ driver = "memory"
 token = "your-slack-bot-token"
 
 #------------------------------------------------------------------------------
+# Webhooks: POST audit events (logins, password/OTP/passkey/SSH key changes,
+# signups, group requests, admin actions) to a URL. Repeat per target.
+#------------------------------------------------------------------------------
+# [[webhooks]]
+# url = "https://hooks.example.com/mokey"
+# Sign requests: X-Mokey-Signature = sha256=HMAC(secret, timestamp + "." + body)
+# secret = "change-me"
+# Only events whose message contains one of these (case-insensitive)
+# events = ["password", "logged in"]
+#
+# A Slack channel, through a Slack incoming webhook
+# [[webhooks]]
+# url = "https://hooks.slack.com/services/T000/B000/XXXX"
+# format = "slack"
+
+#------------------------------------------------------------------------------
+# Read-only JSON API under /api/v1/ (events, pending group requests, OTP
+# recovery queue). Disabled while no token is set.
+#------------------------------------------------------------------------------
+[api]
+# tokens = ["long-random-string"]
+
+#------------------------------------------------------------------------------
 # Admin panel
 #------------------------------------------------------------------------------
 [admin]

@@ -6,6 +6,15 @@
   Apps tab lists the OAuth clients a user can sign in to. Clients limited
   to a sponsored group get "Request access", which queues a join request
   for the sponsors like the Groups tab does
+- Outgoing webhooks: `[[webhooks]]` POSTs every audit event as JSON, signed
+  with HMAC-SHA256 when a `secret` is set, filtered by `events`. Delivery is
+  asynchronous with retries; secrets in event fields are redacted
+- `format = "slack"` turns a webhook into a Slack incoming-webhook post
+- Read-only JSON API under `/api/v1/` with bearer tokens (`api.tokens`):
+  audit events by sequence cursor, pending group requests, the OTP recovery
+  queue. Off by default
+- Audit log entries now keep their sequence number, level and redacted
+  attributes
 
 ## [v2.7.0] - 2026-11-04
 
