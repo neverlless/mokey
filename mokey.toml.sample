@@ -349,7 +349,8 @@ driver = "memory"
 # Slack
 #------------------------------------------------------------------------------
 [slack]
-token = "your-slack-bot-token"
+# Bot token; any value turns Slack messages on
+# token = "your-slack-bot-token"
 
 #------------------------------------------------------------------------------
 # Webhooks: POST audit events (logins, password/OTP/passkey/SSH key changes,
