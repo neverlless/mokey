@@ -27,8 +27,9 @@
   once (`mokey_rotate_keytab` to rotate), templated config, service
 - The systemd unit shipped in the deb/rpm packages is hardened
   (`ProtectSystem=strict`, empty capability set, syscall filter, ...) and
-  restarts on failure. Only `/var/lib/mokey` is writable: keep a `sqlite3`
-  database there
+  restarts on failure
+- **Upgrade:** with the deb/rpm unit only `/var/lib/mokey` is writable;
+  move a `sqlite3` database kept elsewhere there
 - `mokey.toml.sample` no longer sets a placeholder Slack token, which
   turned Slack messages on for anyone who copied the file
 - Install guide: on hosts running sssd, mokey must use the canonical
