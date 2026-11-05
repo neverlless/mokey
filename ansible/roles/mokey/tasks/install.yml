@@ -1,0 +1,32 @@
+---
+- name: COPR repository
+  ansible.builtin.yum_repository:
+    name: "copr_{{ mokey_copr_project | replace('/', '_') }}"
+    description: "Copr repo for {{ mokey_copr_project }}"
+    baseurl: "https://download.copr.fedorainfracloud.org/results/{{ mokey_copr_project }}/fedora-$releasever-$basearch/"
+    gpgkey: "https://download.copr.fedorainfracloud.org/results/{{ mokey_copr_project }}/pubkey.gpg"
+    gpgcheck: true
+    repo_gpgcheck: false
+  when: mokey_install_method == 'copr'
+
+- name: Install mokey from COPR
+  ansible.builtin.dnf:
+    name: mokey
+    state: present
+  when: mokey_install_method == 'copr'
+  notify: Restart mokey
+
+- name: Copy the RPM
+  ansible.builtin.copy:
+    src: "{{ mokey_rpm_file }}"
+    dest: "/var/tmp/{{ mokey_rpm_file | basename }}"
+    mode: "0644"
+  when: mokey_install_method == 'file'
+
+- name: Install mokey from the RPM
+  ansible.builtin.dnf:
+    name: "/var/tmp/{{ mokey_rpm_file | basename }}"
+    state: present
+    disable_gpg_check: true # a local build is not signed
+  when: mokey_install_method == 'file'
+  notify: Restart mokey

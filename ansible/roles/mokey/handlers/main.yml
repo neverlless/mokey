@@ -1,0 +1,7 @@
+---
+- name: Restart mokey
+  ansible.builtin.systemd_service:
+    name: mokey
+    state: restarted
+    daemon_reload: true
+  when: mokey_service_state == 'started'

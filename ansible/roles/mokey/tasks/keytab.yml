@@ -1,0 +1,56 @@
+---
+- name: Keytab directory
+  ansible.builtin.file:
+    path: "{{ mokey_keytab | dirname }}"
+    state: directory
+    owner: root
+    group: mokey
+    mode: "0750"
+
+- name: Check the keytab
+  ansible.builtin.command:
+    cmd: klist -k {{ mokey_keytab | quote }}
+  register: mokey_klist
+  changed_when: false
+  failed_when: false
+
+- name: Decide whether to fetch a keytab
+  ansible.builtin.set_fact:
+    mokey_fetch_keytab: >-
+      {{ mokey_rotate_keytab | bool or mokey_klist.rc != 0 or
+         (' ' ~ mokey_ktuser ~ '@') not in mokey_klist.stdout }}
+
+- name: Check the admin password
+  ansible.builtin.assert:
+    that: mokey_ipa_admin_password | length > 0
+    fail_msg: "{{ mokey_keytab }} has no key for {{ mokey_ktuser }}; set mokey_ipa_admin_password to fetch one."
+    quiet: true
+  when: mokey_fetch_keytab
+
+- name: Fetch a keytab with ipa-getkeytab
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      KRB5CCNAME=$(mktemp -u /tmp/krb5cc_mokey_XXXXXX)
+      export KRB5CCNAME
+      trap 'kdestroy -q || true' EXIT
+      kinit -- "$MOKEY_IPA_ADMIN" >/dev/null
+      ipa-getkeytab ${MOKEY_IPA_SERVER:+-s "$MOKEY_IPA_SERVER"} -p "$MOKEY_KT_PRINCIPAL" -k "$MOKEY_KEYTAB"
+    executable: /bin/bash
+    stdin: "{{ mokey_ipa_admin_password }}"
+  environment:
+    MOKEY_IPA_ADMIN: "{{ mokey_ipa_admin_principal }}"
+    MOKEY_IPA_SERVER: "{{ mokey_ipa_server }}"
+    MOKEY_KT_PRINCIPAL: "{{ mokey_ktuser }}"
+    MOKEY_KEYTAB: "{{ mokey_keytab }}"
+  when: mokey_fetch_keytab
+  changed_when: true
+  no_log: true # stdin is the admin password
+  notify: Restart mokey
+
+- name: Keytab permissions
+  ansible.builtin.file:
+    path: "{{ mokey_keytab }}"
+    owner: root
+    group: mokey
+    mode: "0640"

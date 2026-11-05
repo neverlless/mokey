@@ -1,0 +1,148 @@
+---
+argument_specs:
+  main:
+    short_description: Install mokey and set up its FreeIPA service account, role and keytab
+    description:
+      - Creates the mokey service principal, the Mokey User Manager role and its
+        privileges in FreeIPA, installs the mokey RPM, fetches a keytab once,
+        writes /etc/mokey/mokey.toml and starts the service.
+      - The mokey host must be enrolled in FreeIPA (ipa-client-install).
+    options:
+      mokey_manage_ipa:
+        type: bool
+        default: true
+        description: Create the FreeIPA objects. Turn off when an IPA admin does that by hand.
+      mokey_ipa_server:
+        type: str
+        default: ""
+        description: FreeIPA server for ipa-getkeytab. Empty reads it from /etc/ipa/default.conf.
+      mokey_ipa_admin_principal:
+        type: str
+        default: admin
+        description: FreeIPA principal that creates the objects and fetches the keytab.
+      mokey_ipa_admin_password:
+        type: str
+        default: ""
+        no_log: true
+        description:
+          - Password of mokey_ipa_admin_principal. Keep it in Ansible Vault.
+          - Needed when mokey_manage_ipa is on or a keytab has to be fetched.
+      mokey_ipa_delegate_to:
+        type: str
+        default: ""
+        description: Inventory host that runs the FreeIPA-side tasks (needs ipalib). Empty means the mokey host.
+      mokey_ipa_host:
+        type: str
+        default: "{{ ansible_facts['fqdn'] }}"
+        description: Host part of the service principal.
+      mokey_service_principal:
+        type: str
+        default: mokey/{{ mokey_ipa_host }}
+        description: Service principal mokey signs in as.
+      mokey_principal_alias:
+        type: str
+        default: mokey/mokey
+        description: Alias added to the service principal, as in the manual setup; empty for none.
+      mokey_ipa_role:
+        type: str
+        default: Mokey User Manager
+        description: FreeIPA role that grants mokey its privileges.
+      mokey_ipa_upg_privilege:
+        type: str
+        default: Mokey UPG Read
+        description: Privilege created to read the UPG definition.
+      mokey_ipa_extra_privileges:
+        type: list
+        elements: str
+        default: []
+        description: More privileges for the role, e.g. Stage User Administrators for accounts.staged_signup.
+      mokey_install_method:
+        type: str
+        choices: [copr, file, none]
+        default: copr
+        description: Install the RPM from COPR, from mokey_rpm_file, or not at all.
+      mokey_copr_project:
+        type: str
+        default: neverlless/mokey
+        description: COPR project as owner/name.
+      mokey_rpm_file:
+        type: path
+        default: ""
+        description: RPM on the controller for mokey_install_method=file.
+      mokey_keytab:
+        type: path
+        default: /etc/mokey/private/mokeyapp.keytab
+        description: Keytab path; site.keytab in the config.
+      mokey_ktuser:
+        type: str
+        default: "{{ mokey_service_principal }}"
+        description:
+          - Principal stored in the keytab; site.ktuser in the config.
+          - Keep the canonical name. On hosts running sssd the alias fails to log in.
+      mokey_rotate_keytab:
+        type: bool
+        default: false
+        description:
+          - Fetch a new keytab even if a valid one exists. ipa-getkeytab makes a new
+            key, which invalidates the keytab on every other host using this principal.
+      mokey_site_name:
+        type: str
+        default: Identity Management
+        description: site.name
+      mokey_listen:
+        type: str
+        default: 0.0.0.0:8866
+        description: server.listen
+      mokey_email_from:
+        type: str
+        default: ""
+        description: email.from
+      mokey_base_url:
+        type: str
+        default: ""
+        description: email.base_url, the public URL used in emailed links.
+      mokey_smtp_host:
+        type: str
+        default: localhost
+        description: email.smtp_host
+      mokey_smtp_port:
+        type: int
+        default: 25
+        description: email.smtp_port
+      mokey_smtp_tls:
+        type: str
+        choices: ["off", "on", starttls]
+        default: "off"
+        description: email.smtp_tls
+      mokey_token_secret:
+        type: str
+        required: true
+        no_log: true
+        description: email.token_secret, 64 hex characters (openssl rand -hex 32). Keep it in Ansible Vault.
+      mokey_csrf_secret:
+        type: str
+        required: true
+        no_log: true
+        description: server.csrf_secret. Keep it in Ansible Vault.
+      mokey_storage_driver:
+        type: str
+        choices: [memory, sqlite3, redis]
+        default: sqlite3
+        description: storage.driver; configure redis through mokey_config_extra.
+      mokey_sqlite_path:
+        type: path
+        default: /var/lib/mokey/mokey.db
+        description: storage.sqlite3.dbpath; must be under /var/lib/mokey, the only place the service may write.
+      mokey_config_extra:
+        type: dict
+        default: {}
+        description: Merged recursively over the generated config. Any key from the configuration reference.
+      mokey_service_enabled:
+        type: bool
+        default: true
+        description: Enable mokey at boot.
+      mokey_service_state:
+        type: str
+        choices: [started, stopped]
+        default: started
+        description: State of the mokey service.

@@ -1,0 +1,53 @@
+---
+- name: Check required variables
+  ansible.builtin.assert:
+    that:
+      - mokey_token_secret is match('^[0-9a-fA-F]{64}$')
+      - mokey_csrf_secret | length > 0
+      - mokey_install_method != 'file' or mokey_rpm_file | length > 0
+      - not mokey_manage_ipa or mokey_ipa_admin_password | length > 0
+    fail_msg: >-
+      Set mokey_token_secret (64 hex characters) and mokey_csrf_secret,
+      mokey_rpm_file when mokey_install_method is "file", and
+      mokey_ipa_admin_password when mokey_manage_ipa is on.
+    quiet: true
+
+- name: Set up the FreeIPA side
+  ansible.builtin.include_tasks: ipa.yml
+  when: mokey_manage_ipa | bool
+
+- name: Install mokey
+  ansible.builtin.include_tasks: install.yml
+  when: mokey_install_method != 'none'
+
+- name: Fetch the keytab
+  ansible.builtin.include_tasks: keytab.yml
+
+- name: Write /etc/mokey/mokey.toml
+  ansible.builtin.template:
+    src: mokey.toml.j2
+    dest: /etc/mokey/mokey.toml
+    owner: root
+    group: mokey
+    mode: "0640"
+  diff: false # secrets
+  notify: Restart mokey
+
+- name: Enable and start mokey
+  ansible.builtin.systemd_service:
+    name: mokey
+    enabled: "{{ mokey_service_enabled }}"
+    state: "{{ mokey_service_state }}"
+
+- name: Restart mokey if needed
+  ansible.builtin.meta: flush_handlers
+
+# mokey signs in to FreeIPA before it listens, so this also checks the keytab
+- name: Wait for mokey to listen
+  ansible.builtin.wait_for:
+    host: "{{ _host if _host not in ['', '0.0.0.0', '::'] else '127.0.0.1' }}"
+    port: "{{ mokey_listen.rsplit(':', 1)[1] | int }}"
+    timeout: 30
+  vars:
+    _host: "{{ mokey_listen.rsplit(':', 1)[0] | trim('[]') }}"
+  when: mokey_service_state == 'started'

@@ -1,0 +1,87 @@
+---
+# Same objects as docs/install.md step 1 and examples/demo/seed.sh. Members
+# are added, never removed, so privileges granted by hand stay.
+- name: FreeIPA objects for mokey
+  delegate_to: "{{ mokey_ipa_delegate_to or inventory_hostname }}"
+  block:
+    - name: Host of the service principal
+      freeipa.ansible_freeipa.ipahost:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_service_principal.split('/')[1] }}"
+        force: true
+
+    - name: Service principal
+      freeipa.ansible_freeipa.ipaservice:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_service_principal }}"
+        force: true
+
+    - name: Principal alias
+      freeipa.ansible_freeipa.ipaservice:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_service_principal }}"
+        principal: ["{{ mokey_principal_alias }}"]
+        action: member
+      when: mokey_principal_alias | length > 0
+
+    - name: Privilege to read the UPG definition
+      freeipa.ansible_freeipa.ipaprivilege:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_ipa_upg_privilege }}"
+        description: Read UPG definition
+
+    - name: UPG privilege permission
+      freeipa.ansible_freeipa.ipaprivilege:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_ipa_upg_privilege }}"
+        permission: ["System: Read UPG Definition"]
+        action: member
+
+    - name: Role
+      freeipa.ansible_freeipa.iparole:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_ipa_role }}"
+        description: Mokey User management
+
+    - name: Role privileges and service
+      freeipa.ansible_freeipa.iparole:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_ipa_role }}"
+        privilege: "{{ ['User Administrators', 'Password Policy Readers', mokey_ipa_upg_privilege] + mokey_ipa_extra_privileges }}"
+        service: ["{{ mokey_service_principal }}"]
+        action: member
+
+    # ipapermission cannot change a managed permission's included attributes
+    - name: Let User Administrators set ipauserauthtype
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          KRB5CCNAME=$(mktemp -u /tmp/krb5cc_mokey_XXXXXX)
+          export KRB5CCNAME
+          trap 'kdestroy -q || true' EXIT
+          kinit -- "$MOKEY_IPA_ADMIN" >/dev/null
+          perm='System: Modify Users'
+          shown=$(ipa permission-show "$perm" --all --raw)
+          if grep -qi '^ *ipapermincludedattr: ipauserauthtype$' <<<"$shown"; then
+            echo unchanged
+          else
+            # --includedattrs replaces the list, so pass the current entries too
+            args=(--includedattrs=ipauserauthtype)
+            while read -r a; do args+=(--includedattrs="$a"); done < <(sed -n 's/^ *ipapermincludedattr: //Ip' <<<"$shown")
+            ipa permission-mod "$perm" "${args[@]}" >/dev/null
+            echo changed
+          fi
+        executable: /bin/bash
+        stdin: "{{ mokey_ipa_admin_password }}"
+      environment:
+        MOKEY_IPA_ADMIN: "{{ mokey_ipa_admin_principal }}"
+      register: mokey_perm
+      changed_when: mokey_perm.stdout == 'changed'
+      no_log: true # stdin is the admin password
