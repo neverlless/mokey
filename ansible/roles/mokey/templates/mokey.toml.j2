@@ -1,0 +1,34 @@
+{# JSON scalars and arrays of scalars are valid TOML values #}
+{% macro table(prefix, d) %}
+{% for k, v in d.items() if v is not mapping %}
+{{ k }} = {{ v | to_json }}
+{% endfor %}
+{% for k, v in d.items() if v is mapping %}
+
+[{{ prefix ~ k }}]
+{{ table(prefix ~ k ~ '.', v) }}
+{%- endfor %}
+{% endmacro %}
+{% set base = {
+  'site': {
+    'name': mokey_site_name,
+    'ktuser': mokey_ktuser,
+    'keytab': mokey_keytab,
+  },
+  'email': {
+    'from': mokey_email_from,
+    'base_url': mokey_base_url,
+    'token_secret': mokey_token_secret,
+    'smtp_host': mokey_smtp_host,
+    'smtp_port': mokey_smtp_port,
+    'smtp_tls': mokey_smtp_tls,
+  },
+  'server': {
+    'listen': mokey_listen,
+    'csrf_secret': mokey_csrf_secret,
+  },
+  'storage': {'driver': mokey_storage_driver} | combine(
+    {'sqlite3': {'dbpath': mokey_sqlite_path}} if mokey_storage_driver == 'sqlite3' else {}),
+} %}
+# {{ ansible_managed }}
+{{ table('', base | combine(mokey_config_extra, recursive=True)) }}

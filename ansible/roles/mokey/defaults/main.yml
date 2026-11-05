@@ -1,0 +1,53 @@
+---
+# FreeIPA side: service principal, role and privileges
+mokey_manage_ipa: true
+mokey_ipa_server: ""
+mokey_ipa_admin_principal: admin
+# Put it in Ansible Vault. Needed for the FreeIPA side and to fetch a keytab.
+mokey_ipa_admin_password: ""
+# Host that runs the FreeIPA-side tasks; it needs ipalib (any enrolled client
+# or a server). Empty runs them on the mokey host itself.
+mokey_ipa_delegate_to: ""
+mokey_ipa_host: "{{ ansible_facts['fqdn'] }}"
+mokey_service_principal: "mokey/{{ mokey_ipa_host }}"
+mokey_principal_alias: mokey/mokey
+mokey_ipa_role: Mokey User Manager
+mokey_ipa_upg_privilege: Mokey UPG Read
+# e.g. ["Stage User Administrators"] for accounts.staged_signup,
+# "Subordinate ID Administrators" for accounts.enable_subid
+mokey_ipa_extra_privileges: []
+
+# Package: copr, file (an RPM on the controller) or none
+mokey_install_method: copr
+mokey_copr_project: neverlless/mokey
+mokey_rpm_file: ""
+
+mokey_keytab: /etc/mokey/private/mokeyapp.keytab
+# Principal in the keytab and site.ktuser. Not the alias: sssd sets
+# canonicalize = true on enrolled hosts, the KDC then answers with the
+# canonical name, and mokey's Kerberos library rejects that reply.
+mokey_ktuser: "{{ mokey_service_principal }}"
+# ipa-getkeytab makes a new key and invalidates every older keytab, so the
+# role fetches one only when the keytab is missing or lacks the principal.
+mokey_rotate_keytab: false
+
+# Config
+mokey_site_name: Identity Management
+mokey_listen: "0.0.0.0:8866"
+mokey_email_from: ""
+mokey_base_url: ""
+mokey_smtp_host: localhost
+mokey_smtp_port: 25
+mokey_smtp_tls: "off"
+# Both secrets are required; put them in Ansible Vault.
+# token_secret: 64 hex characters (openssl rand -hex 32)
+mokey_token_secret: ""
+mokey_csrf_secret: ""
+mokey_storage_driver: sqlite3
+mokey_sqlite_path: /var/lib/mokey/mokey.db
+# Merged over the generated config, e.g.
+#   mokey_config_extra: {accounts: {enable_signup: false}, server: {trusted_proxies: ["10.0.0.1"]}}
+mokey_config_extra: {}
+
+mokey_service_enabled: true
+mokey_service_state: started

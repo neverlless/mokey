@@ -1,0 +1,4 @@
+---
+collections:
+  - name: freeipa.ansible_freeipa
+    version: ">=1.11.0"
