@@ -6,8 +6,10 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 )
 
@@ -43,6 +45,9 @@ type fakeHydra struct {
 	revokedSubjects  []string               // DELETE sessions/login subjects
 	revokedConsents  []revokedConsent       // DELETE sessions/consent calls
 	rememberDuration int64
+	// OAuth2 clients served by /admin/clients, clientsPage per page
+	clients     []map[string]interface{}
+	clientsPage int
 }
 
 func newFakeHydra() *fakeHydra {
@@ -64,6 +69,7 @@ func newFakeHydra() *fakeHydra {
 	mux.HandleFunc("/admin/oauth2/auth/requests/logout/accept", f.acceptLogout)
 	mux.HandleFunc("/admin/oauth2/auth/sessions/login", f.revokeSessions)
 	mux.HandleFunc("/admin/oauth2/auth/sessions/consent", f.consentSessionsHandler)
+	mux.HandleFunc("/admin/clients", f.listClients)
 
 	f.srv = httptest.NewServer(mux)
 	return f
@@ -256,4 +262,24 @@ func (f *fakeHydra) consentSessionsHandler(w http.ResponseWriter, r *http.Reques
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func (f *fakeHydra) seedClient(client map[string]interface{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.clients = append(f.clients, client)
+}
+
+// listClients pages like Hydra: page_token is an offset here, the next
+// page is announced in the Link header
+func (f *fakeHydra) listClients(w http.ResponseWriter, r *http.Request) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	start, _ := strconv.Atoi(r.URL.Query().Get("page_token"))
+	end := len(f.clients)
+	if f.clientsPage > 0 && start+f.clientsPage < end {
+		end = start + f.clientsPage
+		w.Header().Set("Link", fmt.Sprintf(`</admin/clients?page_size=%d&page_token=%d>; rel="next"`, f.clientsPage, end))
+	}
+	writeJSON(w, f.clients[start:end])
 }

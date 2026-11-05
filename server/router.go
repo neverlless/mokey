@@ -181,6 +181,13 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 		app.Post("/access/test", r.RequireLogin, r.RequireHTMX, r.AccessTest)
 	}
 
+	if viper.GetBool("accounts.enable_apps") && viper.IsSet("hydra.admin_url") {
+		get(app, "/apps", r.RequireLogin, r.Index)
+		if viper.GetBool("accounts.enable_groups") {
+			app.Post("/apps/request", r.RequireLogin, r.RequireHTMX, r.AppRequest)
+		}
+	}
+
 	// Subordinate IDs
 	if viper.GetBool("accounts.enable_subid") {
 		app.Post("/subid/generate", r.RequireLogin, r.RequireHTMX, r.SubidGenerate)
@@ -326,6 +333,10 @@ func (r *Router) Index(c fiber.Ctx) error {
 
 	if path == "access" {
 		r.accessVars(c, vars)
+	}
+
+	if path == "apps" {
+		r.appsVars(c, vars)
 	}
 
 	if path == "password" {

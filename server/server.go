@@ -51,6 +51,7 @@ func SetDefaults() {
 	viper.SetDefault("accounts.staged_signup", false)
 	viper.SetDefault("accounts.enable_groups", true)
 	viper.SetDefault("accounts.enable_access", true)
+	viper.SetDefault("accounts.enable_apps", false)
 	viper.SetDefault("accounts.enable_subid", false)
 	viper.SetDefault("accounts.enable_captcha", true)
 	viper.SetDefault("admin.enabled", false)

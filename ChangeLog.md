@@ -1,5 +1,12 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- App catalog (`accounts.enable_apps`, off by default, needs Hydra): an
+  Apps tab lists the OAuth clients a user can sign in to. Clients limited
+  to a sponsored group get "Request access", which queues a join request
+  for the sponsors like the Groups tab does
+
 ## [v2.7.0] - 2026-11-04
 
 - Redis over TLS with a private CA: `storage.redis.ca_file`, and

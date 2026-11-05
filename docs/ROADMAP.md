@@ -422,7 +422,7 @@ quality credits, so these items are mostly mokey-side work.
 
 - [ ] Outgoing webhooks for account events, generalizing the Slack notifier
 - [ ] A narrow JSON API for the same events and pending-approval queues
-- [ ] App catalog: the OAuth clients a user may use, with "request access"
+- [x] App catalog: the OAuth clients a user may use, with "request access"
       going through the existing sponsor approval queue
 - [ ] Helpdesk view in the admin panel: expiring, expired, locked and
       inactive accounts

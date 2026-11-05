@@ -53,6 +53,12 @@
 						{{ T "access.tab" }}
 					</a>
 					{{ end }}
+					{{ if and (ConfigValueBool "accounts.enable_apps") (ConfigValueString "hydra.admin_url") }}
+					<a class="nav-link{{ if eq $.path "apps" }} active{{end}}" id="apps-tab" href="/apps" role="tab">
+						<i class="fa fa-table-cells-large text-center me-1"></i>
+						{{ T "apps.tab" }}
+					</a>
+					{{ end }}
 					{{ if $.is_admin }}
 					<a class="nav-link{{ if eq $.path "admin" }} active{{end}}" id="admin-tab" href="/admin" role="tab">
 						<i class="fa fa-users-gear text-center me-1"></i>
@@ -97,6 +103,10 @@
                 {{ else if eq $.path "access" }}
 				<div class="tab-pane fade show active" id="access" role="tabpanel" aria-labelledby="access-tab">
                     {{ template "access-list.html" . }}
+                </div>
+                {{ else if eq $.path "apps" }}
+				<div class="tab-pane fade show active" id="apps" role="tabpanel" aria-labelledby="apps-tab">
+                    {{ template "apps-list.html" . }}
                 </div>
                 {{ else if eq $.path "admin" }}
 				<div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">

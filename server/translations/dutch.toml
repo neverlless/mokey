@@ -594,6 +594,18 @@ denied_part1 = "Toegang geweigerd: u kunt niet inloggen op "
 denied_part2 = " via "
 denied_part3 = "."
 matched_rules = "Overeenkomende regels"
+[apps]
+tab = "Apps"
+title = "Apps"
+hint = "Applicaties waarbij u inlogt met uw account. Vraag toegang aan tot de applicaties waarvoor een groepslidmaatschap nodig is."
+available = "Beschikbaar"
+pending = "Aanvraag in behandeling"
+request = "Toegang aanvragen"
+requestable_hint = "Vereist lidmaatschap van"
+pending_hint = "Wacht op een sponsor van"
+none = "Er zijn geen applicaties voor u beschikbaar"
+not_requestable = "Voor deze applicatie kan geen toegang worden aangevraagd"
+
 [duration]
 now = "nu"
 ago = "%s geleden"

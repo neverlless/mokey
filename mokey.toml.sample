@@ -78,6 +78,11 @@ enable_groups = true
 # "can I log into host X?" simulator.
 enable_access = true
 
+# Show the Apps tab: the Hydra OAuth clients the user can sign in to, and
+# "Request access" for clients limited to a group with a member manager.
+# Needs [hydra] admin_url. Default: false.
+# enable_apps = false
+
 # Show username and password on a single login page instead of the two-step
 # flow (username, then password on a separate page). Users with Two-Factor
 # Authentication enter their password followed by the OTP code in the
