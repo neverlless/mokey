@@ -118,15 +118,26 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 // GroupRequestJoin queues a join request for a managed group and notifies
 // its sponsors
 func (r *Router) GroupRequestJoin(c fiber.Ctx) error {
+	if ferr := r.requestJoin(c, c.FormValue("group")); ferr != nil {
+		return c.Status(ferr.Code).SendString(ferr.Message)
+	}
+
+	vars := fiber.Map{"user": r.user(c)}
+	r.groupsVars(c, vars)
+	return c.Render("groups-list.html", vars)
+}
+
+// requestJoin queues the caller's join request and notifies the sponsors;
+// shared by the Groups and Apps pages
+func (r *Router) requestJoin(c fiber.Ctx, groupName string) *fiber.Error {
 	user := r.user(c)
-	groupName := c.FormValue("group")
 
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil || !g.Managed() {
-		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))
+		return fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.not_joinable"))
 	}
 	if user.HasGroup(g.Name) {
-		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.already_member"))
+		return fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.already_member"))
 	}
 
 	if r.addGroupRequest(g.Name, user.Username, groupRequestJoin) {
@@ -138,10 +149,7 @@ func (r *Router) GroupRequestJoin(c fiber.Ctx) error {
 
 		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestJoin) })
 	}
-
-	vars := fiber.Map{"user": user}
-	r.groupsVars(c, vars)
-	return c.Render("groups-list.html", vars)
+	return nil
 }
 
 // GroupRequestLeave queues a leave request for a group the user belongs to

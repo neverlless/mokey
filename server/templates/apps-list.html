@@ -1,0 +1,44 @@
+<div id="apps-pane">
+<h3 class="mb-2">{{ T "apps.title" }}</h3>
+<p class="text-muted mb-4">{{ T "apps.hint" }}</p>
+
+{{ if $.apps_error }}
+<div class="alert alert-danger">{{ T "account.fatal_system_error" }}</div>
+{{ else if $.apps }}
+<div class="card">
+  <ul class="list-group list-group-flush">
+    {{ range $a := $.apps }}
+    <li class="list-group-item d-flex w-100 justify-content-between align-items-center gap-3">
+      <div>
+        {{ if and (eq $a.State "available") $a.URI }}
+        <a href="{{ $a.URI }}" class="fw-bold" rel="noopener noreferrer">{{ $a.Name }}</a>
+        {{ else }}
+        <strong>{{ $a.Name }}</strong>
+        {{ end }}
+        {{ if eq $a.State "pending" }}
+        <div class="text-muted small">{{ T "apps.pending_hint" }} <span class="badge rounded-pill bg-secondary">{{ $a.Group }}</span></div>
+        {{ else if eq $a.State "requestable" }}
+        <div class="text-muted small">{{ T "apps.requestable_hint" }} <span class="badge rounded-pill bg-dark">{{ $a.Group }}</span></div>
+        {{ end }}
+      </div>
+      {{ if eq $a.State "available" }}
+      <span class="badge bg-success">{{ T "apps.available" }}</span>
+      {{ else if eq $a.State "pending" }}
+      <span class="badge bg-secondary">{{ T "apps.pending" }}</span>
+      {{ else }}
+      <button class="btn btn-sm btn-primary text-nowrap" hx-post="/apps/request"
+              hx-vals='{"client": "{{ $a.ClientID }}"}'
+              hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+              hx-target="#apps-pane" hx-swap="outerHTML"
+              aria-label="{{ T "apps.request" }}: {{ $a.Name }}">
+        {{ T "apps.request" }}
+      </button>
+      {{ end }}
+    </li>
+    {{ end }}
+  </ul>
+</div>
+{{ else }}
+<p class="text-muted">{{ T "apps.none" }}</p>
+{{ end }}
+</div>

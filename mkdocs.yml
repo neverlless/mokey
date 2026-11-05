@@ -66,6 +66,7 @@ nav:
       - OIDC / SSO with Ory Hydra: guides/oidc-hydra.md
       - Group self-service: guides/groups.md
       - Access page (HBAC and sudo): guides/access.md
+      - App catalog: guides/app-catalog.md
   - Companion mode:
       - Next to any OIDC provider: companion/oidc-provider.md
       - Next to Keycloak (SAML broker): keycloak.md

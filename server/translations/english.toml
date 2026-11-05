@@ -595,6 +595,18 @@ denied_part2 = " via "
 denied_part3 = "."
 matched_rules = "Matched rules"
 
+[apps]
+tab = "Apps"
+title = "Apps"
+hint = "Applications that sign in with your account. Ask for access to the ones that need a group membership."
+available = "Available"
+pending = "Request pending"
+request = "Request access"
+requestable_hint = "Needs membership in"
+pending_hint = "Waiting for a sponsor of"
+none = "No applications are available to you"
+not_requestable = "Access to this application cannot be requested"
+
 [duration]
 now = "now"
 ago = "%s ago"
