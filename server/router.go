@@ -52,9 +52,14 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 		lock:    newStoreLock(storage),
 	}
 
-	slog.SetDefault(slog.New(NewAuditHandler(NewLogHandler(os.Stderr), storage)))
+	hooks, err := newWebhooks()
+	if err != nil {
+		return nil, err
+	}
+	audit := NewAuditHandler(NewLogHandler(os.Stderr), storage)
+	audit.hooks = hooks
+	slog.SetDefault(slog.New(audit))
 
-	var err error
 	r.adminClient, err = newIPAClient()
 	if err != nil {
 		return nil, err

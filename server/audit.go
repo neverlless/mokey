@@ -30,11 +30,14 @@ const (
 )
 
 type AuditEvent struct {
-	Time     time.Time `json:"time"`
-	Message  string    `json:"message"`
-	Username string    `json:"username,omitempty"`
-	Actor    string    `json:"actor,omitempty"`
-	IP       string    `json:"ip,omitempty"`
+	Seq      int64             `json:"seq"`
+	Time     time.Time         `json:"time"`
+	Level    string            `json:"level,omitempty"`
+	Message  string            `json:"message"`
+	Username string            `json:"username,omitempty"`
+	Actor    string            `json:"actor,omitempty"`
+	IP       string            `json:"ip,omitempty"`
+	Attrs    map[string]string `json:"attrs,omitempty"`
 }
 
 // AuditHandler wraps the default slog handler and copies every AUDIT record
@@ -43,6 +46,7 @@ type AuditHandler struct {
 	slog.Handler
 	storage fiber.Storage
 	lock    *storeLock
+	hooks   *webhooks
 	attrs   []slog.Attr
 }
 
@@ -71,18 +75,23 @@ func (h *AuditHandler) Handle(ctx context.Context, r slog.Record) error {
 	// Info and above: failed logins are logged as AUDIT errors and belong in
 	// the trail
 	if r.Level >= slog.LevelInfo && strings.HasPrefix(r.Message, "AUDIT") {
-		if err := h.record(r); err != nil {
+		event, err := h.record(r)
+		if err != nil {
 			slog.Error("Failed to store audit event", "err", err)
 		}
+		h.hooks.send(event)
 	}
 	return h.Handler.Handle(ctx, r)
 }
 
-func (h *AuditHandler) record(r slog.Record) error {
+// record stores the event and returns it; attrs leave here already
+// redacted, as they also go to the API and webhooks.
+func (h *AuditHandler) record(r slog.Record) (AuditEvent, error) {
 	data := map[string]string{}
 	add := func(a slog.Attr) bool {
-		if a.Value.Kind() == slog.KindString {
-			data[a.Key] = a.Value.String()
+		a = redactAttr(nil, a)
+		if v := a.Value.Resolve(); v.Kind() != slog.KindGroup {
+			data[a.Key] = v.String()
 		}
 		return true
 	}
@@ -93,10 +102,12 @@ func (h *AuditHandler) record(r slog.Record) error {
 
 	event := AuditEvent{
 		Time:     r.Time,
-		Message:  strings.TrimSpace(strings.TrimPrefix(r.Message, "AUDIT")),
+		Level:    r.Level.String(),
+		Message:  redactURLs(strings.TrimSpace(strings.TrimPrefix(r.Message, "AUDIT"))),
 		Username: data["username"],
 		Actor:    data["admin"],
 		IP:       data["ip"],
+		Attrs:    data,
 	}
 	if v := data["invited_by"]; v != "" {
 		event.Actor = v
@@ -105,16 +116,17 @@ func (h *AuditHandler) record(r slog.Record) error {
 		event.Username = data["email"]
 	}
 
-	b, err := json.Marshal(event)
-	if err != nil {
-		return nil
-	}
-
 	seq, err := h.lock.incr(auditSeqKey)
 	if err != nil {
-		return err
+		return event, err
 	}
-	return h.storage.Set(fmt.Sprintf("%s%d", auditEntryKey, seq%auditRingSize), b, auditRetention)
+	event.Seq = seq
+
+	b, err := json.Marshal(event)
+	if err != nil {
+		return event, nil
+	}
+	return event, h.storage.Set(fmt.Sprintf("%s%d", auditEntryKey, seq%auditRingSize), b, auditRetention)
 }
 
 // auditRecent returns up to n most recent audit events, newest first.
@@ -158,6 +170,40 @@ func auditUserRecent(storage fiber.Storage, username string, n int) []AuditEvent
 			continue
 		}
 		if e.Username == username || e.Actor == username {
+			events = append(events, e)
+		}
+	}
+
+	return events
+}
+
+// auditAfter returns up to n events with seq > after, oldest first. Events
+// that dropped out of the ring are skipped. A cursor ahead of the counter
+// (memory storage restarted) starts over from the oldest event.
+func auditAfter(storage fiber.Storage, after int64, n int) []AuditEvent {
+	seq := int64(0)
+	if raw, _ := storage.Get(auditSeqKey); raw != nil {
+		seq, _ = strconv.ParseInt(string(raw), 10, 64)
+	}
+	if after > seq || after < 0 {
+		after = 0
+	}
+
+	events := make([]AuditEvent, 0, n)
+	for i := max(after, seq-auditRingSize) + 1; i <= seq && len(events) < n; i++ {
+		raw, _ := storage.Get(fmt.Sprintf("%s%d", auditEntryKey, i%auditRingSize))
+		if raw == nil {
+			continue
+		}
+		var e AuditEvent
+		if json.Unmarshal(raw, &e) != nil {
+			continue
+		}
+		// entries written before v2.8 carry no seq
+		if e.Seq == 0 {
+			e.Seq = i
+		}
+		if e.Seq == i {
 			events = append(events, e)
 		}
 	}
