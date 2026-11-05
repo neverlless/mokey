@@ -20,6 +20,19 @@
   with unlock, password reset and block from the list. New option
   `admin.inactive_days` (default 90). Inactive accounts need FreeIPA to
   record logins, which it does not by default; the view says so
+- RPM spec for Fedora COPR (`packaging/rpm`, `.copr/Makefile`): built
+  offline from a vendored source tarball, `mokey` user from sysusers.d
+- Ansible role (`ansible/roles/mokey`): FreeIPA service principal, role
+  and privileges via `freeipa.ansible_freeipa`, RPM install, keytab fetched
+  once (`mokey_rotate_keytab` to rotate), templated config, service
+- The systemd unit shipped in the deb/rpm packages is hardened
+  (`ProtectSystem=strict`, empty capability set, syscall filter, ...) and
+  restarts on failure. Only `/var/lib/mokey` is writable: keep a `sqlite3`
+  database there
+- `mokey.toml.sample` no longer sets a placeholder Slack token, which
+  turned Slack messages on for anyone who copied the file
+- Install guide: on hosts running sssd, mokey must use the canonical
+  `mokey/<fqdn>` principal; the `mokey/mokey` alias fails to log in there
 
 ## [v2.7.0] - 2026-11-04
 

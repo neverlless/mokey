@@ -426,8 +426,8 @@ quality credits, so these items are mostly mokey-side work.
       going through the existing sponsor approval queue
 - [x] Helpdesk view in the admin panel: expiring, expired, locked and
       inactive accounts
-- [ ] Ansible role (service account, role, keytab, config) and an RPM in
-      Fedora COPR
+- [x] Ansible role (service account, role, keytab, config) and an RPM spec
+      for Fedora COPR (the COPR project itself is still to be created)
 
 ## Waiting for demand
 

@@ -1,8 +1,8 @@
 # Install mokey for FreeIPA
 
 This page covers trying mokey in a throwaway FreeIPA, then installing it
-against your own FreeIPA with Kubernetes (Helm), a container or a Linux
-package.
+against your own FreeIPA with Kubernetes (Helm), a container, a Linux
+package or Ansible.
 
 ## Requirements
 
@@ -60,6 +60,13 @@ chgrp mokey /etc/mokey/private/mokeyapp.keytab
 kdestroy
 ```
 
+On a host enrolled in FreeIPA, where sssd runs, fetch the keytab for the
+canonical name instead, `-p mokey/$(hostname -f)`, and set `site.ktuser` to
+it: sssd turns on Kerberos name canonicalization, and mokey then cannot log
+in with the `mokey/mokey` alias.
+
+The [Ansible role](#ansible) does all of this step for you.
+
 The guides list which of these privileges each feature relies on. Features
 that act with the signed-in user's own FreeIPA session (OTP tokens, passkeys,
 group approvals, the Access page) need no extra privilege.
@@ -108,6 +115,22 @@ reverse proxy (then set `server.trusted_proxies`).
     Images exist for linux/amd64 and linux/arm64, signed with cosign. See
     [examples/production/docker-compose.yml](https://github.com/neverlless/mokey/blob/main/examples/production/docker-compose.yml).
 
+=== "Fedora (COPR)"
+
+    ```sh
+    sudo dnf copr enable neverlless/mokey
+    sudo dnf install mokey
+    sudo systemctl enable --now mokey
+    ```
+
+    The package runs mokey as the `mokey` user under a hardened systemd unit,
+    reads `/etc/mokey/mokey.toml` and expects the keytab in
+    `/etc/mokey/private/`. Only `/var/lib/mokey` is writable for the
+    service, so put a `sqlite3` database there. The host must already be
+    enrolled in FreeIPA.
+    [packaging/rpm](https://github.com/neverlless/mokey/tree/main/packaging/rpm)
+    describes the package.
+
 === "deb / rpm"
 
     Download a package from the
@@ -123,6 +146,26 @@ reverse proxy (then set `server.trusted_proxies`).
 Releases are signed; the
 [README](https://github.com/neverlless/mokey#verifying-releases) shows how to
 verify checksums, SBOMs, provenance and container signatures.
+
+## Ansible
+
+The role in
+[ansible/roles/mokey](https://github.com/neverlless/mokey/tree/main/ansible/roles/mokey)
+does steps 1 to 3 on an enrolled Fedora host: it creates the service
+principal, role and privileges with the `freeipa.ansible_freeipa`
+collection, installs the COPR package, fetches the keytab once (it never
+rotates a working one unless asked), writes the config and starts mokey.
+
+```yaml
+- hosts: mokey
+  vars_files: [vault.yml]   # mokey_token_secret, mokey_csrf_secret, mokey_ipa_admin_password
+  vars:
+    mokey_email_from: id@example.com
+    mokey_base_url: https://id.example.com
+  roles: [mokey]
+```
+
+Its README lists every variable.
 
 ## Running more than one replica
 
