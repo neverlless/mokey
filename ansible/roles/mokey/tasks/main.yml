@@ -5,7 +5,7 @@
       - mokey_token_secret is match('^[0-9a-fA-F]{64}$')
       - mokey_csrf_secret | length > 0
       - mokey_install_method != 'file' or mokey_rpm_file | length > 0
-      - not mokey_manage_ipa or mokey_ipa_admin_password | length > 0
+      - not mokey_manage_ipa | bool or mokey_ipa_admin_password | length > 0
     fail_msg: >-
       Set mokey_token_secret (64 hex characters) and mokey_csrf_secret,
       mokey_rpm_file when mokey_install_method is "file", and
