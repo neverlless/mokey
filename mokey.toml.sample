@@ -339,7 +339,7 @@ driver = "memory"
 # "0" disables the sweep. Default: "1h".
 # consent_sweep_interval = "1h"
 
-# Limit an OAuth client to members of FreeIPA groups (direct membership,
+# Limit an OAuth client to members of FreeIPA groups (nested groups count,
 # names compared case-insensitively). Repeat the block per client.
 # [[hydra.clients]]
 # client_id = "lubelogger"
