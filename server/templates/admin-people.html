@@ -1,0 +1,42 @@
+{{  with $.message }}
+<div class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
+  {{ . }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+{{  with $.invite_sent }}
+<div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
+  {{ T "admin.invite_sent" }} <strong>{{ . }}</strong>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+<div id="admin-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
+</div>
+
+<h1 class="mb-4">{{ T "admin.people_title" }}</h1>
+
+<h2 class="mokey-section-title mb-2">{{ T "admin.invite_title" }}</h2>
+<div class="mokey-card mb-4">
+  <form class="mokey-row">
+    <label for="invite-email" class="visually-hidden">{{ T "common.email" }}</label>
+    <input id="invite-email" type="email" class="form-control" name="email" placeholder="user@example.com">
+    <button class="btn btn-primary text-nowrap" type="button" hx-target-error="admin-failed"
+            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+            data-hx-include="#invite-email"
+            data-hx-target="#admin" data-hx-post="/admin/invite">
+      <i class="fa fa-envelope" aria-hidden="true"></i> {{ T "admin.invite_button" }}
+    </button>
+  </form>
+</div>
+
+<h2 class="mokey-section-title mb-2">{{ T "admin.users_title" }}</h2>
+<label for="user-search" class="visually-hidden">{{ T "admin.search" }}</label>
+<input id="user-search" type="search" class="form-control mb-3" name="search"
+       placeholder="{{ T "admin.search_placeholder" }}"
+       hx-get="/admin/users" hx-target="#admin-users"
+       hx-trigger="input changed delay:300ms, search"
+       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+<div class="mokey-card">
+  <div id="admin-users" hx-get="/admin/users" hx-trigger="load"
+       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
+</div>

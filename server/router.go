@@ -255,6 +255,8 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	// SSH Keys
 	// Admin
 	get(app, "/admin", r.RequireLogin, r.Index)
+	get(app, "/admin/people", r.RequireLogin, r.Index)
+	get(app, "/admin/log", r.RequireLogin, r.Index)
 	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
 	get(app, "/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
 	get(app, "/admin/pending", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminPendingList)
@@ -379,7 +381,7 @@ func (r *Router) Index(c fiber.Ctx) error {
 	}
 	expiryWarningVars(user, vars)
 
-	if path == "admin" && !isAdmin(user) {
+	if strings.HasPrefix(path, "admin") && !isAdmin(user) {
 		return c.Status(fiber.StatusForbidden).SendString("")
 	}
 

@@ -1,68 +1,22 @@
-{{  with $.message }}
-<div class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
-  {{ . }}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
-</div>
-{{ end }}
-{{  with $.invite_sent }}
-<div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
-  {{ T "admin.invite_sent" }} <strong>{{ . }}</strong>
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
-</div>
-{{ end }}
-<div id="admin-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
-</div>
-
-<h3 class="mb-4">{{ T "admin.title" }}</h3>
-
-<h5>{{ T "admin.invite_title" }}</h5>
-<form>
-<div class="row">
-	<div class="col-md-8">
-        <label for="invite-email" class="form-label">{{ T "common.email" }}</label>
-		<div class="mb-3">
-			<div class="input-group">
-				<input id="invite-email" type="email" class="form-control" name="email" placeholder="user@example.com">
-				<button class="btn btn-primary" type="button" hx-target-error="admin-failed"
-						hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-						data-hx-include="#invite-email"
-						data-hx-target="#admin" data-hx-post="/admin/invite">
-					<i class="fa fa-envelope"></i> {{ T "admin.invite_button" }}
-				</button>
-			</div>
-		</div>
-	</div>
-</div>
-</form>
+<h1 class="mb-1">{{ T "admin.requests_title" }}</h1>
+<p class="text-muted mb-4">{{ T "admin.requests_body" }}</p>
 
 {{ if ConfigValueBool "accounts.require_admin_verify" }}
-<h5 class="mt-4">{{ T "admin.pending_title" }}</h5>
-<div id="admin-pending" hx-get="/admin/pending" hx-trigger="load"
-     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
+<h2 class="mokey-section-title mb-2">{{ T "admin.pending_title" }}</h2>
+<div class="mokey-card p-3 mb-4">
+  <div id="admin-pending" hx-get="/admin/pending" hx-trigger="load"
+       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
+</div>
 {{ end }}
 
-<h5 class="mt-4">{{ T "admin.otprecovery_title" }}</h5>
-<div id="admin-otprecovery" hx-get="/admin/otprecovery" hx-trigger="load"
-     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
-
-<h5 class="mt-4">{{ T "admin.helpdesk_title" }}</h5>
-<div id="admin-helpdesk" hx-get="/admin/helpdesk" hx-trigger="load"
-     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
-
-<h5 class="mt-4">{{ T "admin.users_title" }}</h5>
-<div class="row">
-	<div class="col-md-8">
-        <label for="user-search" class="form-label">{{ T "admin.search" }}</label>
-		<input id="user-search" type="search" class="form-control mb-3" name="search"
-		       placeholder="{{ T "admin.search_placeholder" }}"
-		       hx-get="/admin/users" hx-target="#admin-users"
-		       hx-trigger="input changed delay:300ms, search"
-		       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
-	</div>
+<h2 class="mokey-section-title mb-2">{{ T "admin.otprecovery_title" }}</h2>
+<div class="mokey-card p-3 mb-4">
+  <div id="admin-otprecovery" hx-get="/admin/otprecovery" hx-trigger="load"
+       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
 </div>
-<div id="admin-users" hx-get="/admin/users" hx-trigger="load"
-     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
 
-<h5 class="mt-4">{{ T "admin.audit_title" }}</h5>
-<div id="admin-audit" hx-get="/admin/audit" hx-trigger="load"
-     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
+<h2 class="mokey-section-title mb-2">{{ T "admin.helpdesk_title" }}</h2>
+<div class="mokey-card p-3">
+  <div id="admin-helpdesk" hx-get="/admin/helpdesk" hx-trigger="load"
+       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
+</div>

@@ -531,6 +531,11 @@ freeipa_remove_failed = "Failed to remove the passkey from FreeIPA."
 rp_display_name = "Identity Management"
 
 [admin]
+requests_title = "Requests"
+requests_body = "Approvals, recovery requests and locked or inactive accounts that need a hand."
+people_title = "People"
+log_title = "Audit log"
+row_actions = "Actions for %s"
 unlock = "Clear lockout"
 pending_title = "Pending approval"
 pending_name = "Name"

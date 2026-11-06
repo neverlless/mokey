@@ -52,6 +52,14 @@
 <div id="admin">
 {{ template "admin.html" . }}
 </div>
+{{ else if eq $.path "admin/people" }}
+<div id="admin">
+{{ template "admin-people.html" . }}
+</div>
+{{ else if eq $.path "admin/log" }}
+<div id="admin">
+{{ template "admin-log.html" . }}
+</div>
 {{ end }}
 </main>
 </div>
