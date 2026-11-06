@@ -1,4 +1,7 @@
-# mokey vs ubccr/mokey, noggin, LTB Self Service Password and Keycloak
+---
+title: "mokey vs ubccr/mokey, noggin, LTB Self Service Password and Keycloak"
+description: "How mokey compares with ubccr/mokey, noggin, LTB Self Service Password and Keycloak for FreeIPA self-service."
+---
 
 People looking for a FreeIPA self-service portal usually end up comparing
 these five options. This page says what each one is, where each is better

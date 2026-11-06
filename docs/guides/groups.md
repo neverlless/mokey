@@ -1,4 +1,7 @@
-# FreeIPA group self-service with sponsor approval
+---
+title: "FreeIPA group self-service with sponsor approval"
+description: "Let FreeIPA group sponsors approve membership requests."
+---
 
 In FreeIPA, a group can have *member managers*: users or groups allowed to
 add and remove members without being administrators. mokey turns that into a

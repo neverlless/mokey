@@ -1,4 +1,7 @@
-# App catalog of OAuth clients with access requests
+---
+title: "App catalog of OAuth clients with access requests"
+description: "Show users the OAuth clients they can sign in to and let them request access."
+---
 
 With mokey as the login and consent app for [Ory Hydra](oidc-hydra.md), the
 **Apps** tab shows each user the OAuth clients they can sign in to, and lets

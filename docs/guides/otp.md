@@ -1,4 +1,7 @@
-# FreeIPA OTP token self-enrollment (TOTP two-factor authentication)
+---
+title: "FreeIPA OTP token self-enrollment (TOTP two-factor authentication)"
+description: "Let FreeIPA users enroll TOTP tokens themselves and recover from a lost one."
+---
 
 FreeIPA supports OTP two-factor authentication, but users normally need the
 FreeIPA Web UI or an administrator to add a token. mokey lets users enroll

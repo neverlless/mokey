@@ -1,4 +1,7 @@
-# Webhooks and JSON API
+---
+title: "Webhooks and JSON API"
+description: "Send mokey audit events to webhooks and read them over the JSON API."
+---
 
 mokey writes an audit event for every account change: logins and failed
 logins, password changes and resets, OTP token, passkey and SSH key changes,

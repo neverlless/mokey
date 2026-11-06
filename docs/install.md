@@ -1,4 +1,7 @@
-# Install mokey for FreeIPA
+---
+title: "Install mokey for FreeIPA"
+description: "Try mokey against a throwaway FreeIPA, then install it with Helm, a container, the COPR package, deb/rpm or Ansible."
+---
 
 This page covers trying mokey in a throwaway FreeIPA, then installing it
 against your own FreeIPA with Kubernetes (Helm), a container, a Linux
@@ -28,9 +31,9 @@ at <http://localhost:8025>. The demo also has `alice`, the sponsor of the
 [examples/demo](https://github.com/neverlless/mokey/tree/main/examples/demo)
 lists what to try, how to reset it and which Docker runtimes work.
 
-!!! warning
-    The demo's passwords and secrets are fixed and public. Never expose it or
-    reuse its config.
+> [!WARNING]
+> The demo's passwords and secrets are fixed and public. Never expose it or
+> reuse its config.
 
 ## 1. Create the service account in FreeIPA
 
@@ -91,57 +94,57 @@ reverse proxy (then set `server.trusted_proxies`).
 
 ## 3. Run it
 
-=== "Kubernetes (Helm)"
+### Kubernetes (Helm)
 
-    ```sh
-    kubectl create secret generic mokey-config --from-file=mokey.toml
-    kubectl create secret generic mokey-keytab --from-file=mokeyapp.keytab
-    helm install mokey oci://ghcr.io/neverlless/charts/mokey \
-      --set existingConfigSecret=mokey-config \
-      --set existingKeytabSecret=mokey-keytab
-    ```
+```sh
+kubectl create secret generic mokey-config --from-file=mokey.toml
+kubectl create secret generic mokey-keytab --from-file=mokeyapp.keytab
+helm install mokey oci://ghcr.io/neverlless/charts/mokey \
+  --set existingConfigSecret=mokey-config \
+  --set existingKeytabSecret=mokey-keytab
+```
 
-    The chart is versioned with mokey; add `--version X.Y.Z` to pin it. Its
-    `ipa.enroll` mode enrolls the container itself, but rotates the keytab on
-    every start and so supports one replica only. See the
-    [chart README](https://github.com/neverlless/mokey/tree/main/charts/mokey).
+The chart is versioned with mokey; add `--version X.Y.Z` to pin it. Its
+`ipa.enroll` mode enrolls the container itself, but rotates the keytab on
+every start and so supports one replica only. See the
+[chart README](https://github.com/neverlless/mokey/tree/main/charts/mokey).
 
-=== "Container"
+### Container
 
-    ```sh
-    docker pull ghcr.io/neverlless/mokey:latest
-    ```
+```sh
+docker pull ghcr.io/neverlless/mokey:latest
+```
 
-    Images exist for linux/amd64 and linux/arm64, signed with cosign. See
-    [examples/production/docker-compose.yml](https://github.com/neverlless/mokey/blob/main/examples/production/docker-compose.yml).
+Images exist for linux/amd64 and linux/arm64, signed with cosign. See
+[examples/production/docker-compose.yml](https://github.com/neverlless/mokey/blob/main/examples/production/docker-compose.yml).
 
-=== "Fedora (COPR)"
+### Fedora (COPR)
 
-    ```sh
-    sudo dnf copr enable neverlless/mokey
-    sudo dnf install mokey
-    sudo systemctl enable --now mokey
-    ```
+```sh
+sudo dnf copr enable neverlless/mokey
+sudo dnf install mokey
+sudo systemctl enable --now mokey
+```
 
-    The package runs mokey as the `mokey` user under a hardened systemd unit,
-    reads `/etc/mokey/mokey.toml` and expects the keytab in
-    `/etc/mokey/private/`. Only `/var/lib/mokey` is writable for the
-    service, so put a `sqlite3` database there. The host must already be
-    enrolled in FreeIPA.
-    [packaging/rpm](https://github.com/neverlless/mokey/tree/main/packaging/rpm)
-    describes the package.
+The package runs mokey as the `mokey` user under a hardened systemd unit,
+reads `/etc/mokey/mokey.toml` and expects the keytab in
+`/etc/mokey/private/`. Only `/var/lib/mokey` is writable for the
+service, so put a `sqlite3` database there. The host must already be
+enrolled in FreeIPA.
+[packaging/rpm](https://github.com/neverlless/mokey/tree/main/packaging/rpm)
+describes the package.
 
-=== "deb / rpm"
+### deb / rpm
 
-    Download a package from the
-    [releases page](https://github.com/neverlless/mokey/releases), then:
+Download a package from the
+[releases page](https://github.com/neverlless/mokey/releases), then:
 
-    ```sh
-    sudo dpkg -i mokey_VERSION_amd64.deb      # or: sudo rpm -ivh mokey-VERSION-amd64.rpm
-    sudo systemctl enable --now mokey
-    ```
+```sh
+sudo dpkg -i mokey_VERSION_amd64.deb      # or: sudo rpm -ivh mokey-VERSION-amd64.rpm
+sudo systemctl enable --now mokey
+```
 
-    The host must already be enrolled in FreeIPA.
+The host must already be enrolled in FreeIPA.
 
 Releases are signed; the
 [README](https://github.com/neverlless/mokey#verifying-releases) shows how to

@@ -1,4 +1,7 @@
-# FreeIPA self-service user signup (registration portal)
+---
+title: "FreeIPA self-service user signup (registration portal)"
+description: "Let people create their own FreeIPA accounts, with email confirmation and optional admin approval."
+---
 
 FreeIPA has no public registration page. mokey adds one: people create their
 own FreeIPA account, confirm their email address, and optionally wait for an
