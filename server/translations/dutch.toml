@@ -388,6 +388,7 @@ security = "Beveiliging"
 ssh_keys = "SSH-sleutels"
 
 [nav]
+main = "Hoofdmenu"
 group_account = "Uw account"
 group_access = "Toegang"
 group_admin = "Beheer"

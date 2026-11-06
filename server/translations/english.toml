@@ -388,6 +388,7 @@ security = "Security"
 ssh_keys = "SSH Keys"
 
 [nav]
+main = "Main"
 group_account = "Your account"
 group_access = "Access"
 group_admin = "Administration"

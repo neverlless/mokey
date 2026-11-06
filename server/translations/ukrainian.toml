@@ -388,6 +388,7 @@ security = "Безпека"
 ssh_keys = "SSH-ключі"
 
 [nav]
+main = "Основне"
 group_account = "Ваш обліковий запис"
 group_access = "Доступ"
 group_admin = "Адміністрування"
