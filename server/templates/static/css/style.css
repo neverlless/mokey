@@ -633,41 +633,45 @@ h1,
 .mokey-main {
 	flex: 1;
 	width: 100%;
-	max-width: 852px;
+	max-width: 1152px;
 	padding: 76px 16px 24px;
-}
-.mokey-main.is-wide {
-	max-width: 992px;
 }
 .mokey-foot {
 	width: 100%;
-	max-width: 852px;
+	max-width: 1152px;
 	padding: 0 16px;
 }
-.mokey-foot.is-wide {
-	max-width: 992px;
+.mokey-main p {
+	max-width: 70ch;
 }
 html {
 	scroll-padding-top: 64px;
 }
 @media (min-width: 992px) {
 	.mokey-main {
-		max-width: 916px;
+		max-width: 1216px;
 		padding: 40px 48px 64px;
-	}
-	.mokey-main.is-wide {
-		max-width: 1056px;
 	}
 	html {
 		scroll-padding-top: 0;
 	}
 	.mokey-foot {
-		max-width: 916px;
+		max-width: 1216px;
 		padding: 0 48px;
 	}
-	.mokey-foot.is-wide {
-		max-width: 1056px;
+}
+.mokey-split {
+	display: grid;
+	gap: 0 24px;
+	align-items: start;
+}
+@media (min-width: 1400px) {
+	.mokey-split {
+		grid-template-columns: 3fr 2fr;
 	}
+}
+.mokey-split > * {
+	min-width: 0;
 }
 .mokey-back {
 	display: inline-block;
@@ -997,3 +1001,4 @@ i.mokey-dial-flag {
 		padding: 10px 12px;
 	}
 }
+

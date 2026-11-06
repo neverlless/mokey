@@ -1,5 +1,5 @@
 
-<div class="{{ if $.shell }}mokey-foot{{ if or (eq $.section "admin") (eq $.section "people") (eq $.section "log") }} is-wide{{ end }}{{ else }}container mokey-page-foot{{ end }}">
+<div class="{{ if $.shell }}mokey-foot{{ else }}container mokey-page-foot{{ end }}">
   <footer class="d-flex flex-wrap justify-content-between align-items-center py-3 my-4 border-top">
     <p class="col-md-4 mb-0 text-muted">
         {{ with ConfigValueString "site.homepage" }}

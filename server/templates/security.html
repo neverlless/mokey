@@ -14,6 +14,8 @@
 <h1 class="mb-1">{{ T "nav.security" }}</h1>
 <p class="text-muted mb-4">{{ T "security.subtitle" }}</p>
 
+<div class="mokey-split">
+<div>
 <div class="mokey-card mb-4">
   <div class="mokey-row">
     <span class="mokey-tile {{ if eq $.security_state "protected" }}is-ok{{ else }}is-warn{{ end }}" aria-hidden="true"><i class="fa {{ if eq $.security_state "protected" }}fa-shield{{ else }}fa-exclamation-triangle{{ end }}"></i></span>
@@ -127,7 +129,8 @@
     {{ end }}
   </div>
 </div>
-
+</div>
+<div>
 <div class="d-flex w-100 justify-content-between align-items-center mb-2">
   <h2 class="mokey-section-title">{{ T "security.sessions_title" }}</h2>
   {{ if gt (len $.sessions) 1 }}
@@ -200,4 +203,6 @@
   {{ else }}
   <div class="mokey-row text-muted">{{ T "security.no_activity" }}</div>
   {{ end }}
+</div>
+</div>
 </div>
