@@ -42,3 +42,39 @@ pre.mermaid svg {
 	flex-shrink: 0;
 }
 
+
+/* Mermaid is rendered once with the light palette; recolour it for the dark theme. */
+:root[data-theme='dark'] pre.mermaid svg {
+	.node rect,
+	.node polygon,
+	.node circle,
+	.cluster rect {
+		fill: #1b2540 !important;
+		stroke: #6f96e8 !important;
+	}
+	.nodeLabel,
+	.nodeLabel p,
+	.label text,
+	.edgeLabel,
+	.edgeLabel p,
+	.cluster-label span {
+		color: #e7ebf1 !important;
+		fill: #e7ebf1 !important;
+	}
+	.edgeLabel,
+	.edgeLabel p,
+	.edgeLabel rect,
+	.labelBkg {
+		background-color: #0f1318 !important;
+		fill: #0f1318 !important;
+	}
+	.flowchart-link,
+	.edge-pattern-solid {
+		stroke: #a0a9b8 !important;
+	}
+	.arrowheadPath,
+	.marker {
+		fill: #a0a9b8 !important;
+		stroke: #a0a9b8 !important;
+	}
+}

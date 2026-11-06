@@ -14,7 +14,26 @@ export default defineConfig({
 		processor: satteri({ mdastPlugins: [githubAlerts(), mdLinks(base)] }),
 	},
 	integrations: [
-		mermaid({ autoTheme: true, enableLog: false, mermaidConfig: { fontFamily: 'IBM Plex Sans, sans-serif', flowchart: { useMaxWidth: false } } }),
+		mermaid({
+			// One 'base' theme with the light palette; the dark palette is plain CSS in brand.css, so no re-render on toggle.
+			theme: 'base',
+			autoTheme: false,
+			enableLog: false,
+			mermaidConfig: {
+				fontFamily: 'IBM Plex Sans, sans-serif',
+				flowchart: { useMaxWidth: false },
+				themeVariables: {
+					primaryColor: '#e8eefb',
+					primaryTextColor: '#141a26',
+					primaryBorderColor: '#2453b3',
+					lineColor: '#5a6477',
+					secondaryColor: '#e8eefb',
+					tertiaryColor: '#f4f6f9',
+					textColor: '#141a26',
+					edgeLabelBackground: '#ffffff',
+				},
+			},
+		}),
 		starlight({
 			title: 'mokey',
 			description: 'Self-service account management portal for FreeIPA / Red Hat IdM',
