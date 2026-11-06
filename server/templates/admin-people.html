@@ -1,20 +1,20 @@
-{{  with $.message }}
-<div class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
-  {{ . }}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
-</div>
-{{ end }}
 {{  with $.invite_sent }}
 <div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
   {{ T "admin.invite_sent" }} <strong>{{ . }}</strong>
   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
 </div>
 {{ end }}
-<div id="admin-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
-</div>
 
 <h1 class="mb-4">{{ T "admin.people_title" }}</h1>
 
+{{  with $.message }}
+<div class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
+  {{ . }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+<div id="admin-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
+</div>
 <h2 class="mokey-section-title mb-2">{{ T "admin.invite_title" }}</h2>
 <div class="mokey-card mb-4">
   <form class="mokey-row">
