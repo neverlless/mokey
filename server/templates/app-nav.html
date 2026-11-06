@@ -1,0 +1,48 @@
+<div class="mokey-topbar d-lg-none">
+	<button type="button" class="mokey-menu-btn" data-bs-toggle="offcanvas" data-bs-target="#app-nav" aria-controls="app-nav" aria-label="{{ T "nav.open_menu" }}">
+		<i class="fa fa-bars" aria-hidden="true"></i>
+	</button>
+	<a class="mokey-brand" href="/">{{ with ConfigValueString "site.logo" }}<img src="/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ ConfigValueString "site.name" }}{{ end }}</a>
+	<span class="mokey-avatar" aria-hidden="true">{{ $.initials }}</span>
+</div>
+
+<div class="offcanvas-lg offcanvas-start mokey-sidebar" tabindex="-1" id="app-nav">
+	<div class="offcanvas-header d-lg-none">
+		<button type="button" class="btn-close ms-auto" data-bs-dismiss="offcanvas" data-bs-target="#app-nav" aria-label="{{ T "common.close" }}"></button>
+	</div>
+	<div class="offcanvas-body mokey-sidebar-body">
+		<a class="mokey-brand d-none d-lg-block" href="/">{{ with ConfigValueString "site.logo" }}<img src="/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ ConfigValueString "site.name" }}{{ end }}</a>
+		<nav aria-label="{{ T "nav.open_menu" }}" class="mokey-nav">
+			<div class="mokey-nav-group">{{ T "nav.group_account" }}</div>
+			<a class="mokey-nav-link" id="account-tab" href="/account"{{ if eq $.section "account" }} aria-current="page"{{ end }}><i class="fa fa-user" aria-hidden="true"></i> {{ T "nav.profile" }}</a>
+			<a class="mokey-nav-link" id="security-tab" href="/security"{{ if eq $.section "security" }} aria-current="page"{{ end }}><i class="fa fa-shield" aria-hidden="true"></i> {{ T "nav.security" }}</a>
+			<a class="mokey-nav-link" id="sshkey-tab" href="/sshkey"{{ if eq $.section "sshkey" }} aria-current="page"{{ end }}><i class="fa fa-key" aria-hidden="true"></i> {{ T "nav.ssh_keys" }}</a>
+
+			{{ $apps := and (ConfigValueBool "accounts.enable_apps") (ConfigValueString "hydra.admin_url") }}
+			{{ if or (ConfigValueBool "accounts.enable_groups") (ConfigValueBool "accounts.enable_access") $apps }}
+			<div class="mokey-nav-group">{{ T "nav.group_access" }}</div>
+			{{ if ConfigValueBool "accounts.enable_groups" }}
+			<a class="mokey-nav-link" id="groups-tab" href="/groups"{{ if eq $.section "groups" }} aria-current="page"{{ end }}><i class="fa fa-users" aria-hidden="true"></i> {{ T "nav.groups" }}</a>
+			{{ end }}
+			{{ if $apps }}
+			<a class="mokey-nav-link" id="apps-tab" href="/apps"{{ if eq $.section "apps" }} aria-current="page"{{ end }}><i class="fa fa-table-cells-large" aria-hidden="true"></i> {{ T "nav.apps" }}</a>
+			{{ end }}
+			{{ if ConfigValueBool "accounts.enable_access" }}
+			<a class="mokey-nav-link" id="access-tab" href="/access"{{ if eq $.section "access" }} aria-current="page"{{ end }}><i class="fa fa-door-open" aria-hidden="true"></i> {{ T "nav.access" }}</a>
+			{{ end }}
+			{{ end }}
+
+			{{ if $.is_admin }}
+			<div class="mokey-nav-group">{{ T "nav.group_admin" }}</div>
+			<a class="mokey-nav-link" id="admin-tab" href="/admin"{{ if eq $.section "admin" }} aria-current="page"{{ end }}><i class="fa fa-inbox" aria-hidden="true"></i> {{ T "nav.requests" }}</a>
+			<a class="mokey-nav-link" href="/admin/people"{{ if eq $.section "people" }} aria-current="page"{{ end }}><i class="fa fa-users-gear" aria-hidden="true"></i> {{ T "nav.people" }}</a>
+			<a class="mokey-nav-link" href="/admin/log"{{ if eq $.section "log" }} aria-current="page"{{ end }}><i class="fa fa-clock-rotate-left" aria-hidden="true"></i> {{ T "nav.audit" }}</a>
+			{{ end }}
+		</nav>
+		<div class="mokey-sidebar-foot">
+			<div class="mokey-sidebar-name">{{ $.display_name }}</div>
+			<div class="mokey-mono mokey-sidebar-user">{{ $.user.Username }}</div>
+			<a class="mokey-nav-link" id="logout" href="/auth/logout" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-post="/auth/logout"><i class="fa fa-arrow-right-from-bracket" aria-hidden="true"></i> {{ T "nav.sign_out" }}</a>
+		</div>
+	</div>
+</div>

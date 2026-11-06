@@ -1,3 +1,4 @@
+<a id="otp-tab" class="mokey-back" href="/security"><i class="fa fa-arrow-left" aria-hidden="true"></i> {{ T "security.back" }}</a>
 {{ if and (not $.user.OTPOnly) (ConfigValueBool "accounts.require_mfa") (not $.otptokens) }}
 <div class="alert alert-warning mx-auto fade show" role="alert">
    {{ T "otptoken.add_token_prompt" }}
