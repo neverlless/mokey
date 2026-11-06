@@ -294,7 +294,7 @@ h1,
 	color: var(--mokey-muted);
 }
 .mokey-empty p {
-	margin: 0 0 16px;
+	margin: 0 auto 16px;
 }
 .mokey-numbered {
 	display: flex;
