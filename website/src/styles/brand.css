@@ -42,6 +42,3 @@ pre.mermaid svg {
 	flex-shrink: 0;
 }
 
-.hero > img {
-	max-width: min(14rem, 60vw);
-}
