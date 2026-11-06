@@ -1,0 +1,47 @@
+/* mokey v2.9 brand tokens mapped onto Starlight's palette. */
+:root {
+	--sl-font: 'IBM Plex Sans', system-ui, sans-serif;
+	--sl-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+	/* Dark theme (Starlight's default scheme). */
+	--sl-color-accent-low: #1b2a47;
+	--sl-color-accent: #6f96e8;
+	--sl-color-accent-high: #c6d5f5;
+	--sl-color-white: #e7ebf1;
+	--sl-color-gray-1: #d5dbe4;
+	--sl-color-gray-2: #bcc4d0;
+	--sl-color-gray-3: #a0a9b8;
+	--sl-color-gray-4: #6b7485;
+	--sl-color-gray-5: #252c36;
+	--sl-color-gray-6: #171c23;
+	--sl-color-black: #0f1318;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #dbe4f6;
+	--sl-color-accent: #2453b3;
+	--sl-color-accent-high: #183a80;
+	--sl-color-white: #141a26;
+	--sl-color-gray-1: #232b3a;
+	--sl-color-gray-2: #3b4558;
+	--sl-color-gray-3: #5a6477;
+	--sl-color-gray-4: #8790a2;
+	--sl-color-gray-5: #dfe4ec;
+	--sl-color-gray-6: #eceff4;
+	--sl-color-gray-7: #f4f6f9;
+	--sl-color-black: #ffffff;
+	--sl-color-bg-sidebar: #f4f6f9;
+}
+
+/* Wide flowcharts keep their natural size and scroll instead of shrinking to unreadable text. */
+pre.mermaid {
+	justify-content: safe center !important;
+}
+pre.mermaid svg {
+	max-width: none !important;
+	flex-shrink: 0;
+}
+
+.hero > img {
+	max-width: min(14rem, 60vw);
+}

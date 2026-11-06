@@ -1,0 +1,20 @@
+{
+  "name": "mokey-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check-urls": "node scripts/check-urls.mjs"
+  },
+  "dependencies": {
+    "@astrojs/markdown-satteri": "0.4.7",
+    "@astrojs/starlight": "0.42.10",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "astro": "7.4.7",
+    "astro-mermaid": "2.2.0",
+    "mermaid": "12.2.0"
+  }
+}

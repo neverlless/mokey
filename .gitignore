@@ -18,5 +18,7 @@ docs/superpowers/
 .superpowers
 .claude
 
-# MkDocs build output
-/site/
+# Docs site (website/)
+website/node_modules/
+website/dist/
+website/.astro/
