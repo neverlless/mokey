@@ -5,6 +5,7 @@
 - Documentation site moved to Astro Starlight; old URLs keep working
 - Diagrams in the docs use the mokey colours in light and dark themes
 - "Skip to content" link as the first stop when tabbing through the portal
+- Empty states centre their sentence above the action again
 - Removed unused translation strings and dead CSS (no behaviour change)
 
 ## [v2.9.0] - 2026-11-06
