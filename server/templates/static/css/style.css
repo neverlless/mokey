@@ -979,9 +979,12 @@ i.mokey-dial-flag {
 	border: 1px solid var(--mokey-border);
 	border-radius: 8px;
 }
+/* the captcha PNG is dark ink on transparency, so it needs a light card in both themes */
 .mokey-captcha img {
 	max-width: 100%;
 	height: auto;
+	background: #fff;
+	border-radius: 6px;
 }
 .mokey-captcha-new {
 	align-self: flex-end;
