@@ -12,9 +12,9 @@
   in" list that opens Authenticator app, Passkeys and Password, then
   active sessions and recent activity
 - OTP setup is a numbered set of steps
-- The admin page is split into Requests (signups, group and OTP recovery
-  requests), People (invite, search, helpdesk views) and Audit log. Row
-  actions sit in a menu
+- The admin page is split into Requests (pending sign-ups, OTP recovery
+  requests and the helpdesk views), People (invite, user search and list)
+  and Audit log. Row actions sit in a menu
 - Sign-in card redesigned, with `autocomplete` hints for password managers
 - New "m-key" logo and favicons
 - Empty states on lists that used to render blank
