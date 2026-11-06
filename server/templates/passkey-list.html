@@ -21,7 +21,7 @@
     <div class="flex-grow-1">
       <span class="mokey-mono">{{ $pk.shortid }}</span>
     </div>
-    <button type="button" class="btn btn-outline-danger btn-sm"
+    <button type="button" class="btn btn-outline-danger btn-sm" aria-label="{{ T "common.delete" }}: {{ $pk.shortid }}"
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
             hx-vals='{"mapping": "{{ $pk.mapping }}"}'
             hx-post="/passkey/remove"

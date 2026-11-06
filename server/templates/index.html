@@ -2,6 +2,7 @@
 
 <div class="mokey-shell">
 {{ template "app-nav.html" . }}
+<div class="mokey-column">
 <main class="mokey-main{{ if or (eq $.section "admin") (eq $.section "people") (eq $.section "log") }} is-wide{{ end }}">
 {{ if $.password_expiry_warning }}
 <div class="alert alert-warning d-flex align-items-center" role="alert">
@@ -62,6 +63,5 @@
 </div>
 {{ end }}
 </main>
-</div>
-
+{{/* footer.html closes .mokey-column and .mokey-shell when $.shell is set */}}
 {{ template "footer.html" . }}

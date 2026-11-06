@@ -516,7 +516,7 @@ add = "SSH-sleutel toevoegen"
 empty = "Je hebt nog geen SSH-sleutel toegevoegd."
 
 [sshkey_new]
-title_label = "Titel"
+title_label = "Naam"
 provide_key = "Geef een ssh-sleutel op"
 invalid_key = "Ongeldige ssh-sleutel"
 title = "SSH Sleutels Toevoegen"
