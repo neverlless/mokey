@@ -1,4 +1,7 @@
-# Migrating from Hydra v1.x to v2.x
+---
+title: "Migrating from Hydra v1.x to v2.x"
+description: "Move a mokey deployment from Ory Hydra v1.x to v2.x."
+---
 
 Since mokey v1.4 the Hydra integration targets **Ory Hydra v2.x** (the client
 SDK talks to the v2 admin API, which lives under the `/admin` path prefix).

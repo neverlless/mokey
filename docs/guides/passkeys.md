@@ -1,4 +1,7 @@
-# FreeIPA passkey self-service registration (FIDO2 / WebAuthn)
+---
+title: "FreeIPA passkey self-service registration (FIDO2 / WebAuthn)"
+description: "Let FreeIPA users register FIDO2 passkeys without the FreeIPA Web UI."
+---
 
 FreeIPA 4.11 added passkey authentication: a FIDO2 key or platform
 authenticator mapped to the user, checked by SSSD on enrolled hosts. Adding

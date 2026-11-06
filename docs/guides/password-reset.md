@@ -1,4 +1,7 @@
-# FreeIPA self-service password reset portal
+---
+title: "FreeIPA self-service password reset portal"
+description: "Add a forgot-password flow to FreeIPA with single-use email links."
+---
 
 FreeIPA has no "forgot password" flow of its own. mokey adds one: a user
 enters their username, gets a single-use link by email, and sets a new

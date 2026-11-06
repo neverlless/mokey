@@ -1,4 +1,7 @@
-# Helpdesk view in the admin panel
+---
+title: "Helpdesk view in the admin panel"
+description: "Find accounts that cannot log in from the mokey admin panel."
+---
 
 "I can't log in" usually has one of four causes. The **Helpdesk** section of
 the admin panel lists the accounts that have one of them, so an admin can

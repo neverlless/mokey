@@ -1,4 +1,20 @@
-# mokey: self-service portal for FreeIPA
+---
+title: "mokey: self-service portal for FreeIPA"
+description: "Self-service account management portal for FreeIPA / Red Hat IdM: signup, password reset, OTP, passkeys, groups and OIDC."
+template: splash
+hero:
+  title: mokey
+  tagline: Self-service account management portal for FreeIPA / Red Hat IdM
+  image:
+    file: ./assets/mokey-mark.svg
+  actions:
+    - text: Install
+      link: /mokey/install/
+      icon: right-arrow
+    - text: Try the demo
+      link: /mokey/install/#try-it-the-demo
+      variant: minimal
+---
 
 mokey is a self-service account portal for FreeIPA and Red Hat Identity
 Management (IdM). Users sign up, reset forgotten passwords, enroll OTP tokens

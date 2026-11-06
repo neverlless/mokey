@@ -1,4 +1,7 @@
-# mokey next to any OIDC provider
+---
+title: "mokey next to any OIDC provider"
+description: "Keep your existing OIDC provider and run mokey only for FreeIPA account lifecycle."
+---
 
 Already running an OpenID Connect provider for FreeIPA users, such as
 Keycloak, Authentik, Dex or Zitadel? You do not need mokey's

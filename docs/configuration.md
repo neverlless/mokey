@@ -1,4 +1,7 @@
-# Configuration reference
+---
+title: "Configuration reference"
+description: "Every mokey.toml option, with defaults."
+---
 
 mokey is configured with a TOML file (default `/etc/mokey/mokey.toml`, override
 with `--config`). See [mokey.toml.sample](https://github.com/neverlless/mokey/blob/main/mokey.toml.sample) for a ready

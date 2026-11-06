@@ -1,4 +1,7 @@
-# Security audit — v1.6 "Reliability"
+---
+title: "Security audit — v1.6 \"Reliability\""
+description: "Findings and fixes from the mokey v1.6 security audit."
+---
 
 Date: 2026-08-16. Scope: mokey server code (`server/`, `cmd/`), dependencies,
 build/CI toolchain. Out of scope: FreeIPA itself, Hydra, deployment

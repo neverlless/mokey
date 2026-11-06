@@ -1,4 +1,7 @@
-# FreeIPA OpenID Connect SSO with Ory Hydra
+---
+title: "FreeIPA OpenID Connect SSO with Ory Hydra"
+description: "Use mokey as the login and consent app for Ory Hydra to sign in to web apps with FreeIPA accounts."
+---
 
 FreeIPA has no OpenID Connect provider of its own. mokey can serve as the
 login and consent app for [Ory Hydra](https://www.ory.sh/hydra/): Hydra issues

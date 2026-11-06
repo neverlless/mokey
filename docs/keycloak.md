@@ -1,4 +1,7 @@
-# Using mokey with Keycloak
+---
+title: "Using mokey with Keycloak"
+description: "Serve SAML-only apps by putting Keycloak in front of mokey as a SAML broker."
+---
 
 Addresses upstream question
 [ubccr/mokey#136](https://github.com/ubccr/mokey/issues/136): how to serve

@@ -1,4 +1,7 @@
-# "What can I access?" page for FreeIPA HBAC and sudo rules
+---
+title: '"What can I access?" page for FreeIPA HBAC and sudo rules'
+description: "Show users which FreeIPA HBAC and sudo rules apply to them."
+---
 
 "Why can't I SSH into this host?" is a common FreeIPA helpdesk question, and
 the answer sits in HBAC rules that users rarely get to see. mokey's

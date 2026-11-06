@@ -1,4 +1,7 @@
-# Roadmap
+---
+title: "Roadmap"
+description: "What mokey has shipped and what comes next."
+---
 
 This roadmap is driven by demand: through v2.1 largely from open issues and
 unmerged pull requests in the upstream [ubccr/mokey](https://github.com/ubccr/mokey)
