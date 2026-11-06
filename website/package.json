@@ -15,6 +15,6 @@
     "@fontsource/ibm-plex-sans": "5.3.0",
     "astro": "7.4.7",
     "astro-mermaid": "2.2.0",
-    "mermaid": "12.2.0"
+    "mermaid": "12.3.0"
   }
 }
