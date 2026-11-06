@@ -983,17 +983,25 @@ i.mokey-dial-flag {
 }
 .mokey-captcha {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: 8px;
-}
-.mokey-captcha-img {
 	padding: 8px;
 	background: var(--mokey-surface);
-	border: 1px solid var(--mokey-border-strong);
+	border: 1px solid var(--mokey-border);
 	border-radius: 8px;
-	line-height: 0;
 }
-.mokey-captcha-img img {
+.mokey-captcha img {
 	max-width: 100%;
 	height: auto;
+}
+.mokey-captcha-new {
+	align-self: flex-end;
+	min-height: 32px;
+	padding: 4px 8px;
+}
+@media (max-width: 575.98px) {
+	.mokey-captcha-new {
+		min-height: 44px;
+		padding: 10px 12px;
+	}
 }
