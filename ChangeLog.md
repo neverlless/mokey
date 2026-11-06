@@ -24,6 +24,10 @@
   changed
 - **Upgrade:** the admin panel is three pages (`/admin`, `/admin/people`,
   `/admin/log`); links to the old single page land on Requests
+- **Upgrade:** operators with `site.templates_dir` overrides of `header.html`,
+  `footer.html` or `index.html` must refresh them: the shell depends on
+  `$.shell` and on `footer.html` closing its wrappers. `#site-logo` now only
+  exists on unauthenticated pages
 - Bookmarks to `/password`, `/otp` and `/passkey` still work; the pages are
   now reached from Sign-in and security
 

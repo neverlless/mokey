@@ -14,17 +14,7 @@
                             <label for="username" class="form-label">{{ T "common.username" }}</label>
                             <input id="username" type="text" class="form-control form-control-lg" name="username" placeholder="">
                         </div>
-                        {{ with $.captchaID }}
-                        <div class="mb-3">
-                            <label for="captcha_sol" class="form-label">{{ T "common.captcha" }}</label>
-                            <div id="captchaHelpBlock" class="form-text">
-                                <em>{{ T "common.captcha_instruction" }}</em> <button type="button" tabindex="-1" class="btn btn-link" _="on click call reloadCaptcha()">{{ T "common.reload" }}</button>
-                            </div>
-                            <input id="captcha_sol" name="captcha_sol" class="form-control form-control-lg" size="10" type="text" autocomplete="off">
-                            <input id="captcha_id" name="captcha_id" type="hidden" value="{{ . }}">
-                            <p><img id="captcha" src="/auth/captcha/{{ . }}.png" alt="{{ T "common.captcha_image" }}"></p>
-                        </div>
-                        {{ end }}
+                        {{ template "captcha.html" . }}
                         <div class="mb-3 d-grid gap-2">
                           <button hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-target-error="login-failed" hx-post hx-target="#login" hx-swap="innerHTML" class="btn btn-primary btn-lg" type="submit">
                           <span class="htmx-indicator spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 
@@ -39,27 +29,5 @@
         </div>
     </section>
 
-{{ with $.captchaID }}
-<script nonce="{{ $.cspNonce }}">
-document.body.addEventListener("reloadCaptcha", function(evt){
-    el = document.getElementById('captcha')
-    document.getElementById('captcha_sol').value = "";
-    document.getElementById('captcha_id').value = evt.detail.value;
-    el.src = "/auth/captcha/" + evt.detail.value + ".png";
-});
-
-function setSrcQuery(e, q) {
-    var src  = e.src;
-    var p = src.indexOf('?');
-    if (p >= 0) {
-        src = src.substr(0, p);
-    }
-    e.src = src + "?" + q
-}
-function reloadCaptcha() {
-    setSrcQuery(document.getElementById('captcha'), "reload=" + (new Date()).getTime());
-    return false;
-}
-</script>
-{{ end }}
+{{ template "captcha-script.html" . }}
 {{ template "footer.html" . }}

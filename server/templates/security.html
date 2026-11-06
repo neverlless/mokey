@@ -24,13 +24,33 @@
     {{ if eq $.security_state "password_only" }}
     <a class="btn btn-primary" href="/otp">{{ T "security.setup_otp" }}</a>
     {{ else if eq $.security_state "turn_on" }}
-    <a class="btn btn-primary" href="#two-step-row">{{ T "security.turn_on" }}</a>
+    <button class="btn btn-primary" title="{{ T "security.enable" }}" hx-target-error="security-failed"
+            {{ if and $.counts_known (eq $.otp_count 0) }}disabled{{ end }}
+            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+            data-hx-trigger="mfaenable"
+            data-hx-vals='{"csrf": "{{ $.csrf }}"}'
+            data-hx-target="#security" data-hx-post="/security/mfa/enable" 
+            _="on click call 
+                  Swal.fire({
+                      title: '{{ T "security.enable_title" }}',
+                      backdrop: true,
+                      html: '{{ T "security.enable_message" }}',
+                      focusCancel: true,
+                      reverseButtons: false,
+                      confirmButtonColor: '#157347',
+                      confirmButtonText: '{{ T "security.confirm_enable" }}',
+                      showCancelButton: true,
+                      iconColor: '#157347',
+                      icon: 'question'})
+                  if result.isConfirmed trigger mfaenable">
+      {{ T "security.turn_on" }}
+    </button>
     {{ end }}
   </div>
   <ol class="mokey-steps">
     <li class="is-done"><i class="fa fa-check-circle" aria-hidden="true"></i> {{ T "security.step_password" }}</li>
-    <li{{ if gt $.otp_count 0 }} class="is-done"{{ end }}><i class="fa {{ if gt $.otp_count 0 }}fa-check-circle{{ else }}fa-circle-o{{ end }}" aria-hidden="true"></i> {{ T "security.step_app" }}</li>
-    <li{{ if $.user.OTPOnly }} class="is-done"{{ end }}><i class="fa {{ if $.user.OTPOnly }}fa-check-circle{{ else }}fa-circle-o{{ end }}" aria-hidden="true"></i> {{ T "security.step_two_step" }}</li>
+    <li{{ if gt $.otp_count 0 }} class="is-done"{{ end }}><i class="{{ if gt $.otp_count 0 }}fa fa-check-circle{{ else }}fa-regular fa-circle{{ end }}" aria-hidden="true"></i> {{ T "security.step_app" }}</li>
+    <li{{ if $.user.OTPOnly }} class="is-done"{{ end }}><i class="{{ if $.user.OTPOnly }}fa fa-check-circle{{ else }}fa-regular fa-circle{{ end }}" aria-hidden="true"></i> {{ T "security.step_two_step" }}</li>
   </ol>
 </div>
 
