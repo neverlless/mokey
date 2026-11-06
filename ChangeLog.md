@@ -1,5 +1,32 @@
 # Mokey ChangeLog
 
+## [v2.9.0] - 2026-11-06
+
+- New look: slate colour tokens, IBM Plex Sans in 400/500/600, hairline
+  cards without shadows, an accent focus ring on keyboard focus and a dark
+  theme matched to the light one
+- Grouped sidebar (Your account, Access, Administration) with a pinned
+  footer holding the user and Sign out; on phones it opens as a menu
+- Sign-in and security is a hub: a protection status card (password,
+  authenticator app, two-step sign-in) with a next step, a "Ways to sign
+  in" list that opens Authenticator app, Passkeys and Password, then
+  active sessions and recent activity
+- OTP setup is a numbered set of steps
+- The admin page is split into Requests (signups, group and OTP recovery
+  requests), People (invite, search, helpdesk views) and Audit log. Row
+  actions sit in a menu
+- Sign-in card redesigned, with `autocomplete` hints for password managers
+- New "m-key" logo and favicons
+- Empty states on lists that used to render blank
+- **Upgrade:** a custom `site.css` or template override that targets
+  `.profile-tab-nav`, `.nav-pills`, `.login-head`, `.tab-content` or
+  `.mokey-user-chip` needs updating; the markup behind those classes
+  changed
+- **Upgrade:** the admin panel is three pages (`/admin`, `/admin/people`,
+  `/admin/log`); links to the old single page land on Requests
+- Bookmarks to `/password`, `/otp` and `/passkey` still work; the pages are
+  now reached from Sign-in and security
+
 ## [v2.8.0] - 2026-11-05
 
 - App catalog (`accounts.enable_apps`, off by default, needs Hydra): an

@@ -429,6 +429,15 @@ quality credits, so these items are mostly mokey-side work.
 - [x] Ansible role (service account, role, keytab, config) and an RPM spec
       for Fedora COPR
 
+## v2.9 — UI redesign
+
+- [x] New look: slate tokens, Plex Sans, hairline cards, matched dark theme
+- [x] Grouped sidebar with a phone menu
+- [x] Sign-in and security hub with a protection status card
+- [x] Admin split into Requests, People and Audit log
+- [x] Sign-in card, logo, favicons and empty states
+- [ ] Docs on Astro Starlight
+
 ## Waiting for demand
 
 Worth building once someone asks for it in this tracker:
