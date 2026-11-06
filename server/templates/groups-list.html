@@ -111,7 +111,7 @@
 	{{ range $member := $m.Group.Members }}
 	<div class="mokey-row">
 		<div class="flex-grow-1"><span class="mokey-mono">{{ $member }}</span></div>
-		<button class="btn btn-sm btn-outline-secondary" hx-post="/groups/remove-member"
+		<button class="btn btn-sm btn-outline-danger" hx-post="/groups/remove-member"
 		        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $member }}"}'
 		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
 		        hx-target="#groups-pane" hx-swap="outerHTML"

@@ -40,7 +40,7 @@
         · {{ slice $key.PublicKey.Type 4 }}
       </div>
     </div>
-    <button class="btn btn-sm btn-outline-danger" hx-target-error="sshkey-failed"
+    <button class="btn btn-sm btn-outline-danger" aria-label="{{ T "common.delete" }}: {{ $key.Comment }}" hx-target-error="sshkey-failed"
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
             data-hx-trigger="keyremove"
             data-hx-vals='{"csrf": "{{ $.csrf }}", "fp": "{{ $key.Fingerprint }}"}'

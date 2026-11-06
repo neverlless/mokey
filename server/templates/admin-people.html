@@ -24,7 +24,7 @@
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
             data-hx-include="#invite-email"
             data-hx-target="#admin" data-hx-post="/admin/invite">
-      <i class="fa fa-envelope" aria-hidden="true"></i> {{ T "admin.invite_button" }}
+      {{ T "admin.invite_button" }}
     </button>
   </form>
 </div>
