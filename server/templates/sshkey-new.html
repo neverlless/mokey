@@ -1,10 +1,10 @@
 <div id="modal-backdrop" class="modal-backdrop fade show" style="display:block;"></div>
-<div id="modal" class="modal fade show" tabindex="-1" style="display:block;">
+<div id="modal" class="modal fade show" tabindex="-1" style="display:block;" role="dialog" aria-modal="true" aria-labelledby="modalLabel">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <form>
         <div class="modal-header">
-           <h5 class="modal-title" id="modalLabel"><i class="fa fa-key"></i> {{ T "sshkey_new.add_title" }}</h5>
+           <h2 class="modal-title mokey-section-title" id="modalLabel">{{ T "sshkey_new.add_title" }}</h2>
         </div>
         <div id="modal-body" class="modal-body">
             <div id="add-key-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto" role="alert">
@@ -15,14 +15,15 @@
             </div>
             <div class="mb-3">
               <label for="key" class="form-label">{{ T "sshkey_new.public_key" }}</label>
-              <textarea id="key" class="form-control" name="key" rows="5" aria-describedby="keyHelp"></textarea>
+              <textarea id="key" class="form-control mokey-mono" name="key" spellcheck="false" rows="5" aria-describedby="keyHelp"></textarea>
               <div id="keyHelp" class="form-text">{{ T "sshkey_new.key_help" }}</div>
             </div>
         </div>
         <div class="modal-footer">
-          <div id="add-indicator" class="htmx-indicator spinner-border text-primary" role="status">
+          <div id="add-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary" role="status">
               <span class="visually-hidden">{{ T "sshkey_new.adding" }}</span>
           </div>
+          <button type="button" class="btn btn-outline-secondary" _="on click call closeModal('sshkey-modal')">{{ T "common.cancel" }}</button>
           <button 
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
             hx-post="/sshkey/add"
@@ -34,7 +35,6 @@
             type="submit">
           {{ T "common.add" }}
           </button>
-          <button type="button" class="btn btn-secondary" _="on click call closeModal('sshkey-modal')">{{ T "common.cancel" }}</button>
         </div>
 
         </form>

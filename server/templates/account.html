@@ -6,43 +6,51 @@
 {{  with $.message }}
 <div class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
   {{ . }}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
 </div>
 {{ end }}
 {{  with $.success }}
 <div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
   {{ T "account.settings_updated" }}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
 </div>
 {{ end }}
 {{  with $.email_change_sent }}
 <div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
   {{ T "account.email_change_sent" }}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
 </div>
 {{ end }}
 <div id="account-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
-<div class="mokey-eyebrow">{{ T "account.eyebrow" }}</div>
-<h3 class="mb-4">{{ T "account.settings" }}</h3>
-<form>
+<h1 class="mb-1">{{ T "nav.profile" }}</h1>
+<p class="text-muted mb-4">{{ T "account.subtitle" }}</p>
+
+<h2 class="mokey-section-title mb-2">{{ T "account.details_title" }}</h2>
+<form class="mokey-card mokey-card-body mb-4">
 <div class="row">
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label for="first" class="form-label">{{ T "common.first_name" }}</label>
-		  	<input id="first" type="text" class="form-control" name="first" value="{{ .user.First }}">
+		  	<input id="first" type="text" class="form-control" name="first" autocomplete="given-name" value="{{ .user.First }}">
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label for="last" class="form-label">{{ T "common.last_name" }}</label>
-		  	<input id="last" type="text" class="form-control" name="last" value="{{ .user.Last }}">
+		  	<input id="last" type="text" class="form-control" name="last" autocomplete="family-name" value="{{ .user.Last }}">
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="mb-3">
+		  	<label class="form-label" for="displayname">{{ T "account.display_name" }}</label>
+		  	<input type="text" class="form-control" name="displayname" id="displayname" value="{{ .user.DisplayName }}">
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label for="email" class="form-label">{{ T "common.email" }}</label>
-			<input id="email" type="email" class="form-control" name="email" value="{{ .user.Email }}">
+			<input id="email" type="email" class="form-control" name="email" autocomplete="email" value="{{ .user.Email }}">
 		</div>
 	</div>
 	<div class="col-md-6">
@@ -73,12 +81,6 @@
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
-		  	<label class="form-label" for="displayname">{{ T "account.display_name" }}</label>
-		  	<input type="text" class="form-control" name="displayname" id="displayname" value="{{ .user.DisplayName }}">
-		</div>
-	</div>
-	<div class="col-md-6">
-		<div class="mb-3">
 		  	<label class="form-label" for="telephone">{{ T "account.work_phone" }}</label>
 		  	{{ $telephone := "" }}{{ with $.telephone_cc }}{{ $telephone = . }}{{ else }}{{ $telephone = PhoneCode .user.TelephoneNumber }}{{ end }}
 		  	<div class="input-group mokey-phone">
@@ -103,24 +105,6 @@
 		  	</div>
 		</div>
 	</div>
-	<div class="col-md-6">
-		<div class="mb-3">
-		  	<label for="username" class="form-label">{{ T "common.username" }}</label>
-		  	<input id="username" type="text" class="form-control" value="{{ .user.Username }}" disabled readonly>
-		</div>
-	</div>
-	<div class="col-md-6">
-		<div class="mb-3">
-		  	<label for="last-password-change" class="form-label">{{ T "account.last_password_change" }}</label>
-		  	<input id="last-password-change" type="text" class="form-control" value="{{ if not .user.LastPasswdChange.IsZero }}{{ TimeAgo .user.LastPasswdChange }}{{ else }}{{ T "account.never" }}{{ end }}" disabled readonly>
-		</div>
-	</div>
-	<div class="col-md-6">
-		<div class="mb-3">
-		  	<label for="home-dir" class="form-label">{{ T "account.home_dir" }}</label>
-		  	<input id="home-dir" type="text" class="form-control" value="{{ .user.HomeDir }}" disabled readonly>
-		</div>
-	</div>
 	{{ if ConfigValueBool "accounts.allow_change_shell" }}
 	<div class="col-md-6">
 		<div class="mb-3">
@@ -134,34 +118,40 @@
 		</div>
 	</div>
 	{{ end }}
-	<div class="col-md-6">
-		<div class="mb-3">
-		  	<label for="password-expires" class="form-label">{{ T "account.password_expires" }}</label>
-		  	<input id="password-expires" type="text" class="form-control" value="{{ if not .user.PasswdExpire.IsZero }}{{ TimeAgo .user.PasswdExpire }}{{ else }}{{ T "account.never" }}{{ end }}" disabled readonly>
-		</div>
-	</div>
-	<div class="col-md-12">
-		<div class="mb-3">
-		  	<label class="form-label">{{ T "account.groups" }}</label>
-            <div class="form-control-plaintext">
-                    {{ range $g := .user.Groups }}
-                        <span class="badge rounded-pill bg-dark">{{ $g }}</span> 
-                    {{ else }}
-                        &nbsp;
-                    {{ end }}
-		    </div>
-		</div>
-	</div>
 </div>
 <div>
     <button class="btn btn-primary" hx-target-error="account-failed"
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
             data-hx-vals='{"csrf": "{{ $.csrf }}"}'
             data-hx-target="#account" data-hx-post="/account/settings">
-      {{ T "common.update" }}
+      {{ T "account.save" }}
     </button>
 </div>
 </form>
+
+<h2 class="mokey-section-title mb-2">{{ T "account.account_title" }}</h2>
+<dl class="mokey-card mokey-facts mb-4">
+  <div class="mokey-row">
+    <dt>{{ T "common.username" }}</dt>
+    <dd id="username" class="mokey-mono">{{ .user.Username }}</dd>
+  </div>
+  <div class="mokey-row">
+    <dt>{{ T "account.home_dir" }}</dt>
+    <dd id="home-dir" class="mokey-mono">{{ .user.HomeDir }}</dd>
+  </div>
+  <div class="mokey-row">
+    <dt>{{ T "account.last_password_change" }}</dt>
+    <dd id="last-password-change">{{ if not .user.LastPasswdChange.IsZero }}{{ TimeAgo .user.LastPasswdChange }}{{ else }}{{ T "account.never" }}{{ end }}</dd>
+  </div>
+  <div class="mokey-row">
+    <dt>{{ T "account.password_expires" }}</dt>
+    <dd id="password-expires">{{ if not .user.PasswdExpire.IsZero }}{{ TimeAgo .user.PasswdExpire }}{{ else }}{{ T "account.never" }}{{ end }}</dd>
+  </div>
+  <div class="mokey-row">
+    <dt>{{ T "account.groups" }}</dt>
+    <dd class="mokey-chips">{{ range $g := .user.Groups }}<span class="mokey-chip">{{ $g }}</span>{{ else }}<span class="text-muted">{{ T "account.no_groups" }}</span>{{ end }}</dd>
+  </div>
+</dl>
 {{ template "subid-card.html" . }}
 
 {{/* One picker for both phone fields: the script moves it into whichever

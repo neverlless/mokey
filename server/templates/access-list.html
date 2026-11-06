@@ -1,5 +1,6 @@
 <div id="access-pane">
-<h3 class="mb-4">{{ T "access.title" }}</h3>
+<h1 class="mb-1">{{ T "nav.access" }}</h1>
+<p class="text-muted mb-4">{{ T "access.subtitle" }}</p>
 
 {{ if $.access_error }}
 <div class="alert alert-danger">{{ T "account.fatal_system_error" }}</div>
@@ -7,9 +8,34 @@
 
 {{ if $.access_truncated }}<div class="alert alert-warning">{{ T "access.truncated" }}</div>{{ end }}
 
-<h5>{{ T "access.hbac_title" }}</h5>
+<h2 class="mokey-section-title mb-2">{{ T "access.test_title" }}</h2>
+<div class="mokey-card mokey-card-body mb-4">
+<p class="text-muted mb-3">{{ T "access.test_hint" }}</p>
+<form class="row g-2" hx-post="/access/test"
+      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+      hx-target="#access-test-result" hx-swap="innerHTML">
+	<div class="col-md-5">
+        <label for="host" class="form-label">{{ T "access.test_hostname" }}</label>
+		<input id="host" type="text" class="form-control" name="host" placeholder="{{ T "access.test_host_placeholder" }}" autocapitalize="off" spellcheck="false">
+	</div>
+	<div class="col-md-3">
+        <label for="service" class="form-label">{{ T "access.test_service" }}</label>
+		<input id="service" type="text" class="form-control" name="service" value="sshd" autocapitalize="off" spellcheck="false">
+	</div>
+	<div class="col-md-4 align-self-end">
+		<button class="btn btn-primary" type="submit">
+			{{ T "access.test_button" }}
+		</button>
+	</div>
+</form>
+<div id="access-test-result" class="mt-3" aria-live="polite"></div>
+</div>
+
+<h2 class="mokey-section-title mb-2">{{ T "access.hbac_title" }}</h2>
+<div class="mokey-card mb-4">
 {{ if $.hbac_rules }}
-<table class="table align-middle mb-4">
+<div class="table-responsive">
+<table class="table align-middle">
 	<thead>
 	<tr>
 		<th scope="col">{{ T "access.rule" }}</th>
@@ -23,26 +49,30 @@
 		<td><strong>{{ $r.Name }}</strong>
 			{{ if $r.Description }}<div class="text-muted small">{{ $r.Description }}</div>{{ end }}
 		</td>
-		<td>
-			{{ if eq $r.HostCategory "all" }}<span class="badge bg-success">{{ T "access.all_hosts" }}</span>{{ end }}
-			{{ range $h := $r.MemberHosts }}<span class="badge bg-dark">{{ $h }}</span> {{ end }}
-			{{ range $hg := $r.MemberHostgroups }}<span class="badge bg-secondary">{{ $hg }}</span> {{ end }}
-		</td>
-		<td>
-			{{ if eq $r.ServiceCategory "all" }}<span class="badge bg-success">{{ T "access.all_services" }}</span>{{ end }}
-			{{ range $s := $r.MemberServices }}<span class="badge bg-dark">{{ $s }}</span> {{ end }}
-		</td>
+		<td><div class="mokey-chips">
+			{{ if eq $r.HostCategory "all" }}<span class="mokey-pill is-ok">{{ T "access.all_hosts" }}</span>{{ end }}
+			{{ range $h := $r.MemberHosts }}<span class="mokey-chip">{{ $h }}</span>{{ end }}
+			{{ range $hg := $r.MemberHostgroups }}<span class="mokey-chip">{{ $hg }}</span>{{ end }}
+		</div></td>
+		<td><div class="mokey-chips">
+			{{ if eq $r.ServiceCategory "all" }}<span class="mokey-pill is-ok">{{ T "access.all_services" }}</span>{{ end }}
+			{{ range $s := $r.MemberServices }}<span class="mokey-chip">{{ $s }}</span>{{ end }}
+		</div></td>
 	</tr>
 	{{ end }}
 	</tbody>
 </table>
+</div>
 {{ else }}
-<p class="text-muted">{{ T "access.no_hbac" }}</p>
+<div class="mokey-row text-muted">{{ T "access.no_hbac" }}</div>
 {{ end }}
+</div>
 
-<h5>{{ T "access.sudo_title" }}</h5>
+<h2 class="mokey-section-title mb-2">{{ T "access.sudo_title" }}</h2>
+<div class="mokey-card">
 {{ if $.sudo_rules }}
-<table class="table align-middle mb-4">
+<div class="table-responsive">
+<table class="table align-middle">
 	<thead>
 	<tr>
 		<th scope="col">{{ T "access.rule" }}</th>
@@ -57,48 +87,29 @@
 		<td><strong>{{ $r.Name }}</strong>
 			{{ if $r.Description }}<div class="text-muted small">{{ $r.Description }}</div>{{ end }}
 		</td>
-		<td>
-			{{ if eq $r.HostCategory "all" }}<span class="badge bg-success">{{ T "access.all_hosts" }}</span>{{ end }}
-			{{ range $h := $r.MemberHosts }}<span class="badge bg-dark">{{ $h }}</span> {{ end }}
-			{{ range $hg := $r.MemberHostgroups }}<span class="badge bg-secondary">{{ $hg }}</span> {{ end }}
-		</td>
-		<td>
-			{{ if eq $r.CmdCategory "all" }}<span class="badge bg-success">{{ T "access.all_commands" }}</span>{{ end }}
-			{{ range $cmd := $r.AllowCommands }}<span class="badge bg-dark">{{ $cmd }}</span> {{ end }}
-			{{ range $cmd := $r.DenyCommands }}<span class="badge bg-danger">{{ $cmd }}</span> {{ end }}
-		</td>
-		<td>
-			{{ range $u := $r.RunAsUsers }}<span class="badge bg-dark">{{ $u }}</span> {{ end }}
-			{{ range $g := $r.RunAsGroups }}<span class="badge bg-secondary">{{ $g }}</span> {{ end }}
-		</td>
+		<td><div class="mokey-chips">
+			{{ if eq $r.HostCategory "all" }}<span class="mokey-pill is-ok">{{ T "access.all_hosts" }}</span>{{ end }}
+			{{ range $h := $r.MemberHosts }}<span class="mokey-chip">{{ $h }}</span>{{ end }}
+			{{ range $hg := $r.MemberHostgroups }}<span class="mokey-chip">{{ $hg }}</span>{{ end }}
+		</div></td>
+		<td><div class="mokey-chips">
+			{{ if eq $r.CmdCategory "all" }}<span class="mokey-pill is-ok">{{ T "access.all_commands" }}</span>{{ end }}
+			{{ range $cmd := $r.AllowCommands }}<span class="mokey-chip">{{ $cmd }}</span>{{ end }}
+			{{ range $cmd := $r.DenyCommands }}<span class="mokey-chip is-danger">{{ $cmd }}</span>{{ end }}
+		</div></td>
+		<td><div class="mokey-chips">
+			{{ range $u := $r.RunAsUsers }}<span class="mokey-chip">{{ $u }}</span>{{ end }}
+			{{ range $g := $r.RunAsGroups }}<span class="mokey-chip">{{ $g }}</span>{{ end }}
+		</div></td>
 	</tr>
 	{{ end }}
 	</tbody>
 </table>
+</div>
 {{ else }}
-<p class="text-muted">{{ T "access.no_sudo" }}</p>
+<div class="mokey-row text-muted">{{ T "access.no_sudo" }}</div>
 {{ end }}
-
-<h5>{{ T "access.test_title" }}</h5>
-<p class="text-muted small">{{ T "access.test_hint" }}</p>
-<form class="row g-2 mb-3" hx-post="/access/test"
-      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-      hx-target="#access-test-result" hx-swap="innerHTML">
-	<div class="col-md-5">
-        <label for="host" class="form-label">{{ T "access.test_hostname" }}</label>
-		<input id="host" type="text" class="form-control" name="host" placeholder="{{ T "access.test_host_placeholder" }}">
-	</div>
-	<div class="col-md-3">
-        <label for="service" class="form-label">{{ T "access.test_service" }}</label>
-		<input id="service" type="text" class="form-control" name="service" value="sshd">
-	</div>
-	<div class="col-md-4 align-self-end">
-		<button class="btn btn-primary" type="submit">
-			{{ T "access.test_button" }}
-		</button>
-	</div>
-</form>
-<div id="access-test-result"></div>
+</div>
 
 {{ end }}
 </div>

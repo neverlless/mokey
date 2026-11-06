@@ -1,35 +1,32 @@
 {{ if $.subid_enabled }}
 <div id="subid-card">
-	<hr class="my-4">
-	<h5>{{ T "subid.title" }}</h5>
+	<h2 class="mokey-section-title mb-2">{{ T "subid.title" }}</h2>
 	{{ if $.subid }}
-	<div class="row">
-		<div class="col-md-4">
-			<div class="mb-3">
-				<label for="subuid-start" class="form-label">{{ T "subid.subuid_start" }}</label>
-				<input id="subuid-start" type="text" class="form-control" value="{{ .subid.SubUID }}" disabled readonly>
-			</div>
+	<dl class="mokey-card mokey-facts mb-4">
+		<div class="mokey-row">
+			<dt>{{ T "subid.subuid_start" }}</dt>
+			<dd id="subuid-start" class="mokey-mono">{{ .subid.SubUID }}</dd>
 		</div>
-		<div class="col-md-4">
-			<div class="mb-3">
-				<label for="subgid-start" class="form-label">{{ T "subid.subgid_start" }}</label>
-				<input id="subgid-start" type="text" class="form-control" value="{{ .subid.SubGID }}" disabled readonly>
-			</div>
+		<div class="mokey-row">
+			<dt>{{ T "subid.subgid_start" }}</dt>
+			<dd id="subgid-start" class="mokey-mono">{{ .subid.SubGID }}</dd>
 		</div>
-		<div class="col-md-4">
-			<div class="mb-3">
-				<label for="subid-count" class="form-label">{{ T "subid.count" }}</label>
-				<input id="subid-count" type="text" class="form-control" value="{{ .subid.Count }}" disabled readonly>
-			</div>
+		<div class="mokey-row">
+			<dt>{{ T "subid.count" }}</dt>
+			<dd id="subid-count" class="mokey-mono">{{ .subid.Count }}</dd>
+		</div>
+	</dl>
+	{{ else }}
+	<div class="mokey-card mb-4">
+		<div class="mokey-row">
+			<div class="flex-grow-1 text-muted">{{ T "subid.description" }}</div>
+			<button class="btn btn-sm btn-outline-secondary" hx-post="/subid/generate"
+			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+			        hx-target="#subid-card" hx-swap="outerHTML">
+				{{ T "subid.generate" }}
+			</button>
 		</div>
 	</div>
-	{{ else }}
-	<p class="text-muted mb-2">{{ T "subid.description" }}</p>
-	<button class="btn btn-primary" hx-post="/subid/generate"
-	        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-	        hx-target="#subid-card" hx-swap="outerHTML">
-		{{ T "subid.generate" }}
-	</button>
 	{{ end }}
 </div>
 {{ end }}

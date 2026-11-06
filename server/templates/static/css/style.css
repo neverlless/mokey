@@ -134,6 +134,13 @@ h1,
 	gap: 16px;
 	padding: 18px 20px;
 }
+.mokey-row > .flex-grow-1 {
+	min-width: 0;
+}
+.mokey-row > .btn,
+.mokey-row > .d-flex {
+	flex: none;
+}
 .mokey-row + .mokey-row {
 	border-top: 1px solid var(--mokey-border);
 }
@@ -215,6 +222,153 @@ h1,
 }
 .mokey-dot.is-danger {
 	background: var(--mokey-danger);
+}
+.mokey-tile.is-neutral {
+	background: var(--mokey-bg);
+	color: var(--mokey-ink);
+}
+.mokey-card-body {
+	padding: 20px;
+}
+.mokey-card .table {
+	margin: 0;
+}
+.mokey-card .table > :last-child > tr:last-child > * {
+	border-bottom: 0;
+}
+.mokey-facts {
+	margin: 0;
+}
+.mokey-facts .mokey-row {
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 16px;
+	padding: 14px 20px;
+}
+.mokey-facts dt {
+	flex: 0 0 200px;
+	font-weight: 400;
+	color: var(--mokey-muted);
+}
+.mokey-facts dd {
+	flex: 1 1 240px;
+	min-width: 0;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+.mokey-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.mokey-chip {
+	display: inline-block;
+	padding: 1px 8px;
+	border: 1px solid var(--mokey-border);
+	border-radius: 6px;
+	background: var(--mokey-bg);
+	color: var(--mokey-ink);
+	font-family: var(--mokey-mono);
+	font-size: 0.75rem;
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+.table .mokey-chip {
+	white-space: nowrap;
+	overflow-wrap: normal;
+}
+.mokey-chip.is-danger {
+	border-color: transparent;
+	background: var(--mokey-danger-bg);
+	color: var(--mokey-danger);
+}
+.mokey-empty {
+	padding: 32px 20px;
+	text-align: center;
+	color: var(--mokey-muted);
+}
+.mokey-empty p {
+	margin: 0 0 16px;
+}
+.mokey-numbered {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: mokey-step;
+}
+.mokey-numbered > li {
+	display: flex;
+	gap: 12px;
+	counter-increment: mokey-step;
+}
+.mokey-numbered > li::before {
+	content: counter(mokey-step);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 24px;
+	height: 24px;
+	border-radius: 999px;
+	background: var(--mokey-accent-subtle);
+	color: var(--mokey-accent);
+	font-size: 0.75rem;
+	font-weight: 600;
+}
+.mokey-numbered > li.is-done::before {
+	content: "\2713";
+	background: var(--mokey-ok-bg);
+	color: var(--mokey-ok);
+}
+.mokey-numbered > li > div {
+	flex: 1;
+	min-width: 0;
+	padding-top: 1px;
+}
+.mokey-qr {
+	display: block;
+	width: 200px;
+	max-width: 100%;
+	margin: 12px 0;
+	border: 1px solid var(--mokey-border);
+	border-radius: 8px;
+	background: #ffffff;
+}
+.modal-content {
+	background: var(--mokey-surface);
+	border: 1px solid var(--mokey-border);
+	border-radius: 12px;
+}
+.modal-header,
+.modal-footer {
+	border-color: var(--mokey-border);
+}
+.mokey-error {
+	max-width: 480px;
+	margin: 0 auto;
+	padding: 120px 16px;
+}
+.mokey-error h1 {
+	font-size: 1.375rem;
+}
+/* phones: text takes the first line, its pills and buttons the next */
+@media (max-width: 575.98px) {
+	.mokey-row:has(> .btn, > .mokey-pill, > .d-flex) {
+		flex-wrap: wrap;
+		row-gap: 12px;
+	}
+	.mokey-row:has(> .btn, > .mokey-pill, > .d-flex) > .flex-grow-1 {
+		flex-basis: 100%;
+	}
+	.mokey-row:has(> .mokey-tile):has(> .btn, > .mokey-pill, > .d-flex) > .flex-grow-1 {
+		flex-basis: calc(100% - 56px);
+	}
+	.mokey-row:has(> .mokey-tile):has(> .btn, > .mokey-pill, > .d-flex) > .flex-grow-1 + * {
+		margin-left: 56px;
+	}
 }
 
 .login-card {
@@ -520,6 +674,36 @@ body:has(.mokey-signin) .navbar-inverse {
 	margin-bottom: 0.35rem;
 }
 
+.btn {
+	--bs-btn-font-size: 0.875rem;
+	--bs-btn-font-weight: 500;
+	--bs-btn-padding-x: 14px;
+	--bs-btn-padding-y: 7px;
+}
+.btn-sm {
+	--bs-btn-font-size: 0.8125rem;
+	--bs-btn-padding-x: 10px;
+	--bs-btn-padding-y: 4px;
+}
+.btn-lg {
+	--bs-btn-font-size: 1rem;
+	--bs-btn-padding-x: 16px;
+	--bs-btn-padding-y: 9px;
+}
+.btn-outline-secondary {
+	--bs-btn-color: var(--mokey-ink);
+	--bs-btn-bg: var(--mokey-surface);
+	--bs-btn-border-color: var(--mokey-border-strong);
+	--bs-btn-hover-color: var(--mokey-ink);
+	--bs-btn-hover-bg: var(--mokey-bg);
+	--bs-btn-hover-border-color: var(--mokey-border-strong);
+	--bs-btn-active-color: var(--mokey-accent);
+	--bs-btn-active-bg: var(--mokey-accent-subtle);
+	--bs-btn-active-border-color: var(--mokey-border-strong);
+	--bs-btn-disabled-color: var(--mokey-muted);
+	--bs-btn-disabled-bg: var(--mokey-surface);
+	--bs-btn-disabled-border-color: var(--mokey-border);
+}
 .btn-primary {
 	--bs-btn-color: var(--mokey-on-accent);
 	--bs-btn-hover-color: var(--mokey-on-accent);

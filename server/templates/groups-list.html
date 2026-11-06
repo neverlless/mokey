@@ -1,125 +1,125 @@
 <div id="groups-pane">
-<h3 class="mb-4">{{ T "groups.title" }}</h3>
+<h1 class="mb-1">{{ T "groups.title" }}</h1>
+<p class="text-muted mb-4">{{ T "groups.subtitle" }}</p>
 
 {{ if $.groups_error }}
 <div class="alert alert-danger">{{ T "account.fatal_system_error" }}</div>
 {{ end }}
 
-<h5>{{ T "groups.my_groups" }}</h5>
-<div class="mb-4">
-	{{ range $g := $.my_groups }}
-	<span class="badge rounded-pill bg-dark">{{ $g }}</span>
+<h2 class="mokey-section-title mb-2">{{ T "groups.my_groups" }}</h2>
+<div class="mokey-card mb-4">
+	{{ if $.my_groups }}
+	<div class="mokey-row mokey-chips">
+		{{ range $g := $.my_groups }}<span class="mokey-chip">{{ $g }}</span>{{ end }}
+	</div>
+	{{ else }}
+	<div class="mokey-empty">
+		<p>{{ T "groups.empty" }}</p>
+		{{ if $.joinable }}<a class="btn btn-primary" href="#joinable">{{ T "groups.browse" }}</a>{{ end }}
+	</div>
 	{{ end }}
 </div>
 
 {{ if $.my_requests }}
-<h5>{{ T "groups.my_requests" }}</h5>
-<div class="mb-4">
+<h2 class="mokey-section-title mb-2">{{ T "groups.my_requests" }}</h2>
+<div class="mokey-card mb-4">
 	{{ range $r := $.my_requests }}
-	<span class="badge rounded-pill bg-secondary">{{ $r.Group }}{{ if eq $r.Type "leave" }} ({{ T "groups.leave_pending" }}){{ end }}</span>
+	<div class="mokey-row">
+		<div class="flex-grow-1"><span class="mokey-mono">{{ $r.Group }}</span></div>
+		<span class="mokey-pill is-warn">{{ if eq $r.Type "leave" }}{{ T "groups.leave_pending" }}{{ else }}{{ T "groups.join_pending" }}{{ end }}</span>
+	</div>
 	{{ end }}
 </div>
 {{ end }}
 
 {{ if $.joinable }}
-<h5>{{ T "groups.joinable" }}</h5>
-<table class="table align-middle mb-4">
-	<tbody>
+<h2 class="mokey-section-title mb-2" id="joinable">{{ T "groups.joinable" }}</h2>
+<div class="mokey-card mb-4">
 	{{ range $g := $.joinable }}
-	<tr>
-		<td><strong>{{ $g.Name }}</strong>
+	<div class="mokey-row">
+		<div class="flex-grow-1">
+			<strong>{{ $g.Name }}</strong>
 			{{ if $g.Description }}<div class="text-muted small">{{ $g.Description }}</div>{{ end }}
-		</td>
-		<td class="text-end">
-			<button class="btn btn-sm btn-primary" hx-post="/groups/request"
-			        hx-vals='{"group": "{{ $g.Name }}"}'
-			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-			        hx-target="#groups-pane" hx-swap="outerHTML">
-				{{ T "groups.request_join" }}
-			</button>
-		</td>
-	</tr>
+		</div>
+		<button class="btn btn-sm btn-outline-secondary" hx-post="/groups/request"
+		        hx-vals='{"group": "{{ $g.Name }}"}'
+		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+		        hx-target="#groups-pane" hx-swap="outerHTML">
+			{{ T "groups.request_join" }}
+		</button>
+	</div>
 	{{ end }}
-	</tbody>
-</table>
+</div>
 {{ end }}
 
 {{ if $.leavable }}
-<h5>{{ T "groups.leavable" }}</h5>
-<table class="table align-middle mb-4">
-	<tbody>
+<h2 class="mokey-section-title mb-2">{{ T "groups.leavable" }}</h2>
+<div class="mokey-card mb-4">
 	{{ range $g := $.leavable }}
-	<tr>
-		<td><strong>{{ $g.Name }}</strong>
+	<div class="mokey-row">
+		<div class="flex-grow-1">
+			<strong>{{ $g.Name }}</strong>
 			{{ if $g.Description }}<div class="text-muted small">{{ $g.Description }}</div>{{ end }}
-		</td>
-		<td class="text-end">
-			<button class="btn btn-sm btn-outline-danger" hx-post="/groups/leave"
-			        hx-vals='{"group": "{{ $g.Name }}"}'
-			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-			        hx-target="#groups-pane" hx-swap="outerHTML">
-				{{ T "groups.request_leave" }}
-			</button>
-		</td>
-	</tr>
+		</div>
+		<button class="btn btn-sm btn-outline-danger" hx-post="/groups/leave"
+		        hx-vals='{"group": "{{ $g.Name }}"}'
+		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+		        hx-target="#groups-pane" hx-swap="outerHTML">
+			{{ T "groups.request_leave" }}
+		</button>
+	</div>
 	{{ end }}
-	</tbody>
-</table>
+</div>
 {{ end }}
 
 {{ if $.managed }}
-<h5>{{ T "groups.managed" }}</h5>
+<h2 class="mokey-section-title mb-2">{{ T "groups.managed" }}</h2>
 {{ range $m := $.managed }}
-<div class="mb-3">
-	<strong>{{ $m.Group.Name }}</strong>
-	{{ if $m.Requests }}
-	<table class="table table-sm align-middle">
-		<tbody>
-		{{ range $req := $m.Requests }}
-		<tr>
-			<td>{{ $req.Username }}{{ if eq $req.Type "leave" }} ({{ T "groups.leave_pending" }}){{ end }}</td>
-			<td class="text-end">
-				<button class="btn btn-sm btn-success" hx-post="/groups/approve"
-				        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $req.Username }}"}'
-				        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-				        hx-target="#groups-pane" hx-swap="outerHTML">
-					{{ T "groups.approve" }}
-				</button>
-				<button class="btn btn-sm btn-outline-danger" hx-post="/groups/deny"
-				        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $req.Username }}"}'
-				        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-				        hx-target="#groups-pane" hx-swap="outerHTML"
-				        hx-confirm="{{ T "groups.deny_confirm" }}">
-					{{ T "groups.deny" }}
-				</button>
-			</td>
-		</tr>
-		{{ end }}
-		</tbody>
-	</table>
+<div class="mokey-card mb-4">
+	<div class="mokey-row">
+		<div class="flex-grow-1"><strong>{{ $m.Group.Name }}</strong></div>
+		{{ if $m.Requests }}<span class="mokey-pill is-warn">{{ printf (T "groups.count_requests") (len $m.Requests) }}</span>{{ end }}
+	</div>
+	{{ range $req := $m.Requests }}
+	<div class="mokey-row">
+		<div class="flex-grow-1">
+			<span class="mokey-mono">{{ $req.Username }}</span>
+			<div class="text-muted small">{{ if eq $req.Type "leave" }}{{ T "groups.wants_leave" }}{{ else }}{{ T "groups.wants_join" }}{{ end }}</div>
+		</div>
+		<div class="d-flex gap-2">
+			<button class="btn btn-sm btn-outline-danger" hx-post="/groups/deny"
+			        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $req.Username }}"}'
+			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+			        hx-target="#groups-pane" hx-swap="outerHTML"
+			        hx-confirm="{{ T "groups.deny_confirm" }}">
+				{{ T "groups.deny" }}
+			</button>
+			<button class="btn btn-sm btn-primary" hx-post="/groups/approve"
+			        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $req.Username }}"}'
+			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+			        hx-target="#groups-pane" hx-swap="outerHTML">
+				{{ T "groups.approve" }}
+			</button>
+		</div>
+	</div>
 	{{ else }}
-	<div class="text-muted small">{{ T "groups.no_requests" }}</div>
+	<div class="mokey-row text-muted small">{{ T "groups.no_requests" }}</div>
 	{{ end }}
 	{{ if $m.Group.Members }}
-	<div class="text-muted small mb-1">{{ T "groups.members" }}</div>
-	<table class="table table-sm align-middle">
-		<tbody>
-		{{ range $member := $m.Group.Members }}
-		<tr>
-			<td>{{ $member }}</td>
-			<td class="text-end">
-				<button class="btn btn-sm btn-outline-danger" hx-post="/groups/remove-member"
-				        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $member }}"}'
-				        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-				        hx-target="#groups-pane" hx-swap="outerHTML"
-				        hx-confirm="{{ T "groups.remove_member_confirm" }}">
-					{{ T "groups.remove_member" }}
-				</button>
-			</td>
-		</tr>
-		{{ end }}
-		</tbody>
-	</table>
+	<div class="mokey-row text-muted small py-2">{{ T "groups.members" }}</div>
+	{{ end }}
+	{{ range $member := $m.Group.Members }}
+	<div class="mokey-row">
+		<div class="flex-grow-1"><span class="mokey-mono">{{ $member }}</span></div>
+		<button class="btn btn-sm btn-outline-secondary" hx-post="/groups/remove-member"
+		        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $member }}"}'
+		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+		        hx-target="#groups-pane" hx-swap="outerHTML"
+		        hx-confirm="{{ T "groups.remove_member_confirm" }}"
+		        aria-label="{{ T "groups.remove_member" }}: {{ $member }}">
+			{{ T "groups.remove_member" }}
+		</button>
+	</div>
 	{{ end }}
 </div>
 {{ end }}

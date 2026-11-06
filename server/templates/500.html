@@ -1,16 +1,10 @@
 {{ template "header.html" . }}
-<section class="col-lg-8 mx-auto p-3 py-md-5">
-	<div class="container">
-
-<div class="page-header">
-  <h1><i class="fa fa-face-frown"></i> {{ T "error.something_bad_happened" }}</h1>
-</div>
-
-  <div class="alert alert-danger" role="alert">
-    {{ T "error.system_trouble" }}
+<main class="mokey-error">
+  <div class="mokey-card mokey-card-body text-center">
+    <span class="mokey-tile is-warn mb-3" aria-hidden="true"><i class="fa fa-triangle-exclamation"></i></span>
+    <h1 class="mb-2">{{ T "error.something_bad_happened" }}</h1>
+    <p class="text-muted mb-4">{{ T "error.system_trouble" }}</p>
+    <a class="btn btn-primary" href="/">{{ T "error.go_home" }}</a>
   </div>
-
-
-	</div>
-</section>
+</main>
 {{ template "footer.html" . }}

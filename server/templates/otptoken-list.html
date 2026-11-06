@@ -17,105 +17,114 @@
 <div id="otptoken-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
 <div id="otptoken-modal"></div>
-<div class="d-flex w-100 justify-content-between align-items-center mb-4">
-    <h3 class="mb-1">{{ T "otptoken.header" }}</h3>
-    {{ if not $.otp_readonly }}
-    <button type="button" 
-            hx-get="/otptoken/modal" 
-            hx-target="#otptoken-modal" 
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="mb-1">{{ T "security.otp_title" }}</h1>
+    <p class="text-muted mb-0">{{ T "otptoken.subtitle" }}</p>
+  </div>
+  {{ if and $.otptokens (not $.otp_readonly) }}
+    <button type="button"
+            hx-get="/otptoken/modal"
+            hx-target="#otptoken-modal"
             hx-trigger="click"
             _="on htmx:afterOnLoad wait 10ms then add .show to #modal then add .show to #modal-backdrop"
-            class="btn btn-sm btn-primary end">
-      <i class="fa fa-plus"></i> {{ T "otptoken.new_token_button" }}
+            class="btn {{ if $.otptokens }}btn-sm btn-outline-secondary{{ else }}btn-primary{{ end }}">
+      <i class="fa fa-plus" aria-hidden="true"></i> {{ T "otptoken.add_app" }}
     </button>
-    {{ end }}
+  {{ end }}
 </div>
 {{ if $.otp_readonly }}
-<p class="text-muted"><i class="fa fa-lock"></i> {{ T "otptoken.readonly_notice" }}</p>
+<p class="text-muted"><i class="fa fa-lock" aria-hidden="true"></i> {{ T "otptoken.readonly_notice" }}</p>
 {{ end }}
+<div class="mokey-card">
 {{ range $i, $tok := $.otptokens }}
-<div class="row">
-    <div class="d-flex flex-items-center">
-        <div class="text-center d-flex flex-column">
-           <i class="fa fa-fingerprint fa-2x"></i>
-           <span title="{{ T "sshkey_list.type" }}">
-               <code style="overflow-wrap: anywhere">{{ $tok.Type }}</code>
-           </span>
-        </div>
-        <div class="flex-grow-1 ms-3 mb-3">
-          <strong class="d-block">{{ $tok.DisplayName }}</strong>
-          <span class="d-block fst-italic">
-            {{ $tok.Description }}
-          </span>
-          <span class="text-muted d-block mb-2">{{ if not $tok.NotBefore.IsZero }}{{ T "otptoken.added_on" }} {{ $tok.NotBefore.Format "Jan 02, 2006" }}{{ end }}</span>
-          {{ if not $.otp_readonly }}
-          <p>
-          {{ if $tok.Enabled }}
-              <button class="btn btn-sm btn-success ml-1" title="{{ T "otptoken.click_to_disable" }}" hx-target-error="otptoken-failed"
-                      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                      data-hx-trigger="tokendisable"
-                      data-hx-vals='{"csrf": "{{ $.csrf }}", "uuid": "{{ $tok.UUID }}"}'
-                      data-hx-target="#otp" data-hx-post="/otptoken/disable" 
-                      _="on click call 
-                            Swal.fire({
-                                title: '{{ T "otptoken.disable_prompt_title" }}',
-                                backdrop: true,
-                                html: '<code>{{ $tok.DisplayName }}</code>',
-                                focusCancel: true,
-                                confirmButtonText: '{{ T "common.disable" }}',
-                                reverseButtons: false,
-                                showCancelButton: true,
-                                icon: 'question'})
-                            if result.isConfirmed trigger tokendisable">
-                <i class="fa fa-toggle-on fa-lg"></i> {{ T "common.enabled" }}
-              </button>
-          {{ else }}
-              <button class="btn btn-sm btn-secondary ml-1" title="{{ T "otptoken.click_to_enable" }}" hx-target-error="otptoken-failed"
-                      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                      data-hx-trigger="tokenenable"
-                      data-hx-vals='{"csrf": "{{ $.csrf }}", "uuid": "{{ $tok.UUID }}"}'
-                      data-hx-target="#otp" data-hx-post="/otptoken/enable" 
-                      _="on click call 
-                            Swal.fire({
-                                title: '{{ T "otptoken.enable_prompt_title" }}',
-                                backdrop: true,
-                                html: '<code>{{ $tok.DisplayName }}</code>',
-                                focusCancel: true,
-                                reverseButtons: false,
-                                confirmButtonColor: '#157347',
-                                confirmButtonText: '{{ T "common.enable" }}',
-                                showCancelButton: true,
-                                iconColor: '#157347',
-                                icon: 'question'})
-                            if result.isConfirmed trigger tokenenable">
-                <i class="fa fa-toggle-off fa-lg"></i> {{ T "common.disabled" }}
-              </button>
-          {{ end }}
-              <button class="btn btn-sm btn-outline-danger ml-1" hx-target-error="otptoken-failed"
-                      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                      data-hx-trigger="tokenremove"
-                      data-hx-vals='{"csrf": "{{ $.csrf }}", "uuid": "{{ $tok.UUID }}"}'
-                      data-hx-target="#otp" data-hx-post="/otptoken/remove" 
-                      _="on click call 
-                            Swal.fire({
-                                title: '{{ T "otptoken.delete_prompt_title" }}',
-                                backdrop: true,
-                                html: '<code>{{ $tok.DisplayName }}</code><br/><br/>{{ T "otptoken.delete_warning" }}',
-                                focusCancel: true,
-                                reverseButtons: false,
-                                confirmButtonColor: '#dc3545',
-                                confirmButtonText: '{{ T "common.delete" }}',
-                                showCancelButton: true,
-                                icon: 'warning'})
-                            if result.isConfirmed trigger tokenremove">
-                {{ T "common.delete" }}
-              </button>
-          </p>
-          {{ end }}
-        </div>
+  <div class="mokey-row">
+    <span class="mokey-tile is-neutral" aria-hidden="true"><i class="fa fa-mobile-screen"></i></span>
+    <div class="flex-grow-1">
+      <strong>{{ $tok.DisplayName }}</strong>
+      {{ if $tok.Enabled }}<span class="mokey-pill is-ok ms-1">{{ T "common.enabled" }}</span>{{ else }}<span class="mokey-pill ms-1">{{ T "common.disabled" }}</span>{{ end }}
+      <div class="text-muted small">
+        {{ if and $tok.Description (ne $tok.Description $tok.DisplayName) }}{{ $tok.Description }} · {{ end }}{{ if not $tok.NotBefore.IsZero }}{{ T "otptoken.added_on" }} {{ $tok.NotBefore.Format "Jan 02, 2006" }}{{ end }}
+      </div>
     </div>
-
-</div>
+    {{ if not $.otp_readonly }}
+    <div class="d-flex gap-2">
+    {{ if $tok.Enabled }}
+        <button class="btn btn-sm btn-outline-secondary" title="{{ T "otptoken.click_to_disable" }}" hx-target-error="otptoken-failed"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                data-hx-trigger="tokendisable"
+                data-hx-vals='{"csrf": "{{ $.csrf }}", "uuid": "{{ $tok.UUID }}"}'
+                data-hx-target="#otp" data-hx-post="/otptoken/disable" 
+                _="on click call 
+                      Swal.fire({
+                          title: '{{ T "otptoken.disable_prompt_title" }}',
+                          backdrop: true,
+                          html: '<code>{{ $tok.DisplayName }}</code>',
+                          focusCancel: true,
+                          confirmButtonText: '{{ T "common.disable" }}',
+                          reverseButtons: false,
+                          showCancelButton: true,
+                          icon: 'question'})
+                      if result.isConfirmed trigger tokendisable">
+          {{ T "security.turn_off" }}
+        </button>
+    {{ else }}
+        <button class="btn btn-sm btn-outline-secondary" title="{{ T "otptoken.click_to_enable" }}" hx-target-error="otptoken-failed"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                data-hx-trigger="tokenenable"
+                data-hx-vals='{"csrf": "{{ $.csrf }}", "uuid": "{{ $tok.UUID }}"}'
+                data-hx-target="#otp" data-hx-post="/otptoken/enable" 
+                _="on click call 
+                      Swal.fire({
+                          title: '{{ T "otptoken.enable_prompt_title" }}',
+                          backdrop: true,
+                          html: '<code>{{ $tok.DisplayName }}</code>',
+                          focusCancel: true,
+                          reverseButtons: false,
+                          confirmButtonColor: '#157347',
+                          confirmButtonText: '{{ T "common.enable" }}',
+                          showCancelButton: true,
+                          iconColor: '#157347',
+                          icon: 'question'})
+                      if result.isConfirmed trigger tokenenable">
+          {{ T "security.turn_on" }}
+        </button>
+    {{ end }}
+        <button class="btn btn-sm btn-outline-danger" hx-target-error="otptoken-failed"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                data-hx-trigger="tokenremove"
+                data-hx-vals='{"csrf": "{{ $.csrf }}", "uuid": "{{ $tok.UUID }}"}'
+                data-hx-target="#otp" data-hx-post="/otptoken/remove" 
+                _="on click call 
+                      Swal.fire({
+                          title: '{{ T "otptoken.delete_prompt_title" }}',
+                          backdrop: true,
+                          html: '<code>{{ $tok.DisplayName }}</code><br/><br/>{{ T "otptoken.delete_warning" }}',
+                          focusCancel: true,
+                          reverseButtons: false,
+                          confirmButtonColor: '#dc3545',
+                          confirmButtonText: '{{ T "common.delete" }}',
+                          showCancelButton: true,
+                          icon: 'warning'})
+                      if result.isConfirmed trigger tokenremove">
+          {{ T "common.delete" }}
+        </button>
+    </div>
+    {{ end }}
+  </div>
 {{ else }}
-    <p>{{ T "otptoken.no_tokens_found" }}</p>
+  <div class="mokey-empty">
+    <p>{{ T "otptoken.empty" }}</p>
+    {{ if not $.otp_readonly }}
+    <button type="button"
+            hx-get="/otptoken/modal"
+            hx-target="#otptoken-modal"
+            hx-trigger="click"
+            _="on htmx:afterOnLoad wait 10ms then add .show to #modal then add .show to #modal-backdrop"
+            class="btn {{ if $.otptokens }}btn-sm btn-outline-secondary{{ else }}btn-primary{{ end }}">
+      <i class="fa fa-plus" aria-hidden="true"></i> {{ T "otptoken.add_app" }}
+    </button>
+    {{ end }}
+  </div>
 {{ end }}
+</div>

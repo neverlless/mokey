@@ -12,7 +12,7 @@
   <thead>
     <tr>
       <th scope="col">{{ T "common.username" }}</th>
-      <th scope="col">{{ T "common.email" }}</th>
+      <th scope="col" class="d-none d-sm-table-cell">{{ T "common.email" }}</th>
       <th scope="col"></th>
       <th scope="col" class="text-end"></th>
     </tr>
@@ -24,7 +24,7 @@
         <strong>{{ $u.Username }}</strong>
         <div class="small text-muted">{{ $u.First }} {{ $u.Last }}</div>
       </td>
-      <td>{{ $u.Email }}</td>
+      <td class="d-none d-sm-table-cell">{{ $u.Email }}</td>
       <td>
         {{ if $u.Locked }}
         <span class="mokey-pill is-danger">{{ T "admin.blocked" }}</span>
