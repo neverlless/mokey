@@ -317,6 +317,49 @@ func (r *Router) user(c fiber.Ctx) *ipa.User {
 	return c.Locals(ContextKeyUser).(*ipa.User)
 }
 
+// navSection maps a page path to the sidebar entry that owns it
+func navSection(path string) string {
+	switch path {
+	case "admin/people":
+		return "people"
+	case "admin/log":
+		return "log"
+	case "password", "otp", "passkey", "security":
+		return "security"
+	}
+	return path
+}
+
+func displayName(u *ipa.User) string {
+	if u.DisplayName != "" {
+		return u.DisplayName
+	}
+	if n := strings.TrimSpace(u.First + " " + u.Last); n != "" {
+		return n
+	}
+	return u.Username
+}
+
+func initials(u *ipa.User) string {
+	if u == nil {
+		return ""
+	}
+	var s string
+	for _, n := range []string{u.First, u.Last} {
+		for _, r := range n {
+			s += string(r)
+			break
+		}
+	}
+	if s == "" {
+		for _, r := range u.Username {
+			s = string(r)
+			break
+		}
+	}
+	return strings.ToUpper(s)
+}
+
 func (r *Router) Index(c fiber.Ctx) error {
 	user := r.user(c)
 
@@ -326,9 +369,13 @@ func (r *Router) Index(c fiber.Ctx) error {
 	}
 
 	vars := fiber.Map{
-		"user":     user,
-		"path":     path,
-		"is_admin": isAdmin(user),
+		"user":         user,
+		"path":         path,
+		"is_admin":     isAdmin(user),
+		"shell":        true,
+		"section":      navSection(path),
+		"initials":     initials(user),
+		"display_name": displayName(user),
 	}
 	expiryWarningVars(user, vars)
 

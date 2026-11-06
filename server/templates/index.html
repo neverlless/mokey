@@ -1,121 +1,59 @@
 {{ template "header.html" . }}
 
-<section class="col-lg-10 col-xxl-9 mx-auto p-3 py-md-5">
-	<div class="container">
-		{{ if $.password_expiry_warning }}
-		<div class="alert alert-warning d-flex align-items-center" role="alert">
-			<i class="fa fa-triangle-exclamation me-2" aria-hidden="true"></i>
-			<div>
-				{{ if eq $.password_expiry_days 0 }}{{ T "password.expires_today" }}{{ else }}{{ T "password.expires_in_part1" }}{{ $.password_expiry_days }}{{ T "password.expires_in_part2" }}{{ end }}
-				<a href="/password" class="alert-link">{{ T "password.change_now" }}</a>
-			</div>
-		</div>
-		{{ end }}
-		<div class="bg-white shadow rounded-3 d-block d-sm-flex">
-			<div class="profile-tab-nav border-end">
-				<div class="p-4 text-center">
-					<span class="mokey-id mokey-user-chip">{{ .user.Username }}</span>
-				</div>
-				<div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-					<a class="nav-link{{ if eq $.path "account" }} active{{end}}" id="account-tab" href="/account" role="tab">
-						<i class="fa fa-home text-center me-1"></i> 
-						{{ T "profile.account" }}
-					</a>
-					<a class="nav-link{{ if eq $.path "password" }} active{{end}}" id="password-tab" href="/password" role="tab">
-						<i class="fa fa-lock text-center me-1"></i> 
-						{{ T "common.password" }}
-					</a>
-					<a class="nav-link{{ if eq $.path "security" }} active{{end}}" id="security-tab" href="/security" role="tab">
-						<i class="fa fa-shield text-center me-1"></i> 
-						{{ T "profile.security" }}
-					</a>
-					<a class="nav-link{{ if eq $.path "sshkey" }} active{{end}}" id="sshkey-tab" href="/sshkey" role="tab">
-						<i class="fa fa-key text-center me-1"></i> 
-						{{ T "profile.ssh_keys" }}
-					</a>
-					<a class="nav-link{{ if eq $.path "otp" }} active{{end}}" id="otp-tab" href="/otp" role="tab">
-						<i class="fa fa-fingerprint text-center me-1"></i>
-						{{ T "profile.otp_tokens" }}
-					</a>
-					<a class="nav-link{{ if eq $.path "passkey" }} active{{end}}" id="passkey-tab" href="/passkey" role="tab">
-						<i class="fa fa-user-shield text-center me-1"></i>
-						{{ T "profile.passkeys" }}
-					</a>
-					{{ if ConfigValueBool "accounts.enable_groups" }}
-					<a class="nav-link{{ if eq $.path "groups" }} active{{end}}" id="groups-tab" href="/groups" role="tab">
-						<i class="fa fa-users text-center me-1"></i>
-						{{ T "groups.tab" }}
-					</a>
-					{{ end }}
-					{{ if ConfigValueBool "accounts.enable_access" }}
-					<a class="nav-link{{ if eq $.path "access" }} active{{end}}" id="access-tab" href="/access" role="tab">
-						<i class="fa fa-door-open text-center me-1"></i>
-						{{ T "access.tab" }}
-					</a>
-					{{ end }}
-					{{ if and (ConfigValueBool "accounts.enable_apps") (ConfigValueString "hydra.admin_url") }}
-					<a class="nav-link{{ if eq $.path "apps" }} active{{end}}" id="apps-tab" href="/apps" role="tab">
-						<i class="fa fa-table-cells-large text-center me-1"></i>
-						{{ T "apps.tab" }}
-					</a>
-					{{ end }}
-					{{ if $.is_admin }}
-					<a class="nav-link{{ if eq $.path "admin" }} active{{end}}" id="admin-tab" href="/admin" role="tab">
-						<i class="fa fa-users-gear text-center me-1"></i>
-						{{ T "admin.tab" }}
-					</a>
-					{{ end }}
-					<a class="nav-link" id="logout" href="/auth/logout" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}' hx-post="/auth/logout" role="tab">
-						<i class="fa fa-arrow-right-from-bracket text-center me-1"></i> 
-						{{ T "profile.logout" }}
-					</a>
-				</div>
-			</div>
-			<div class="tab-content p-4 p-md-5" id="v-pills-tabContent">
-                {{ if eq $.path "account" }}
-				<div class="tab-pane fade show active" id="account" role="tabpanel" aria-labelledby="account-tab">
-                    {{ template "account.html" . }}
-                </div>
-                {{ else if eq $.path "password" }}
-				<div class="tab-pane fade show active" id="password" role="tabpanel" aria-labelledby="password-tab">
-                    {{ template "password.html" . }}
-                </div>
-                {{ else if eq $.path "security" }}
-				<div class="tab-pane fade show active" id="security" role="tabpanel" aria-labelledby="security-tab">
-                    {{ template "security.html" . }}
-                </div>
-                {{ else if eq $.path "sshkey" }}
-				<div class="tab-pane fade show active" id="sshkey" role="tabpanel" aria-labelledby="sshkey-tab">
-                    {{ template "sshkey-list.html" . }}
-                </div>
-                {{ else if eq $.path "otp" }}
-				<div class="tab-pane fade show active" id="otp" role="tabpanel" aria-labelledby="otp-tab">
-                    {{ template "otptoken-list.html" . }}
-                </div>
-                {{ else if eq $.path "passkey" }}
-				<div class="tab-pane fade show active" id="passkey" role="tabpanel" aria-labelledby="passkey-tab">
-                    {{ template "passkey-list.html" . }}
-                </div>
-                {{ else if eq $.path "groups" }}
-				<div class="tab-pane fade show active" id="groups" role="tabpanel" aria-labelledby="groups-tab">
-                    {{ template "groups-list.html" . }}
-                </div>
-                {{ else if eq $.path "access" }}
-				<div class="tab-pane fade show active" id="access" role="tabpanel" aria-labelledby="access-tab">
-                    {{ template "access-list.html" . }}
-                </div>
-                {{ else if eq $.path "apps" }}
-				<div class="tab-pane fade show active" id="apps" role="tabpanel" aria-labelledby="apps-tab">
-                    {{ template "apps-list.html" . }}
-                </div>
-                {{ else if eq $.path "admin" }}
-				<div class="tab-pane fade show active" id="admin" role="tabpanel" aria-labelledby="admin-tab">
-                    {{ template "admin.html" . }}
-                </div>
-                {{ end }}
-			</div>
-		</div>
+<div class="mokey-shell">
+{{ template "app-nav.html" . }}
+<main class="mokey-main{{ if or (eq $.section "admin") (eq $.section "people") (eq $.section "log") }} is-wide{{ end }}">
+{{ if $.password_expiry_warning }}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+	<i class="fa fa-triangle-exclamation me-2" aria-hidden="true"></i>
+	<div>
+		{{ if eq $.password_expiry_days 0 }}{{ T "password.expires_today" }}{{ else }}{{ T "password.expires_in_part1" }}{{ $.password_expiry_days }}{{ T "password.expires_in_part2" }}{{ end }}
+		<a href="/password" class="alert-link">{{ T "password.change_now" }}</a>
 	</div>
-</section>
+</div>
+{{ end }}
+{{ if eq $.path "account" }}
+<div id="account">
+{{ template "account.html" . }}
+</div>
+{{ else if eq $.path "password" }}
+<div id="password">
+{{ template "password.html" . }}
+</div>
+{{ else if eq $.path "security" }}
+<div id="security">
+{{ template "security.html" . }}
+</div>
+{{ else if eq $.path "sshkey" }}
+<div id="sshkey">
+{{ template "sshkey-list.html" . }}
+</div>
+{{ else if eq $.path "otp" }}
+<div id="otp">
+{{ template "otptoken-list.html" . }}
+</div>
+{{ else if eq $.path "passkey" }}
+<div id="passkey">
+{{ template "passkey-list.html" . }}
+</div>
+{{ else if eq $.path "groups" }}
+<div id="groups">
+{{ template "groups-list.html" . }}
+</div>
+{{ else if eq $.path "access" }}
+<div id="access">
+{{ template "access-list.html" . }}
+</div>
+{{ else if eq $.path "apps" }}
+<div id="apps">
+{{ template "apps-list.html" . }}
+</div>
+{{ else if eq $.path "admin" }}
+<div id="admin">
+{{ template "admin.html" . }}
+</div>
+{{ end }}
+</main>
+</div>
 
 {{ template "footer.html" . }}
