@@ -13,6 +13,26 @@ func (r *Router) securityVars(c fiber.Ctx, vars fiber.Map) {
 	user := r.user(c)
 	vars["user"] = user
 
+	client := r.userClient(c)
+	otpCount, passkeyCount := 0, 0
+	countsKnown := true
+	if tokens, err := client.FetchOTPTokens(user.Username); err != nil {
+		slog.Error("Failed to list otp tokens", "username", user.Username, "err", err)
+		countsKnown = false
+	} else {
+		otpCount = len(tokens)
+	}
+	if passkeys, err := userPasskeys(client, user.Username); err != nil {
+		slog.Error("Failed to list passkeys", "username", user.Username, "err", err)
+		countsKnown = false
+	} else {
+		passkeyCount = len(passkeys)
+	}
+	vars["otp_count"] = otpCount
+	vars["passkey_count"] = passkeyCount
+	vars["counts_known"] = countsKnown
+	vars["security_state"] = securityState(user.OTPOnly(), otpCount)
+
 	if sess, err := r.session(c); err == nil {
 		vars["sessions"] = r.userSessions(user.Username, sess.ID())
 	}
@@ -30,6 +50,17 @@ func (r *Router) securityVars(c fiber.Ctx, vars fiber.Map) {
 			vars["connected_apps"] = apps
 		}
 	}
+}
+
+// securityState names the protection level shown on the Security hub.
+func securityState(otpOnly bool, otpCount int) string {
+	switch {
+	case otpOnly:
+		return "protected"
+	case otpCount > 0:
+		return "turn_on"
+	}
+	return "password_only"
 }
 
 func (r *Router) securityList(c fiber.Ctx, vars fiber.Map) error {

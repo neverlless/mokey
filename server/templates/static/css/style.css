@@ -171,6 +171,52 @@ h1,
 	color: var(--mokey-danger);
 }
 
+.mokey-tile {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	font-size: 1.1rem;
+}
+.mokey-tile.is-ok {
+	background: var(--mokey-ok-bg);
+	color: var(--mokey-ok);
+}
+.mokey-tile.is-warn {
+	background: var(--mokey-warn-bg);
+	color: var(--mokey-warn);
+}
+.mokey-steps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 24px;
+	list-style: none;
+	margin: 0;
+	padding: 14px 20px;
+	border-top: 1px solid var(--mokey-border);
+	color: var(--mokey-muted);
+	font-size: 0.8125rem;
+}
+.mokey-steps .is-done {
+	color: var(--mokey-ok);
+}
+.mokey-dot {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--mokey-ok);
+}
+.mokey-dot.is-warn {
+	background: var(--mokey-warn);
+}
+.mokey-dot.is-danger {
+	background: var(--mokey-danger);
+}
+
 .login-card {
 	max-width: 440px;
 }

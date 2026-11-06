@@ -11,17 +11,61 @@
 {{ end }}
 <div id="security-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
-<h3 class="mb-4">{{ T "security.title" }}</h3>
-<div class="card">
-  <div class="card-header">
-    {{ T "security.authentication_methods" }}
+<div class="mokey-eyebrow">{{ T "nav.group_account" }}</div>
+<h3 class="mb-1">{{ T "security.title" }}</h3>
+<p class="text-muted mb-4">{{ T "security.subtitle" }}</p>
+
+<div class="mokey-card mb-4">
+  <div class="mokey-row">
+    <span class="mokey-tile {{ if eq $.security_state "protected" }}is-ok{{ else }}is-warn{{ end }}" aria-hidden="true"><i class="fa {{ if eq $.security_state "protected" }}fa-shield{{ else }}fa-exclamation-triangle{{ end }}"></i></span>
+    <div class="flex-grow-1">
+      <h2 class="mokey-section-title">{{ T (printf "security.state_%s_title" $.security_state) }}</h2>
+      <div class="text-muted">{{ T (printf "security.state_%s_body" $.security_state) }}</div>
+    </div>
+    {{ if eq $.security_state "password_only" }}
+    <a class="btn btn-primary" href="/otp">{{ T "security.setup_otp" }}</a>
+    {{ else if eq $.security_state "turn_on" }}
+    <a class="btn btn-primary" href="#two-step-row">{{ T "security.turn_on" }}</a>
+    {{ end }}
   </div>
-  <ul class="list-group list-group-flush">
-    <li class="list-group-item">
-    <div class="d-flex w-100 justify-content-between align-items-center gap-3">
-    <h5 class="mb-1">{{ T "security.two_factor_authentication" }}</h5>
+  <ol class="mokey-steps">
+    <li class="is-done"><i class="fa fa-check-circle" aria-hidden="true"></i> {{ T "security.step_password" }}</li>
+    <li{{ if gt $.otp_count 0 }} class="is-done"{{ end }}><i class="fa {{ if gt $.otp_count 0 }}fa-check-circle{{ else }}fa-circle-o{{ end }}" aria-hidden="true"></i> {{ T "security.step_app" }}</li>
+    <li{{ if $.user.OTPOnly }} class="is-done"{{ end }}><i class="fa {{ if $.user.OTPOnly }}fa-check-circle{{ else }}fa-circle-o{{ end }}" aria-hidden="true"></i> {{ T "security.step_two_step" }}</li>
+  </ol>
+</div>
+
+<h2 class="mokey-section-title mb-2">{{ T "security.ways_title" }}</h2>
+<div class="mokey-card mb-4">
+  <div class="mokey-row">
+    <div class="flex-grow-1">
+      <strong>{{ T "security.otp_title" }}</strong>
+      <div class="text-muted">{{ T "security.otp_body" }}</div>
+    </div>
+    {{ if $.counts_known }}{{ if gt $.otp_count 0 }}<span class="mokey-pill is-ok" data-count="otp">{{ printf (T "security.count_tokens") $.otp_count }}</span>{{ else }}<span class="mokey-pill is-warn">{{ T "security.not_set_up" }}</span>{{ end }}{{ end }}
+    <a class="btn btn-sm btn-outline-secondary" href="/otp">{{ T "security.manage" }}</a>
+  </div>
+  <div class="mokey-row">
+    <div class="flex-grow-1">
+      <strong>{{ T "security.passkeys_title" }}</strong>
+      <div class="text-muted">{{ T "security.passkeys_body" }}</div>
+    </div>
+    {{ if $.counts_known }}{{ if gt $.passkey_count 0 }}<span class="mokey-pill is-ok" data-count="passkey">{{ printf (T "security.count_passkeys") $.passkey_count }}</span>{{ else }}<span class="mokey-pill">{{ T "security.not_set_up" }}</span>{{ end }}{{ end }}
+    <a class="btn btn-sm btn-outline-secondary" href="/passkey">{{ T "security.manage" }}</a>
+  </div>
+  <div class="mokey-row">
+    <div class="flex-grow-1">
+      <strong>{{ T "security.password_title" }}</strong>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="/password">{{ T "security.change" }}</a>
+  </div>
+  <div class="mokey-row" id="two-step-row">
+    <div class="flex-grow-1">
+      <strong>{{ T "security.two_step_title" }}</strong>
+      <div class="text-muted">{{ T "security.two_step_body" }}</div>
+    </div>
     {{ if $.user.OTPOnly }}
-        <button class="btn btn-sm btn-success ml-1" title="{{ T "security.disable" }}" hx-target-error="security-failed"
+        <button class="btn btn-sm btn-outline-secondary" title="{{ T "security.disable" }}" hx-target-error="security-failed"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 data-hx-trigger="mfadisable"
                 data-hx-vals='{"csrf": "{{ $.csrf }}"}'
@@ -37,10 +81,11 @@
                           showCancelButton: true,
                           icon: 'warning'})
                       if result.isConfirmed trigger mfadisable">
-          <i class="fa fa-toggle-on fa-lg"></i> {{ T "common.enabled" }}
+          {{ T "security.turn_off" }}
         </button>
     {{ else }}
-        <button class="btn btn-sm btn-outline-secondary ml-1" title="{{ T "security.enable" }}" hx-target-error="security-failed"
+        <button class="btn btn-sm btn-primary" title="{{ T "security.enable" }}" hx-target-error="security-failed"
+                {{ if and $.counts_known (eq $.otp_count 0) }}disabled{{ end }}
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 data-hx-trigger="mfaenable"
                 data-hx-vals='{"csrf": "{{ $.csrf }}"}'
@@ -58,89 +103,82 @@
                           iconColor: '#157347',
                           icon: 'question'})
                       if result.isConfirmed trigger mfaenable">
-          <i class="fa fa-toggle-off fa-lg"></i> {{ T "common.disabled" }}
+          {{ T "security.turn_on" }}
         </button>
     {{ end }}
-    </div>
-    </li>
-  </ul>
+  </div>
 </div>
 
-<div class="card mt-4">
-  <div class="card-header d-flex w-100 justify-content-between align-items-center">
-    <span>{{ T "security.sessions_title" }}</span>
-    {{ if gt (len $.sessions) 1 }}
+<div class="d-flex w-100 justify-content-between align-items-center mb-2">
+  <h2 class="mokey-section-title">{{ T "security.sessions_title" }}</h2>
+  {{ if gt (len $.sessions) 1 }}
+  <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
+          hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+          hx-post="/security/sessions/revoke-others" hx-target="#security"
+          hx-confirm="{{ T "security.sign_out_others_confirm" }}">
+    {{ T "security.sign_out_others" }}
+  </button>
+  {{ end }}
+</div>
+<div class="mokey-card mb-4">
+  {{ range $s := $.sessions }}
+  <div class="mokey-row">
+    <div class="flex-grow-1">
+      <strong>{{ if $s.Browser }}{{ $s.Browser }}{{ else }}{{ T "security.unknown_client" }}{{ end }}{{ with $s.OS }} · {{ . }}{{ end }}</strong>
+      {{ if $s.Current }}<span class="mokey-pill is-ok ms-1">{{ T "security.current_session" }}</span>{{ end }}
+      <div class="text-muted small"><span class="mokey-mono">{{ $s.IP }}</span> · {{ T "security.signed_in" }} {{ TimeAgo $s.LoginTime }}</div>
+    </div>
+    {{ if not $s.Current }}
     <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-            hx-post="/security/sessions/revoke-others" hx-target="#security"
-            hx-confirm="{{ T "security.sign_out_others_confirm" }}">
-      {{ T "security.sign_out_others" }}
+            hx-vals='{"sid": "{{ $s.SID }}"}'
+            hx-post="/security/session/revoke" hx-target="#security">
+      {{ T "security.revoke" }}
     </button>
     {{ end }}
   </div>
-  <ul class="list-group list-group-flush">
-    {{ range $s := $.sessions }}
-    <li class="list-group-item d-flex w-100 justify-content-between align-items-center">
-      <div>
-        <strong>{{ if $s.Browser }}{{ $s.Browser }}{{ else }}{{ T "security.unknown_client" }}{{ end }}{{ with $s.OS }} · {{ . }}{{ end }}</strong>
-        {{ if $s.Current }}<span class="badge bg-success ms-1">{{ T "security.current_session" }}</span>{{ end }}
-        <div class="text-muted small">{{ $s.IP }} · {{ T "security.signed_in" }} {{ TimeAgo $s.LoginTime }}</div>
-      </div>
-      {{ if not $s.Current }}
-      <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
-              hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-              hx-vals='{"sid": "{{ $s.SID }}"}'
-              hx-post="/security/session/revoke" hx-target="#security">
-        {{ T "security.revoke" }}
-      </button>
-      {{ end }}
-    </li>
-    {{ else }}
-    <li class="list-group-item text-muted">{{ T "security.no_sessions" }}</li>
-    {{ end }}
-  </ul>
+  {{ else }}
+  <div class="mokey-row text-muted">{{ T "security.no_sessions" }}</div>
+  {{ end }}
 </div>
 
 {{ if $.apps_error }}
-<div class="alert alert-danger mt-4">{{ T "account.fatal_system_error" }}</div>
+<div class="alert alert-danger">{{ T "account.fatal_system_error" }}</div>
 {{ end }}
 
 {{ if $.connected_apps }}
-<div class="card mt-4">
-  <div class="card-header">{{ T "security.apps_title" }}</div>
-  <ul class="list-group list-group-flush">
-    {{ range $a := $.connected_apps }}
-    <li class="list-group-item d-flex w-100 justify-content-between align-items-center">
-      <div>
-        <strong>{{ $a.Name }}</strong>
-        <div class="text-muted small">
-          {{ range $i, $sc := $a.Scope }}{{ if $i }}, {{ end }}{{ $sc }}{{ end }}
-          {{ if not $a.GrantedAt.IsZero }} · {{ T "security.apps_granted" }} {{ TimeAgo $a.GrantedAt }}{{ end }}
-        </div>
+<h2 class="mokey-section-title mb-2">{{ T "security.apps_title" }}</h2>
+<div class="mokey-card mb-4">
+  {{ range $a := $.connected_apps }}
+  <div class="mokey-row">
+    <div class="flex-grow-1">
+      <strong>{{ $a.Name }}</strong>
+      <div class="text-muted small">
+        {{ range $i, $sc := $a.Scope }}{{ if $i }}, {{ end }}{{ $sc }}{{ end }}
+        {{ if not $a.GrantedAt.IsZero }} · {{ T "security.apps_granted" }} {{ TimeAgo $a.GrantedAt }}{{ end }}
       </div>
-      <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
-              hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-              hx-vals='{"client": "{{ $a.ClientID }}"}'
-              hx-post="/security/apps/revoke" hx-target="#security"
-              hx-confirm="{{ T "security.apps_revoke_confirm" }}">
-        {{ T "security.apps_revoke" }}
-      </button>
-    </li>
-    {{ end }}
-  </ul>
+    </div>
+    <button class="btn btn-sm btn-outline-danger" hx-target-error="security-failed"
+            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+            hx-vals='{"client": "{{ $a.ClientID }}"}'
+            hx-post="/security/apps/revoke" hx-target="#security"
+            hx-confirm="{{ T "security.apps_revoke_confirm" }}">
+      {{ T "security.apps_revoke" }}
+    </button>
+  </div>
+  {{ end }}
 </div>
 {{ end }}
 
-<div class="card mt-4">
-  <div class="card-header">{{ T "security.activity_title" }}</div>
-  <ul class="list-group list-group-flush">
-    {{ range $e := $.activity }}
-    <li class="list-group-item">
-      {{ $e.Message }}
-      <div class="text-muted small">{{ with $e.IP }}{{ . }} · {{ end }}{{ TimeAgo $e.Time }}</div>
-    </li>
-    {{ else }}
-    <li class="list-group-item text-muted">{{ T "security.no_activity" }}</li>
-    {{ end }}
-  </ul>
+<h2 class="mokey-section-title mb-2">{{ T "security.activity_title" }}</h2>
+<div class="mokey-card">
+  {{ range $e := $.activity }}
+  <div class="mokey-row">
+    <span class="mokey-dot{{ if eq $e.Level "ERROR" }} is-danger{{ else if eq $e.Level "WARN" }} is-warn{{ end }}" aria-hidden="true"></span>
+    <div class="flex-grow-1">{{ $e.Message }}{{ with $e.IP }} <span class="mokey-mono text-muted small">{{ . }}</span>{{ end }}</div>
+    <div class="text-muted small">{{ TimeAgo $e.Time }}</div>
+  </div>
+  {{ else }}
+  <div class="mokey-row text-muted">{{ T "security.no_activity" }}</div>
+  {{ end }}
 </div>
