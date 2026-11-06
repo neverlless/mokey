@@ -15,7 +15,7 @@
           hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
           hx-get="/admin/helpdesk?view={{ $v }}" hx-target="#admin-helpdesk">
     {{ T (printf "admin.helpdesk_view_%s" $v) }}
-    {{ if or (ne $v "inactive") $.last_login_tracked }}<span class="badge text-bg-light ms-1">{{ index $.counts $v }}</span>{{ end }}
+    {{ if or (ne $v "inactive") $.last_login_tracked }}<span class="mokey-pill ms-1">{{ index $.counts $v }}</span>{{ end }}
   </button>
   {{ end }}
 </div>
@@ -60,7 +60,7 @@
         <time datetime="{{ $r.Date.UTC.Format "2006-01-02T15:04:05Z" }}">{{ $r.Date.Format "2006-01-02" }}</time>
         <div class="small text-muted">{{ TimeAgo $r.Date }}</div>
       </td>
-      <td>{{ if $r.Disabled }}<span class="badge bg-danger">{{ T "admin.blocked" }}</span>{{ end }}</td>
+      <td>{{ if $r.Disabled }}<span class="mokey-pill is-danger">{{ T "admin.blocked" }}</span>{{ end }}</td>
       <td class="text-end">
         {{ if eq $.view "locked" }}
         <button type="button" class="btn btn-outline-secondary btn-sm" title="{{ T "admin.unlock_help" }}"

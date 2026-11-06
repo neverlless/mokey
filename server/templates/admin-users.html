@@ -8,13 +8,13 @@
 </div>
 {{ end }}
 
-<table class="table align-middle">
+<table class="table align-middle mb-0">
   <thead>
     <tr>
-      <th>{{ T "common.username" }}</th>
-      <th>{{ T "common.email" }}</th>
-      <th></th>
-      <th class="text-end"></th>
+      <th scope="col">{{ T "common.username" }}</th>
+      <th scope="col">{{ T "common.email" }}</th>
+      <th scope="col"></th>
+      <th scope="col" class="text-end"></th>
     </tr>
   </thead>
   <tbody>
@@ -27,12 +27,12 @@
       <td>{{ $u.Email }}</td>
       <td>
         {{ if $u.Locked }}
-        <span class="badge bg-danger">{{ T "admin.blocked" }}</span>
+        <span class="mokey-pill is-danger">{{ T "admin.blocked" }}</span>
         {{ else }}
-        <span class="badge bg-success">{{ T "admin.active" }}</span>
+        <span class="mokey-pill is-ok">{{ T "admin.active" }}</span>
         {{ end }}
       </td>
-      <td class="text-end">
+      <td class="text-end text-nowrap">
         {{ if $u.Locked }}
         <button type="button" class="btn btn-outline-success btn-sm"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
@@ -40,28 +40,37 @@
                 hx-post="/admin/user/unblock" hx-target="#admin-users">
           {{ T "admin.unblock" }}
         </button>
-        {{ else }}
-        <button type="button" class="btn btn-outline-danger btn-sm"
+        {{ end }}
+        <div class="dropdown d-inline-block">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false"
+                  aria-label="{{ printf (T "admin.row_actions") $u.Username }}">
+            <i class="fa fa-ellipsis" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {{ if not $u.Locked }}
+            <li><button type="button" class="dropdown-item text-danger"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
                 hx-post="/admin/user/block" hx-target="#admin-users"
                 hx-confirm="{{ T "admin.block_confirm" }}">
-          {{ T "admin.block" }}
-        </button>
-        {{ end }}
-        <button type="button" class="btn btn-outline-secondary btn-sm"
+              {{ T "admin.block" }}
+            </button></li>
+            {{ end }}
+            <li><button type="button" class="dropdown-item"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
                 hx-post="/admin/user/reset" hx-target="#admin-users"
                 hx-confirm="{{ T "admin.reset_confirm" }}">
-          {{ T "admin.reset_password" }}
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" title="{{ T "admin.unlock_help" }}"
+              {{ T "admin.reset_password" }}
+            </button></li>
+            <li><button type="button" class="dropdown-item" title="{{ T "admin.unlock_help" }}"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
                 hx-post="/admin/user/unlock" hx-target="#admin-users">
-          <i class="fa fa-unlock" aria-hidden="true"></i> {{ T "admin.unlock" }}
-        </button>
+              {{ T "admin.unlock" }}
+            </button></li>
+          </ul>
+        </div>
       </td>
     </tr>
   {{ else }}
@@ -70,5 +79,5 @@
   </tbody>
 </table>
 {{ if gt $.total 50 }}
-<p class="small text-muted">{{ T "admin.showing_first" }} 50 / {{ $.total }}</p>
+<p class="small text-muted m-3">{{ T "admin.showing_first" }} 50 / {{ $.total }}</p>
 {{ end }}

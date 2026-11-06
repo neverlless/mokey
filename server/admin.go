@@ -65,7 +65,7 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 	check := &ipa.User{Email: email}
 	if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
 		vars["message"] = TC(c, "account.email_invalid")
-		return c.Render("admin.html", vars)
+		return c.Render("admin-people.html", vars)
 	}
 
 	if err := r.emailer.SendInviteEmail(email, c); err != nil {
@@ -74,7 +74,7 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 			"err", err,
 		)
 		vars["message"] = TC(c, "account.fatal_system_error")
-		return c.Render("admin.html", vars)
+		return c.Render("admin-people.html", vars)
 	}
 
 	slog.Info("AUDIT user invite sent",
@@ -84,7 +84,7 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 	)
 
 	vars["invite_sent"] = email
-	return c.Render("admin.html", vars)
+	return c.Render("admin-people.html", vars)
 }
 
 // InviteAccept lets an invited user complete their own account. The token

@@ -531,6 +531,11 @@ freeipa_remove_failed = "Verwijderen van de passkey uit FreeIPA is mislukt."
 rp_display_name = "Identity Management"
 
 [admin]
+requests_title = "Aanvragen"
+requests_body = "Goedkeuringen, herstelverzoeken en geblokkeerde of inactieve accounts die hulp nodig hebben."
+people_title = "Mensen"
+log_title = "Auditlog"
+row_actions = "Acties voor %s"
 unlock = "Ontgrendelen"
 pending_title = "Wacht op goedkeuring"
 pending_name = "Naam"

@@ -531,6 +531,11 @@ freeipa_remove_failed = "Не вдалося видалити ключ дост�
 rp_display_name = "Керування ідентифікацією"
 
 [admin]
+requests_title = "Запити"
+requests_body = "Підтвердження, запити на відновлення та заблоковані або неактивні облікові записи, яким потрібна допомога."
+people_title = "Люди"
+log_title = "Журнал аудиту"
+row_actions = "Дії для %s"
 unlock = "Зняти блокування"
 pending_title = "Очікують схвалення"
 pending_name = "Ім'я"

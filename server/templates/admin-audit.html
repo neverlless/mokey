@@ -1,4 +1,4 @@
-<table class="table table-sm align-middle">
+<table class="table table-sm align-middle mb-0">
   <thead>
     <tr>
       <th>{{ T "admin.audit_time" }}</th>
@@ -18,7 +18,7 @@
         <div class="small text-muted">{{ T "admin.audit_by" }} {{ $e.Actor }}</div>
         {{ end }}
       </td>
-      <td class="text-muted small">{{ $e.IP }}</td>
+      <td class="text-muted small mokey-mono">{{ $e.IP }}</td>
     </tr>
   {{ else }}
     <tr><td colspan="4" class="text-center text-muted">{{ T "admin.audit_empty" }}</td></tr>
