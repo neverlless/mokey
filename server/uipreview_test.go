@@ -356,3 +356,21 @@ func TestCaptchaPartialShared(t *testing.T) {
 		t.Error("captcha reload button must be keyboard reachable")
 	}
 }
+
+// keyboard users get a way past the sidebar; the target has to exist on the page
+func TestSkipLinkTargetsMain(t *testing.T) {
+	header, err := os.ReadFile("templates/header.html")
+	if err != nil {
+		t.Fatalf("read header: %s", err)
+	}
+	index, err := os.ReadFile("templates/index.html")
+	if err != nil {
+		t.Fatalf("read index: %s", err)
+	}
+	if !strings.Contains(string(header), `href="#main"`) {
+		t.Error("header.html has no skip link to #main")
+	}
+	if strings.Count(string(index), `id="main"`) != 1 {
+		t.Error(`index.html must have exactly one id="main"`)
+	}
+}
