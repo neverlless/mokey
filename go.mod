@@ -7,15 +7,15 @@ require (
 	github.com/go-webauthn/webauthn v0.18.2
 	github.com/gofiber/fiber/v3 v3.6.1
 	github.com/gofiber/storage/memory/v2 v2.1.2
-	github.com/gofiber/storage/redis/v3 v3.6.2
-	github.com/gofiber/storage/sqlite3/v2 v2.3.1
+	github.com/gofiber/storage/redis/v3 v3.6.3
+	github.com/gofiber/storage/sqlite3/v2 v2.3.2
 	github.com/mileusna/useragent v1.3.5
 	github.com/neverlless/goipa v1.1.0
 	github.com/ory/hydra-client-go/v26 v26.2.0
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/redis/go-redis/v9 v9.23.0
-	github.com/slack-go/slack v0.33.0
+	github.com/slack-go/slack v0.34.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
@@ -70,7 +70,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
