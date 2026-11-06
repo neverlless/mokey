@@ -96,9 +96,25 @@ h1,
 	letter-spacing: -0.015em;
 }
 
-:focus-visible {
+:focus-visible,
+.btn:focus-visible,
+.nav-link:focus-visible,
+.form-check-input:focus-visible,
+.btn-close:focus-visible,
+.dropdown-item:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
 	outline: 2px solid var(--mokey-accent);
 	outline-offset: 2px;
+	box-shadow: none;
+}
+
+.shadow {
+	box-shadow: none !important;
+	border: 1px solid var(--mokey-border);
+}
+.bg-white {
+	background-color: var(--mokey-surface) !important;
 }
 
 .card,
@@ -316,8 +332,6 @@ h1,
 .form-select:focus {
 	border-color: var(--mokey-accent);
 	box-shadow: none;
-	outline: 2px solid var(--mokey-accent);
-	outline-offset: 2px;
 }
 
 /* Phone: a compact country trigger welded to the number field. The trigger
