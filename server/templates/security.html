@@ -11,8 +11,7 @@
 {{ end }}
 <div id="security-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
-<div class="mokey-eyebrow">{{ T "nav.group_account" }}</div>
-<h3 class="mb-1">{{ T "security.title" }}</h3>
+<h1 class="mb-1">{{ T "nav.security" }}</h1>
 <p class="text-muted mb-4">{{ T "security.subtitle" }}</p>
 
 <div class="mokey-card mb-4">
@@ -176,7 +175,7 @@
   <div class="mokey-row">
     <span class="mokey-dot{{ if eq $e.Level "ERROR" }} is-danger{{ else if eq $e.Level "WARN" }} is-warn{{ end }}" aria-hidden="true"></span>
     <div class="flex-grow-1">{{ $e.Message }}{{ with $e.IP }} <span class="mokey-mono text-muted small">{{ . }}</span>{{ end }}</div>
-    <div class="text-muted small">{{ TimeAgo $e.Time }}</div>
+    <div class="text-muted small text-nowrap">{{ TimeAgo $e.Time }}</div>
   </div>
   {{ else }}
   <div class="mokey-row text-muted">{{ T "security.no_activity" }}</div>

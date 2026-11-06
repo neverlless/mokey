@@ -2,33 +2,43 @@
 <div id="passkey-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
 
-<div class="d-flex w-100 justify-content-between align-items-center mb-4">
-    <h3 class="mb-1">{{ T "passkey.title" }}</h3>
-    <button type="button" id="passkey-register" class="btn btn-sm btn-primary end">
-      <i class="fa fa-plus"></i> {{ T "passkey.new_passkey" }}
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="mb-1">{{ T "passkey.title" }}</h1>
+    <p class="text-muted mb-0">{{ T "passkey.subtitle" }}</p>
+  </div>
+  {{ if $.passkeys }}
+    <button type="button" id="passkey-register" class="btn {{ if $.passkeys }}btn-sm btn-outline-secondary{{ else }}btn-primary{{ end }}">
+      <i class="fa fa-plus" aria-hidden="true"></i> {{ T "passkey.add" }}
     </button>
+  {{ end }}
 </div>
 
+<div class="mokey-card">
 {{ range $i, $pk := $.passkeys }}
-<div class="row">
-    <div class="d-flex flex-items-center justify-content-between mb-3">
-        <div>
-            <i class="fa fa-user-shield me-2"></i>
-            <span class="font-monospace">{{ $pk.shortid }}</span>
-        </div>
-        <button type="button" class="btn btn-outline-danger btn-sm"
-                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                hx-vals='{"mapping": "{{ $pk.mapping }}"}'
-                hx-post="/passkey/remove"
-                hx-target="#passkey"
-                hx-confirm="{{ T "passkey.delete_confirm" }}">
-            <i class="fa fa-trash"></i> {{ T "common.delete" }}
-        </button>
+  <div class="mokey-row">
+    <span class="mokey-tile is-neutral" aria-hidden="true"><i class="fa fa-fingerprint"></i></span>
+    <div class="flex-grow-1">
+      <span class="mokey-mono">{{ $pk.shortid }}</span>
     </div>
-</div>
+    <button type="button" class="btn btn-outline-danger btn-sm"
+            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+            hx-vals='{"mapping": "{{ $pk.mapping }}"}'
+            hx-post="/passkey/remove"
+            hx-target="#passkey"
+            hx-confirm="{{ T "passkey.delete_confirm" }}">
+        {{ T "common.delete" }}
+    </button>
+  </div>
 {{ else }}
-<p class="text-center text-muted">{{ T "passkey.no_passkeys" }}</p>
+  <div class="mokey-empty">
+    <p>{{ T "passkey.empty" }}</p>
+    <button type="button" id="passkey-register" class="btn {{ if $.passkeys }}btn-sm btn-outline-secondary{{ else }}btn-primary{{ end }}">
+      <i class="fa fa-plus" aria-hidden="true"></i> {{ T "passkey.add" }}
+    </button>
+  </div>
 {{ end }}
+</div>
 
 <script nonce="{{ $.cspNonce }}">
 (function() {

@@ -1,6 +1,6 @@
 <h1 class="mb-4">{{ T "admin.log_title" }}</h1>
 
 <div class="mokey-card">
-  <div id="admin-audit" hx-get="/admin/audit" hx-trigger="load"
+  <div id="admin-audit" class="table-responsive" hx-get="/admin/audit" hx-trigger="load"
        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
 </div>
