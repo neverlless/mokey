@@ -106,7 +106,7 @@ func TestPasskeyEnrollment(t *testing.T) {
 	must(t, err)
 	must(t, page.Locator("#passkey-register").Click())
 	// the page reloads with the new passkey listed
-	entry := page.Locator("#passkey .font-monospace")
+	entry := page.Locator("#passkey .mokey-mono")
 	must(t, entry.WaitFor())
 
 	creds, err := cdp.Send("WebAuthn.getCredentials", map[string]any{"authenticatorId": authID})
