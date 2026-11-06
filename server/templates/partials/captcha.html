@@ -1,12 +1,11 @@
 {{ with $.captchaID }}
 <div class="mb-3">
     <label for="captcha_sol" class="form-label">{{ T "common.captcha" }}</label>
-    <div class="mokey-captcha mb-2">
-        <div class="mokey-captcha-img"><img id="captcha" src="/auth/captcha/{{ . }}.png" alt="{{ T "common.captcha_image" }}"></div>
-        <button type="button" class="btn btn-outline-secondary mokey-captcha-new" aria-label="{{ T "common.captcha_new" }}" title="{{ T "common.captcha_new" }}" _="on click call reloadCaptcha()"><i class="fa fa-rotate-right" aria-hidden="true"></i></button>
+    <div class="mokey-captcha">
+        <img id="captcha" src="/auth/captcha/{{ . }}.png" alt="{{ T "common.captcha_image" }}">
+        <button type="button" class="btn btn-sm btn-link mokey-captcha-new" _="on click call reloadCaptcha()"><i class="fa fa-rotate-right" aria-hidden="true"></i> {{ T "common.captcha_new" }}</button>
     </div>
-    <input id="captcha_sol" name="captcha_sol" class="form-control form-control-lg" size="10" type="text" inputmode="numeric" autocomplete="off" aria-describedby="captchaHelpBlock">
+    <input id="captcha_sol" name="captcha_sol" class="form-control form-control-lg mt-2" size="10" type="text" inputmode="numeric" autocomplete="off">
     <input id="captcha_id" name="captcha_id" type="hidden" value="{{ . }}">
-    <div id="captchaHelpBlock" class="form-text">{{ T "common.captcha_instruction" }}</div>
 </div>
 {{ end }}
