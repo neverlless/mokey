@@ -996,3 +996,19 @@ i.mokey-dial-flag {
 	flex: none;
 	margin-left: auto;
 }
+
+.mokey-skip-link:focus {
+	position: fixed;
+	top: 0.5rem;
+	left: 0.5rem;
+	z-index: 2000;
+	padding: 0.4rem 0.9rem;
+	border-radius: 999px;
+	background: var(--mokey-accent);
+	color: var(--mokey-on-accent);
+	font-size: 0.875rem;
+	text-decoration: none;
+}
+#main:focus {
+	outline: none;
+}

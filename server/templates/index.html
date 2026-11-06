@@ -3,7 +3,7 @@
 <div class="mokey-shell">
 {{ template "app-nav.html" . }}
 <div class="mokey-column">
-<main class="mokey-main">
+<main class="mokey-main" id="main" tabindex="-1">
 {{ if $.password_expiry_warning }}
 <div class="alert alert-warning d-flex align-items-center" role="alert">
 	<i class="fa fa-triangle-exclamation me-2" aria-hidden="true"></i>
