@@ -241,3 +241,23 @@ func contrastRatio(t *testing.T, a, b string) float64 {
 	}
 	return (hi + 0.05) / (lo + 0.05)
 }
+
+func TestPlexSansWeightsVendored(t *testing.T) {
+	b, err := os.ReadFile("templates/static/css/fonts.css")
+	if err != nil {
+		t.Fatalf("read fonts.css: %s", err)
+	}
+	css := string(b)
+	for _, w := range []string{"500", "600"} {
+		for _, sub := range []string{"latin", "latin-ext", "cyrillic"} {
+			file := fmt.Sprintf("IBMPlexSans-%s-%s.woff2", w, sub)
+			face := regexp.MustCompile(`@font-face \{[^}]*IBM Plex Sans[^}]*font-weight: ` + w + `;[^}]*/static/fonts/` + regexp.QuoteMeta(file) + `\)`)
+			if !face.MatchString(css) {
+				t.Errorf("fonts.css has no IBM Plex Sans %s @font-face using %s", w, file)
+			}
+			if _, err := os.Stat(filepath.Join("templates/static/fonts", file)); err != nil {
+				t.Errorf("%s: %s", file, err)
+			}
+		}
+	}
+}
