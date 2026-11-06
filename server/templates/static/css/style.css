@@ -1002,3 +1002,28 @@ i.mokey-dial-flag {
 	}
 }
 
+/* success toasts (site.js moves .alert-success out of the pane) */
+.mokey-toasts {
+	z-index: 1090;
+}
+.mokey-toast {
+	--bs-toast-max-width: 420px;
+	background: var(--mokey-ok-bg);
+	color: var(--mokey-ink);
+	border: 1px solid var(--mokey-border);
+	border-radius: 12px;
+	box-shadow: none;
+}
+.mokey-toast .toast-body {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+.mokey-toast .fa-circle-check {
+	color: var(--mokey-ok);
+	line-height: inherit;
+}
+.mokey-toast .btn-close {
+	flex: none;
+	margin-left: auto;
+}

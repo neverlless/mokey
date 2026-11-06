@@ -190,3 +190,47 @@ function closeModal(ele) {
     }
   });
 })();
+
+// Success alerts in the app pane become toasts so the content doesn't shift;
+// errors stay inline next to the form they belong to.
+(function () {
+  var region = document.querySelector('.mokey-toasts');
+  if (!region || !window.bootstrap) return;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function toastAlerts() {
+    document.querySelectorAll('.mokey-main .alert-success:not([data-mokey-inline])').forEach(function (alert) {
+      if (alert.closest('.modal')) return;
+      var close = alert.querySelector('.btn-close');
+      var label = (close && close.getAttribute('aria-label')) || 'Close';
+      if (close) close.remove();
+
+      var toast = document.createElement('div');
+      toast.className = 'toast mokey-toast';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-atomic', 'true');
+      var body = document.createElement('div');
+      body.className = 'toast-body';
+      var icon = document.createElement('i');
+      icon.className = 'fa fa-circle-check';
+      icon.setAttribute('aria-hidden', 'true');
+      var msg = document.createElement('div');
+      while (alert.firstChild) msg.appendChild(alert.firstChild);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-close';
+      btn.setAttribute('data-bs-dismiss', 'toast');
+      btn.setAttribute('aria-label', label);
+      body.append(icon, msg, btn);
+      toast.appendChild(body);
+
+      alert.remove();
+      region.appendChild(toast);
+      toast.addEventListener('hidden.bs.toast', function () { toast.remove(); });
+      new bootstrap.Toast(toast, { delay: 5000, animation: !reduce.matches }).show();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', toastAlerts);
+  document.body.addEventListener('htmx:afterSettle', toastAlerts);
+})();

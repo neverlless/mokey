@@ -1,5 +1,5 @@
 {{ if $.granted }}
-<div class="alert alert-success access-granted mb-0">
+<div class="alert alert-success access-granted mb-0" data-mokey-inline>
 	<i class="fa fa-check me-1" aria-hidden="true"></i>
 	{{ T "access.granted_part1" }}<span class="mokey-mono">{{ $.host }}</span>{{ T "access.granted_part2" }}<span class="mokey-mono">{{ $.service }}</span>{{ T "access.granted_part3" }}
 	{{ if $.matched }}

@@ -78,6 +78,26 @@ func TestThemeToggleLivesInTheFooter(t *testing.T) {
 	}
 }
 
+// success messages leave the pane as toasts so content doesn't jump
+func TestSuccessToastRegion(t *testing.T) {
+	footer, err := os.ReadFile("templates/footer.html")
+	if err != nil {
+		t.Fatalf("read footer: %s", err)
+	}
+	js, err := os.ReadFile("templates/static/js/site.js")
+	if err != nil {
+		t.Fatalf("read site.js: %s", err)
+	}
+	if !strings.Contains(string(footer), `class="mokey-toasts`) || !strings.Contains(string(footer), `aria-live="polite"`) {
+		t.Error("footer is missing the polite toast region")
+	}
+	for _, want := range []string{"htmx:afterSettle", "bootstrap.Toast"} {
+		if !strings.Contains(string(js), want) {
+			t.Errorf("site.js does not reference %s", want)
+		}
+	}
+}
+
 // #34: Bootstrap badges never wrap (white-space: nowrap), so a status
 // sentence inside one runs out of the card. Badges are for short labels;
 // an icon + sentence is a status message and belongs in an .alert
