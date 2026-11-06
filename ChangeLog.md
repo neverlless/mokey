@@ -15,7 +15,16 @@
 - The admin page is split into Requests (pending sign-ups, OTP recovery
   requests and the helpdesk views), People (invite, user search and list)
   and Audit log. Row actions sit in a menu
-- Sign-in card redesigned, with `autocomplete` hints for password managers
+- Sign-in card redesigned, with `autocomplete` hints for password managers;
+  every page without a session (sign-up, recovery, errors) uses the same
+  centred look, and the two-step sign-in links to username and
+  authenticator recovery again
+- Success messages appear as a toast in the corner instead of pushing the
+  page down; errors stay inline above the form they belong to
+- Wider content column, with two columns for Profile and Sign-in and
+  security on large screens
+- CAPTCHA: the instruction comes first, then the picture with a "New
+  picture" button that works from the keyboard, then the field
 - New "m-key" logo and favicons
 - Empty states on lists that used to render blank
 - **Upgrade:** a custom `site.css` or template override that targets
