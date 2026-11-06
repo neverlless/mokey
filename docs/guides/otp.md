@@ -7,7 +7,7 @@ off, and ask for help when they lose their only token. Tokens live in
 FreeIPA, so they work for SSH, sudo and Kerberos logins on enrolled hosts,
 not just for mokey.
 
-![mokey security settings](../mokey-screenshot-security.png)
+![mokey sign-in and security page](../mokey-screenshot-security.png)
 
 ## What the user gets
 

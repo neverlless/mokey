@@ -9,7 +9,7 @@ service account. It needs no LDAP schema changes and no database of its own.
 It can also serve as the login and consent app for Ory Hydra (OAuth 2.0 /
 OpenID Connect).
 
-![mokey account page](mokey-screenshot-home.png)
+![mokey profile page](mokey-screenshot-home.png)
 
 ## Find the guide for your task
 

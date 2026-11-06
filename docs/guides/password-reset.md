@@ -4,7 +4,7 @@ FreeIPA has no "forgot password" flow of its own. mokey adds one: a user
 enters their username, gets a single-use link by email, and sets a new
 FreeIPA password that works at once, with no forced change at next login.
 
-![mokey login page](../mokey-screenshot-login.png)
+![mokey sign-in page](../mokey-screenshot-login.png)
 
 ## What the user gets
 

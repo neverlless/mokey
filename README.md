@@ -66,11 +66,11 @@ flowchart LR
 
 | Account | Security |
 | --- | --- |
-| ![Account settings](docs/mokey-screenshot-home.png) | ![Security: sessions and activity](docs/mokey-screenshot-security.png) |
+| ![Profile](docs/mokey-screenshot-home.png) | ![Sign-in and security](docs/mokey-screenshot-security.png) |
 
 | Login | Admin panel |
 | --- | --- |
-| ![Login](docs/mokey-screenshot-login.png) | ![Admin panel](docs/mokey-screenshot-admin.png) |
+| ![Sign in](docs/mokey-screenshot-login.png) | ![Admin: people](docs/mokey-screenshot-admin.png) |
 
 ## Project status
 

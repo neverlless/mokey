@@ -5,7 +5,7 @@ own FreeIPA account, confirm their email address, and optionally wait for an
 administrator to approve them. Unapproved registrations can be kept out of the
 active user tree entirely by creating them as FreeIPA stage users.
 
-![mokey admin panel](../mokey-screenshot-admin.png)
+![mokey admin: people](../mokey-screenshot-admin.png)
 
 ## What the user gets
 
