@@ -3,7 +3,7 @@ name: mokey
 description: FreeIPA self-service account management portal
 type: application
 home: https://github.com/neverlless/mokey
-icon: https://raw.githubusercontent.com/neverlless/mokey/main/docs/mokey-logo.png
+icon: https://raw.githubusercontent.com/neverlless/mokey/main/docs/assets/mokey-tile.svg
 sources:
   - https://github.com/neverlless/mokey
 keywords:

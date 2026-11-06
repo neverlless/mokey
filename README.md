@@ -1,3 +1,5 @@
+<img src="docs/assets/mokey-mark.svg" alt="" width="96">
+
 # mokey
 
 **Self-service account management portal for FreeIPA / Red Hat IdM.**

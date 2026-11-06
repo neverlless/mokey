@@ -19,9 +19,8 @@ exclude_docs: |
 
 theme:
   name: material
-  favicon: assets/favicon.svg
-  icon:
-    logo: material/shield-account
+  favicon: assets/mokey-tile.svg
+  logo: assets/mokey-tile.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
