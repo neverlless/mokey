@@ -1,5 +1,9 @@
 # Mokey ChangeLog
 
+## [Unreleased]
+
+- Documentation site moved to Astro Starlight; old URLs keep working
+
 ## [v2.9.0] - 2026-11-06
 
 - New look: slate colour tokens, IBM Plex Sans in 400/500/600, hairline

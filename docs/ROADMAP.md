@@ -442,7 +442,7 @@ quality credits, so these items are mostly mokey-side work.
 
 ## v2.10 — docs
 
-- [ ] Docs on Astro Starlight, same stack as the Lodestore docs, with redirects
+- [x] Docs on Astro Starlight, same stack as the Lodestore docs, with redirects
       for old URLs
 
 ## Waiting for demand

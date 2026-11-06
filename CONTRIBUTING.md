@@ -49,7 +49,18 @@ Layout:
 | `server/translations/` | UI strings; `english.toml` is the reference |
 | `charts/mokey/` | Helm chart |
 | `examples/` | Production compose file and an OIDC client example |
-| `docs/` | Configuration reference and guides |
+| `docs/` | Configuration reference and guides (Markdown) |
+| `website/` | Astro Starlight site that publishes `docs/` |
+
+To preview the documentation site:
+
+```sh
+cd website && npm ci && npm run dev
+```
+
+It serves `docs/` at <http://localhost:4321/mokey/>. Pages need a `title:`
+in their frontmatter; link between pages with relative `.md` paths and use
+GitHub alerts (`> [!NOTE]`) so the files also read well on GitHub.
 
 Tests drive the real application against a fake FreeIPA JSON-RPC server
 (`server/fakeipa_test.go`), fake SMTP and fake Hydra. A new user-facing flow
