@@ -2,7 +2,6 @@
 
 <section class="main-content mokey-signin">
         <div class="mokey-signin-head">
-            <a class="mokey-signin-brand" href="/">{{ template "brand-mark.html" "mokey-mark-lg" }}{{ if not (ConfigValueString "site.logo") }}<span class="visually-hidden">{{ ConfigValueString "site.name" }}</span>{{ end }}</a>
             <h1>{{ printf (T "login.heading") (ConfigValueString "site.name") }}</h1>
             <p class="text-muted">{{ T "login.subheading" }}</p>
         </div>
