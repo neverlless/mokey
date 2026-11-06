@@ -6,13 +6,13 @@
 	<span class="mokey-avatar" aria-hidden="true">{{ $.initials }}</span>
 </div>
 
-<div class="offcanvas-lg offcanvas-start mokey-sidebar" tabindex="-1" id="app-nav">
+<div class="offcanvas-lg offcanvas-start mokey-sidebar" tabindex="-1" id="app-nav" aria-label="{{ T "nav.main" }}">
 	<div class="offcanvas-header d-lg-none">
 		<button type="button" class="btn-close ms-auto" data-bs-dismiss="offcanvas" data-bs-target="#app-nav" aria-label="{{ T "common.close" }}"></button>
 	</div>
 	<div class="offcanvas-body mokey-sidebar-body">
 		<a class="mokey-brand d-none d-lg-block" href="/">{{ with ConfigValueString "site.logo" }}<img src="/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ ConfigValueString "site.name" }}{{ end }}</a>
-		<nav aria-label="{{ T "nav.open_menu" }}" class="mokey-nav">
+		<nav aria-label="{{ T "nav.main" }}" class="mokey-nav">
 			<div class="mokey-nav-group">{{ T "nav.group_account" }}</div>
 			<a class="mokey-nav-link" id="account-tab" href="/account"{{ if eq $.section "account" }} aria-current="page"{{ end }}><i class="fa fa-user" aria-hidden="true"></i> {{ T "nav.profile" }}</a>
 			<a class="mokey-nav-link" id="security-tab" href="/security"{{ if eq $.section "security" }} aria-current="page"{{ end }}><i class="fa fa-shield" aria-hidden="true"></i> {{ T "nav.security" }}</a>
