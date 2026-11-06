@@ -26,6 +26,8 @@
 <h1 class="mb-1">{{ T "nav.profile" }}</h1>
 <p class="text-muted mb-4">{{ T "account.subtitle" }}</p>
 
+<div class="mokey-split">
+<div>
 <h2 class="mokey-section-title mb-2">{{ T "account.details_title" }}</h2>
 <form class="mokey-card mokey-card-body mb-4">
 <div class="row">
@@ -128,7 +130,8 @@
     </button>
 </div>
 </form>
-
+</div>
+<div>
 <h2 class="mokey-section-title mb-2">{{ T "account.account_title" }}</h2>
 <dl class="mokey-card mokey-facts mb-4">
   <div class="mokey-row">
@@ -153,6 +156,8 @@
   </div>
 </dl>
 {{ template "subid-card.html" . }}
+</div>
+</div>
 
 {{/* One picker for both phone fields: the script moves it into whichever
      trigger opened it, so positioning is plain CSS and the 250-row list is
