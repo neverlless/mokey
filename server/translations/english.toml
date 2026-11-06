@@ -21,17 +21,16 @@ enable = "Enable"
 enabled = "Enabled"
 first_name = "First name"
 last_name = "Last name"
-login = "Login"
+login = "Sign in"
 must_enable_2fa = "You must enable Two-Factor authentication for your account."
 new_password = "New password"
 otp_code = "OTP code"
 password = "Password"
 reload = "Reload"
-submit = "Submit"
 update = "Update"
 username = "Username"
 verify = "Verify"
-verify_account = "Verify Account"
+verify_account = "Verify account"
 too_many_requests = "Too many requests. Please try again later."
 
 [account]
@@ -371,22 +370,25 @@ subtitle = "Pick a new password for signing in to company computers and apps."
 save = "Change password"
 
 [password_expired]
-title = "Password Expired"
+title = "Password expired"
 change_password_button = "Change Password"
 help = "You signed in with your expired password. Choose a new password below (at least 16 characters per policy)."
 otp_help = "You have already signed in with your expired password. Choose a new password and enter a fresh OTP code from your authenticator app."
 
 [username_forgot]
-title = "Forgot Username"
+submit = "Send username"
+title = "Forgot username"
 intro = "Enter your account email address and we will send your username to it."
 email_sent = "If that address matches an account, an email with the username is on its way."
 
 [password_forgot]
-title = "Forgot Password"
+submit = "Send reset link"
+title = "Forgot password"
 expired_redirect = "Your password has expired. Enter your username below and complete the captcha to receive an email to set a new password."
 email_sent = "If that username matches an account, an email to reset your password is on its way."
 
 [otprecovery]
+send_button = "Send recovery link"
 title = "Lost OTP token"
 description = "Enter your username. If the account uses OTP sign-in, we'll email you a link to request recovery."
 success = "If this account exists and uses OTP sign-in, a confirmation email has been sent."
@@ -396,8 +398,8 @@ confirm_button = "Request recovery"
 submitted = "Request submitted. An administrator will review it — you'll receive an email with the decision."
 
 [password_reset]
-title = "Reset Password"
-reset_button = "Reset Password"
+title = "Reset password"
+reset_button = "Reset password"
 success_message = "Your password has been successfully reset"
 failed = "Your password could not be changed. Check that it meets the password policy and try again."
 
@@ -485,17 +487,17 @@ manage = "Manage"
 change = "Change"
 
 [signup]
-title = "Sign Up"
+title = "Sign up"
 already_have_account = "Already have an account?"
 allowed_domains = "Allowed Domains"
-create_account = "Create Account"
+create_account = "Create account"
 tos_link = "Terms of Service"
-tos_message = "By clicking 'Create Account,' you agree to our"
+tos_message = "By clicking 'Create account,' you agree to our"
 
 [signup_success]
 no_email = "Did not get the email?"
 resend_link = "Send it again"
-title = "Confirm Your Account"
+title = "Confirm your account"
 account_created = "Account successfully created"
 admin_verification = "An administrator must activate your account before you can use it."
 email_verification = "You need to verify your email address to activate your account."
@@ -526,18 +528,19 @@ key_help = "Paste the contents of the SSH public key above. Must start with 'ssh
 public_key = "Public key"
 
 [verify_account]
-title = "Verify Account"
+send_button = "Send verification email"
+title = "Verify account"
 instruction = "Click Verify below to set up your account."
 message = "Verify Your Email"
 
 [verify_success]
 pending_admin = "Email confirmed — awaiting administrator approval"
 pending_admin_help = "An administrator will review your registration. You will be able to log in once your account is approved."
-title = "Verify Account"
+title = "Verify account"
 message = "Your account has been successfully verified. Thank you"
 
 [email_change]
-title = "Confirm Email Change"
+title = "Confirm email change"
 message = "Confirm changing your account email address to"
 instruction = "Click Confirm below to apply the change."
 confirm_button = "Confirm"
@@ -622,9 +625,9 @@ helpdesk_truncated = "FreeIPA returned only part of the directory (size limit re
 helpdesk_inactive_untracked = "FreeIPA is not recording successful logins, so inactive accounts cannot be listed. FreeIPA turns this off by default. To turn it on, run the command below; logins are recorded from then on."
 
 [invite]
-title = "Complete Your Account"
+title = "Complete your account"
 intro = "You are creating an account for"
-create_button = "Create Account"
+create_button = "Create account"
 
 [subid]
 title = "Subordinate IDs"

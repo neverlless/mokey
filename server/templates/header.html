@@ -18,18 +18,14 @@
 	<link rel="stylesheet" href="/static/css/fontawesome.all.min.css?v=20260818b" integrity="sha384-3B6NwesSXE7YJlcLI9RpRqGf2p/EgVH8BgoKTaUrmKNDkHPStTQ3EyoYjCGXaOTS" crossorigin="anonymous">
 	<link rel="stylesheet" href="/static/css/sweetalert2.min.css?v=20260818b" integrity="sha384-SUNIgQeCps0CoAVRrheRnQztaghCAffXsWBNCCUvia+XNEh7IZg6RvTKpovgqBrc" crossorigin="anonymous">
 	<link rel="stylesheet" type="text/css" href="/static/css/fonts.css?v=20261106a" integrity="sha384-ZGWlLlzR3qAp+srbI99v11uIhmpDNTMYogWOLymaDRV2RGTnO3LujvyObjNjtIaD" crossorigin="anonymous">
-	<link rel="stylesheet" type="text/css" href="/static/css/style.css?v=20261106l" integrity="sha384-7uvPiSZnGVs9RcZb7j5AKqAZYDudl1m45Cz/Tr5Bs4I5OQY9YTc/fyoJgSUd+Dxd" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="/static/css/style.css?v=20261106m" integrity="sha384-PrM/U3dw3y211VN/BygIvNAkJFW1kl0TFnqY4ICc2q2v+WQKc2mXAmCluw5jEwoW" crossorigin="anonymous">
     {{ with ConfigValueString "site.css" }}
 	<link rel="stylesheet" type="text/css" href="/css/styles">
     {{ end }}
 </head>
 <body>
     {{ if not $.shell }}
-    <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container d-flex align-items-center">
-        <div class="navbar-header">
-          <a class="navbar-brand" href="/">{{ with ConfigValueString "site.logo" }}<img id="site-logo" src="/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ ConfigValueString "site.name" }}{{ end }}</a>
-        </div>
-      </div>
-    </nav>
+    <div class="mokey-signin-head mokey-auth-brand">
+        <a class="mokey-signin-brand" href="/">{{ template "brand-mark.html" "mokey-mark-lg" }}{{ if not (ConfigValueString "site.logo") }}<span class="visually-hidden">{{ ConfigValueString "site.name" }}</span>{{ end }}</a>
+    </div>
     {{ end }}
