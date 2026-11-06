@@ -1,25 +1,23 @@
-<div class="login-card rounded-3 overflow-hidden bg-white mx-auto">
-    <div class="login-head bg-dark text-light p-4">
-        <h3 class="text-center m-0">{{ if $.user.OTPOnly }}{{ T "login.otp_authentication" }}{{ else }}{{ T "common.password" }}{{ end }}</h3>
-    </div>
-    <div class="login-body p-4 p-md-5">
+<div class="login-card rounded-3 bg-white mx-auto">
+    <div class="login-body">
         <div class="login-body-wrapper mx-auto">
+            <h2 class="login-step">{{ if $.user.OTPOnly }}{{ T "login.otp_authentication" }}{{ else }}{{ T "common.password" }}{{ end }}</h2>
             <form>
             <div class="mb-3">
                 <label for="username" class="form-label">{{ T "common.username" }}</label>
-                <input id="username" type="text" class="form-control form-control-lg" value="{{ $.user.Username }}" disabled="disabled">
+                <input id="username" type="text" autocomplete="username" class="form-control form-control-lg" value="{{ $.user.Username }}" disabled="disabled">
                 <div id="usernameHelpBlock" class="form-text">
                  {{ T "login.not_you" }} <a href="/auth/login">{{ T "login.switch_account" }}</a>
                 </div>
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">{{ T "common.password" }}</label>
-                <input type="password" class="form-control form-control-lg" name="password" id="password" autofocus="autofocus" placeholder="">
+                <input type="password" class="form-control form-control-lg" name="password" id="password" autocomplete="current-password" autofocus="autofocus" placeholder="">
             </div>
             {{ if $.user.OTPOnly }}
             <div class="mb-3">
                 <label for="otp" class="form-label">{{ T "common.otp_code" }}</label>
-                <input type="text" class="form-control form-control-lg" name="otp" id="otp" placeholder="">
+                <input type="text" class="form-control form-control-lg" name="otp" id="otp" inputmode="numeric" autocomplete="one-time-code" placeholder="">
             </div>
             {{ end }}
             <div class="mb-3 d-grid gap-2">
@@ -31,7 +29,7 @@
               </button>
             </div>
           </form>
-            <p class="text-muted text-center"><a href="/auth/forgotpw">{{ T "login.forgot_password" }}</a> &middot; <a href="/auth/forgotuser">{{ T "login.forgot_username" }}</a></p>
+            <p class="login-links text-muted text-center mb-0"><a href="/auth/forgotpw">{{ T "login.forgot_password" }}</a> &middot; <a href="/auth/forgotuser">{{ T "login.forgot_username" }}</a></p>
         </div>
     </div>
 </div>

@@ -243,6 +243,8 @@ failed_to_accept_login = "Mislukt bij het accepteren van inloggen"
 oauth2_error = "OAuth2 Fout"
 
 [login]
+heading = "Aanmelden bij %s"
+subheading = "Gebruik je bedrijfsaccount."
 eyebrow = "inloggen"
 failed = "Inloggen mislukt"
 account_locked_temporarily = "Uw account is tijdelijk vergrendeld na te veel mislukte inlogpogingen. Wacht enkele minuten en probeer het opnieuw, of neem contact op met uw beheerder."

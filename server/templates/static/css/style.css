@@ -218,18 +218,65 @@ h1,
 }
 
 .login-card {
-	max-width: 440px;
-}
-.login-card .login-body .login-body-wrapper {
 	max-width: 400px;
 }
+.login-card .login-body {
+	padding: 28px !important;
+}
+.login-card .login-body .login-body-wrapper {
+	max-width: none;
+}
 .login-failed {
-	max-width: 440px;
+	max-width: 400px;
 }
 /* status messages in the narrow auth card run 2-3 lines; balancing keeps a
    lone word off the last line (#34). Older browsers just wrap normally */
 .login-card .alert {
 	text-wrap: balance;
+}
+.login-step {
+	font-size: 1rem;
+	font-weight: 600;
+	margin-bottom: 1rem;
+}
+.login-links {
+	font-size: 0.8125rem;
+}
+.login-alt {
+	margin-top: 1rem;
+}
+.mokey-signin-head {
+	text-align: center;
+	margin: 1.5rem 0 1.25rem;
+}
+.mokey-signin-head h1 {
+	font-size: 1.75rem;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	margin: 1rem 0 0.25rem;
+}
+.mokey-signin-brand {
+	display: inline-block;
+	text-decoration: none;
+}
+.mokey-signin-brand .mokey-logo {
+	max-height: 44px;
+	max-width: 200px;
+}
+
+/* the sign-in column carries its own brand mark */
+body:has(.mokey-signin) .navbar-inverse {
+	display: none;
+}
+
+/* auth pages still carrying the old dark header bar get the plain card head */
+.login-card .login-head.bg-dark {
+	background: transparent !important;
+	color: var(--mokey-ink) !important;
+	padding: 28px 28px 0 !important;
+}
+.login-card .login-head.bg-dark h3 {
+	text-align: left !important;
 }
 
 /* slim top bar */
@@ -304,6 +351,25 @@ h1,
 .mokey-brand img {
 	max-height: 28px;
 	max-width: 100%;
+}
+.mokey-mark {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 28px;
+	height: 28px;
+	margin-right: 10px;
+	vertical-align: middle;
+	border-radius: 8px;
+	background: var(--mokey-accent);
+	color: var(--mokey-on-accent);
+}
+.mokey-mark-lg {
+	width: 44px;
+	height: 44px;
+	margin-right: 0;
+	border-radius: 12px;
 }
 .mokey-nav-group {
 	padding: 16px 12px 6px;
