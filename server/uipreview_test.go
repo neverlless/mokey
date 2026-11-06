@@ -107,6 +107,9 @@ func TestFormLabelsPointAtUniqueFields(t *testing.T) {
 	include := regexp.MustCompile(`{{\s*template "([^"]+)"`)
 	read := func(name string) string {
 		b, err := os.ReadFile(filepath.Join("templates", name))
+		if os.IsNotExist(err) {
+			b, err = os.ReadFile(filepath.Join("templates", "partials", name))
+		}
 		if err != nil {
 			t.Fatalf("read %s: %s", name, err)
 		}
@@ -257,6 +260,38 @@ func TestPlexSansWeightsVendored(t *testing.T) {
 			}
 			if _, err := os.Stat(filepath.Join("templates/static/fonts", file)); err != nil {
 				t.Errorf("%s: %s", file, err)
+			}
+		}
+	}
+}
+
+// Password managers and mobile keyboards key off these hints, and the sign-in
+// card is a light surface in both themes, so the old dark header bar is gone
+func TestLoginFieldsAutocomplete(t *testing.T) {
+	input := regexp.MustCompile(`<input[^>]*>`)
+	for _, f := range []string{"login.html", "login-form.html"} {
+		b, err := os.ReadFile(filepath.Join("templates", f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		src := string(b)
+		if strings.Contains(src, "bg-dark") {
+			t.Errorf("%s: dark header bar is back", f)
+		}
+		for _, in := range input.FindAllString(src, -1) {
+			switch {
+			case strings.Contains(in, `name="username"`) && strings.Contains(in, `type="text"`):
+				if !strings.Contains(in, `autocomplete="username"`) {
+					t.Errorf("%s: username input lacks autocomplete=username: %s", f, in)
+				}
+			case strings.Contains(in, `type="password"`):
+				if !strings.Contains(in, `autocomplete="current-password"`) {
+					t.Errorf("%s: password input lacks autocomplete=current-password: %s", f, in)
+				}
+			case strings.Contains(in, `name="otp"`):
+				if !strings.Contains(in, `inputmode="numeric"`) || !strings.Contains(in, `autocomplete="one-time-code"`) {
+					t.Errorf("%s: otp input lacks numeric/one-time-code hints: %s", f, in)
+				}
 			}
 		}
 	}

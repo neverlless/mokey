@@ -243,6 +243,8 @@ failed_to_accept_login = "Failed to accept login"
 oauth2_error = "OAuth2 Error"
 
 [login]
+heading = "Sign in to %s"
+subheading = "Use your company account."
 eyebrow = "sign in"
 failed = "Login failed"
 account_locked_temporarily = "Your account is temporarily locked after too many failed login attempts. Wait a few minutes and try again, or contact your administrator."

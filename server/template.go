@@ -49,7 +49,7 @@ func NewTemplateRenderer() (*TemplateRenderer, error) {
 
 	tmpl := template.New("")
 	tmpl.Funcs(funcMap).Funcs(languageFuncs(defaultLanguage()))
-	tmpl, err := tmpl.ParseFS(templateFiles, "templates/*.html")
+	tmpl, err := tmpl.ParseFS(templateFiles, "templates/*.html", "templates/partials/*.html")
 	if err != nil {
 		return nil, err
 	}
