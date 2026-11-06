@@ -266,7 +266,7 @@ func TestPlexSansWeightsVendored(t *testing.T) {
 }
 
 // Password managers and mobile keyboards key off these hints, and the sign-in
-// card is a light surface in both themes, so the old dark header bar is gone
+// card follows the theme, so the old dark header bar is gone
 func TestLoginFieldsAutocomplete(t *testing.T) {
 	input := regexp.MustCompile(`<input[^>]*>`)
 	for _, f := range []string{"login.html", "login-form.html"} {
@@ -294,5 +294,24 @@ func TestLoginFieldsAutocomplete(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestBrandMarkUsesMKeyGlyph(t *testing.T) {
+	b, err := os.ReadFile("templates/partials/brand-mark.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"M8 50V22a12 12 0 0 1 24 0v28", `aria-hidden="true"`} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("brand-mark.html missing %q", want)
+		}
+	}
+	ico, err := os.ReadFile("templates/static/images/favicon.ico")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ico) < 6 || string(ico[:4]) != "\x00\x00\x01\x00" || ico[4] < 3 {
+		t.Error("favicon.ico must have an ICO header and at least 3 images")
 	}
 }
