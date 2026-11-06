@@ -436,7 +436,11 @@ quality credits, so these items are mostly mokey-side work.
 - [x] Sign-in and security hub with a protection status card
 - [x] Admin split into Requests, People and Audit log
 - [x] Sign-in card, logo, favicons and empty states
-- [ ] Docs on Astro Starlight
+
+## v2.10 — docs
+
+- [ ] Docs on Astro Starlight, same stack as the Lodestore docs, with redirects
+      for old URLs
 
 ## Waiting for demand
 
