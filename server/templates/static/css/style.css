@@ -624,6 +624,8 @@ body:has(.mokey-signin) .navbar-inverse {
 .mokey-menu-btn {
 	background: none;
 	border: 0;
+	min-width: 44px;
+	min-height: 44px;
 	padding: 8px;
 	color: var(--mokey-ink);
 }
@@ -653,6 +655,12 @@ body:has(.mokey-signin) .navbar-inverse {
 	max-width: 852px;
 	padding: 0 16px;
 }
+.mokey-foot.is-wide {
+	max-width: 992px;
+}
+html {
+	scroll-padding-top: 64px;
+}
 @media (min-width: 992px) {
 	.mokey-main {
 		max-width: 916px;
@@ -661,9 +669,15 @@ body:has(.mokey-signin) .navbar-inverse {
 	.mokey-main.is-wide {
 		max-width: 1056px;
 	}
+	html {
+		scroll-padding-top: 0;
+	}
 	.mokey-foot {
 		max-width: 916px;
 		padding: 0 48px;
+	}
+	.mokey-foot.is-wide {
+		max-width: 1056px;
 	}
 }
 .mokey-back {
@@ -966,4 +980,20 @@ i.mokey-dial-flag {
 	* {
 		transition: none !important;
 	}
+}
+.mokey-captcha {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.mokey-captcha-img {
+	padding: 8px;
+	background: var(--mokey-surface);
+	border: 1px solid var(--mokey-border-strong);
+	border-radius: 8px;
+	line-height: 0;
+}
+.mokey-captcha-img img {
+	max-width: 100%;
+	height: auto;
 }

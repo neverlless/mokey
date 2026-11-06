@@ -39,7 +39,7 @@
 <div class="mokey-card">
 {{ range $i, $tok := $.otptokens }}
   <div class="mokey-row">
-    <span class="mokey-tile is-neutral" aria-hidden="true"><i class="fa fa-mobile-screen"></i></span>
+    <span class="mokey-tile is-neutral" aria-hidden="true"><i class="fa fa-mobile-screen-button"></i></span>
     <div class="flex-grow-1">
       <strong>{{ $tok.DisplayName }}</strong>
       {{ if $tok.Enabled }}<span class="mokey-pill is-ok ms-1">{{ T "common.enabled" }}</span>{{ else }}<span class="mokey-pill is-muted ms-1">{{ T "common.disabled" }}</span>{{ end }}

@@ -400,3 +400,18 @@ func TestHealthzNoAuth(t *testing.T) {
 	resp := tc.get("/healthz")
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 }
+
+func TestLoginRecoveryLinksTwoStep(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestAppWith(t, func() { viper.Set("accounts.single_page_login", false) })
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	body := readBody(t, tc.get("/auth/login"))
+	assert.Contains(body, `href="/auth/forgotuser"`)
+	assert.Contains(body, `href="/auth/otprecovery"`)
+	tc.getCSRF("/auth/login")
+
+	resp := tc.postForm("/auth/login", url.Values{"username": {"walter"}}, nil)
+	assert.Contains(readBody(t, resp), `href="/auth/otprecovery"`)
+}

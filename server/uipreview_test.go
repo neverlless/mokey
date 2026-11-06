@@ -315,3 +315,24 @@ func TestBrandMarkUsesMKeyGlyph(t *testing.T) {
 		t.Error("favicon.ico must have an ICO header and at least 3 images")
 	}
 }
+
+func TestCaptchaPartialShared(t *testing.T) {
+	for _, n := range []string{"signup", "account-verify-forgot", "otprecovery-forgot", "password-forgot", "username-forgot"} {
+		b, err := os.ReadFile("templates/" + n + ".html")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{`{{ template "captcha.html" . }}`, `{{ template "captcha-script.html" . }}`} {
+			if !strings.Contains(string(b), want) {
+				t.Errorf("%s.html missing %s", n, want)
+			}
+		}
+	}
+	b, err := os.ReadFile("templates/partials/captcha.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), `tabindex="-1"`) {
+		t.Error("captcha reload button must be keyboard reachable")
+	}
+}

@@ -1,0 +1,15 @@
+{{ with $.captchaID }}
+<script nonce="{{ $.cspNonce }}">
+document.body.addEventListener("reloadCaptcha", function(evt){
+    document.getElementById('captcha_sol').value = "";
+    document.getElementById('captcha_id').value = evt.detail.value;
+    document.getElementById('captcha').src = "/auth/captcha/" + evt.detail.value + ".png";
+});
+
+function reloadCaptcha() {
+    var e = document.getElementById('captcha');
+    e.src = e.src.split('?')[0] + "?reload=" + (new Date()).getTime();
+    return false;
+}
+</script>
+{{ end }}
