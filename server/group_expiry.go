@@ -86,6 +86,7 @@ func (r *Router) membershipExpirySweep(now time.Time, reconcile bool) {
 		}
 		r.remindMembership(m, now)
 	}
+	r.pruneExpiryFailures(all)
 }
 
 // entryGone reports a removal refused because the group or the user no
@@ -247,6 +248,18 @@ func (r *Router) putExpiryFailure(f expiryFailure) bool {
 	}
 	r.expiryFails.m[key] = f
 	return !ok
+}
+
+// pruneExpiryFailures drops failures whose record is gone, e.g. removed by
+// hand after the failure was listed
+func (r *Router) pruneExpiryFailures(all []TimedMembership) {
+	r.expiryFails.mu.Lock()
+	defer r.expiryFails.mu.Unlock()
+	for key, f := range r.expiryFails.m {
+		if !f.NoRecord && !slices.ContainsFunc(all, func(m TimedMembership) bool { return m.Group == f.Group && m.Username == f.Username }) {
+			delete(r.expiryFails.m, key)
+		}
+	}
 }
 
 func (r *Router) clearExpiryFailure(m TimedMembership) {
