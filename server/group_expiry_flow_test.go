@@ -477,3 +477,17 @@ func TestAdminShowsExpiryFailures(t *testing.T) {
 	assert.Contains(body, "jesse")
 	assert.Contains(body, "insufficient access")
 }
+
+func TestFeatureOffApproveAlreadyMemberSilent(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
+
+	code, body := approveAs(t, app, "skyler", url.Values{"group": {"chemists"}, "username": {"walter"}})
+	assert.Equal(fiber.StatusOK, code)
+	assert.NotContains(body, T("groups.already_member_no_end"))
+	assert.Empty(router.loadGroupRequests("chemists"))
+}
