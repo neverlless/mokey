@@ -354,3 +354,20 @@ func TestSweepAuditsRepeatedFailureOnce(t *testing.T) {
 	assert.Equal(1, n)
 	assert.Equal(before+2, failures())
 }
+
+func TestSweepPrunesFailuresWithoutRecord(t *testing.T) {
+	assert := assert.New(t)
+	now := time.Now()
+	router, _ := newSweepApp(t, now.Add(-time.Minute), 8*time.Hour, false)
+	router.membershipExpirySweep(now, false)
+	require.Len(t, router.expiryFailures(), 1)
+	router.putExpiryFailure(expiryFailure{Group: "prod-sudo", Username: "jesse", Err: "granted without an end date", NoRecord: true})
+
+	require.NoError(t, router.dropTimedMember("chemists", "walter"))
+	router.membershipExpirySweep(now.Add(5*time.Minute), false)
+
+	fails := router.expiryFailures()
+	if assert.Len(fails, 1) {
+		assert.Equal("prod-sudo", fails[0].Group)
+	}
+}
