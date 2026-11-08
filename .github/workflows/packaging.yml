@@ -50,6 +50,7 @@ jobs:
       matrix:
         image:
           - fedora:43
+          - quay.io/rockylinux/rockylinux:8
           - quay.io/rockylinux/rockylinux:9
           - quay.io/almalinuxorg/almalinux:10
     container: ${{ matrix.image }}
