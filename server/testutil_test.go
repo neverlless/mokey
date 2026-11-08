@@ -135,6 +135,10 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 		}
 	})
 
+	origStartLoop := startLoop
+	startLoop = func(func()) {}
+	t.Cleanup(func() { startLoop = origStartLoop })
+
 	app, router, err := newFiber()
 	if err != nil {
 		t.Fatalf("failed to build app: %s", err)
@@ -153,8 +157,6 @@ var serviceAccountRemovalsAllowed bool
 
 // allowServiceAccountRemovals lets the service account run group_remove_member
 // in this test, as the membership expiry sweep does
-//
-//lint:ignore U1000 for the membership expiry sweep tests that follow
 func allowServiceAccountRemovals(t *testing.T) {
 	t.Helper()
 	serviceAccountRemovalsAllowed = true

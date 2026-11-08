@@ -25,6 +25,7 @@ type Router struct {
 	storage      fiber.Storage
 	lock         *storeLock
 	groupExpiry  *groupExpiryConfig
+	expiryFails  expiryFailureSet
 
 	// Hydra consent app support
 	hydraClient *hydra.APIClient
