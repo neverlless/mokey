@@ -59,27 +59,42 @@ func newStoreLock(storage fiber.Storage) *storeLock {
 // entry, while refusing would block logins, logouts and session
 // revocation.
 func (l *storeLock) hold(key string) (release func()) {
+	release, err := l.holdStrict(key)
+	if err != nil {
+		slog.Warn("Proceeding without storage lock",
+			"key", key,
+			"err", err,
+		)
+		// the per-process mutex is not held after a failure
+		m, _ := l.local.LoadOrStore(key, &sync.Mutex{})
+		mu := m.(*sync.Mutex)
+		mu.Lock()
+		return mu.Unlock
+	}
+	return release
+}
+
+// holdStrict is hold for data where a lost update is not acceptable: when
+// the lock cannot be taken it returns the error and holds nothing.
+func (l *storeLock) holdStrict(key string) (release func(), err error) {
 	// on redis too: one waiter per replica polls Redis instead of every
 	// request
 	m, _ := l.local.LoadOrStore(key, &sync.Mutex{})
 	mu := m.(*sync.Mutex)
 	mu.Lock()
 	if l.rdb == nil {
-		return mu.Unlock
+		return mu.Unlock, nil
 	}
 
 	token, err := l.acquire(key)
 	if err != nil {
-		slog.Warn("Proceeding without storage lock",
-			"key", key,
-			"err", err,
-		)
-		return mu.Unlock
+		mu.Unlock()
+		return nil, err
 	}
 	return func() {
 		l.release(key, token)
 		mu.Unlock()
-	}
+	}, nil
 }
 
 func (l *storeLock) acquire(key string) (string, error) {
