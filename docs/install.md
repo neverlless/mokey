@@ -126,7 +126,7 @@ sudo dnf install mokey
 sudo systemctl enable --now mokey
 ```
 
-Packages are built for Fedora 43 and newer and for RHEL 9 and 10 with
+Packages are built for Fedora 43 and newer and for RHEL 8, 9 and 10 with
 their rebuilds (Rocky Linux, AlmaLinux, CentOS Stream). On RHEL itself
 `dnf copr` comes from the `dnf-plugins-core` package.
 

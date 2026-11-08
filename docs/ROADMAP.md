@@ -29,7 +29,7 @@ them. How versions and supported releases work is described in the
 
 ## Next: v2.10 — RHEL and HPC sites (December 2026)
 
-- [ ] EPEL 9 and 10 builds in the COPR repository, so `dnf install mokey`
+- [ ] EPEL 8, 9 and 10 builds in the COPR repository, so `dnf install mokey`
       works on RHEL, Rocky and AlmaLinux, where FreeIPA runs in production
 - [ ] Migration guide from upstream mokey 0.5/0.6 (YAML config, MySQL
       storage) to the current release
