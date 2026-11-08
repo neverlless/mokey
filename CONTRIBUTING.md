@@ -62,8 +62,10 @@ It serves `docs/` at <http://localhost:4321/mokey/>. Pages need a `title:`
 in their frontmatter; link between pages with relative `.md` paths and use
 GitHub alerts (`> [!NOTE]`) so the files also read well on GitHub.
 
-Tests drive the real application against a fake FreeIPA JSON-RPC server
-(`server/fakeipa_test.go`), fake SMTP and fake Hydra. A new user-facing flow
+Tests drive the real application against goipa's simulated FreeIPA server
+(`ipatest`, set up in `server/testutil_test.go`), fake SMTP and fake Hydra.
+Integration and browser tests against a real FreeIPA container live in
+`test/integration`. A new user-facing flow
 gets a `*_flow_test.go` built on `newTestApp` from `server/testutil_test.go`.
 
 ## Pull requests
@@ -73,7 +75,10 @@ gets a `*_flow_test.go` built on `newTestApp` from `server/testutil_test.go`.
   (`feat:`, `fix:`, `docs:`, `chore:` ...).
 - Add or update tests; keep `go test -race ./...`, `gofmt` and `go vet` green.
 - Update `docs/configuration.md`, `mokey.toml.sample` and `ChangeLog.md` when
-  behavior or options change.
+  behavior or options change. Anything an operator must act on or will
+  notice after upgrading goes under **Upgrade notes** in the ChangeLog entry.
+- New features ship off by default; see the [release policy](docs/releases.md)
+  for what may go into a patch, minor or major release.
 - New UI strings go into `server/translations/english.toml`; missing keys in
   other languages fall back to English.
 - PRs from first-time contributors need a maintainer's approval before CI runs.
