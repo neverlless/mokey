@@ -55,7 +55,7 @@ const requestButton = `hx-vals='{"client": "`
 func TestAppsCatalogStates(t *testing.T) {
 	assert := assert.New(t)
 	app, router, _ := newAppsTestApp(t, nil)
-	router.addGroupRequest("vault-users", "walter", groupRequestJoin)
+	router.addGroupRequest("vault-users", "walter", groupRequestJoin, "")
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")

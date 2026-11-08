@@ -333,12 +333,16 @@ func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) erro
 // SendGroupRequestEmail notifies a group sponsor about a pending join or
 // leave request. Called from a goroutine after the handler returns — no
 // request context, mirrors SendNewLoginEmail.
-func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group, reqType string) error {
+func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group, reqType, duration string) error {
 	lang := userLanguage(manager)
 	vars := map[string]interface{}{
 		"requester": requester,
 		"group":     group,
 		"type":      reqType,
+		"duration":  "",
+	}
+	if d, err := parseGroupDuration(duration); err == nil {
+		vars["duration"] = formatDuration(lang, d)
 	}
 
 	subject := TL(lang, "email_template.group_request_subject")
@@ -353,12 +357,16 @@ func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group, req
 // GroupApprove/GroupDeny in the request path with a nil ctx, so the base
 // URL comes from config rather than the request — mirrors
 // SendNewLoginEmail's nil-ctx mechanism.
-func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved bool, reqType string) error {
+func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved bool, reqType string, until time.Time) error {
 	lang := userLanguage(user)
 	vars := map[string]interface{}{
 		"group":    group,
 		"approved": approved,
 		"type":     reqType,
+		"until":    "",
+	}
+	if !until.IsZero() {
+		vars["until"] = until.UTC().Format("2006-01-02 15:04 MST")
 	}
 	leave := reqType == groupRequestLeave
 	subject := TL(lang, "email_template.group_denied_subject")

@@ -50,7 +50,7 @@ func TestUIPreviewServe(t *testing.T) {
 		Groups:       []string{"chemists"},
 		HostCategory: "all", AllowCommands: []string{"/usr/bin/systemctl"},
 	})
-	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
+	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "")
 
 	t.Logf("UI preview on http://%s (walter / Secret123!)", addr)
 	if err := app.Listen(addr, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {

@@ -18,7 +18,7 @@ func TestGroupsPageSections(t *testing.T) {
 	fake.AddGroup("laundry", ipatest.Group{ManagerUsers: []string{"walter"}})
 	fake.AddGroup("secret", ipatest.Group{}) // unmanaged: never shown
 
-	router.addGroupRequest("laundry", "jesse", groupRequestJoin)
+	router.addGroupRequest("laundry", "jesse", groupRequestJoin, "")
 
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -86,8 +86,8 @@ func TestGroupApproveDenyFlow(t *testing.T) {
 	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
 
-	router.addGroupRequest("chemists", "walter", groupRequestJoin)
-	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
+	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "")
 
 	tcSponsor := newTestClient(t, app)
 	tcSponsor.login("skyler", "Secret123!")
@@ -122,7 +122,7 @@ func TestGroupApproveNonManager(t *testing.T) {
 	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
 	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
-	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
+	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "")
 
 	// jesse is not a manager; both mokey's check and the fake's
 	// group_add_member enforcement refuse
@@ -144,7 +144,7 @@ func TestGroupApproveRefusedByFreeIPA(t *testing.T) {
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
 	// the requester's account is gone by the time the sponsor approves;
 	// FreeIPA answers with HTTP 200 and the refusal in result.failed
-	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
+	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "")
 
 	tc := newTestClient(t, app)
 	tc.login("skyler", "Secret123!")
@@ -200,7 +200,7 @@ func TestGroupLeaveDenyFlow(t *testing.T) {
 	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
 	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
-	router.addGroupRequest("chemists", "walter", groupRequestLeave)
+	router.addGroupRequest("chemists", "walter", groupRequestLeave, "")
 
 	tcSponsor := newTestClient(t, app)
 	tcSponsor.login("skyler", "Secret123!")
@@ -273,7 +273,7 @@ func TestGroupStaleRequestCleanup(t *testing.T) {
 	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	// walter is already a member but a stale request lingers in the queue
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
-	router.addGroupRequest("chemists", "walter", groupRequestJoin)
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
 
 	tc := newTestClient(t, app)
 	tc.login("skyler", "Secret123!")

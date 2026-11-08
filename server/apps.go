@@ -166,7 +166,12 @@ func (r *Router) AppRequest(c fiber.Ctx) error {
 	if i < 0 {
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "apps.not_requestable"))
 	}
-	if ferr := r.requestJoin(c, apps[i].Group); ferr != nil {
+	// no picker on the Apps page: the longest grant offered, or permanent
+	duration := ""
+	if ds, permanent := r.groupExpiry.Offered(apps[i].Group); !permanent && len(ds) > 0 {
+		duration = ds[len(ds)-1].String()
+	}
+	if ferr := r.requestJoin(c, apps[i].Group, duration); ferr != nil {
 		return c.Status(ferr.Code).SendString(ferr.Message)
 	}
 

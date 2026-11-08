@@ -25,6 +25,8 @@ type GroupRequest struct {
 	Username    string    `json:"username"`
 	Type        string    `json:"type"`
 	RequestedAt time.Time `json:"requested_at"`
+	// as posted, e.g. "8h"; "" is permanent
+	Duration string `json:"duration,omitempty"`
 }
 
 func (r *Router) loadGroupRequests(group string) []GroupRequest {
@@ -58,7 +60,7 @@ func (r *Router) saveGroupRequests(group string, reqs []GroupRequest) {
 }
 
 // addGroupRequest queues a join or leave request; false when already queued
-func (r *Router) addGroupRequest(group, username, reqType string) bool {
+func (r *Router) addGroupRequest(group, username, reqType, duration string) bool {
 	defer r.lock.hold(groupRequestsPrefix + group)()
 
 	reqs := r.loadGroupRequests(group)
@@ -67,7 +69,7 @@ func (r *Router) addGroupRequest(group, username, reqType string) bool {
 			return false
 		}
 	}
-	r.saveGroupRequests(group, append(reqs, GroupRequest{Username: username, Type: reqType, RequestedAt: time.Now()}))
+	r.saveGroupRequests(group, append(reqs, GroupRequest{Username: username, Type: reqType, RequestedAt: time.Now(), Duration: duration}))
 	return true
 }
 

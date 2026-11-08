@@ -6,6 +6,8 @@ package server
 
 import (
 	"log/slog"
+	"slices"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -118,7 +120,7 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 // GroupRequestJoin queues a join request for a managed group and notifies
 // its sponsors
 func (r *Router) GroupRequestJoin(c fiber.Ctx) error {
-	if ferr := r.requestJoin(c, c.FormValue("group")); ferr != nil {
+	if ferr := r.requestJoin(c, c.FormValue("group"), c.FormValue("duration")); ferr != nil {
 		return c.Status(ferr.Code).SendString(ferr.Message)
 	}
 
@@ -129,7 +131,7 @@ func (r *Router) GroupRequestJoin(c fiber.Ctx) error {
 
 // requestJoin queues the caller's join request and notifies the sponsors;
 // shared by the Groups and Apps pages
-func (r *Router) requestJoin(c fiber.Ctx, groupName string) *fiber.Error {
+func (r *Router) requestJoin(c fiber.Ctx, groupName, duration string) *fiber.Error {
 	user := r.user(c)
 
 	g, err := groupShow(r.userClient(c), groupName)
@@ -139,15 +141,19 @@ func (r *Router) requestJoin(c fiber.Ctx, groupName string) *fiber.Error {
 	if user.HasGroup(g.Name) {
 		return fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.already_member"))
 	}
+	if _, ok := r.groupDuration(g.Name, duration); !ok {
+		return fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.invalid_duration"))
+	}
 
-	if r.addGroupRequest(g.Name, user.Username, groupRequestJoin) {
+	if r.addGroupRequest(g.Name, user.Username, groupRequestJoin, duration) {
 		slog.Info("AUDIT group join requested",
 			"username", user.Username,
 			"group", g.Name,
+			"duration", duration,
 			"ip", RemoteIP(c),
 		)
 
-		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestJoin) })
+		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestJoin, duration) })
 	}
 	return nil
 }
@@ -168,14 +174,14 @@ func (r *Router) GroupRequestLeave(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_a_member"))
 	}
 
-	if r.addGroupRequest(g.Name, user.Username, groupRequestLeave) {
+	if r.addGroupRequest(g.Name, user.Username, groupRequestLeave, "") {
 		slog.Info("AUDIT group leave requested",
 			"username", user.Username,
 			"group", g.Name,
 			"ip", RemoteIP(c),
 		)
 
-		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestLeave) })
+		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestLeave, "") })
 	}
 
 	vars := fiber.Map{"user": user}
@@ -205,6 +211,34 @@ func (r *Router) groupDecision(c fiber.Ctx) (*ipaGroup, GroupRequest, error) {
 	return nil, GroupRequest{}, fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.no_such_request"))
 }
 
+// groupDuration parses a posted duration and checks it is offered for
+// group; "" is permanent
+func (r *Router) groupDuration(group, s string) (time.Duration, bool) {
+	if s == "" {
+		return 0, r.groupExpiry.Allowed(group, 0)
+	}
+	d, err := parseGroupDuration(s)
+	return d, err == nil && r.groupExpiry.Allowed(group, d)
+}
+
+// approvedDuration is the sponsor's pick for a join request: offered for
+// the group and never longer than requested
+func (r *Router) approvedDuration(c fiber.Ctx, group string, req GroupRequest) (time.Duration, bool) {
+	posted := c.FormValue("duration")
+	if !c.Request().PostArgs().Has("duration") {
+		posted = ""
+		if r.groupExpiry.Enabled() {
+			posted = req.Duration
+		}
+	}
+	d, ok := r.groupDuration(group, posted)
+	if !ok || !r.groupExpiry.Enabled() || req.Duration == "" {
+		return d, ok
+	}
+	requested, err := parseGroupDuration(req.Duration)
+	return d, err == nil && d != 0 && d <= requested
+}
+
 func (r *Router) GroupApprove(c fiber.Ctx) error {
 	g, req, err := r.groupDecision(c)
 	if err != nil {
@@ -212,6 +246,8 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 		return c.Status(ferr.Code).SendString(ferr.Message)
 	}
 
+	vars := fiber.Map{}
+	var until time.Time
 	// the sponsor's own session performs the change; FreeIPA enforces
 	// member-manager rights even if mokey's check were bypassed
 	mutate := groupAddMember
@@ -219,33 +255,94 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 	if req.Type == groupRequestLeave {
 		mutate = groupRemoveMember
 		action = "AUDIT group leave approved"
+	} else {
+		d, ok := r.approvedDuration(c, g.Name, req)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.invalid_duration"))
+		}
+		// mokey never records an end date for a membership it did not add
+		if slices.Contains(g.Members, req.Username) {
+			mutate = nil
+			vars["groups_notice"] = TC(c, "groups.already_member_no_end")
+		} else if d > 0 {
+			until = time.Now().Add(d)
+		}
 	}
-	if err := mutate(r.userClient(c), g.Name, req.Username); err != nil {
-		slog.Error("Group approve failed in FreeIPA",
-			"group", g.Name,
-			"username", req.Username,
-			"sponsor", r.username(c),
-			"err", err,
-		)
-		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.approve_failed"))
+	if mutate != nil {
+		if err := mutate(r.userClient(c), g.Name, req.Username); err != nil {
+			slog.Error("Group approve failed in FreeIPA",
+				"group", g.Name,
+				"username", req.Username,
+				"sponsor", r.username(c),
+				"err", err,
+			)
+			return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.approve_failed"))
+		}
+		if req.Type == groupRequestJoin {
+			if err := r.recordGrant(c, g.Name, req.Username, until); err != nil {
+				return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "groups.expiry_store_failed"))
+			}
+		}
 	}
 
 	r.removeGroupRequest(g.Name, req.Username)
-	slog.Info(action,
+	attrs := []any{
 		"group", g.Name,
 		"username", req.Username,
 		"sponsor", r.username(c),
 		"ip", RemoteIP(c),
-	)
+	}
+	if !until.IsZero() {
+		attrs = append(attrs, "until", until)
+	}
+	slog.Info(action, attrs...)
 
-	r.sendGroupDecision(req.Username, g.Name, true, req.Type)
+	r.sendGroupDecision(req.Username, g.Name, true, req.Type, until)
 	if req.Type == groupRequestLeave {
 		r.goBG(func() { r.revokeConsentsOf(req.Username) })
 	}
 
-	vars := fiber.Map{"user": r.user(c)}
+	vars["user"] = r.user(c)
 	r.groupsVars(c, vars)
 	return c.Render("groups-list.html", vars)
+}
+
+// recordGrant stores the end date of a membership just added (zero until:
+// permanent, dropping any earlier record). On failure the membership is
+// removed again: a time-bound grant must never stay without its record.
+func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Time) error {
+	var err error
+	if until.IsZero() {
+		var m *TimedMembership
+		if m, err = r.timedMember(group, username); err != nil || m != nil {
+			err = r.dropTimedMember(group, username)
+		}
+	} else {
+		err = r.putTimedMember(TimedMembership{
+			Group:     group,
+			Username:  username,
+			Until:     until,
+			GrantedBy: r.username(c),
+			GrantedAt: time.Now(),
+		})
+	}
+	if err == nil {
+		return nil
+	}
+	slog.Error("Failed to store membership end date, rolling back the grant",
+		"group", group,
+		"username", username,
+		"err", err,
+	)
+	if rerr := groupRemoveMember(r.userClient(c), group, username); rerr != nil {
+		slog.Error("Rollback failed: membership left without its end date record",
+			"group", group,
+			"username", username,
+			"sponsor", r.username(c),
+			"err", rerr,
+		)
+	}
+	return err
 }
 
 func (r *Router) GroupDeny(c fiber.Ctx) error {
@@ -267,7 +364,7 @@ func (r *Router) GroupDeny(c fiber.Ctx) error {
 		"ip", RemoteIP(c),
 	)
 
-	r.sendGroupDecision(req.Username, g.Name, false, req.Type)
+	r.sendGroupDecision(req.Username, g.Name, false, req.Type, time.Time{})
 
 	vars := fiber.Map{"user": r.user(c)}
 	r.groupsVars(c, vars)
@@ -317,13 +414,13 @@ func (r *Router) GroupRemoveMember(c fiber.Ctx) error {
 }
 
 // sendGroupDecision emails the requester about the outcome (fire and log)
-func (r *Router) sendGroupDecision(username, group string, approved bool, reqType string) {
+func (r *Router) sendGroupDecision(username, group string, approved bool, reqType string, until time.Time) {
 	target, err := r.adminClient.UserShow(username)
 	if err != nil {
 		slog.Error("Failed to fetch requester for decision email", "username", username, "err", err)
 		return
 	}
-	if err := r.emailer.SendGroupDecisionEmail(target, group, approved, reqType); err != nil {
+	if err := r.emailer.SendGroupDecisionEmail(target, group, approved, reqType, until); err != nil {
 		slog.Error("Failed to send group decision email", "username", username, "err", err)
 	}
 }
@@ -349,14 +446,14 @@ func (r *Router) notifyGroupRemoved(username, group string) {
 // ponytail: manager groups are not expanded to individual recipients —
 // direct managers only; expand if a deployment actually runs on
 // manager-groups alone.
-func (r *Router) notifyGroupSponsors(g *ipaGroup, requester, reqType string) {
+func (r *Router) notifyGroupSponsors(g *ipaGroup, requester, reqType, duration string) {
 	for _, m := range g.ManagerUsers {
 		manager, err := r.adminClient.UserShow(m)
 		if err != nil {
 			slog.Error("Failed to fetch group manager for notification", "manager", m, "err", err)
 			continue
 		}
-		if err := r.emailer.SendGroupRequestEmail(manager, requester, g.Name, reqType); err != nil {
+		if err := r.emailer.SendGroupRequestEmail(manager, requester, g.Name, reqType, duration); err != nil {
 			slog.Error("Failed to send group request email", "manager", m, "err", err)
 		}
 	}
