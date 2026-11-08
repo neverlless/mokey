@@ -25,6 +25,8 @@ type expiryFailure struct {
 	Group, Username string
 	Since           time.Time
 	Err             string
+	// NoRecord: a grant left without its end date; kept until restart
+	NoRecord bool
 }
 
 type expiryFailureSet struct {
@@ -226,17 +228,23 @@ func (r *Router) remindMembership(m TimedMembership, now time.Time) {
 
 // recordExpiryFailure reports whether the failure is new
 func (r *Router) recordExpiryFailure(m TimedMembership, msg string) bool {
+	return r.putExpiryFailure(expiryFailure{Group: m.Group, Username: m.Username, Err: msg})
+}
+
+// putExpiryFailure keeps the first Since of a repeated failure and reports
+// whether the failure is new
+func (r *Router) putExpiryFailure(f expiryFailure) bool {
 	r.expiryFails.mu.Lock()
 	defer r.expiryFails.mu.Unlock()
 	if r.expiryFails.m == nil {
 		r.expiryFails.m = map[[2]string]expiryFailure{}
 	}
-	key := [2]string{m.Group, m.Username}
-	f, ok := r.expiryFails.m[key]
+	key := [2]string{f.Group, f.Username}
+	old, ok := r.expiryFails.m[key]
+	f.Since = old.Since
 	if !ok {
-		f = expiryFailure{Group: m.Group, Username: m.Username, Since: time.Now()}
+		f.Since = time.Now()
 	}
-	f.Err = msg
 	r.expiryFails.m[key] = f
 	return !ok
 }
