@@ -485,7 +485,9 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 		// mokey never records an end date for a membership it did not add
 		if slices.Contains(g.Members, req.Username) {
 			mutate = nil
-			vars["groups_notice"] = TC(c, "groups.already_member_no_end")
+			if r.groupExpiry.Enabled() {
+				vars["groups_notice"] = TC(c, "groups.already_member_no_end")
+			}
 		} else if d > 0 {
 			until = time.Now().Add(d)
 		}
