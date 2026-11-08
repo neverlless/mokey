@@ -52,7 +52,7 @@ jobs:
 
       - name: Integration tests
         working-directory: test/integration
-        run: go test -count=1 -v -tags integration ./...
+        run: go test -count=1 -v -timeout 20m -tags integration ./...
 
       - name: Install Chromium
         working-directory: test/integration
@@ -60,7 +60,7 @@ jobs:
 
       - name: Browser tests
         working-directory: test/integration
-        run: go test -count=1 -v -tags e2e ./...
+        run: go test -count=1 -v -timeout 20m -tags e2e ./...
 
       - name: Stand logs
         if: failure()

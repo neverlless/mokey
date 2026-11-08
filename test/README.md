@@ -21,7 +21,10 @@ the end.
 ## Run
 
 Start the stand with mokey built from your checkout and the overlay that
-turns the CAPTCHA off (signup and forgot password cannot pass it):
+turns the CAPTCHA off (signup and forgot password cannot pass it) and
+switches mokey to sqlite3 storage with `groups.durations = 1m 1h`, which the
+time-bound membership test needs (it waits for the 5-minute expiry sweep, so
+the suite takes about 6 minutes):
 
 ```sh
 docker build -t mokey:dev .
@@ -32,10 +35,10 @@ Then, from `test/integration`:
 
 ```sh
 export MOKEY_IT_URL=http://localhost:8866
-go test -count=1 -tags integration ./...
+go test -count=1 -timeout 20m -tags integration ./...
 
 go run github.com/mxschmitt/playwright-go/cmd/playwright install chromium   # once
-go test -count=1 -tags e2e ./...
+go test -count=1 -timeout 20m -tags e2e ./...
 ```
 
 Without `MOKEY_IT_URL` every test skips. Use `localhost`, not `127.0.0.1`:
