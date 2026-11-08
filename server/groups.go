@@ -5,6 +5,7 @@
 package server
 
 import (
+	"errors"
 	"log/slog"
 	"slices"
 	"time"
@@ -503,7 +504,11 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 			r.forgetTimed(g.Name, req.Username)
 		} else if req.Type == groupRequestJoin {
 			if err := r.recordGrant(c, g.Name, req.Username, until); err != nil {
-				return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "groups.expiry_store_failed"))
+				key := "groups.expiry_store_failed"
+				if errors.Is(err, errGrantedWithoutEnd) {
+					key = "groups.granted_without_end"
+				}
+				return c.Status(fiber.StatusInternalServerError).SendString(TC(c, key))
 			}
 		}
 	}
@@ -563,16 +568,36 @@ func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Tim
 		"username", username,
 		"err", err,
 	)
-	if rerr := groupRemoveMember(r.userClient(c), group, username); rerr != nil {
+	rerr := groupRemoveMember(r.userClient(c), group, username)
+	switch {
+	case rerr == nil:
+		return err
+	case until.IsZero():
 		slog.Error("Rollback failed: membership left without its end date record",
 			"group", group,
 			"username", username,
 			"sponsor", r.username(c),
 			"err", rerr,
 		)
+		return err
 	}
-	return err
+	slog.Error("AUDIT group membership granted without end date",
+		"group", group,
+		"username", username,
+		"sponsor", r.username(c),
+		"err", err,
+		"rollback_err", rerr,
+	)
+	r.putExpiryFailure(expiryFailure{
+		Group:    group,
+		Username: username,
+		Err:      "Granted without an end date because the end date could not be stored; remove manually",
+		NoRecord: true,
+	})
+	return errGrantedWithoutEnd
 }
+
+var errGrantedWithoutEnd = errors.New("membership granted without an end date")
 
 func (r *Router) GroupDeny(c fiber.Ctx) error {
 	g, req, err := r.groupDecision(c)

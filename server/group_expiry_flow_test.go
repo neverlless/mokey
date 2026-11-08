@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"sync"
 	"testing"
 	"time"
 
@@ -533,4 +534,43 @@ func TestFeatureOffPermanentGrantDropsRecord(t *testing.T) {
 	m, err := router.timedMember("chemists", "walter")
 	require.NoError(t, err)
 	assert.Nil(m)
+}
+
+// revokeOnTimedRead runs revoke on the first read of the time-bound
+// membership key
+type revokeOnTimedRead struct {
+	fiber.Storage
+	once   sync.Once
+	revoke func()
+}
+
+func (s *revokeOnTimedRead) Get(key string) ([]byte, error) {
+	if key == timedMembersKey {
+		s.once.Do(s.revoke)
+	}
+	return s.Storage.Get(key)
+}
+
+func TestTimedApproveRollbackFailureIsLoud(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "7d")
+
+	tc := newTestClient(t, app)
+	tc.login("skyler", "Secret123!")
+	router.storage = &revokeOnTimedRead{Storage: &timedMembersDown{router.storage}, revoke: func() {
+		_, err := fake.ClientAs("admin").GroupRemoveMemberManager("chemists", []string{"skyler"}, nil)
+		assert.NoError(err)
+	}}
+	resp := tc.postForm("/groups/approve", url.Values{"group": {"chemists"}, "username": {"walter"}, "duration": {"7d"}}, htmx)
+	assert.Equal(fiber.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(T("groups.granted_without_end"), readBody(t, resp))
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
+	assert.True(auditHas(router, "group membership granted without end date"))
+	fails := router.expiryFailures()
+	if assert.Len(fails, 1) {
+		assert.Equal("chemists", fails[0].Group)
+		assert.Equal("walter", fails[0].Username)
+		assert.Contains(fails[0].Err, "remove manually")
+	}
 }
