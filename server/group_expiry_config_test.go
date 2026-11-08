@@ -15,7 +15,7 @@ func TestParseGroupDuration(t *testing.T) {
 			t.Errorf("%q = %v, %v; want %v", in, got, err, want)
 		}
 	}
-	for _, in := range []string{"0h", "-1d", "x", "1w"} {
+	for _, in := range []string{"0h", "-1d", "x", "1w", "106752d", "213504d"} {
 		if _, err := parseGroupDuration(in); err == nil {
 			t.Errorf("%q: expected error", in)
 		}
