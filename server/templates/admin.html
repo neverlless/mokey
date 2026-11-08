@@ -9,6 +9,35 @@
 </div>
 {{ end }}
 
+{{ if $.expiry_failures }}
+<h2 class="mokey-section-title mb-2">{{ T "admin.expiry_failures_title" }}</h2>
+<div class="mokey-card p-3 mb-4">
+  <div class="alert alert-warning" role="status">{{ T "admin.expiry_failures_body" }}</div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">{{ T "admin.expiry_group" }}</th>
+          <th scope="col">{{ T "common.username" }}</th>
+          <th scope="col">{{ T "admin.expiry_since" }}</th>
+          <th scope="col">{{ T "admin.expiry_error" }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $f := $.expiry_failures }}
+        <tr>
+          <td class="text-nowrap"><span class="mokey-mono">{{ $f.Group }}</span></td>
+          <td class="text-nowrap"><span class="mokey-mono">{{ $f.Username }}</span></td>
+          <td class="text-nowrap text-muted small">{{ TimeAgo $f.Since }}</td>
+          <td class="small">{{ $f.Err }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{ end }}
+
 <h2 class="mokey-section-title mb-2">{{ T "admin.otprecovery_title" }}</h2>
 <div class="mokey-card p-3 mb-4">
   <div id="admin-otprecovery" hx-get="/admin/otprecovery" hx-trigger="load"

@@ -30,7 +30,7 @@
 	{{ range $r := $.my_requests }}
 	<div class="mokey-row">
 		<div class="flex-grow-1"><span class="mokey-mono">{{ $r.Group }}</span></div>
-		<span class="mokey-pill is-warn">{{ if eq $r.Type "leave" }}{{ T "groups.leave_pending" }}{{ else }}{{ T "groups.join_pending" }}{{ end }}</span>
+		<span class="mokey-pill is-warn">{{ if eq $r.Type "leave" }}{{ T "groups.leave_pending" }}{{ else if eq $r.Type "renew" }}{{ T "groups.renew_pending" }}{{ else }}{{ T "groups.join_pending" }}{{ end }}</span>
 	</div>
 	{{ end }}
 </div>
@@ -40,17 +40,27 @@
 <h2 class="mokey-section-title mb-2" id="joinable">{{ T "groups.joinable" }}</h2>
 <div class="mokey-card mb-4">
 	{{ range $g := $.joinable }}
+	{{ $opts := index $.offered $g.Name }}
 	<div class="mokey-row">
 		<div class="flex-grow-1">
 			<strong>{{ $g.Name }}</strong>
 			{{ if $g.Description }}<div class="text-muted small">{{ $g.Description }}</div>{{ end }}
 		</div>
+		<div class="d-flex gap-2">
+		{{ if $opts }}
+		<label class="visually-hidden" for="join-duration-{{ $g.Name }}">{{ T "groups.duration_label" }}: {{ $g.Name }}</label>
+		<select class="form-select form-select-sm w-auto" name="duration" id="join-duration-{{ $g.Name }}">
+			{{ range $o := $opts }}<option value="{{ $o.Value }}">{{ $o.Label }}</option>{{ end }}
+		</select>
+		{{ end }}
 		<button class="btn btn-sm btn-outline-secondary" hx-post="/groups/request"
 		        hx-vals='{"group": "{{ $g.Name }}"}'
+		        {{ if $opts }}hx-include="previous select"{{ end }}
 		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
 		        hx-target="#groups-pane" hx-swap="outerHTML">
 			{{ T "groups.request_join" }}
 		</button>
+		</div>
 	</div>
 	{{ end }}
 </div>
@@ -60,17 +70,34 @@
 <h2 class="mokey-section-title mb-2">{{ T "groups.leavable" }}</h2>
 <div class="mokey-card mb-4">
 	{{ range $g := $.leavable }}
+	{{ $until := index $.timed $g.Name }}
 	<div class="mokey-row">
 		<div class="flex-grow-1">
 			<strong>{{ $g.Name }}</strong>
 			{{ if $g.Description }}<div class="text-muted small">{{ $g.Description }}</div>{{ end }}
+			{{ if not $until.IsZero }}<div class="text-muted small">{{ printf (T "groups.until") (Date $until) }}</div>{{ end }}
 		</div>
+		<div class="d-flex flex-wrap flex-shrink-1 gap-2">
+		{{ if and (not $until.IsZero) (not (index $.renewing $g.Name)) }}
+		<label class="visually-hidden" for="renew-duration-{{ $g.Name }}">{{ T "groups.duration_label" }}: {{ $g.Name }}</label>
+		<select class="form-select form-select-sm w-auto" name="duration" id="renew-duration-{{ $g.Name }}">
+			{{ range $o := index $.renew_offered $g.Name }}<option value="{{ $o.Value }}"{{ if $o.Selected }} selected{{ end }}>{{ $o.Label }}</option>{{ end }}
+		</select>
+		<button class="btn btn-sm btn-outline-secondary" hx-post="/groups/renew"
+		        hx-vals='{"group": "{{ $g.Name }}"}'
+		        hx-include="previous select"
+		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+		        hx-target="#groups-pane" hx-swap="outerHTML">
+			{{ T "groups.request_renew" }}
+		</button>
+		{{ end }}
 		<button class="btn btn-sm btn-outline-danger" hx-post="/groups/leave"
 		        hx-vals='{"group": "{{ $g.Name }}"}'
 		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
 		        hx-target="#groups-pane" hx-swap="outerHTML">
 			{{ T "groups.request_leave" }}
 		</button>
+		</div>
 	</div>
 	{{ end }}
 </div>
@@ -85,12 +112,20 @@
 		{{ if $m.Requests }}<span class="mokey-pill is-warn">{{ printf (T "groups.count_requests") (len $m.Requests) }}</span>{{ end }}
 	</div>
 	{{ range $req := $m.Requests }}
+	{{ $opts := index $m.Approve $req.Username }}
+	{{ $sel := printf "approve-duration-%s-%s" $m.Group.Name $req.Username }}
 	<div class="mokey-row">
 		<div class="flex-grow-1">
 			<span class="mokey-mono">{{ $req.Username }}</span>
-			<div class="text-muted small">{{ if eq $req.Type "leave" }}{{ T "groups.wants_leave" }}{{ else }}{{ T "groups.wants_join" }}{{ end }}</div>
+			<div class="text-muted small">{{ if eq $req.Type "leave" }}{{ T "groups.wants_leave" }}{{ else if eq $req.Type "renew" }}{{ T "groups.wants_renew" }}{{ else }}{{ T "groups.wants_join" }}{{ end }}{{ with index $m.Requested $req.Username }} · {{ . }}{{ end }}</div>
 		</div>
-		<div class="d-flex gap-2">
+		<div class="d-flex flex-wrap flex-shrink-1 gap-2">
+			{{ if $opts }}
+			<label class="visually-hidden" for="{{ $sel }}">{{ T "groups.grant_label" }}: {{ $req.Username }}</label>
+			<select class="form-select form-select-sm w-auto" name="duration" id="{{ $sel }}">
+				{{ range $o := $opts }}<option value="{{ $o.Value }}"{{ if $o.Selected }} selected{{ end }}>{{ $o.Label }}</option>{{ end }}
+			</select>
+			{{ end }}
 			<button class="btn btn-sm btn-outline-danger" hx-post="/groups/deny"
 			        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $req.Username }}"}'
 			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
@@ -100,6 +135,7 @@
 			</button>
 			<button class="btn btn-sm btn-primary" hx-post="/groups/approve"
 			        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $req.Username }}"}'
+			        {{ if $opts }}hx-include="previous select"{{ end }}
 			        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
 			        hx-target="#groups-pane" hx-swap="outerHTML">
 				{{ T "groups.approve" }}
@@ -114,7 +150,10 @@
 	{{ end }}
 	{{ range $member := $m.Group.Members }}
 	<div class="mokey-row">
-		<div class="flex-grow-1"><span class="mokey-mono">{{ $member }}</span></div>
+		<div class="flex-grow-1">
+			<span class="mokey-mono">{{ $member }}</span>
+			{{ $u := index $m.Until $member }}{{ if not $u.IsZero }}<div class="text-muted small">{{ printf (T "groups.until") (Date $u) }}</div>{{ end }}
+		</div>
 		<button class="btn btn-sm btn-outline-danger" hx-post="/groups/remove-member"
 		        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $member }}"}'
 		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'

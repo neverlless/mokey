@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -401,4 +402,78 @@ func TestGroupEmailSubjects(t *testing.T) {
 	assert.Equal(TL("en", "email_template.group_denied_subject"), groupDecisionSubject("en", groupRequestJoin, false))
 	assert.Equal(TL("en", "email_template.group_leave_denied_subject"), groupDecisionSubject("en", groupRequestLeave, false))
 	assert.NotEqual(groupRequestSubject("en", groupRequestJoin), groupRequestSubject("en", groupRequestRenew))
+}
+
+func TestGroupsPageShowsTimedMembership(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	timedWalter(t, router, fake)
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	until := m.Until.Format(T("date.layout"))
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	body := readBody(t, tc.get("/groups"))
+	assert.Contains(body, until)
+	assert.Contains(body, `hx-post="/groups/renew"`)
+	assert.Contains(body, `value="8h0m0s" selected`)
+	join := regexp.MustCompile(`(?s)id="join-duration-prod-sudo".*?</select>`).FindString(body)
+	assert.Contains(join, `value="8h0m0s"`)
+	assert.NotContains(join, T("groups.no_end_date"))
+	assert.NotContains(join, `value="168h0m0s"`)
+
+	tc.postForm("/groups/renew", url.Values{"group": {"chemists"}, "duration": {"7d"}}, htmx)
+	body = readBody(t, tc.get("/groups"))
+	assert.Contains(body, T("groups.renew_pending"))
+	assert.NotContains(body, `hx-post="/groups/renew"`)
+
+	sponsor := newTestClient(t, app)
+	sponsor.login("skyler", "Secret123!")
+	body = readBody(t, sponsor.get("/groups"))
+	assert.Contains(body, until)
+	assert.Contains(body, T("groups.wants_renew"))
+	approve := regexp.MustCompile(`(?s)id="approve-duration-chemists-walter".*?</select>`).FindString(body)
+	assert.Contains(approve, `value="168h0m0s" selected`)
+	assert.Contains(approve, `value="8h0m0s"`)
+	assert.NotContains(approve, `value="720h0m0s"`)
+	assert.NotContains(approve, T("groups.no_end_date"))
+}
+
+func TestGroupsPageUnchangedWhenFeatureOff(t *testing.T) {
+	app, router, fake := newTestApp(t)
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"jesse"}})
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
+
+	for _, u := range []string{"walter", "skyler"} {
+		tc := newTestClient(t, app)
+		tc.login(u, "Secret123!")
+		body := readBody(t, tc.get("/groups"))
+		assert.NotContains(t, body, `name="duration"`, u)
+		assert.NotContains(t, body, T("groups.no_end_date"), u)
+		assert.NotContains(t, body, "0001", u)
+	}
+}
+
+func TestAdminShowsExpiryFailures(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestAppWith(t, func() {
+		viper.Set("admin.enabled", true)
+		viper.Set("admin.group", "admins")
+	})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	assert.NotContains(readBody(t, tc.get("/admin")), T("admin.expiry_failures_title"))
+
+	router.recordExpiryFailure(TimedMembership{Group: "prod-sudo", Username: "jesse"}, "insufficient access")
+	body := readBody(t, tc.get("/admin"))
+	assert.Contains(body, T("admin.expiry_failures_title"))
+	assert.Contains(body, "prod-sudo")
+	assert.Contains(body, "jesse")
+	assert.Contains(body, "insufficient access")
 }

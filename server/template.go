@@ -36,6 +36,7 @@ func languageFuncs(lang string) template.FuncMap {
 	return template.FuncMap{
 		"T":            func(key string) string { return TL(lang, key) },
 		"TimeAgo":      func(t time.Time) string { return timeAgo(lang, t) },
+		"Date":         func(t time.Time) string { return t.Format(TL(lang, "date.layout")) },
 		"LanguageCode": func() string { return languageCodes[lang] },
 	}
 }
