@@ -31,12 +31,12 @@ them. How versions and supported releases work is described in the
 
 - [ ] EPEL 8, 9 and 10 builds in the COPR repository, so `dnf install mokey`
       works on RHEL, Rocky and AlmaLinux, where FreeIPA runs in production
-- [ ] Migration guide from upstream mokey 0.5/0.6 (YAML config, MySQL
+- [x] Migration guide from upstream mokey 0.5/0.6 (YAML config, MySQL
       storage) to the current release
-- [ ] Time-bound group membership: a join request can ask for a period,
+- [x] Time-bound group membership: a join request can ask for a period,
       the sponsor approves it, mokey removes the membership when it ends
       and reminds the member beforehand
-- [ ] Minor-version container tags (`2.10`) so sites can follow patch
+- [x] Minor-version container tags (`2.10`) so sites can follow patch
       releases without moving to the next minor
 
 ## Planned
