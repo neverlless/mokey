@@ -101,7 +101,7 @@ max = "8h"
   can read the policy.
 - If you remove `groups.durations` later, no new time-bound grants are made,
   but the existing ones still end (mokey logs a warning at startup with their
-  count).
+  count). No reminders are sent for them.
 
 ### FreeIPA privilege
 
