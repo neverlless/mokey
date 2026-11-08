@@ -5,7 +5,10 @@ FreeIPA accounts, so security reports are taken seriously.
 
 ## Supported versions
 
-Only the latest release receives security fixes.
+The latest minor release receives all fixes. The previous minor release
+receives security fixes for three months after its successor ships, and the
+last minor release of a previous major version for six months. See the
+[release policy](docs/releases.md).
 
 ## Reporting a vulnerability
 
