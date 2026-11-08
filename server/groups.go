@@ -348,10 +348,7 @@ func (r *Router) GroupRequestRenew(c fiber.Ctx) error {
 // A failure is only logged: removal stands, and a stale record is harmless
 // because the expiry sweep treats "not a member" as done.
 func (r *Router) forgetTimed(group, username string) {
-	if !r.groupExpiry.Enabled() {
-		return
-	}
-	if err := r.dropTimedMember(group, username); err != nil {
+	if err := r.dropTimedIfAny(group, username); err != nil {
 		slog.Error("Failed to drop membership end date after removal",
 			"group", group,
 			"username", username,
@@ -537,14 +534,17 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 // permanent, dropping any earlier record). On failure the membership is
 // removed again: a time-bound grant must never stay without its record.
 func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Time) error {
-	if !r.groupExpiry.Enabled() {
-		return nil
-	}
 	var err error
 	if until.IsZero() {
-		var m *TimedMembership
-		if m, err = r.timedMember(group, username); err != nil || m != nil {
-			err = r.dropTimedMember(group, username)
+		err = r.dropTimedIfAny(group, username)
+		// with the feature off a grant never depends on mokey's storage
+		if err != nil && !r.groupExpiry.Enabled() {
+			slog.Error("Failed to drop membership end date after a permanent grant",
+				"group", group,
+				"username", username,
+				"err", err,
+			)
+			return nil
 		}
 	} else {
 		err = r.putTimedMember(TimedMembership{

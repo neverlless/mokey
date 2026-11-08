@@ -76,6 +76,15 @@ func (r *Router) dropTimedMember(group, username string) error {
 	})
 }
 
+// dropTimedIfAny skips the locked write when there is no record
+func (r *Router) dropTimedIfAny(group, username string) error {
+	m, err := r.timedMember(group, username)
+	if err == nil && m == nil {
+		return nil
+	}
+	return r.dropTimedMember(group, username)
+}
+
 // dropTimedMemberIf drops the record only while it still ends at until, so a
 // renewal or new grant written since it was read survives
 func (r *Router) dropTimedMemberIf(group, username string, until time.Time) (dropped bool, err error) {
