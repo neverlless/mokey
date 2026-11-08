@@ -22,6 +22,7 @@ type Metrics struct {
 	totalPasswordResetsSent       prometheus.Counter
 	totalAccountVerifications     prometheus.Counter
 	totalAccountVerificationsSent prometheus.Counter
+	groupExpiryFailures           prometheus.Counter
 }
 
 var (
@@ -76,6 +77,10 @@ func newMetrics() *Metrics {
 		totalAccountVerificationsSent: promauto.NewCounter(prometheus.CounterOpts{
 			Name: "mokey_account_verification_sent_total",
 			Help: "The total number of account verification emails sent",
+		}),
+		groupExpiryFailures: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "mokey_group_membership_expiry_failures_total",
+			Help: "The total number of ended group memberships FreeIPA refused to remove",
 		}),
 	}
 

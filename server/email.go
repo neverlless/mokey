@@ -395,6 +395,25 @@ func (e *Emailer) SendGroupRemovedEmail(user *ipa.User, group string) error {
 	return e.sendEmail(user, nil, lang, TL(lang, "email_template.group_removed_subject")+group, "group-removed", vars)
 }
 
+// SendGroupExpiredEmail notifies a member that their time-bound membership
+// ended and the sweep removed them.
+func (e *Emailer) SendGroupExpiredEmail(user *ipa.User, group string) error {
+	lang := userLanguage(user)
+	vars := map[string]interface{}{
+		"group": group,
+	}
+	return e.sendEmail(user, nil, lang, TL(lang, "email_template.group_expired_subject")+group, "group-expired", vars)
+}
+
+func (e *Emailer) SendGroupExpiryReminderEmail(user *ipa.User, group string, until time.Time) error {
+	lang := userLanguage(user)
+	vars := map[string]interface{}{
+		"group": group,
+		"until": until.UTC().Format("2006-01-02 15:04 MST"),
+	}
+	return e.sendEmail(user, nil, lang, TL(lang, "email_template.group_expiry_reminder_subject")+group, "group-expiry-reminder", vars)
+}
+
 // SendOTPRecoveryDecisionEmail notifies the requester that an admin approved
 // or denied their OTP recovery request. Called synchronously from
 // AdminUserAction in the request path with a nil ctx, so the base URL comes

@@ -292,6 +292,7 @@ func newFiber() (*fiber.App, *Router, error) {
 	router.SetupRoutes(app)
 	router.StartExpiryReminders()
 	router.StartConsentSweep()
+	router.StartMembershipExpiry()
 
 	assetsFS := getAssetsFS()
 	app.Use("/static", static.New("", static.Config{
