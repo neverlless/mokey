@@ -50,7 +50,7 @@ func consentClients(hy *fakeHydra, subject string) []string {
 func TestLeaveApproveRevokesConsent(t *testing.T) {
 	assert := assert.New(t)
 	app, router, _, hy := newConsentRevokeApp(t)
-	router.addGroupRequest("chemists", "walter", groupRequestLeave)
+	router.addGroupRequest("chemists", "walter", groupRequestLeave, "")
 
 	tc := newTestClient(t, app)
 	tc.login("skyler", "Secret123!")

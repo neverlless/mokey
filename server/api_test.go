@@ -108,17 +108,17 @@ func TestAPIQueues(t *testing.T) {
 	app, router, fake := newAPITestApp(t)
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
 
-	router.addGroupRequest("chemists", "jesse", groupRequestJoin)
-	router.addGroupRequest("chemists", "walter", groupRequestLeave)
+	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "7d")
+	router.addGroupRequest("chemists", "walter", groupRequestLeave, "")
 	// leaving a group they are not in: already fulfilled, not pending
-	router.addGroupRequest("chemists", "walter2", groupRequestLeave)
+	router.addGroupRequest("chemists", "walter2", groupRequestLeave, "")
 	router.addOTPRecoveryRequest("hank")
 
 	resp, body := apiGet(t, app, "/api/v1/group-requests", "first-api-key")
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	reqs := body["requests"].([]any)
 	if assert.Len(reqs, 2) {
-		assert.Equal(map[string]any{"group": "chemists", "username": "jesse", "type": "join"}, without(reqs[0], "requested_at"))
+		assert.Equal(map[string]any{"group": "chemists", "username": "jesse", "type": "join", "duration": "7d"}, without(reqs[0], "requested_at"))
 		assert.Equal(map[string]any{"group": "chemists", "username": "walter", "type": "leave"}, without(reqs[1], "requested_at"))
 	}
 

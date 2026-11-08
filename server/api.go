@@ -72,6 +72,7 @@ type apiGroupRequest struct {
 	Username    string    `json:"username"`
 	Type        string    `json:"type"`
 	RequestedAt time.Time `json:"requested_at"`
+	Duration    string    `json:"duration,omitempty"`
 }
 
 // APIGroupRequests lists pending join/leave requests of every managed
@@ -96,7 +97,7 @@ func (r *Router) APIGroupRequests(c fiber.Ctx) error {
 			if member == (req.Type == groupRequestJoin) {
 				continue
 			}
-			out = append(out, apiGroupRequest{Group: g.Name, Username: req.Username, Type: req.Type, RequestedAt: req.RequestedAt})
+			out = append(out, apiGroupRequest{Group: g.Name, Username: req.Username, Type: req.Type, RequestedAt: req.RequestedAt, Duration: req.Duration})
 		}
 	}
 	return c.JSON(fiber.Map{"requests": out})

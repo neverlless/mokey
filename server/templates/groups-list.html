@@ -2,6 +2,10 @@
 <h1 class="mb-1">{{ T "groups.title" }}</h1>
 <p class="text-muted mb-4">{{ T "groups.subtitle" }}</p>
 
+{{ if $.groups_notice }}
+<div class="alert alert-info" role="status">{{ $.groups_notice }}</div>
+{{ end }}
+
 {{ if $.groups_error }}
 <div class="alert alert-danger">{{ T "account.fatal_system_error" }}</div>
 {{ end }}

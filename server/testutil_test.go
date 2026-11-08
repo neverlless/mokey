@@ -120,9 +120,16 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 	}
 	// mokey's design: group membership only changes under the sponsor's own
 	// session, never through the service account
+	serviceAccountRemovalsAllowed = false
 	t.Cleanup(func() {
 		for _, c := range fake.Calls() {
-			if c.User == keytabUser && strings.HasPrefix(c.Method, "group_") && strings.Contains(c.Method, "member") {
+			if c.User != keytabUser {
+				continue
+			}
+			switch {
+			case strings.HasPrefix(c.Method, "group_add_member"),
+				strings.HasPrefix(c.Method, "group_") && strings.HasSuffix(c.Method, "member_manager"),
+				c.Method == "group_remove_member" && !serviceAccountRemovalsAllowed:
 				t.Errorf("%s ran as the service account", c.Method)
 			}
 		}
@@ -141,6 +148,17 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 }
 
 const keytabUser = "mokey"
+
+var serviceAccountRemovalsAllowed bool
+
+// allowServiceAccountRemovals lets the service account run group_remove_member
+// in this test, as the membership expiry sweep does
+//
+//lint:ignore U1000 for the membership expiry sweep tests that follow
+func allowServiceAccountRemovals(t *testing.T) {
+	t.Helper()
+	serviceAccountRemovalsAllowed = true
+}
 
 // newFakeClient builds a goipa client the way production does (ipa.New),
 // pointed at the fake server
