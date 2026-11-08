@@ -22,3 +22,4 @@ docs/superpowers/
 website/node_modules/
 website/dist/
 website/.astro/
+.vscode/
