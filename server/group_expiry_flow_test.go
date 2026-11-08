@@ -361,7 +361,7 @@ func TestPermanentApproveDropsRecord(t *testing.T) {
 	assert.Nil(m)
 }
 
-func TestFeatureOffApproveNeverTouchesStore(t *testing.T) {
+func TestFeatureOffApproveSurvivesStoreFailure(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
@@ -490,4 +490,47 @@ func TestFeatureOffApproveAlreadyMemberSilent(t *testing.T) {
 	assert.Equal(fiber.StatusOK, code)
 	assert.NotContains(body, T("groups.already_member_no_end"))
 	assert.Empty(router.loadGroupRequests("chemists"))
+}
+
+func TestFeatureOffRemovalAndRegrantDropRecord(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}, Members: []string{"walter"}})
+	allowServiceAccountRemovals(t)
+	fake.GrantPrivilege(keytabUser, "Modify Group membership")
+	until := time.Now().Add(time.Hour)
+	require.NoError(t, router.putTimedMember(TimedMembership{Group: "chemists", Username: "walter", Until: until, GrantedAt: until.Add(-8 * time.Hour)}))
+
+	tc := newTestClient(t, app)
+	tc.login("skyler", "Secret123!")
+	resp := tc.postForm("/groups/remove-member", url.Values{"group": {"chemists"}, "username": {"walter"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	assert.Nil(m)
+
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
+	resp = tc.postForm("/groups/approve", url.Values{"group": {"chemists"}, "username": {"walter"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+
+	router.membershipExpirySweep(until.Add(time.Minute), true)
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
+}
+
+func TestFeatureOffPermanentGrantDropsRecord(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
+	require.NoError(t, router.putTimedMember(TimedMembership{Group: "chemists", Username: "walter", Until: time.Now().Add(time.Hour)}))
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
+
+	code, _ := approveAs(t, app, "skyler", url.Values{"group": {"chemists"}, "username": {"walter"}})
+	assert.Equal(fiber.StatusOK, code)
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	assert.Nil(m)
 }
