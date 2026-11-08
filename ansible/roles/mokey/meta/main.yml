@@ -9,5 +9,7 @@ galaxy_info:
   platforms:
     - name: Fedora
       versions: [all]
+    - name: EL
+      versions: ["9", "10"]
   galaxy_tags: [freeipa, idm, identity, selfservice]
 dependencies: []

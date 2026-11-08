@@ -3,10 +3,15 @@
   ansible.builtin.yum_repository:
     name: "copr_{{ mokey_copr_project | replace('/', '_') }}"
     description: "Copr repo for {{ mokey_copr_project }}"
-    baseurl: "https://download.copr.fedorainfracloud.org/results/{{ mokey_copr_project }}/fedora-$releasever-$basearch/"
+    baseurl: "https://download.copr.fedorainfracloud.org/results/{{ mokey_copr_project }}/{{ mokey_copr_chroot }}-$basearch/"
     gpgkey: "https://download.copr.fedorainfracloud.org/results/{{ mokey_copr_project }}/pubkey.gpg"
     gpgcheck: true
     repo_gpgcheck: false
+  vars:
+    mokey_copr_chroot: >-
+      {{ 'fedora-' ~ ansible_facts['distribution_major_version']
+         if ansible_facts['distribution'] == 'Fedora'
+         else 'epel-' ~ ansible_facts['distribution_major_version'] }}
   when: mokey_install_method == 'copr'
 
 - name: Install mokey from COPR
