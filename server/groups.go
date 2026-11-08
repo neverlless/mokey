@@ -15,6 +15,8 @@ import (
 type managedGroup struct {
 	Group    *ipaGroup
 	Requests []GroupRequest
+	// member -> end of their time-bound membership
+	Until map[string]time.Time
 }
 
 // isManagerOf: username manages g directly or through a manager group
@@ -55,6 +57,20 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 		return
 	}
 
+	timed := map[string]map[string]time.Time{}
+	if r.groupExpiry.Enabled() {
+		all, err := r.loadTimedMembers()
+		if err != nil {
+			slog.Error("Failed to load time-bound memberships", "err", err)
+		}
+		for _, m := range all {
+			if timed[m.Group] == nil {
+				timed[m.Group] = map[string]time.Time{}
+			}
+			timed[m.Group][m.Username] = m.Until
+		}
+	}
+
 	joinable := []*ipaGroup{}
 	leavable := []*ipaGroup{}
 	myRequests := []myGroupRequest{}
@@ -76,9 +92,9 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 				}
 			}
 			// join requests go stale once fulfilled (already a member);
-			// leave requests go stale once fulfilled (no longer a member)
+			// leave and renew requests go stale once the requester is gone
 			stale := queuedIsMember
-			if req.Type == groupRequestLeave {
+			if req.Type != groupRequestJoin {
 				stale = !queuedIsMember
 			}
 			if stale {
@@ -92,7 +108,13 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 		}
 
 		if isManagerOf(user.Username, user.Groups, g) {
-			managed = append(managed, managedGroup{Group: g, Requests: reqs})
+			until := map[string]time.Time{}
+			for _, m := range g.Members {
+				if u, ok := timed[g.Name][m]; ok {
+					until[m] = u
+				}
+			}
+			managed = append(managed, managedGroup{Group: g, Requests: reqs, Until: until})
 		}
 
 		if member {
@@ -100,6 +122,9 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 				myRequests = append(myRequests, myGroupRequest{Group: g.Name, Type: groupRequestLeave})
 			} else {
 				leavable = append(leavable, g)
+				if myPending == groupRequestRenew {
+					myRequests = append(myRequests, myGroupRequest{Group: g.Name, Type: groupRequestRenew})
+				}
 			}
 			continue
 		}
@@ -115,6 +140,14 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 	vars["leavable"] = leavable
 	vars["my_requests"] = myRequests
 	vars["managed"] = managed
+
+	mine := map[string]time.Time{}
+	for _, g := range groups {
+		if u, ok := timed[g.Name][user.Username]; ok && user.HasGroup(g.Name) {
+			mine[g.Name] = u
+		}
+	}
+	vars["timed"] = mine
 }
 
 // GroupRequestJoin queues a join request for a managed group and notifies
@@ -189,6 +222,66 @@ func (r *Router) GroupRequestLeave(c fiber.Ctx) error {
 	return c.Render("groups-list.html", vars)
 }
 
+// GroupRequestRenew queues a request to extend the caller's time-bound
+// membership
+func (r *Router) GroupRequestRenew(c fiber.Ctx) error {
+	user := r.user(c)
+	duration := c.FormValue("duration")
+
+	g, err := groupShow(r.userClient(c), c.FormValue("group"))
+	if err != nil || !g.Managed() {
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))
+	}
+	if !user.HasGroup(g.Name) {
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_a_member"))
+	}
+	if !r.groupExpiry.Enabled() {
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.invalid_duration"))
+	}
+	m, err := r.timedMember(g.Name, user.Username)
+	if err != nil {
+		slog.Error("Failed to read time-bound membership", "group", g.Name, "username", user.Username, "err", err)
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "groups.expiry_store_failed"))
+	}
+	if m == nil {
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.invalid_duration"))
+	}
+	if _, ok := r.groupDuration(g.Name, duration); !ok {
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.invalid_duration"))
+	}
+
+	if r.addGroupRequest(g.Name, user.Username, groupRequestRenew, duration) {
+		slog.Info("AUDIT group renew requested",
+			"username", user.Username,
+			"group", g.Name,
+			"duration", duration,
+			"ip", RemoteIP(c),
+		)
+
+		r.goBG(func() { r.notifyGroupSponsors(g, user.Username, groupRequestRenew, duration) })
+	}
+
+	vars := fiber.Map{"user": user}
+	r.groupsVars(c, vars)
+	return c.Render("groups-list.html", vars)
+}
+
+// forgetTimed drops a membership's end date after the member was removed.
+// A failure is only logged: removal stands, and a stale record is harmless
+// because the expiry sweep treats "not a member" as done.
+func (r *Router) forgetTimed(group, username string) {
+	if !r.groupExpiry.Enabled() {
+		return
+	}
+	if err := r.dropTimedMember(group, username); err != nil {
+		slog.Error("Failed to drop membership end date after removal",
+			"group", group,
+			"username", username,
+			"err", err,
+		)
+	}
+}
+
 // groupDecision validates that the caller sponsors the group and the
 // target is queued; shared by approve and deny
 func (r *Router) groupDecision(c fiber.Ctx) (*ipaGroup, GroupRequest, error) {
@@ -252,13 +345,52 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 	// member-manager rights even if mokey's check were bypassed
 	mutate := groupAddMember
 	action := "AUDIT group join approved"
-	if req.Type == groupRequestLeave {
+	switch req.Type {
+	case groupRequestLeave:
 		mutate = groupRemoveMember
 		action = "AUDIT group leave approved"
-	} else {
+	case groupRequestRenew:
 		d, ok := r.approvedDuration(c, g.Name, req)
 		if !ok {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.invalid_duration"))
+		}
+		if !slices.Contains(g.Members, req.Username) {
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.no_such_request"))
+		}
+		mutate = nil
+		action = "AUDIT group renew approved"
+		var err error
+		if d > 0 {
+			until = time.Now().Add(d)
+			err = r.putTimedMember(TimedMembership{
+				Group:     g.Name,
+				Username:  req.Username,
+				Until:     until,
+				GrantedBy: r.username(c),
+				GrantedAt: time.Now(),
+			})
+		} else {
+			err = r.dropTimedMember(g.Name, req.Username)
+		}
+		if err != nil {
+			slog.Error("Failed to store renewed membership end date",
+				"group", g.Name,
+				"username", req.Username,
+				"err", err,
+			)
+			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "groups.expiry_store_failed"))
+		}
+	default:
+		d, ok := r.approvedDuration(c, g.Name, req)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.invalid_duration"))
+		}
+		if req.Duration != "" && !r.groupExpiry.Enabled() {
+			slog.Warn("Time-bound request granted permanently: time-bound membership is off",
+				"group", g.Name,
+				"username", req.Username,
+				"requested", req.Duration,
+			)
 		}
 		// mokey never records an end date for a membership it did not add
 		if slices.Contains(g.Members, req.Username) {
@@ -278,7 +410,9 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 			)
 			return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.approve_failed"))
 		}
-		if req.Type == groupRequestJoin {
+		if req.Type == groupRequestLeave {
+			r.forgetTimed(g.Name, req.Username)
+		} else if req.Type == groupRequestJoin {
 			if err := r.recordGrant(c, g.Name, req.Username, until); err != nil {
 				return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "groups.expiry_store_failed"))
 			}
@@ -311,6 +445,9 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 // permanent, dropping any earlier record). On failure the membership is
 // removed again: a time-bound grant must never stay without its record.
 func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Time) error {
+	if !r.groupExpiry.Enabled() {
+		return nil
+	}
 	var err error
 	if until.IsZero() {
 		var m *TimedMembership
@@ -353,10 +490,7 @@ func (r *Router) GroupDeny(c fiber.Ctx) error {
 	}
 
 	r.removeGroupRequest(g.Name, req.Username)
-	action := "AUDIT group join denied"
-	if req.Type == groupRequestLeave {
-		action = "AUDIT group leave denied"
-	}
+	action := "AUDIT group " + req.Type + " denied"
 	slog.Info(action,
 		"group", g.Name,
 		"username", req.Username,
@@ -397,6 +531,7 @@ func (r *Router) GroupRemoveMember(c fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.remove_failed"))
 	}
 
+	r.forgetTimed(g.Name, target)
 	r.removeGroupRequest(g.Name, target)
 	slog.Info("AUDIT group member removed",
 		"group", g.Name,

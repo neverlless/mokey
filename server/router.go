@@ -196,6 +196,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 		get(app, "/groups", r.RequireLogin, r.Index)
 		app.Post("/groups/request", r.RequireLogin, r.RequireHTMX, r.GroupRequestJoin)
 		app.Post("/groups/leave", r.RequireLogin, r.RequireHTMX, r.GroupRequestLeave)
+		app.Post("/groups/renew", r.RequireLogin, r.RequireHTMX, r.GroupRequestRenew)
 		app.Post("/groups/approve", r.RequireLogin, r.RequireHTMX, r.GroupApprove)
 		app.Post("/groups/deny", r.RequireLogin, r.RequireHTMX, r.GroupDeny)
 		app.Post("/groups/remove-member", r.RequireLogin, r.RequireHTMX, r.GroupRemoveMember)
