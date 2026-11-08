@@ -303,6 +303,27 @@ rate_limit_max = 25
 enable_metrics = false
 
 #------------------------------------------------------------------------------
+# Time-bound group membership
+#------------------------------------------------------------------------------
+[groups]
+# Durations users can pick when requesting a sponsored group. Setting this
+# enables time-bound membership: mokey removes the member when it ends. Needs
+# storage driver sqlite3 or redis and the FreeIPA privilege
+# 'Mokey Expire Memberships' (see docs/guides/groups.md). Units: m, h, d.
+# durations = ["8h", "1d", "7d", "30d", "90d"]
+
+# Offer "No end date" for groups without a rule. Default true.
+# allow_permanent = true
+
+# Remind the member this long before the end. Default ["7d", "1d"].
+# reminders = ["7d", "1d"]
+
+# A rule makes a time limit mandatory for the group and caps it.
+# [[groups.rules]]
+# group = "prod-sudo"
+# max = "8h"
+
+#------------------------------------------------------------------------------
 # Storage
 #------------------------------------------------------------------------------
 [storage]

@@ -214,6 +214,11 @@ $ ipa permission-mod 'System: Modify Users' --includedattrs=ipauserauthtype
 $ ipa privilege-add 'Mokey UPG Read' --desc='Read UPG definition'
 $ ipa privilege-add-permission 'Mokey UPG Read' --permissions='System: Read UPG Definition'
 $ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey UPG Read'
+# Only needed with groups.durations (time-bound group membership), see docs/guides/groups.md:
+$ ipa permission-add 'Mokey Modify Sponsored Group Membership' --right=write --attrs=member --type=group --filter='(membermanager=*)'
+$ ipa privilege-add 'Mokey Expire Memberships' --desc='Remove expired time-bound memberships'
+$ ipa privilege-add-permission 'Mokey Expire Memberships' --permissions='Mokey Modify Sponsored Group Membership'
+$ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expire Memberships'
 # Only needed with accounts.staged_signup enabled:
 $ ipa role-add-privilege 'Mokey User Manager' --privilege='Stage User Administrators'
 # Only needed with accounts.enable_subid enabled:
