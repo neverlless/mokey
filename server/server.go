@@ -231,13 +231,16 @@ func newFiber() (*fiber.App, *Router, error) {
 	}
 
 	app := fiber.New(fiber.Config{
-		CaseSensitive:     true,
-		StrictRouting:     true,
-		ReadTimeout:       time.Duration(viper.GetInt("server.read_timeout")) * time.Second,
-		WriteTimeout:      time.Duration(viper.GetInt("server.write_timeout")) * time.Second,
-		IdleTimeout:       time.Duration(viper.GetInt("server.idle_timeout")) * time.Second,
-		ReadBufferSize:    viper.GetInt("server.read_buffer_size"),
-		AppName:           "mokey",
+		CaseSensitive:  true,
+		StrictRouting:  true,
+		ReadTimeout:    time.Duration(viper.GetInt("server.read_timeout")) * time.Second,
+		WriteTimeout:   time.Duration(viper.GetInt("server.write_timeout")) * time.Second,
+		IdleTimeout:    time.Duration(viper.GetInt("server.idle_timeout")) * time.Second,
+		ReadBufferSize: viper.GetInt("server.read_buffer_size"),
+		AppName:        "mokey",
+		// background notifications keep form values after the handler
+		// returns; without this they alias fasthttp's reused request buffer
+		Immutable:         true,
 		PassLocalsToViews: true,
 		ErrorHandler:      HTTPErrorHandler,
 		Views:             engine,
