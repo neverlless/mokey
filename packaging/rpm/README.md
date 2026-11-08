@@ -51,17 +51,19 @@ an older Go, so the spec targets Fedora only.
 2. Packages → New package → SCM:
    - Package name: `mokey`
    - Clone URL: `https://github.com/neverlless/mokey.git`
-   - Committish: the release tag, e.g. `v2.8.0`
+   - Committish: leave empty
    - Spec File: `packaging/rpm/mokey.spec`
    - SRPM build method: `make srpm`
-3. Start the build from the package page ("Rebuild"). For each release,
-   change the committish to the new tag and rebuild.
-4. Optional, instead of step 3 by hand: turn on "Auto-rebuild", leave the
-   committish empty and add the webhook URL from Settings → Integrations to
-   the GitHub repository (Settings → Webhooks, content type
-   `application/json`). Every push to the default branch then builds a
-   snapshot such as `2.8.0^3.gabc1234`, which users of the repository get
-   as an update.
+3. Builds are started by the release workflow: on every `v*` tag the
+   `Fedora COPR` job in `.github/workflows/release.yml` runs
+   `copr-cli buildscm --commit <tag>`, so COPR builds exactly the release.
+   It needs the repository secret `COPR_CONFIG` holding the contents of
+   `~/.config/copr` from <https://copr.fedorainfracloud.org/api/>; without it
+   the job is skipped. The token expires, so renew it there and update the
+   secret (`gh secret set COPR_CONFIG < ~/.config/copr`).
+4. To build a release by hand: `copr-cli buildscm neverlless/mokey
+   --clone-url https://github.com/neverlless/mokey.git --commit vX.Y.Z
+   --spec packaging/rpm/mokey.spec --method make_srpm`.
 
 Users then install it with:
 
