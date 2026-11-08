@@ -346,8 +346,9 @@ func (r *Router) GroupRequestRenew(c fiber.Ctx) error {
 }
 
 // forgetTimed drops a membership's end date after the member was removed.
-// A failure is only logged: removal stands, and a stale record is harmless
-// because the expiry sweep treats "not a member" as done.
+// A failure is only logged: removal stands. The stale record is dropped by
+// the hourly reconciliation or the next grant, and until then would remove
+// a re-added member at its old end date.
 func (r *Router) forgetTimed(group, username string) {
 	if err := r.dropTimedIfAny(group, username); err != nil {
 		slog.Error("Failed to drop membership end date after removal",
