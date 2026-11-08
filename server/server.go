@@ -54,6 +54,7 @@ func SetDefaults() {
 	viper.SetDefault("accounts.enable_apps", false)
 	viper.SetDefault("accounts.enable_subid", false)
 	viper.SetDefault("accounts.enable_captcha", true)
+	viper.SetDefault("groups.allow_permanent", true)
 	viper.SetDefault("admin.enabled", false)
 	viper.SetDefault("admin.group", "admins")
 	viper.SetDefault("admin.inactive_days", 90)
