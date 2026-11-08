@@ -24,6 +24,7 @@ type Router struct {
 	emailer      *Emailer
 	storage      fiber.Storage
 	lock         *storeLock
+	groupExpiry  *groupExpiryConfig
 
 	// Hydra consent app support
 	hydraClient *hydra.APIClient
@@ -50,6 +51,15 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	r := &Router{
 		storage: storage,
 		lock:    newStoreLock(storage),
+	}
+
+	var err error
+	r.groupExpiry, err = loadGroupExpiryConfig()
+	if err != nil {
+		return nil, err
+	}
+	if r.groupExpiry.Enabled() {
+		r.warnRedisEviction()
 	}
 
 	hooks, err := newWebhooks()
