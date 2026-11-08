@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Time-bound group membership: set `groups.durations` and a join request
+  carries an end date; the sponsor approves or shortens it, and mokey removes
+  the member in FreeIPA when it ends (revoking Hydra consents, emailing the
+  user, writing `group membership expired` to the audit log). Members get
+  reminders and can request an extension; `[[groups.rules]]` cap or require
+  a limit for chosen groups. Failed removals are retried, counted in
+  `mokey_group_membership_expiry_failures_total` and listed on the admin
+  Requests page. Off by default; existing memberships are untouched
+
+### Upgrade notes
+
+- Time-bound membership only: the FreeIPA privilege `Mokey Expire
+  Memberships` (commands in [the groups guide](docs/guides/groups.md#time-bound-membership))
+  is needed only when `groups.durations` is set, and `storage.driver` must
+  be `sqlite3` or `redis`: mokey refuses to start with `memory`. Without
+  `groups.durations` nothing changes.
+
 - COPR packages for RHEL 8, 9 and 10, Rocky Linux and AlmaLinux (EPEL chroots)
   next to Fedora; the Ansible role picks the matching COPR repository
 - Guide for moving from upstream ubccr/mokey 0.5 (YAML, MySQL) and 0.6:

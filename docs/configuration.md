@@ -74,7 +74,7 @@ member-manager rights are always enforced. Make a group joinable with:
     ipa group-add-member-manager <group> --users=<sponsor>
 
 There is nothing to configure in mokey and no extra service-account
-privilege — remove the member managers to make a group private again.
+privilege (except for [time-bound membership](#groups)) — remove the member managers to make a group private again.
 
 Request notification emails go to the group's *direct* member managers;
 sponsors who manage via a manager group see the queue in the portal but are
@@ -130,6 +130,26 @@ whose password lives elsewhere. Nothing to configure.
   users. The login and forgot-password forms tell them to change their
   password in Active Directory. That answer comes from the input alone,
   so it reveals no account.
+
+## `[groups]`
+
+Time-bound membership for sponsored groups: a join request carries an end
+date and mokey removes the membership when it ends. Setting `durations`
+enables it, needs `sqlite3` or `redis` storage and a FreeIPA privilege. See
+[Time-bound membership](guides/groups.md#time-bound-membership).
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `durations` | list | — | Durations a user can pick, with units `m`, `h`, `d`. Example: `["8h", "1d", "7d", "30d", "90d"]`. In an environment variable separate them with spaces: `MOKEY_GROUPS_DURATIONS="8h 1d 7d"`. |
+| `allow_permanent` | bool | `true` | Offer "No end date" for groups without a rule. |
+| `reminders` | list | `["7d", "1d"]` | Remind the member this long before the end. Only valid with `durations`. |
+
+### `[[groups.rules]]`
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `group` | string | Group the rule applies to; required, one rule per group. |
+| `max` | string | Longest offered duration. The group gets only the configured `durations` up to `max`, and no "No end date". At least one duration must fit. |
 
 ## `[email]`
 
