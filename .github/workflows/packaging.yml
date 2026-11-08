@@ -43,9 +43,16 @@ jobs:
           PATH=/tmp/venv/bin:$PATH ansible-lint --offline
 
   rpm:
-    name: RPM (Fedora)
+    name: RPM (${{ matrix.image }})
     runs-on: ubuntu-24.04
-    container: fedora:43
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - fedora:43
+          - quay.io/rockylinux/rockylinux:9
+          - quay.io/almalinuxorg/almalinux:10
+    container: ${{ matrix.image }}
     steps:
       # before checkout, so it clones with git and keeps the tags for the version
       - name: Install build tools
@@ -67,5 +74,7 @@ jobs:
       - name: Install and check
         run: |
           dnf -y install dist/rpm/*/mokey-[0-9]*.rpm
-          mokey --version
+          mokey --version | grep -v ' dev$'
           systemd-analyze verify /usr/lib/systemd/system/mokey.service
+          test "$(stat -c %U:%G /var/lib/mokey)" = mokey:mokey
+          test "$(stat -c %G /etc/mokey/private)" = mokey
