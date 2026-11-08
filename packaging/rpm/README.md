@@ -1,7 +1,9 @@
-# mokey RPM for Fedora COPR
+# mokey RPM for Fedora COPR (Fedora, EL9, EL10)
 
-`mokey.spec` builds mokey from source with Fedora's Go toolchain and the
-Fedora Go macros (`%gobuild`: PIE, hardened linker flags, debuginfo).
+`mokey.spec` builds mokey from source with the distribution's Go toolchain
+and Go macros (`%gobuild`: PIE, hardened linker flags, debuginfo) for Fedora
+and for RHEL 9/10 and their rebuilds (Rocky Linux, AlmaLinux, CentOS Stream)
+through COPR's EPEL chroots.
 
 | Path | |
 |---|---|
@@ -16,9 +18,10 @@ Fedora Go macros (`%gobuild`: PIE, hardened linker flags, debuginfo).
 The unit and `/etc/default/mokey` are the same files the GoReleaser
 deb/rpm packages ship (`scripts/nfpm/`). The two RPMs differ: GoReleaser's is
 a static binary built on Ubuntu for any RPM distribution and creates the user
-in a postinstall script; this one is built on Fedora for each Fedora release,
-uses sysusers.d and the systemd scriptlets, and does not enable the service
-on install.
+in a postinstall script; this one is built for each distribution release,
+uses sysusers.d (plus a `%pre` scriptlet on EL9/EL10, whose rpm does not
+create sysusers.d users before installing files) and the systemd scriptlets,
+and does not enable the service on install.
 
 ## Sources and the network
 
@@ -29,7 +32,8 @@ step, where the network is available. It takes the version from
 `git describe`: `2.8.0` on a tag, `2.8.0^3.gabc1234` after it, so builds from
 `main` sort after the last release.
 
-Build an SRPM and RPM locally (on Fedora, or in `fedora:43`):
+Build an SRPM and RPM locally (on Fedora or EL, or in `fedora:43`,
+`rockylinux:9`, `almalinux:10` containers):
 
 ```sh
 make -f .copr/Makefile srpm outdir=/tmp/srpm
@@ -37,15 +41,17 @@ sudo dnf builddep /tmp/srpm/mokey-*.src.rpm
 rpmbuild --rebuild /tmp/srpm/mokey-*.src.rpm
 ```
 
-Fedora 43 and newer have Go 1.26, which `go.mod` needs. EPEL 9/10 ship
-an older Go, so the spec targets Fedora only.
+`go.mod` needs Go 1.26: Fedora 43 and newer, RHEL 9.8 and 10.2 (and their
+rebuilds) ship it. The `packaging` workflow builds and installs the RPM on
+Fedora 43, Rocky Linux 9 and AlmaLinux 10.
 
 ## Setting up the COPR project
 
 1. Sign in at <https://copr.fedorainfracloud.org> with a Fedora account and
    create a project named `mokey`:
    - Chroots: `fedora-43-x86_64`, `fedora-43-aarch64`, `fedora-44-x86_64`,
-     `fedora-44-aarch64` (add `fedora-rawhide-*` if wanted).
+     `fedora-44-aarch64`, `epel-9-x86_64`, `epel-9-aarch64`,
+     `epel-10-x86_64`, `epel-10-aarch64` (add `fedora-rawhide-*` if wanted).
    - Leave "Enable internet access during builds" off; the RPM build does
      not need it.
 2. Packages → New package → SCM:

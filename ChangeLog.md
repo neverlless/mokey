@@ -1,5 +1,10 @@
 # Mokey ChangeLog
 
+## Unreleased
+
+- COPR packages for RHEL 9 and 10, Rocky Linux and AlmaLinux (EPEL chroots)
+  next to Fedora; the Ansible role picks the matching COPR repository
+
 ## [v2.9.1] - 2026-11-06
 
 - Documentation site moved to Astro Starlight; old URLs keep working
