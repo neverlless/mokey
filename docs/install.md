@@ -118,13 +118,17 @@ docker pull ghcr.io/neverlless/mokey:latest
 Images exist for linux/amd64 and linux/arm64, signed with cosign. See
 [examples/production/docker-compose.yml](https://github.com/neverlless/mokey/blob/main/examples/production/docker-compose.yml).
 
-### Fedora (COPR)
+### Fedora, RHEL, Rocky Linux, AlmaLinux (COPR)
 
 ```sh
 sudo dnf copr enable neverlless/mokey
 sudo dnf install mokey
 sudo systemctl enable --now mokey
 ```
+
+Packages are built for Fedora 43 and newer and for RHEL 9 and 10 with
+their rebuilds (Rocky Linux, AlmaLinux, CentOS Stream). On RHEL itself
+`dnf copr` comes from the `dnf-plugins-core` package.
 
 The package runs mokey as the `mokey` user under a hardened systemd unit,
 reads `/etc/mokey/mokey.toml` and expects the keytab in
@@ -154,7 +158,7 @@ verify checksums, SBOMs, provenance and container signatures.
 
 The role in
 [ansible/roles/mokey](https://github.com/neverlless/mokey/tree/main/ansible/roles/mokey)
-does steps 1 to 3 on an enrolled Fedora host: it creates the service
+does steps 1 to 3 on an enrolled Fedora, RHEL, Rocky Linux or AlmaLinux host: it creates the service
 principal, role and privileges with the `freeipa.ansible_freeipa`
 collection, installs the COPR package, fetches the keytab once (it never
 rotates a working one unless asked), writes the config and starts mokey.
