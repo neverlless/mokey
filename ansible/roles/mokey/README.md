@@ -1,6 +1,6 @@
 # Ansible role: mokey
 
-Installs mokey on a Fedora, RHEL 9/10, Rocky Linux or AlmaLinux host enrolled
+Installs mokey on a Fedora, RHEL 8/9/10, Rocky Linux or AlmaLinux host enrolled
 in FreeIPA and sets up everything around it:
 
 1. In FreeIPA: the `mokey/<host>` service principal (with the `mokey/mokey`
