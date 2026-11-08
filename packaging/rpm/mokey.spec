@@ -21,12 +21,17 @@ Source2:        mokey.sysusers
 ExclusiveArch:  %{golang_arches}
 
 BuildRequires:  golang >= 1.26
+%if 0%{?rhel} == 8
+BuildRequires:  go-srpm-macros
+BuildRequires:  systemd
+%else
 BuildRequires:  go-rpm-macros
-BuildRequires:  gcc
 BuildRequires:  systemd-rpm-macros
+%endif
+BuildRequires:  gcc
 %{?systemd_requires}
 %if 0%{?rhel}
-# rpm on EL9/EL10 does not create sysusers.d users before installing files,
+# rpm on EL8-EL10 does not create sysusers.d users before installing files,
 # so %%attr(,mokey) would fall back to root
 Requires(pre):  shadow-utils
 %endif
@@ -43,8 +48,8 @@ admin panel.
 export GO111MODULE=on GOFLAGS=-mod=vendor GOTOOLCHAIN=local
 export GO_BUILDTAGS="sqlite_omit_load_extension"
 export GO_LDFLAGS="-X %{goipath}/server.Version=%{version}"
-%if 0%{?rhel} == 9
-# EL9's %%gobuild reads LDFLAGS instead of GO_LDFLAGS
+%if 0%{?rhel} && 0%{?rhel} < 10
+# EL8/EL9's %%gobuild reads LDFLAGS instead of GO_LDFLAGS
 export LDFLAGS="$GO_LDFLAGS"
 %endif
 %gobuild -o %{_builddir}/%{name}-bin .
