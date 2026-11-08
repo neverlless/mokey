@@ -80,6 +80,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Configuration', slug: 'configuration' },
 						{ label: 'Hydra v1 to v2 migration', slug: 'hydra-v2-migration' },
+						{ label: 'Migrating from ubccr/mokey', slug: 'migrate-from-upstream' },
 					],
 				},
 				{

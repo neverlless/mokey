@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- COPR packages for RHEL 9 and 10, Rocky Linux and AlmaLinux (EPEL chroots)
+- COPR packages for RHEL 8, 9 and 10, Rocky Linux and AlmaLinux (EPEL chroots)
   next to Fedora; the Ansible role picks the matching COPR repository
+- Guide for moving from upstream ubccr/mokey 0.5 (YAML, MySQL) and 0.6:
+  config keys, FreeIPA privileges, storage and what users notice
 
 ## [v2.9.1] - 2026-11-06
 

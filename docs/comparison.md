@@ -46,6 +46,9 @@ admin panel (invites, approvals, OTP recovery, audit log), staged signup,
 Hydra v2 with per-client group rules and consent revocation, Slack delivery,
 translations, a Helm chart, signed releases with SBOMs, and security fixes
 listed in the [ChangeLog](https://github.com/neverlless/mokey/blob/main/ChangeLog.md).
+
+Moving an upstream 0.5 or 0.6 install over is described in
+[Migrating from ubccr/mokey](migrate-from-upstream.md).
 Configuration is not identical; read the ChangeLog before switching.
 
 ## noggin
