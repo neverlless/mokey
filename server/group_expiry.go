@@ -1,11 +1,14 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
 	"sync"
 	"time"
+
+	ipa "github.com/neverlless/goipa"
 )
 
 const (
@@ -73,7 +76,7 @@ func (r *Router) membershipExpirySweep(now time.Time, reconcile bool) {
 	groups := map[string]*ipaGroup{}
 	for _, m := range all {
 		if !m.Until.After(now) {
-			r.expireMembership(m)
+			r.expireMembership(m, now)
 			continue
 		}
 		if reconcile && r.removedOutOfBand(m, groups) {
@@ -83,8 +86,36 @@ func (r *Router) membershipExpirySweep(now time.Time, reconcile bool) {
 	}
 }
 
-func (r *Router) expireMembership(m TimedMembership) {
-	if err := groupRemoveMember(r.adminClient, m.Group, m.Username); err != nil {
+// entryGone reports a removal refused because the group or the user no
+// longer exists in FreeIPA
+func entryGone(err error) bool {
+	var ierr *ipa.IpaError
+	return errors.Is(err, ipa.ErrNotFound) || errors.As(err, &ierr) && ierr.Code == 2100 && ierr.Message == "no such entry"
+}
+
+func (r *Router) expireMembership(m TimedMembership, now time.Time) {
+	// a renewal approved since the sweep loaded the list wins
+	cur, err := r.timedMember(m.Group, m.Username)
+	if err != nil {
+		slog.Error("Membership expiry could not re-read the record", "group", m.Group, "username", m.Username, "err", err)
+		return
+	}
+	if cur == nil || cur.Until.After(now) {
+		return
+	}
+	m = *cur
+
+	err = groupRemoveMember(r.adminClient, m.Group, m.Username)
+	if entryGone(err) {
+		r.clearExpiryFailure(m)
+		if _, err := r.dropTimedMemberIf(m.Group, m.Username, m.Until); err != nil {
+			slog.Error("Failed to drop record of a deleted group or user", "group", m.Group, "username", m.Username, "err", err)
+			return
+		}
+		slog.Info("Dropped ended membership of a group or user deleted in FreeIPA", "group", m.Group, "username", m.Username, "err", err)
+		return
+	}
+	if err != nil {
 		slog.Error("AUDIT group membership expiry failed",
 			"group", m.Group,
 			"username", m.Username,
@@ -96,11 +127,16 @@ func (r *Router) expireMembership(m TimedMembership) {
 	}
 	r.clearExpiryFailure(m)
 
-	if err := r.dropTimedMember(m.Group, m.Username); err != nil {
+	if dropped, err := r.dropTimedMemberIf(m.Group, m.Username, m.Until); err != nil {
 		slog.Error("Failed to drop expired membership record, the next sweep retries",
 			"group", m.Group,
 			"username", m.Username,
 			"err", err,
+		)
+	} else if !dropped {
+		slog.Warn("Membership record changed while its expiry was processed; kept the new one",
+			"group", m.Group,
+			"username", m.Username,
 		)
 	}
 	slog.Info("AUDIT group membership expired",
@@ -135,9 +171,14 @@ func (r *Router) removedOutOfBand(m TimedMembership, groups map[string]*ipaGroup
 	if g == nil || slices.Contains(g.Members, m.Username) {
 		return false
 	}
-	if err := r.dropTimedMember(m.Group, m.Username); err != nil {
+	dropped, err := r.dropTimedMemberIf(m.Group, m.Username, m.Until)
+	if err != nil {
 		slog.Error("Failed to drop record of a membership removed outside mokey", "group", m.Group, "username", m.Username, "err", err)
 		return false
+	}
+	// changed since the load: the list is stale for this record, skip it
+	if !dropped {
+		return true
 	}
 	slog.Info("Dropped end date of a membership removed outside mokey", "group", m.Group, "username", m.Username)
 	return true

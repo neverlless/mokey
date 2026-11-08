@@ -78,7 +78,7 @@ func TestLoadGroupExpiryConfig(t *testing.T) {
 	if want := []time.Duration{8 * time.Hour, 7 * 24 * time.Hour}; !slices.Equal(c.Durations, want) {
 		t.Errorf("durations = %v; want %v", c.Durations, want)
 	}
-	if want := []time.Duration{7 * 24 * time.Hour, 24 * time.Hour}; !slices.Equal(c.Reminders, want) {
+	if want := []time.Duration{24 * time.Hour, 7 * 24 * time.Hour}; !slices.Equal(c.Reminders, want) {
 		t.Errorf("default reminders = %v; want %v", c.Reminders, want)
 	}
 
