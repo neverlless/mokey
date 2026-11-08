@@ -86,6 +86,7 @@ export default defineConfig({
 					label: 'Project',
 					items: [
 						{ label: 'Roadmap', slug: 'ROADMAP' },
+						{ label: 'Release policy', slug: 'releases' },
 						{ label: 'Security audit (v1.6)', slug: 'security-audit-v1.6' },
 					],
 				},
