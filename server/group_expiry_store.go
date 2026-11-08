@@ -76,6 +76,24 @@ func (r *Router) dropTimedMember(group, username string) error {
 	})
 }
 
+// dropTimedMemberIf drops the record only while it still ends at until, so a
+// renewal or new grant written since it was read survives
+func (r *Router) dropTimedMemberIf(group, username string, until time.Time) (dropped bool, err error) {
+	err = r.modifyTimedMembers(func(all []TimedMembership) []TimedMembership {
+		dropped = false
+		kept := all[:0]
+		for _, m := range all {
+			if m.Group == group && m.Username == username && m.Until.Equal(until) {
+				dropped = true
+				continue
+			}
+			kept = append(kept, m)
+		}
+		return kept
+	})
+	return dropped && err == nil, err
+}
+
 func (r *Router) timedMember(group, username string) (*TimedMembership, error) {
 	all, err := r.loadTimedMembers()
 	if err != nil {

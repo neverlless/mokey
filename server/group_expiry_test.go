@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/neverlless/goipa/ipatest"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
@@ -240,4 +241,97 @@ func TestSweepSkipsOnStoreFailure(t *testing.T) {
 		}
 	}
 	assert.True(logged, logs.String())
+}
+
+func TestExpiryDefaultRemindersBothSent(t *testing.T) {
+	assert := assert.New(t)
+	now := time.Now()
+	until := now.Add(6 * 24 * time.Hour)
+	router, _ := newSweepApp(t, until, 30*24*time.Hour, true)
+	sink := newFakeSMTP(t)
+
+	router.membershipExpirySweep(now, false)
+	assert.Equal(1, sink.count())
+	router.membershipExpirySweep(until.Add(-20*time.Hour), false)
+	assert.Equal(2, sink.count())
+	router.membershipExpirySweep(until.Add(-19*time.Hour), false)
+	assert.Equal(2, sink.count())
+}
+
+// renewStorage writes a renewed record right after the sweep's first load
+type renewStorage struct {
+	fiber.Storage
+	gets    int
+	renewed []TimedMembership
+}
+
+func (s *renewStorage) Get(key string) ([]byte, error) {
+	v, err := s.Storage.Get(key)
+	if key == timedMembersKey {
+		if s.gets++; s.gets == 1 {
+			raw, _ := json.Marshal(s.renewed)
+			_ = s.Storage.Set(timedMembersKey, raw, 0)
+		}
+	}
+	return v, err
+}
+
+func TestSweepKeepsRecordRenewedMidSweep(t *testing.T) {
+	assert := assert.New(t)
+	now := time.Now()
+	router, fake := newSweepApp(t, now.Add(-time.Minute), 8*time.Hour, true)
+	renewed := TimedMembership{Group: "chemists", Username: "walter", Until: now.Add(7 * 24 * time.Hour), GrantedBy: "skyler", GrantedAt: now}
+	router.storage = &renewStorage{Storage: router.storage, renewed: []TimedMembership{renewed}}
+
+	router.membershipExpirySweep(now, false)
+
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	if assert.NotNil(m) {
+		assert.True(m.Until.Equal(renewed.Until))
+	}
+}
+
+func TestReconcileKeepsRecordWrittenMidSweep(t *testing.T) {
+	assert := assert.New(t)
+	now := time.Now()
+	router, fake := newSweepApp(t, now.Add(time.Hour), 8*time.Hour, true)
+	_, err := fake.ClientAs("admin").GroupRemoveMember("chemists", []string{"walter"}, nil)
+	require.NoError(t, err)
+	regrant := TimedMembership{Group: "chemists", Username: "walter", Until: now.Add(7 * 24 * time.Hour), GrantedBy: "skyler", GrantedAt: now}
+	router.storage = &renewStorage{Storage: router.storage, renewed: []TimedMembership{regrant}}
+
+	router.membershipExpirySweep(now, true)
+
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	if assert.NotNil(m) {
+		assert.True(m.Until.Equal(regrant.Until))
+	}
+}
+
+func TestSweepDropsRecordOfDeletedEntry(t *testing.T) {
+	for _, deleted := range []string{"group", "user"} {
+		t.Run(deleted, func(t *testing.T) {
+			assert := assert.New(t)
+			now := time.Now()
+			router, fake := newSweepApp(t, now.Add(-time.Minute), 8*time.Hour, true)
+			if deleted == "group" {
+				require.NoError(t, fake.ClientAs("admin").GroupDelete("chemists"))
+			} else {
+				require.NoError(t, fake.ClientAs("admin").UserDelete(false, true, "walter"))
+			}
+			before := failures()
+
+			router.membershipExpirySweep(now, false)
+
+			m, err := router.timedMember("chemists", "walter")
+			require.NoError(t, err)
+			assert.Nil(m)
+			assert.Equal(before, failures())
+			assert.Empty(router.expiryFailures())
+			assert.False(auditHas(router, "group membership expiry failed"))
+		})
+	}
 }

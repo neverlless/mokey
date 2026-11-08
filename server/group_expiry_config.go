@@ -87,7 +87,7 @@ func loadGroupExpiryConfig() (*groupExpiryConfig, error) {
 		return nil, fmt.Errorf("groups.durations: time-bound membership needs sqlite3 or redis storage")
 	}
 	if !viper.IsSet("groups.reminders") {
-		reminders = []time.Duration{7 * 24 * time.Hour, 24 * time.Hour}
+		reminders = []time.Duration{24 * time.Hour, 7 * 24 * time.Hour}
 	}
 
 	c := &groupExpiryConfig{
