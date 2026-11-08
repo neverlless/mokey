@@ -128,6 +128,13 @@ func TestTimedApproveAlreadyMember(t *testing.T) {
 // nothing else
 type timedMembersDown struct{ fiber.Storage }
 
+func (s *timedMembersDown) Get(key string) ([]byte, error) {
+	if key == timedMembersKey {
+		return nil, errors.New("storage backend down")
+	}
+	return s.Storage.Get(key)
+}
+
 func (s *timedMembersDown) Set(key string, val []byte, exp time.Duration) error {
 	if key == timedMembersKey {
 		return errors.New("storage backend down")
@@ -214,4 +221,155 @@ func TestTimedAppRequestDuration(t *testing.T) {
 			assert.Equal(tt.want, reqs[0].Duration, tt.client)
 		}
 	}
+}
+
+// timedWalter makes walter a member of chemists with an end date an hour away
+func timedWalter(t *testing.T, router *Router, fake *ipatest.Server) {
+	t.Helper()
+	_, err := fake.ClientAs("admin").GroupAddMember("chemists", []string{"walter"}, nil)
+	require.NoError(t, err)
+	require.NoError(t, router.putTimedMember(TimedMembership{
+		Group: "chemists", Username: "walter", GrantedBy: "skyler",
+		GrantedAt: time.Now().Add(-time.Hour), Until: time.Now().Add(time.Hour),
+	}))
+}
+
+func ipaMutations(fake *ipatest.Server) (n int) {
+	for _, c := range fake.Calls() {
+		if c.Method == "group_add_member" || c.Method == "group_remove_member" {
+			n++
+		}
+	}
+	return n
+}
+
+func TestTimedRenewFlow(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	timedWalter(t, router, fake)
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	resp := tc.postForm("/groups/renew", url.Values{"group": {"chemists"}, "duration": {"7d"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	reqs := router.loadGroupRequests("chemists")
+	if assert.Len(reqs, 1) {
+		assert.Equal(groupRequestRenew, reqs[0].Type)
+		assert.Equal("7d", reqs[0].Duration)
+	}
+
+	before := ipaMutations(fake)
+	code, _ := approveAs(t, app, "skyler", url.Values{"group": {"chemists"}, "username": {"walter"}, "duration": {"7d"}})
+	assert.Equal(fiber.StatusOK, code)
+	assert.Equal(before, ipaMutations(fake))
+	assert.Empty(router.loadGroupRequests("chemists"))
+
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	require.NotNil(t, m)
+	assert.WithinDuration(time.Now().Add(7*24*time.Hour), m.Until, time.Minute)
+	assert.WithinDuration(time.Now(), m.GrantedAt, time.Minute)
+}
+
+func TestTimedRenewDenyKeepsUntil(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	timedWalter(t, router, fake)
+	old, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	router.addGroupRequest("chemists", "walter", groupRequestRenew, "7d")
+
+	tc := newTestClient(t, app)
+	tc.login("skyler", "Secret123!")
+	resp := tc.postForm("/groups/deny", url.Values{"group": {"chemists"}, "username": {"walter"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Empty(router.loadGroupRequests("chemists"))
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	require.NotNil(t, m)
+	assert.True(old.Until.Equal(m.Until))
+}
+
+func TestRenewRequiresTimedMembership(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	_, err := fake.ClientAs("admin").GroupAddMember("chemists", []string{"walter"}, nil)
+	require.NoError(t, err)
+
+	for _, u := range []string{"walter", "jesse"} { // permanent member, non-member
+		tc := newTestClient(t, app)
+		tc.login(u, "Secret123!")
+		resp := tc.postForm("/groups/renew", url.Values{"group": {"chemists"}, "duration": {"7d"}}, htmx)
+		assert.Equal(fiber.StatusBadRequest, resp.StatusCode, u)
+	}
+	assert.Empty(router.loadGroupRequests("chemists"))
+}
+
+func TestRenewDroppedWhenNotMember(t *testing.T) {
+	assert := assert.New(t)
+	app, router, _ := newTimedGroupsApp(t)
+	router.addGroupRequest("chemists", "walter", groupRequestRenew, "7d")
+
+	tc := newTestClient(t, app)
+	tc.login("skyler", "Secret123!")
+	assert.Equal(fiber.StatusOK, tc.get("/groups").StatusCode)
+	assert.Empty(router.loadGroupRequests("chemists"))
+}
+
+func TestLeaveDropsRecord(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	timedWalter(t, router, fake)
+	router.addGroupRequest("chemists", "walter", groupRequestLeave, "")
+
+	code, _ := approveAs(t, app, "skyler", url.Values{"group": {"chemists"}, "username": {"walter"}})
+	assert.Equal(fiber.StatusOK, code)
+	assert.NotContains(groupMembers(t, fake, "chemists"), "walter")
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	assert.Nil(m)
+}
+
+func TestSponsorRemovalDropsRecord(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	timedWalter(t, router, fake)
+
+	tc := newTestClient(t, app)
+	tc.login("skyler", "Secret123!")
+	resp := tc.postForm("/groups/remove-member", url.Values{"group": {"chemists"}, "username": {"walter"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotContains(groupMembers(t, fake, "chemists"), "walter")
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	assert.Nil(m)
+}
+
+func TestPermanentApproveDropsRecord(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	require.NoError(t, router.putTimedMember(TimedMembership{Group: "chemists", Username: "walter", Until: time.Now().Add(time.Hour)}))
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
+
+	code, _ := approveAs(t, app, "skyler", url.Values{"group": {"chemists"}, "username": {"walter"}})
+	assert.Equal(fiber.StatusOK, code)
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	assert.Nil(m)
+}
+
+func TestFeatureOffApproveNeverTouchesStore(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTestApp(t)
+	fake.AddUser("skyler", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
+	router.storage = &timedMembersDown{router.storage}
+	router.addGroupRequest("chemists", "walter", groupRequestJoin, "")
+
+	code, _ := approveAs(t, app, "skyler", url.Values{"group": {"chemists"}, "username": {"walter"}})
+	assert.Equal(fiber.StatusOK, code)
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
 }

@@ -19,6 +19,7 @@ const (
 
 	groupRequestJoin  = "join"
 	groupRequestLeave = "leave"
+	groupRequestRenew = "renew"
 )
 
 type GroupRequest struct {
