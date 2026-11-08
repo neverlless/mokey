@@ -330,6 +330,24 @@ func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) erro
 	return e.sendEmail(user, nil, lang, TL(lang, "email_template.password_expiry_subject"), "password-expiry", vars)
 }
 
+func groupRequestSubject(lang, reqType string) string {
+	switch reqType {
+	case groupRequestLeave:
+		return TL(lang, "email_template.group_leave_request_subject")
+	case groupRequestRenew:
+		return TL(lang, "email_template.group_renew_request_subject")
+	}
+	return TL(lang, "email_template.group_request_subject")
+}
+
+func groupDecisionSubject(lang, reqType string, approved bool) string {
+	kind := map[string]string{groupRequestLeave: "leave_", groupRequestRenew: "renew_"}[reqType]
+	if approved {
+		return TL(lang, "email_template.group_"+kind+"approved_subject")
+	}
+	return TL(lang, "email_template.group_"+kind+"denied_subject")
+}
+
 // SendGroupRequestEmail notifies a group sponsor about a pending join or
 // leave request. Called from a goroutine after the handler returns — no
 // request context, mirrors SendNewLoginEmail.
@@ -345,11 +363,7 @@ func (e *Emailer) SendGroupRequestEmail(manager *ipa.User, requester, group, req
 		vars["duration"] = formatDuration(lang, d)
 	}
 
-	subject := TL(lang, "email_template.group_request_subject")
-	if reqType == groupRequestLeave {
-		subject = TL(lang, "email_template.group_leave_request_subject")
-	}
-	return e.sendEmail(manager, nil, lang, subject+group, "group-request", vars)
+	return e.sendEmail(manager, nil, lang, groupRequestSubject(lang, reqType)+group, "group-request", vars)
 }
 
 // SendGroupDecisionEmail notifies the requester that a sponsor approved or
@@ -368,17 +382,7 @@ func (e *Emailer) SendGroupDecisionEmail(user *ipa.User, group string, approved 
 	if !until.IsZero() {
 		vars["until"] = until.UTC().Format("2006-01-02 15:04 MST")
 	}
-	leave := reqType == groupRequestLeave
-	subject := TL(lang, "email_template.group_denied_subject")
-	switch {
-	case approved && leave:
-		subject = TL(lang, "email_template.group_leave_approved_subject")
-	case !approved && leave:
-		subject = TL(lang, "email_template.group_leave_denied_subject")
-	case approved:
-		subject = TL(lang, "email_template.group_approved_subject")
-	}
-	return e.sendEmail(user, nil, lang, subject+group, "group-decision", vars)
+	return e.sendEmail(user, nil, lang, groupDecisionSubject(lang, reqType, approved)+group, "group-decision", vars)
 }
 
 // SendGroupRemovedEmail notifies a member that a sponsor removed them from

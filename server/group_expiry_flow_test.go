@@ -373,3 +373,32 @@ func TestFeatureOffApproveNeverTouchesStore(t *testing.T) {
 	assert.Equal(fiber.StatusOK, code)
 	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
 }
+
+func TestRenewApproveAfterRecordDropped(t *testing.T) {
+	assert := assert.New(t)
+	app, router, fake := newTimedGroupsApp(t)
+	timedWalter(t, router, fake)
+	router.addGroupRequest("chemists", "walter", groupRequestRenew, "7d")
+	require.NoError(t, router.dropTimedMember("chemists", "walter"))
+
+	code, body := approveAs(t, app, "skyler", url.Values{"group": {"chemists"}, "username": {"walter"}, "duration": {"7d"}})
+	assert.Equal(fiber.StatusBadRequest, code)
+	assert.Equal(T("groups.no_such_request"), body)
+	assert.Empty(router.loadGroupRequests("chemists"))
+	assert.Contains(groupMembers(t, fake, "chemists"), "walter")
+	m, err := router.timedMember("chemists", "walter")
+	require.NoError(t, err)
+	assert.Nil(m)
+}
+
+func TestGroupEmailSubjects(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal(TL("en", "email_template.group_renew_request_subject"), groupRequestSubject("en", groupRequestRenew))
+	assert.Equal(TL("en", "email_template.group_request_subject"), groupRequestSubject("en", groupRequestJoin))
+	assert.Equal(TL("en", "email_template.group_renew_approved_subject"), groupDecisionSubject("en", groupRequestRenew, true))
+	assert.Equal(TL("en", "email_template.group_renew_denied_subject"), groupDecisionSubject("en", groupRequestRenew, false))
+	assert.Equal(TL("en", "email_template.group_approved_subject"), groupDecisionSubject("en", groupRequestJoin, true))
+	assert.Equal(TL("en", "email_template.group_denied_subject"), groupDecisionSubject("en", groupRequestJoin, false))
+	assert.Equal(TL("en", "email_template.group_leave_denied_subject"), groupDecisionSubject("en", groupRequestLeave, false))
+	assert.NotEqual(groupRequestSubject("en", groupRequestJoin), groupRequestSubject("en", groupRequestRenew))
+}

@@ -354,7 +354,19 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 		if !ok {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.invalid_duration"))
 		}
-		if !slices.Contains(g.Members, req.Username) {
+		// the record may have been dropped (permanent re-grant, leave) while
+		// the renew was queued; renewing then would make a permanent member
+		// time-bound
+		var rec *TimedMembership
+		if r.groupExpiry.Enabled() {
+			var err error
+			if rec, err = r.timedMember(g.Name, req.Username); err != nil {
+				slog.Error("Failed to read time-bound membership", "group", g.Name, "username", req.Username, "err", err)
+				return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "groups.expiry_store_failed"))
+			}
+		}
+		if rec == nil || !slices.Contains(g.Members, req.Username) {
+			r.removeGroupRequest(g.Name, req.Username)
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.no_such_request"))
 		}
 		mutate = nil
