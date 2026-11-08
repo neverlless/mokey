@@ -27,25 +27,10 @@ Dates are targets, not promises. Priorities move with feedback: open an
 them. How versions and supported releases work is described in the
 [release policy](releases.md).
 
-## Next: v2.10 — RHEL and HPC sites (December 2026)
+## Next: v2.11 — Sign-in for web apps and account lifecycle (January 2027)
 
-- [ ] EPEL 8, 9 and 10 builds in the COPR repository, so `dnf install mokey`
-      works on RHEL, Rocky and AlmaLinux, where FreeIPA runs in production
-- [x] Migration guide from upstream mokey 0.5/0.6 (YAML config, MySQL
-      storage) to the current release
-- [x] Time-bound group membership: a join request can ask for a period,
-      the sponsor approves it, mokey removes the membership when it ends
-      and reminds the member beforehand
-- [x] Minor-version container tags (`2.10`) so sites can follow patch
-      releases without moving to the next minor
-
-## Planned
-
-Grouped by theme, roughly in order. Version numbers are assigned when a
-release is scoped.
-
-### Account lifecycle
-
+- [ ] Forward-auth endpoint for Traefik, nginx and Caddy: apps without
+      OIDC get single sign-on, gated by FreeIPA groups or HBAC rules
 - [ ] Account expiry date set by admins and sponsors, shown to the user
       with reminders (FreeIPA's `krbPrincipalExpiration`)
 - [ ] Inactive accounts locked after a configurable period, with a warning
@@ -53,10 +38,13 @@ release is scoped.
 - [ ] Yearly renewal confirmed by a sponsor; accounts a sponsor vouches for
       follow the sponsor's own expiry, as HPC account policies require
 
+## Planned
+
+Grouped by theme, roughly in order. Version numbers are assigned when a
+release is scoped.
+
 ### Sign-in for web apps
 
-- [ ] Forward-auth endpoint for Traefik, nginx and Caddy: apps without
-      OIDC get single sign-on, gated by FreeIPA groups or HBAC rules
 - [ ] Sign in with Google, Microsoft Entra ID, GitHub or an institutional
       IdP (CILogon) and link that identity to the FreeIPA account
 - [ ] Admin pages for OAuth clients, instead of editing Hydra by hand
@@ -130,6 +118,7 @@ repository.
 
 | Release | Highlights |
 | --- | --- |
+| v2.10 (Nov 2026) | Time-bound group membership with per-group limits, renewals and automatic removal; COPR packages for RHEL, Rocky and AlmaLinux 8, 9 and 10; migration guide from ubccr/mokey; minor-version image tags |
 | v2.9 (Nov 2026) | Redesigned UI: grouped sidebar, security hub, admin split into Requests, People and Audit log; docs on Astro Starlight |
 | v2.8 (Nov 2026) | Webhooks and a read-only JSON API, app catalog, admin helpdesk view, Ansible role, Fedora COPR |
 | v2.7 (Nov 2026) | Fiber v3, `log/slog`, Redis over TLS, storage safe for several replicas, integration and browser tests against real FreeIPA |

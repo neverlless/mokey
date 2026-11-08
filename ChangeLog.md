@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.10.0] - 2026-11-08
 
 - Time-bound group membership: set `groups.durations` and a join request
   carries an end date; the sponsor approves or shortens it, and mokey removes
