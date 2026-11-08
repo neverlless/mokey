@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/neverlless/goipa/ipatest"
@@ -30,6 +31,10 @@ func TestUIPreviewServe(t *testing.T) {
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_subid", true)
 		viper.Set("admin.enabled", true)
+		viper.Set("storage.driver", "sqlite3")
+		viper.Set("storage.sqlite3.dbpath", filepath.Join(t.TempDir(), "mokey.db"))
+		viper.Set("groups.durations", []string{"8h", "7d", "30d", "90d"})
+		viper.Set("groups.rules", []any{map[string]any{"group": "glee-club", "max": "7d"}})
 	})
 
 	fake.AddUser("walter", ipatest.User{
@@ -39,7 +44,8 @@ func TestUIPreviewServe(t *testing.T) {
 		Groups: []string{"ipausers", "chemists", "lab-admins", "admins"},
 	})
 	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
-	fake.AddGroup("chemists", ipatest.Group{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter"}})
+	fake.AddUser("skinny", ipatest.User{Password: "Secret123!"})
+	fake.AddGroup("chemists", ipatest.Group{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter", "skinny"}})
 	fake.AddGroup("glee-club", ipatest.Group{Description: "After-hours choir", ManagerUsers: []string{"jesse"}})
 	fake.AddSubID(ipatest.SubID{Owner: "walter"})
 	fake.AddHBACRule("lab-access", ipatest.HBACRule{
@@ -50,7 +56,18 @@ func TestUIPreviewServe(t *testing.T) {
 		Groups:       []string{"chemists"},
 		HostCategory: "all", AllowCommands: []string{"/usr/bin/systemctl"},
 	})
-	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "")
+	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "7d")
+	router.addGroupRequest("chemists", "skinny", groupRequestRenew, "30d")
+	for _, m := range []TimedMembership{
+		{Group: "chemists", Username: "walter", Until: time.Now().Add(5 * 24 * time.Hour)},
+		{Group: "chemists", Username: "skinny", Until: time.Now().Add(2 * 24 * time.Hour)},
+	} {
+		m.GrantedBy, m.GrantedAt = "walter", time.Now()
+		if err := router.putTimedMember(m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	router.recordExpiryFailure(TimedMembership{Group: "prod-sudo", Username: "badger"}, "Insufficient access: not a member manager of prod-sudo")
 
 	t.Logf("UI preview on http://%s (walter / Secret123!)", addr)
 	if err := app.Listen(addr, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {

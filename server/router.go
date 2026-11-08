@@ -408,6 +408,10 @@ func (r *Router) Index(c fiber.Ctx) error {
 		r.groupsVars(c, vars)
 	}
 
+	if path == "admin" {
+		vars["expiry_failures"] = r.expiryFailures()
+	}
+
 	if path == "access" {
 		r.accessVars(c, vars)
 	}

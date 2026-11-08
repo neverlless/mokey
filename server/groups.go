@@ -17,6 +17,49 @@ type managedGroup struct {
 	Requests []GroupRequest
 	// member -> end of their time-bound membership
 	Until map[string]time.Time
+	// requester -> requested duration, rendered
+	Requested map[string]string
+	// requester -> durations the sponsor may grant
+	Approve map[string][]durationOption
+}
+
+type durationOption struct {
+	Value, Label string
+	Selected     bool
+}
+
+// durationOptions lists what a member may pick for group, "no end date"
+// first so the default stays what it was before end dates existed
+func (r *Router) durationOptions(lang, group string) []durationOption {
+	ds, permanent := r.groupExpiry.Offered(group)
+	opts := []durationOption{}
+	if permanent {
+		opts = append(opts, durationOption{Label: TL(lang, "groups.no_end_date")})
+	}
+	for _, d := range ds {
+		opts = append(opts, durationOption{Value: d.String(), Label: formatDuration(lang, d)})
+	}
+	return opts
+}
+
+// approveOptions: what a sponsor may grant for req, never longer than
+// requested, preselecting the request
+func approveOptions(offered []durationOption, req GroupRequest) []durationOption {
+	if req.Duration == "" {
+		return offered
+	}
+	requested, err := parseGroupDuration(req.Duration)
+	if err != nil {
+		return nil
+	}
+	opts := []durationOption{}
+	for _, o := range offered {
+		if d, err := parseGroupDuration(o.Value); err == nil && d <= requested {
+			o.Selected = d == requested
+			opts = append(opts, o)
+		}
+	}
+	return opts
 }
 
 // isManagerOf: username manages g directly or through a manager group
@@ -71,6 +114,9 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 		}
 	}
 
+	lang := requestLanguage(c)
+	offered := map[string][]durationOption{}
+
 	joinable := []*ipaGroup{}
 	leavable := []*ipaGroup{}
 	myRequests := []myGroupRequest{}
@@ -107,14 +153,31 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 			}
 		}
 
+		if r.groupExpiry.Enabled() {
+			offered[g.Name] = r.durationOptions(lang, g.Name)
+		}
+
 		if isManagerOf(user.Username, user.Groups, g) {
-			until := map[string]time.Time{}
+			mg := managedGroup{Group: g, Requests: reqs, Until: map[string]time.Time{},
+				Requested: map[string]string{}, Approve: map[string][]durationOption{}}
 			for _, m := range g.Members {
 				if u, ok := timed[g.Name][m]; ok {
-					until[m] = u
+					mg.Until[m] = u
 				}
 			}
-			managed = append(managed, managedGroup{Group: g, Requests: reqs, Until: until})
+			if r.groupExpiry.Enabled() {
+				for _, req := range reqs {
+					if req.Type == groupRequestLeave {
+						continue
+					}
+					mg.Requested[req.Username] = TL(lang, "groups.no_end_date")
+					if d, err := parseGroupDuration(req.Duration); err == nil && req.Duration != "" {
+						mg.Requested[req.Username] = formatDuration(lang, d)
+					}
+					mg.Approve[req.Username] = approveOptions(offered[g.Name], req)
+				}
+			}
+			managed = append(managed, mg)
 		}
 
 		if member {
@@ -140,14 +203,29 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 	vars["leavable"] = leavable
 	vars["my_requests"] = myRequests
 	vars["managed"] = managed
+	vars["offered"] = offered
+
+	renewing := map[string]bool{}
+	for _, req := range myRequests {
+		renewing[req.Group] = req.Type == groupRequestRenew
+	}
+	vars["renewing"] = renewing
 
 	mine := map[string]time.Time{}
+	// an extension defaults to the shortest end date, not to "no end date"
+	renew := map[string][]durationOption{}
 	for _, g := range groups {
 		if u, ok := timed[g.Name][user.Username]; ok && user.HasGroup(g.Name) {
 			mine[g.Name] = u
+			opts := slices.Clone(offered[g.Name])
+			if i := slices.IndexFunc(opts, func(o durationOption) bool { return o.Value != "" }); i >= 0 {
+				opts[i].Selected = true
+			}
+			renew[g.Name] = opts
 		}
 	}
 	vars["timed"] = mine
+	vars["renew_offered"] = renew
 }
 
 // GroupRequestJoin queues a join request for a managed group and notifies
