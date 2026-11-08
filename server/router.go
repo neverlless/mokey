@@ -58,6 +58,9 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	if err != nil {
 		return nil, err
 	}
+	if msg := groupExpiryWarning(r.groupExpiry); msg != "" {
+		slog.Warn(msg)
+	}
 	if r.groupExpiry.Enabled() {
 		r.warnRedisEviction()
 	}

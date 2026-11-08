@@ -161,3 +161,11 @@ func (r *Router) warnRedisEviction() {
 			"maxmemory-policy", policy)
 	}
 }
+
+// groupExpiryWarning returns a startup warning, or "" when there is none.
+func groupExpiryWarning(c *groupExpiryConfig) string {
+	if c.Enabled() && !viper.GetBool("accounts.enable_groups") {
+		return "groups.durations is set but accounts.enable_groups is false: time-bound membership is inactive on the Groups page"
+	}
+	return ""
+}

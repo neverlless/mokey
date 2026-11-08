@@ -112,3 +112,20 @@ func TestLoadGroupExpiryConfig(t *testing.T) {
 		t.Errorf("nil Offered = %v, %v", d, p)
 	}
 }
+
+func TestGroupExpiryWarning(t *testing.T) {
+	viper.Reset()
+	SetDefaults()
+	on := &groupExpiryConfig{}
+	if msg := groupExpiryWarning(on); msg != "" {
+		t.Errorf("unexpected warning %q", msg)
+	}
+	viper.Set("accounts.enable_groups", false)
+	msg := groupExpiryWarning(on)
+	if !strings.Contains(msg, "groups.durations") || !strings.Contains(msg, "accounts.enable_groups") {
+		t.Errorf("warning = %q", msg)
+	}
+	if groupExpiryWarning(nil) != "" {
+		t.Error("nil config should not warn")
+	}
+}
