@@ -16,6 +16,8 @@
   config keys, FreeIPA privileges, storage and what users notice
 - Container images are also tagged with the minor version (`2.10`), which
   follows that minor's patch releases
+- Notification emails sent after a request (sponsor removal, new sign-in)
+  could carry a value from a later request; request values are now copied
 
 ### Upgrade notes
 
