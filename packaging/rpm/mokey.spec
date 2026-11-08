@@ -25,6 +25,11 @@ BuildRequires:  go-rpm-macros
 BuildRequires:  gcc
 BuildRequires:  systemd-rpm-macros
 %{?systemd_requires}
+%if 0%{?rhel}
+# rpm on EL9/EL10 does not create sysusers.d users before installing files,
+# so %%attr(,mokey) would fall back to root
+Requires(pre):  shadow-utils
+%endif
 
 %description
 mokey is a web portal for FreeIPA / Red Hat IdM users: password reset,
@@ -38,6 +43,10 @@ admin panel.
 export GO111MODULE=on GOFLAGS=-mod=vendor GOTOOLCHAIN=local
 export GO_BUILDTAGS="sqlite_omit_load_extension"
 export GO_LDFLAGS="-X %{goipath}/server.Version=%{version}"
+%if 0%{?rhel} == 9
+# EL9's %%gobuild reads LDFLAGS instead of GO_LDFLAGS
+export LDFLAGS="$GO_LDFLAGS"
+%endif
 %gobuild -o %{_builddir}/%{name}-bin .
 
 %install
@@ -48,6 +57,14 @@ install -Dpm 0640 mokey.toml.sample %{buildroot}%{_sysconfdir}/mokey/mokey.toml
 install -Dpm 0644 scripts/nfpm/mokey.env %{buildroot}%{_sysconfdir}/default/mokey
 install -dm 0750 %{buildroot}%{_sysconfdir}/mokey/private
 install -dm 0750 %{buildroot}%{_sharedstatedir}/mokey
+
+%if 0%{?rhel}
+%pre
+getent group mokey >/dev/null || groupadd -r mokey
+getent passwd mokey >/dev/null || \
+    useradd -r -g mokey -d %{_sharedstatedir}/mokey -s /usr/sbin/nologin -c "mokey server" mokey
+exit 0
+%endif
 
 %post
 %systemd_post mokey.service
@@ -71,5 +88,7 @@ install -dm 0750 %{buildroot}%{_sharedstatedir}/mokey
 %dir %attr(0750,mokey,mokey) %{_sharedstatedir}/mokey
 
 %changelog
+* Sun Nov 08 2026 Maksym Hrytsaienko <hrytsaienko.my@gmail.com> - 2.9.1-1
+- Build for EPEL 9 and 10
 * Thu Nov 05 2026 Maksym Hrytsaienko <hrytsaienko.my@gmail.com> - 2.7.0-1
 - First COPR package
