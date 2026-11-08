@@ -1,8 +1,8 @@
-# mokey RPM for Fedora COPR (Fedora, EL9, EL10)
+# mokey RPM for Fedora COPR (Fedora, EL8, EL9, EL10)
 
 `mokey.spec` builds mokey from source with the distribution's Go toolchain
 and Go macros (`%gobuild`: PIE, hardened linker flags, debuginfo) for Fedora
-and for RHEL 9/10 and their rebuilds (Rocky Linux, AlmaLinux, CentOS Stream)
+and for RHEL 8/9/10 and their rebuilds (Rocky Linux, AlmaLinux, CentOS Stream)
 through COPR's EPEL chroots.
 
 | Path | |
@@ -19,7 +19,7 @@ The unit and `/etc/default/mokey` are the same files the GoReleaser
 deb/rpm packages ship (`scripts/nfpm/`). The two RPMs differ: GoReleaser's is
 a static binary built on Ubuntu for any RPM distribution and creates the user
 in a postinstall script; this one is built for each distribution release,
-uses sysusers.d (plus a `%pre` scriptlet on EL9/EL10, whose rpm does not
+uses sysusers.d (plus a `%pre` scriptlet on EL, whose rpm does not
 create sysusers.d users before installing files) and the systemd scriptlets,
 and does not enable the service on install.
 
@@ -33,7 +33,7 @@ step, where the network is available. It takes the version from
 `main` sort after the last release.
 
 Build an SRPM and RPM locally (on Fedora or EL, or in `fedora:43`,
-`rockylinux:9`, `almalinux:10` containers):
+`rockylinux:8`, `rockylinux:9`, `almalinux:10` containers):
 
 ```sh
 make -f .copr/Makefile srpm outdir=/tmp/srpm
@@ -41,16 +41,19 @@ sudo dnf builddep /tmp/srpm/mokey-*.src.rpm
 rpmbuild --rebuild /tmp/srpm/mokey-*.src.rpm
 ```
 
-`go.mod` needs Go 1.26: Fedora 43 and newer, RHEL 9.8 and 10.2 (and their
-rebuilds) ship it. The `packaging` workflow builds and installs the RPM on
-Fedora 43, Rocky Linux 9 and AlmaLinux 10.
+`go.mod` needs Go 1.26: Fedora 43 and newer, RHEL 8.10, 9.8 and 10.2 (and
+their rebuilds) ship it. The `packaging` workflow builds and installs the RPM
+on Fedora 43, Rocky Linux 8 and 9 and AlmaLinux 10. On EL8, systemd 239 does
+not know five of the unit's sandboxing options (`ProtectClock`,
+`ProtectHostname`, `ProtectKernelLogs`, `ProtectProc`, `ProcSubset`); it
+logs a warning and runs the service without them.
 
 ## Setting up the COPR project
 
 1. Sign in at <https://copr.fedorainfracloud.org> with a Fedora account and
    create a project named `mokey`:
    - Chroots: `fedora-43-x86_64`, `fedora-43-aarch64`, `fedora-44-x86_64`,
-     `fedora-44-aarch64`, `epel-9-x86_64`, `epel-9-aarch64`,
+     `fedora-44-aarch64`, `epel-8-x86_64`, `epel-8-aarch64`, `epel-9-x86_64`, `epel-9-aarch64`,
      `epel-10-x86_64`, `epel-10-aarch64` (add `fedora-rawhide-*` if wanted).
    - Leave "Enable internet access during builds" off; the RPM build does
      not need it.
