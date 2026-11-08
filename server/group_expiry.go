@@ -116,13 +116,17 @@ func (r *Router) expireMembership(m TimedMembership, now time.Time) {
 		return
 	}
 	if err != nil {
-		slog.Error("AUDIT group membership expiry failed",
+		r.metrics.groupExpiryFailures.Inc()
+		msg := "Membership expiry still failing"
+		// one audit event per failure, not one per sweep
+		if r.recordExpiryFailure(m, fmt.Sprintf("FreeIPA refused the removal; does mokey's role have the Mokey Expire Memberships privilege? %s", err)) {
+			msg = "AUDIT group membership expiry failed"
+		}
+		slog.Error(msg,
 			"group", m.Group,
 			"username", m.Username,
 			"err", err,
 		)
-		r.metrics.groupExpiryFailures.Inc()
-		r.recordExpiryFailure(m, fmt.Sprintf("FreeIPA refused the removal; does mokey's role have the Mokey Expire Memberships privilege? %s", err))
 		return
 	}
 	r.clearExpiryFailure(m)
@@ -220,7 +224,8 @@ func (r *Router) remindMembership(m TimedMembership, now time.Time) {
 	}
 }
 
-func (r *Router) recordExpiryFailure(m TimedMembership, msg string) {
+// recordExpiryFailure reports whether the failure is new
+func (r *Router) recordExpiryFailure(m TimedMembership, msg string) bool {
 	r.expiryFails.mu.Lock()
 	defer r.expiryFails.mu.Unlock()
 	if r.expiryFails.m == nil {
@@ -233,6 +238,7 @@ func (r *Router) recordExpiryFailure(m TimedMembership, msg string) {
 	}
 	f.Err = msg
 	r.expiryFails.m[key] = f
+	return !ok
 }
 
 func (r *Router) clearExpiryFailure(m TimedMembership) {

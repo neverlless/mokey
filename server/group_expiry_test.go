@@ -335,3 +335,22 @@ func TestSweepDropsRecordOfDeletedEntry(t *testing.T) {
 		})
 	}
 }
+
+func TestSweepAuditsRepeatedFailureOnce(t *testing.T) {
+	assert := assert.New(t)
+	now := time.Now()
+	router, _ := newSweepApp(t, now.Add(-time.Minute), 8*time.Hour, false)
+	before := failures()
+
+	router.membershipExpirySweep(now, false)
+	router.membershipExpirySweep(now.Add(5*time.Minute), false)
+
+	n := 0
+	for _, e := range auditRecent(router.storage, 50) {
+		if e.Message == "group membership expiry failed" {
+			n++
+		}
+	}
+	assert.Equal(1, n)
+	assert.Equal(before+2, failures())
+}
