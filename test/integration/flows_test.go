@@ -179,3 +179,76 @@ func TestOTPLogin(t *testing.T) {
 		t.Fatalf("password + OTP: want 204, got %d", code)
 	}
 }
+
+// A grant ends on the real FreeIPA through the scoped permission from
+// docs/guides/groups.md, and a group that lost its member managers shows up
+// as a failed expiry instead of silently staying permanent. The sweep runs
+// every 5 minutes, so this takes up to about 6.
+func TestTimedMembershipExpiresOnRealFreeIPA(t *testing.T) {
+	stand(t)
+
+	const perm, priv, role = "Mokey Modify Sponsored Group Membership", "Mokey Expire Memberships", "Mokey User Manager"
+	if out, err := ipaCmd("", "permission-show", perm); err == nil {
+		t.Fatalf("permission %q already exists on the stand, remove it first: %s", perm, out)
+	}
+	t.Cleanup(func() {
+		_, _ = ipaCmd("", "role-remove-privilege", role, "--privileges="+priv)
+		_, _ = ipaCmd("", "privilege-del", priv)
+		_, _ = ipaCmd("", "permission-del", perm)
+	})
+	mustIPA(t, "permission-add", perm, "--right=write", "--attrs=member", "--type=group", "--filter=(membermanager=*)")
+	mustIPA(t, "privilege-add", priv, "--desc=Remove expired time-bound memberships")
+	mustIPA(t, "privilege-add-permission", priv, "--permissions="+perm)
+	mustIPA(t, "role-add-privilege", role, "--privileges="+priv)
+
+	sponsor, expiring, orphaned := newUser(t), newUser(t), newUser(t)
+	mustIPA(t, "group-add", "timed"+runID, "--desc=mokey integration")
+	mustIPA(t, "group-add", "orphan"+runID, "--desc=mokey integration")
+	t.Cleanup(func() {
+		_, _ = ipaCmd("", "group-del", "timed"+runID)
+		_, _ = ipaCmd("", "group-del", "orphan"+runID)
+	})
+	for _, g := range []string{"timed" + runID, "orphan" + runID} {
+		mustIPA(t, "group-add-member", g, "--users="+sponsor.uid)
+		mustIPA(t, "group-add-member-manager", g, "--users="+sponsor.uid)
+	}
+
+	sc := login(t, sponsor.uid, sponsor.password)
+	grant := func(g string, u *testUser) {
+		t.Helper()
+		mc := login(t, u.uid, u.password)
+		if code, body := mc.hx("/groups/request", url.Values{"group": {g}, "duration": {"1m"}}); code != http.StatusOK {
+			t.Fatalf("request %s: %d: %s", g, code, body)
+		}
+		if code, body := sc.hx("/groups/approve", url.Values{"group": {g}, "username": {u.uid}, "duration": {"1m"}}); code != http.StatusOK {
+			t.Fatalf("approve %s: %d: %s", g, code, body)
+		}
+		if !strings.Contains(mustIPA(t, "group-show", g), u.uid) {
+			t.Fatalf("%s is not a member of %s after approval", u.uid, g)
+		}
+	}
+	grant("timed"+runID, expiring)
+	grant("orphan"+runID, orphaned)
+	// The permission only covers groups that have member managers
+	mustIPA(t, "group-remove-member-manager", "orphan"+runID, "--users="+sponsor.uid)
+
+	admin := login(t, "admin", ipaAdminPw)
+	var removed, listed bool
+	deadline := time.Now().Add(7 * time.Minute)
+	for time.Now().Before(deadline) && !(removed && listed) {
+		time.Sleep(10 * time.Second)
+		removed = !strings.Contains(mustIPA(t, "group-show", "timed"+runID), expiring.uid)
+		if _, body := admin.get("/admin"); strings.Contains(body, "orphan"+runID) && strings.Contains(body, orphaned.uid) {
+			listed = true
+		}
+	}
+	if !removed {
+		t.Error("expired member is still in the sponsored group after 7 minutes")
+	}
+	if !listed {
+		t.Error("failed expiry is not listed on the admin Requests page")
+	}
+	if !strings.Contains(mustIPA(t, "group-show", "orphan"+runID), orphaned.uid) {
+		t.Error("member of the group without member managers was removed")
+	}
+}

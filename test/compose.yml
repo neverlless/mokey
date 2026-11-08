@@ -1,5 +1,6 @@
 # Overlay on the demo stand for the integration and e2e tests: signup and
-# forgot-password cannot be driven through a CAPTCHA.
+# forgot-password cannot be driven through a CAPTCHA, and time-bound group
+# membership needs persistent storage (the demo uses memory).
 #
 #   docker compose -f examples/demo/compose.yml -f test/compose.yml up -d
 
@@ -7,3 +8,6 @@ services:
   mokey:
     environment:
       MOKEY_ACCOUNTS_ENABLE_CAPTCHA: "false"
+      MOKEY_STORAGE_DRIVER: sqlite3
+      MOKEY_STORAGE_SQLITE3_DBPATH: /tmp/mokey.db
+      MOKEY_GROUPS_DURATIONS: "1m 1h"
