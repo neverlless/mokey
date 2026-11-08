@@ -14,6 +14,8 @@
   next to Fedora; the Ansible role picks the matching COPR repository
 - Guide for moving from upstream ubccr/mokey 0.5 (YAML, MySQL) and 0.6:
   config keys, FreeIPA privileges, storage and what users notice
+- Container images are also tagged with the minor version (`2.10`), which
+  follows that minor's patch releases
 
 ### Upgrade notes
 

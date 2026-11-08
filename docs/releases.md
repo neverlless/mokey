@@ -53,7 +53,7 @@ for how to report a vulnerability.
 | Channel | What to pin |
 | --- | --- |
 | [GitHub releases](https://github.com/neverlless/mokey/releases): signed binaries, deb and rpm packages, SBOMs | the exact version |
-| Container image `ghcr.io/neverlless/mokey` | `2.9.1` for an exact version, `latest` for the newest release |
+| Container image `ghcr.io/neverlless/mokey` | `2.10.0` for an exact version, `2.10` to get that minor's patch releases, `latest` for the newest release |
 | Helm chart `oci://ghcr.io/neverlless/charts/mokey` | chart version = app version |
 | Fedora COPR [`neverlless/mokey`](https://copr.fedorainfracloud.org/coprs/neverlless/mokey/) | `dnf` follows the newest release |
 
