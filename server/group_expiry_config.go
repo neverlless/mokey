@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,7 +18,7 @@ func parseGroupDuration(s string) (time.Duration, error) {
 	var d time.Duration
 	if n, ok := strings.CutSuffix(s, "d"); ok {
 		days, err := strconv.Atoi(n)
-		if err != nil {
+		if err != nil || int64(days) > math.MaxInt64/int64(24*time.Hour) {
 			return 0, fmt.Errorf("invalid duration %q", s)
 		}
 		d = time.Duration(days) * 24 * time.Hour
