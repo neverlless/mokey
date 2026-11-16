@@ -31,6 +31,13 @@ func TestPortalLoginRecordsSignIn(t *testing.T) {
 	assert.WithinDuration(t, time.Now(), router.lastSignIn("walter"), time.Minute)
 }
 
+func TestSignInIgnoresUsernameCase(t *testing.T) {
+	_, router, _ := newTestApp(t)
+	at := time.Now().Add(-time.Hour).Truncate(time.Second)
+	router.recordSignIn("Walter", at)
+	assert.True(t, at.Equal(router.lastSignIn("walter")))
+}
+
 func TestSignInSurvivesStorageFailure(t *testing.T) {
 	app, router, fake := newTestApp(t)
 	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
