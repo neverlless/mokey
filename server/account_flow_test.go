@@ -435,8 +435,8 @@ func TestAccountSettingsPhoneValidation(t *testing.T) {
 		"phone_cc": {"1"}, "phone": {"505 555 0100"},
 		"telephone_cc": {"46"}, "telephone": {"701234567"},
 	})
-	assert.Equal("+1 505 555 0100", fakeUser(fake, "walter").Mobile)
-	assert.Equal("+46 701234567", fakeUser(fake, "walter").Telephone)
+	assert.Equal("+15055550100", fakeUser(fake, "walter").Mobile)
+	assert.Equal("+46701234567", fakeUser(fake, "walter").Telephone)
 
 	// and the form renders the two halves back into their own controls
 	body = readBody(t, tc.get("/account"))
@@ -445,7 +445,7 @@ func TestAccountSettingsPhoneValidation(t *testing.T) {
 	// the trigger shows the flag and the code, never the country name twice
 	assert.Contains(body, `<span class="mokey-dial-code">+1</span>`)
 	assert.Contains(body, `<span class="mokey-dial-code">+46</span>`)
-	assert.Contains(body, `value="505 555 0100"`)
+	assert.Contains(body, `value="5055550100"`)
 	assert.Contains(body, `value="701234567"`)
 
 	// the searchable list is rendered once and shared by both fields
@@ -455,4 +455,23 @@ func TestAccountSettingsPhoneValidation(t *testing.T) {
 	// clearing the number clears the attribute
 	save(url.Values{"phone_cc": {"1"}, "phone": {""}})
 	assert.Equal("", fakeUser(fake, "walter").Mobile)
+}
+
+func TestAccountSettingsStoresInternationalNumberWithoutSpaces(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	resp := tc.postForm("/account/settings", url.Values{
+		"first": {"Walter"}, "last": {"White"}, "phone": {"+380123456789"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal("+380123456789", fakeUser(fake, "walter").Mobile)
+
+	body := readBody(t, tc.get("/account"))
+	assert.Contains(body, `name="phone_cc" id="phone_cc" value="380"`)
+	assert.Contains(body, `value="123456789"`)
 }

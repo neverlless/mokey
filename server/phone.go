@@ -13,13 +13,14 @@ import (
 	"github.com/biter777/countries"
 )
 
-// Phone numbers are stored as "+<dial code> <national number>" so the two
-// halves of the form can be recovered on the next render. FreeIPA keeps the
-// attribute free-form, so values written before this format existed (or by
-// ipa(1) directly) still have to round-trip.
+// Phone numbers are stored in E.164 form, "+<dial code><digits>", which is what
+// FreeIPA and other directory clients expect. Values written by earlier
+// releases have a space after the dial code ("+380 123456789"); FreeIPA keeps
+// the attribute free-form, so those and values set by ipa(1) still have to
+// round-trip.
 
 // splitPhone recovers the dial code and national number from a stored value.
-// Anything that does not match the stored format is handed back whole as the
+// Anything that does not match a stored format is handed back whole as the
 // national number, so an externally set value is shown rather than dropped.
 func splitPhone(stored string) (code, national string) {
 	stored = strings.TrimSpace(stored)
@@ -27,17 +28,22 @@ func splitPhone(stored string) (code, national string) {
 		return "", stored
 	}
 
-	code, national, found := strings.Cut(stored[1:], " ")
-	if !found || code == "" || !isDigits(code) {
-		return "", stored
+	if code, national, found := strings.Cut(stored[1:], " "); found {
+		if code == "" || !isDigits(code) {
+			return "", stored
+		}
+		return code, strings.TrimSpace(national)
 	}
 
-	return code, strings.TrimSpace(national)
+	if code, national, ok := splitCompact(stored); ok {
+		return code, national
+	}
+	return "", stored
 }
 
 // joinPhone builds the stored value from the two form fields. An empty
-// national number clears the attribute. A number given on its own is accepted
-// only when it already carries its own country code.
+// national number clears the attribute. A number that starts with "+" carries
+// its own country code, which wins over the picker.
 func joinPhone(lang, code, national string) (string, error) {
 	code = strings.TrimPrefix(strings.TrimSpace(code), "+")
 	national = strings.TrimSpace(national)
@@ -46,12 +52,18 @@ func joinPhone(lang, code, national string) (string, error) {
 		return "", nil
 	}
 
-	if code == "" {
-		// a full international number pasted into the number field
-		if strings.HasPrefix(national, "+") && isPhoneish(national[1:]) && isE164(compactPhone(national)) {
-			code, national = splitCompact(compactPhone(national))
-			return "+" + code + " " + national, nil
+	if strings.HasPrefix(national, "+") {
+		compact := compactPhone(national)
+		if !isPhoneish(national[1:]) || !isE164(compact) {
+			return "", errors.New(TL(lang, "account.phone_invalid"))
 		}
+		if _, _, ok := splitCompact(compact); !ok {
+			return "", errors.New(TL(lang, "account.phone_invalid_country_code"))
+		}
+		return compact, nil
+	}
+
+	if code == "" {
 		return "", errors.New(TL(lang, "account.phone_needs_country_code"))
 	}
 
@@ -65,16 +77,22 @@ func joinPhone(lang, code, national string) (string, error) {
 		return "", errors.New(TL(lang, "account.phone_invalid"))
 	}
 
-	return "+" + code + " " + national, nil
+	return "+" + code + digitsOnly(national), nil
 }
 
-// splitCompact takes the leading digit off a compact E.164 number as the dial
-// code. Code lengths are ambiguous without a country table, so this is only
-// used to normalise a number the user typed with its own "+" — the split is
-// cosmetic and the stored value round-trips either way.
-func splitCompact(compact string) (code, national string) {
+// splitCompact splits "+<code><national>" by the longest prefix that is a
+// real dial code from the country table.
+func splitCompact(compact string) (code, national string, ok bool) {
 	digits := strings.TrimPrefix(compact, "+")
-	return digits[:1], digits[1:]
+	if !isDigits(digits) {
+		return "", "", false
+	}
+	for n := min(4, len(digits)-1); n >= 1; n-- {
+		if dialCodes[digits[:n]] {
+			return digits[:n], digits[n:], true
+		}
+	}
+	return "", "", false
 }
 
 func compactPhone(s string) string {
@@ -145,6 +163,14 @@ type PhoneCountry struct {
 // two dozen), so the first match wins when a stored number is mapped back to
 // a flag — the number is what matters, the flag is a label.
 var phoneCountries = buildPhoneCountries()
+
+var dialCodes = func() map[string]bool {
+	m := make(map[string]bool, len(phoneCountries))
+	for _, c := range phoneCountries {
+		m[c.Code] = true
+	}
+	return m
+}()
 
 func buildPhoneCountries() []PhoneCountry {
 	out := make([]PhoneCountry, 0, countries.Total())

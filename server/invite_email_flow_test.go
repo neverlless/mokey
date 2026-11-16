@@ -145,8 +145,8 @@ func TestAccountSettingsProfileFields(t *testing.T) {
 
 	u := fakeUser(fake, "walter")
 	assert.Equal("Heisenberg", u.DisplayName)
-	assert.Equal("+1 505 555 0199", u.Telephone)
-	assert.Equal("+1 505 555 0100", u.Mobile)
+	assert.Equal("+15055550199", u.Telephone)
+	assert.Equal("+15055550100", u.Mobile)
 	assert.Equal("/bin/zsh", u.Shell)
 
 	// a shell outside the allowlist is ignored

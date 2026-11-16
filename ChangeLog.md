@@ -4,11 +4,15 @@
 
 - Go 1.27.4 toolchain (GO-2026-6859 in net/http) and Fiber 3.7
 - Invites can preset the username and name (#76)
+- Phone numbers are stored in E.164 form without spaces (+380123456789);
+  numbers typed with their own country code are split correctly
 
 ### Upgrade notes
 
 - Everyone signs in again once after the upgrade: Fiber 3.7 stores sessions
   under a new storage key, so sessions from earlier releases are not found.
+- Phone numbers already stored with a space (+380 123456789) keep working and
+  are rewritten without it on the next profile save.
 
 ## [v2.10.0] - 2026-11-08
 
