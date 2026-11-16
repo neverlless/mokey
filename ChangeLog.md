@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Go 1.27.4 toolchain (GO-2026-6859 in net/http) and Fiber 3.7
+- Invites can preset the username and name (#76)
 
 ### Upgrade notes
 

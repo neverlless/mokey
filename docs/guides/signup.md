@@ -55,7 +55,10 @@ group = "admins"
 
 The admin panel's **Pending approval** queue shows verified registrations
 waiting for a decision. **Invite a user** sends a signup link to an email
-address.
+address. Under **More details** an admin can also fix the username and
+first and last name; the invitee sees the username read-only and can edit
+the names. A username that is invalid or already taken is rejected before
+anything is sent.
 
 ## FreeIPA prerequisites
 
