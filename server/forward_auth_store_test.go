@@ -1,7 +1,11 @@
 package server
 
 import (
+	"bytes"
+	"errors"
+	"log/slog"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -258,7 +262,58 @@ func TestFAHookAdminBlock(t *testing.T) {
 	admin := newTestClient(t, app)
 	admin.login("jesse", "Secret123!")
 	resp := admin.postForm("/admin/user/block", url.Values{"username": {"walter"}}, htmx)
-	assert.NotEqual(t, fiber.StatusForbidden, resp.StatusCode)
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
 	assert.False(t, faAlive(t, r, s1.ID))
 	assert.False(t, faAlive(t, r, s2.ID))
+}
+
+// failingGetStorage fails Get for keys with the given prefix
+type failingGetStorage struct {
+	fiber.Storage
+	prefix string
+}
+
+func (s *failingGetStorage) Get(key string) ([]byte, error) {
+	if s.prefix != "" && strings.HasPrefix(key, s.prefix) {
+		return nil, errors.New("storage backend down")
+	}
+	return s.Storage.Get(key)
+}
+
+func TestFAIndexReadErrorKeepsIndex(t *testing.T) {
+	st := &failingGetStorage{Storage: memory.New()}
+	r := faRouter()
+	r.storage, r.lock = st, newStoreLock(st)
+	s := newFASession(t, r, "walter", "sid1")
+	before, _ := st.Storage.Get(faUserPrefix + "walter")
+
+	st.prefix = faUserPrefix
+	assert.Error(t, r.faCreateSession(&faSession{Username: "walter", ParentSID: "sid2"}))
+	after, _ := st.Storage.Get(faUserPrefix + "walter")
+	assert.Equal(t, before, after)
+
+	var logs bytes.Buffer
+	saved := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(saved) })
+	r.faRevokeUser("walter")
+	assert.Contains(t, logs.String(), "level=ERROR")
+	assert.Contains(t, logs.String(), "app session index")
+
+	st.prefix = ""
+	assert.True(t, faAlive(t, r, s.ID))
+}
+
+func TestFAPruneKeepsEntriesOnReadError(t *testing.T) {
+	st := &failingGetStorage{Storage: memory.New()}
+	r := faRouter()
+	r.storage, r.lock = st, newStoreLock(st)
+	s := newFASession(t, r, "walter", "sid1")
+
+	st.prefix = faSessPrefix
+	newFASession(t, r, "walter", "sid2")
+	st.prefix = ""
+
+	r.faRevokeParent("walter", "sid1")
+	assert.False(t, faAlive(t, r, s.ID), "entry kept in the index, so revocation still finds it")
 }
