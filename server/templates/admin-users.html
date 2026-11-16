@@ -36,7 +36,7 @@
         {{ if $u.Locked }}
         <button type="button" class="btn btn-outline-success btn-sm"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'
                 hx-post="/admin/user/unblock" hx-target="#admin-users">
           {{ T "admin.unblock" }}
         </button>
@@ -50,7 +50,7 @@
             {{ if not $u.Locked }}
             <li><button type="button" class="dropdown-item text-danger"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'
                 hx-post="/admin/user/block" hx-target="#admin-users"
                 hx-confirm="{{ T "admin.block_confirm" }}">
               {{ T "admin.block" }}
@@ -58,14 +58,14 @@
             {{ end }}
             <li><button type="button" class="dropdown-item"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'
                 hx-post="/admin/user/reset" hx-target="#admin-users"
                 hx-confirm="{{ T "admin.reset_confirm" }}">
               {{ T "admin.reset_password" }}
             </button></li>
             <li><button type="button" class="dropdown-item" title="{{ T "admin.unlock_help" }}"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'
                 hx-post="/admin/user/unlock" hx-target="#admin-users">
               {{ T "admin.unlock" }}
             </button></li>
@@ -78,6 +78,25 @@
   {{ end }}
   </tbody>
 </table>
+{{ if $.truncated }}
+<p class="small text-muted m-3">{{ T "admin.users_truncated" }}</p>
+{{ end }}
 {{ if gt $.total 50 }}
-<p class="small text-muted m-3">{{ T "admin.showing_first" }} 50 / {{ $.total }}</p>
+<nav class="d-flex align-items-center justify-content-between gap-2 m-3" aria-label="{{ T "admin.page_nav" }}">
+  <button type="button" id="users-prev" class="btn btn-outline-secondary btn-sm"{{ if not $.has_prev }} disabled{{ end }}
+          aria-label="{{ T "admin.page_prev" }}"
+          hx-get="/admin/users" hx-target="#admin-users" hx-include="#user-search"
+          hx-vals='{"page": {{ $.page_prev }}}'
+          hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+    <i class="fa fa-chevron-left" aria-hidden="true"></i> {{ T "admin.page_prev" }}
+  </button>
+  <span class="small text-muted" aria-live="polite">{{ printf (T "admin.page_range") $.range_from $.range_to $.total }}</span>
+  <button type="button" id="users-next" class="btn btn-outline-secondary btn-sm"{{ if not $.has_next }} disabled{{ end }}
+          aria-label="{{ T "admin.page_next" }}"
+          hx-get="/admin/users" hx-target="#admin-users" hx-include="#user-search"
+          hx-vals='{"page": {{ $.page_next }}}'
+          hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+    {{ T "admin.page_next" }} <i class="fa fa-chevron-right" aria-hidden="true"></i>
+  </button>
+</nav>
 {{ end }}
