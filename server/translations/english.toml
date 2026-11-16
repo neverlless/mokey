@@ -558,6 +558,7 @@ users_truncated = "Only the first 500 accounts are loaded; use search to narrow 
 users_truncated_search = "Only the first 500 matching accounts are loaded; refine the search."
 invite_title = "Invite a user"
 invite_button = "Send invite"
+storage_memory_notice = "Storage is in memory (storage.driver = \"memory\"): the audit log and last-activity data are lost when mokey restarts. Use sqlite3 or redis to keep them."
 invite_hint = "Only email is required. Leave username empty to let the invitee choose one."
 invite_username_invalid = "Invalid username. Use letters, digits and . _ - only."
 invite_username_taken = "That username is already taken"
