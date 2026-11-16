@@ -90,6 +90,7 @@ type myGroupRequest struct {
 func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 	user := r.user(c)
 	vars["my_groups"] = user.Groups
+	r.sponsoredVars(c, vars)
 
 	groups, err := groupFindManaged(r.userClient(c))
 	if err != nil {
