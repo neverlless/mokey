@@ -151,6 +151,19 @@ enables it, needs `sqlite3` or `redis` storage and a FreeIPA privilege. See
 | `group` | string | Group the rule applies to; required, one rule per group. |
 | `max` | string | Longest offered duration. The group gets only the configured `durations` up to `max`, and no "No end date". At least one duration must fit. |
 
+## `[lifecycle]`
+
+Account expiry and sponsor renewal. The sponsor of an account is its FreeIPA
+`manager`; the expiry date is `krbPrincipalExpiration`. Everything is off
+until you set an option.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `expiry_reminders` | list of days | — | Remind the user and the sponsor this many days before the account expires. Example: `[30, 7, 1]`. |
+| `renewal_period` | string | — | How far a sponsor extends an account, with units `m`, `h`, `d`. Example: `"365d"`. Empty turns renewal off. |
+| `assign_missing_expiry` | bool | `false` | Give sponsored accounts without an expiry date one: now plus `renewal_period`. Needs `renewal_period`. |
+| `max_changes_per_run` | int | `50` | A sweep that would change more accounts changes none and waits for an admin to apply it. |
+
 ## `[email]`
 
 | Option | Type | Default | Description |

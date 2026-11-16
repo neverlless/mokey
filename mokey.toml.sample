@@ -327,6 +327,26 @@ enable_metrics = false
 # max = "8h"
 
 #------------------------------------------------------------------------------
+# Account lifecycle: expiry and sponsor renewal
+#------------------------------------------------------------------------------
+[lifecycle]
+# Account expiry reminders to the user and to the sponsor (FreeIPA's
+# manager), in days before krbPrincipalExpiration. Empty = no reminders.
+# expiry_reminders = [30, 7, 1]
+
+# Sponsors may extend sponsored accounts by this period. Empty = renewal off.
+# Units: m, h, d.
+# renewal_period = "365d"
+
+# Give every sponsored account without an expiry date one (now + period).
+# Needs renewal_period.
+# assign_missing_expiry = false
+
+# Mass-change brake: a sweep that would change more accounts than this
+# changes none and waits for an admin to apply it.
+# max_changes_per_run = 50
+
+#------------------------------------------------------------------------------
 # Storage
 #------------------------------------------------------------------------------
 [storage]
