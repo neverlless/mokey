@@ -61,8 +61,10 @@ sequenceDiagram
 
 > [!WARNING]
 > Set `server.trusted_proxies` to the address of the proxy (or the
-> Kubernetes pod range). Without it mokey ignores `X-Forwarded-*` headers,
-> and every user behind the proxy shares one rate-limit key for
+> Kubernetes pod range). With Traefik, ingress-nginx and Caddy it is
+> required: without it mokey ignores `X-Forwarded-*` headers, sees its own
+> host instead of the app's, and answers every check with `403`. It also
+> keeps every user behind the proxy from sharing one rate-limit key for
 > `/forward-auth/continue`, where failed requests count (failed
 > `/.mokey/*` requests count too): a few mistyped sign-ins can lock everyone
 > out for the rate-limit window. Proxies that send
@@ -160,6 +162,11 @@ Losing a group in FreeIPA takes effect within `recheck`. Time-bound group
 membership that expires is removed by mokey's sweep and then reaches the
 app within the sweep interval plus `recheck`. A request that is denied on
 recheck ends the app session.
+
+Rechecks fail closed. If FreeIPA becomes unreachable, sessions keep working
+until their next recheck is due, then every request to a protected app
+fails with an error until FreeIPA is back. Expect protected apps to stop
+working about `recheck` after FreeIPA goes down.
 
 Forward-auth sign-ins and successful rechecks count as activity for the
 admin Inactive list.
@@ -293,6 +300,10 @@ mokey is not reachable inside the cluster. nginx redirects to `auth-signin`
 when mokey answers `401`; `auth-response-headers` overwrites any header the
 client sent.
 
+nginx drops the body of the check's response. A user denied at sign-in sees
+mokey's page, which mokey serves itself, but a user denied later, at a
+recheck, sees nginx's own `403` page.
+
 ### Caddy
 
 ```caddyfile
@@ -311,8 +322,8 @@ app.example.com {
 ```
 
 Caddy sends the original method and URI as `X-Forwarded-Method` and
-`X-Forwarded-Uri` and passes mokey's `302` to the browser. Add Caddy's
-address to `server.trusted_proxies`.
+`X-Forwarded-Uri` and passes mokey's `302` to the browser. Caddy's address
+must be in `server.trusted_proxies`, or every check gets `403`.
 
 ### Envoy Gateway
 
