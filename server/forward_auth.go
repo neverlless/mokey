@@ -66,7 +66,7 @@ func (r *Router) faParentValid(c fiber.Ctx, sid, username string) bool {
 	if !authed || name == "" || !strings.EqualFold(name, username) {
 		return false
 	}
-	marker, err := r.storage.Get(PasswordChangedPrefix + name)
+	marker, err := r.storage.Get(pwChangedKey(name))
 	if err != nil {
 		return false
 	}
