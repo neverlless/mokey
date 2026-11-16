@@ -1,12 +1,12 @@
-{{ T "email_template.welcome_preheader_part1" }}[{{ $.site_name }}]{{ T "email_template.welcome_preheader_part2" }}
+{{ T "email_template.welcome_preheader_part1" }}{{ $.site_name }}{{ T "email_template.welcome_preheader_part2" }}
 
-[{{ $.site_name }}] ( {{$.homepage}} )
+{{ $.site_name }} ( {{$.homepage}} )
 
 ******************
 {{ T "email_template.welcome_greeting" }} {{$.user.First}}!
 ******************
 
-{{ T "email_template.welcome_intro_part1" }}[{{$.site_name}}]{{ T "email_template.welcome_intro_part2" }} {{ if ConfigValueBool "accounts.require_mfa" }}{{ T "email_template.welcome_mfa_notice" }}{{ end }} {{ T "email_template.welcome_getting_started_part1" }}[{{$.site_name}}]{{ T "email_template.welcome_getting_started_part2" }}
+{{ T "email_template.welcome_intro_part1" }}{{ $.site_name }}{{ T "email_template.welcome_intro_part2" }} {{ if ConfigValueBool "accounts.require_mfa" }}{{ T "email_template.welcome_mfa_notice" }}{{ end }} {{ T "email_template.welcome_getting_started_part1" }}{{ $.site_name }}{{ T "email_template.welcome_getting_started_part2" }}
 
 {{ T "email_template.welcome_button" }} ( {{ $.getting_started_url }} )
 
@@ -18,6 +18,6 @@
 
 {{ T "email_template.welcome_support_part1" }}{{ T "email_template.welcome_support_link" }} ( {{ $.contact }} ){{ T "email_template.welcome_support_part2" }}{{ T "email_template.welcome_support_help_link" }} ( {{ $.help_url }} ){{ T "email_template.welcome_support_part3" }}
 
-{{ T "email_template.closing_part1" }}[{{ $.site_name }}]{{ T "email_template.closing_part2" }}
+{{ T "email_template.closing_part1" }}{{ $.site_name }}{{ T "email_template.closing_part2" }}
 
 {{ $.sig }}

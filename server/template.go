@@ -24,11 +24,17 @@ var funcMap = template.FuncMap{
 	"ConfigValueStringSlice": ConfigValueStringSlice,
 	"AllowedDomains":         AllowedDomains,
 	"BreakNewlines":          BreakNewlines,
-	"PhoneCode":              PhoneCode,
-	"PhoneNumber":            PhoneNumber,
-	"PhoneCountries":         PhoneCountries,
-	"PhoneFlag":              PhoneFlag,
-	"Neg":                    func(n int) int { return -n },
+	"GreetName": func(first string) string {
+		if first == "" {
+			return ""
+		}
+		return " " + first
+	},
+	"PhoneCode":      PhoneCode,
+	"PhoneNumber":    PhoneNumber,
+	"PhoneCountries": PhoneCountries,
+	"PhoneFlag":      PhoneFlag,
+	"Neg":            func(n int) int { return -n },
 }
 
 // languageFuncs binds the language-dependent template functions to lang.
