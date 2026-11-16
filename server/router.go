@@ -26,6 +26,7 @@ type Router struct {
 	lock         *storeLock
 	groupExpiry  *groupExpiryConfig
 	expiryFails  expiryFailureSet
+	masters      masterClients
 
 	// Hydra consent app support
 	hydraClient *hydra.APIClient

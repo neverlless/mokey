@@ -421,7 +421,7 @@ func (r *Router) AdminUserAction(c fiber.Ctx) error {
 
 	// unlock and reset buttons also live in the helpdesk view
 	if view := c.Query("helpdesk"); view != "" {
-		vars := r.adminHelpdeskVars(c, view)
+		vars := r.adminHelpdeskVars(c, view, false)
 		if action == "reset" {
 			vars["reset_sent"] = username
 		}

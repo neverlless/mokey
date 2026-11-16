@@ -92,60 +92,7 @@ func readIPAConfig(client *ipa.Client) ipaConfig {
 	return config
 }
 
-// masterLastAuth reads krbLastSuccessfulAuth of every user from one master:
-// FreeIPA does not replicate it, each master keeps the logins it saw
-func (r *Router) masterLastAuth(host string) (map[string]time.Time, error) {
-	client, err := newIPAClientForHost(host)
-	if err != nil {
-		return nil, err
-	}
-	if err := ipaKeytabLogin(client, viper.GetString("site.keytab"), viper.GetString("site.ktuser")); err != nil {
-		return nil, err
-	}
-	client.StickySession(false)
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	entries, err := ipa.FindEntries(ctx, client, "user_find", nil, ipa.Options{"all": true, "no_members": true}, helpdeskSizeLimit)
-	if err != nil && !errors.Is(err, ipa.ErrTruncated) {
-		return nil, err
-	}
-	logins := map[string]time.Time{}
-	for _, e := range entries {
-		if last := e.Time("krblastsuccessfulauth"); !last.IsZero() {
-			logins[e.Str("uid")] = last
-		}
-	}
-	return logins, nil
-}
-
-// otherMastersLastAuth merges the logins recorded by every master except
-// the one mokey talks to, keeping the latest per user
-func (r *Router) otherMastersLastAuth(client *ipa.Client, masters []string) (map[string]time.Time, []string) {
-	self, _, _ := strings.Cut(client.Host(), ":")
-	merged := map[string]time.Time{}
-	var unreachable []string
-	// shortcut: masters are read one after another; parallelise if large
-	// topologies make the helpdesk page slow
-	for _, host := range masters {
-		if strings.EqualFold(host, self) {
-			continue
-		}
-		logins, err := r.masterLastAuth(host)
-		if err != nil {
-			slog.Warn("Failed to read logins from a FreeIPA master", "host", host, "err", err)
-			unreachable = append(unreachable, host)
-			continue
-		}
-		for uid, t := range logins {
-			if t.After(merged[uid]) {
-				merged[uid] = t
-			}
-		}
-	}
-	return merged, unreachable
-}
-
-func (r *Router) buildHelpdeskReport(now time.Time, expiringDays, inactiveDays int) (*helpdeskReport, error) {
+func (r *Router) buildHelpdeskReport(now time.Time, expiringDays, inactiveDays int, fetchMasters bool) (*helpdeskReport, error) {
 	client := r.adminClient
 	// FindEntries rather than UserFind: it reports FreeIPA's truncated flag
 	// and keeps krbloginfailedcount, which ipa.User does not carry
@@ -160,7 +107,7 @@ func (r *Router) buildHelpdeskReport(now time.Time, expiringDays, inactiveDays i
 	report.LoginsUnrecorded = slices.Contains(config.ConfigString, disableLastSuccess)
 	remoteLogins := map[string]time.Time{}
 	if !report.LoginsUnrecorded {
-		remoteLogins, report.Unreachable = r.otherMastersLastAuth(client, config.Masters)
+		remoteLogins, report.Unreachable = r.otherMastersLastAuth(client, config.Masters, fetchMasters)
 	}
 
 	for _, e := range entries {
@@ -225,7 +172,9 @@ func (r *Router) buildHelpdeskReport(now time.Time, expiringDays, inactiveDays i
 	return report, nil
 }
 
-func (r *Router) adminHelpdeskVars(c fiber.Ctx, view string) fiber.Map {
+// adminHelpdeskVars renders view; fetchMasters lets it read other masters
+// whose cached logins are missing or stale
+func (r *Router) adminHelpdeskVars(c fiber.Ctx, view string, fetchMasters bool) fiber.Map {
 	if !slices.Contains(helpdeskViews, view) {
 		view = helpdeskViews[0]
 	}
@@ -238,7 +187,7 @@ func (r *Router) adminHelpdeskVars(c fiber.Ctx, view string) fiber.Map {
 		"row_limit":     helpdeskRowLimit,
 	}
 
-	report, err := r.buildHelpdeskReport(time.Now(), helpdeskExpiringDays(), viper.GetInt("admin.inactive_days"))
+	report, err := r.buildHelpdeskReport(time.Now(), helpdeskExpiringDays(), viper.GetInt("admin.inactive_days"), fetchMasters && view == "inactive")
 	if err != nil {
 		slog.Error("Failed to list users for the helpdesk view", "err", err)
 		vars["helpdesk_message"] = TC(c, "account.fatal_system_error")
@@ -264,5 +213,5 @@ func (r *Router) adminHelpdeskVars(c fiber.Ctx, view string) fiber.Map {
 }
 
 func (r *Router) AdminHelpdesk(c fiber.Ctx) error {
-	return c.Render("admin-helpdesk.html", r.adminHelpdeskVars(c, c.Query("view")))
+	return c.Render("admin-helpdesk.html", r.adminHelpdeskVars(c, c.Query("view"), true))
 }
