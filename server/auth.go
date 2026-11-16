@@ -96,6 +96,8 @@ func sessionInvalidatedByPasswordChange(loginTime int64, marker []byte) bool {
 }
 
 func (r *Router) invalidateUserSessions(username string) {
+	// the marker expires long before an app session would
+	r.faRevokeUser(username)
 	ttl := time.Duration(viper.GetInt("server.session_idle_timeout"))*time.Second + time.Minute
 	if err := r.storage.Set(PasswordChangedPrefix+username, []byte(strconv.FormatInt(time.Now().Unix(), 10)), ttl); err != nil {
 		slog.Error("Failed to invalidate sessions after password change",
@@ -141,6 +143,7 @@ func (r *Router) logout(c fiber.Ctx) {
 
 		if name, ok := username.(string); ok {
 			r.dropSessionFromIndex(name, sess.ID())
+			r.faRevokeParent(name, sess.ID())
 		}
 	}
 

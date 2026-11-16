@@ -159,6 +159,7 @@ func (r *Router) revokeUserSession(username, sid string) bool {
 		)
 	}
 	r.saveSessionIndex(username, kept)
+	r.faRevokeParent(username, sid)
 	return true
 }
 
@@ -180,6 +181,7 @@ func (r *Router) revokeOtherUserSessions(username, currentSID string) int {
 		}
 	}
 	r.saveSessionIndex(username, kept)
+	r.faRevokeOtherParents(username, currentSID)
 	return revoked
 }
 

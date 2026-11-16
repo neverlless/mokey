@@ -290,7 +290,9 @@ func (r *Router) AdminUserAction(c fiber.Ctx) error {
 	var err error
 	switch action {
 	case "block":
-		err = r.adminClient.UserDisable(username)
+		if err = r.adminClient.UserDisable(username); err == nil {
+			r.faRevokeUser(username)
+		}
 	case "unblock":
 		err = r.adminClient.UserEnable(username)
 	case "reset":
