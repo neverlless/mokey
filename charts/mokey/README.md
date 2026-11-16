@@ -7,7 +7,7 @@ self-service account management portal.
 
 - A FreeIPA server reachable from the cluster
 - A keytab for the mokey service account (see the
-  [setup docs](../../README.md#setup-and-configuration)), or credentials for
+  [setup docs](../../docs/install.md#1-create-the-service-account-in-freeipa)), or credentials for
   container self-enrollment
 
 ## Quick start

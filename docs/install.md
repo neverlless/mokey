@@ -148,11 +148,10 @@ sudo dpkg -i mokey_VERSION_amd64.deb      # or: sudo rpm -ivh mokey-VERSION-amd6
 sudo systemctl enable --now mokey
 ```
 
-The host must already be enrolled in FreeIPA.
+The host must already be enrolled in FreeIPA. The same page has
+`tar.gz` archives with the plain binary for x86_64 and aarch64.
 
-Releases are signed; the
-[README](https://github.com/neverlless/mokey#verifying-releases) shows how to
-verify checksums, SBOMs, provenance and container signatures.
+Releases are signed; see [Verifying releases](#verifying-releases).
 
 ## Ansible
 
@@ -175,6 +174,46 @@ Without access to COPR, set `mokey_install_method: file` and
 ```
 
 Its README lists every variable.
+
+## Verifying releases
+
+`checksums.txt` in every release is signed with the project's GPG key
+([mokey-release-signing-key.asc](https://github.com/neverlless/mokey/blob/main/docs/mokey-release-signing-key.asc),
+fingerprint `8898 9195 DE87 B333 6A09 E09F 7DD4 FC45 4196 AE11`):
+
+```sh
+gpg --import mokey-release-signing-key.asc
+gpg --verify checksums.txt.sig checksums.txt
+sha256sum --check --ignore-missing checksums.txt
+```
+
+Release archives also carry an SPDX SBOM (`*.sbom.json`) and a GitHub build
+provenance attestation:
+
+```sh
+gh attestation verify mokey-VERSION-linux-x86_64.tar.gz --repo neverlless/mokey
+```
+
+Container images are signed with cosign (keyless, by the release workflow;
+verify with cosign v3 or later) and carry an SBOM and provenance attestation:
+
+```sh
+cosign verify ghcr.io/neverlless/mokey:VERSION \
+    --certificate-identity-regexp '^https://github.com/neverlless/mokey/' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+docker buildx imagetools inspect ghcr.io/neverlless/mokey:VERSION --format '{{ json .SBOM }}'
+```
+
+## SSH keys on enrolled hosts
+
+Users add and remove their SSH public keys in mokey; the keys are stored in
+FreeIPA. For sshd on enrolled hosts to accept them, have it look the keys up
+through sssd in `/etc/ssh/sshd_config` and restart sshd:
+
+```
+AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys
+AuthorizedKeysCommandUser nobody
+```
 
 ## Running more than one replica
 
