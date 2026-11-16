@@ -199,7 +199,11 @@ func (r *Router) RequireLogin(c fiber.Ctx) error {
 			"ip", RemoteIP(c),
 			"error", err,
 		)
-		return r.redirectLogin(c)
+		err := r.redirectLogin(c)
+		if c.Method() == fiber.MethodGet && c.Path() == faContinuePath {
+			r.setLoginNext(c, c.OriginalURL())
+		}
+		return err
 	}
 
 	return c.Next()
@@ -422,6 +426,7 @@ func (r *Router) Authenticate(c fiber.Ctx) error {
 	sess.Set(SessionKeyUsername, username)
 	sess.Set(SessionKeySID, client.SessionID())
 	sess.Set(SessionKeyLoginTime, time.Now().Unix())
+	next := takeLoginNext(sess)
 
 	// capture before Save — fiber releases the session object on Save
 	sid := sess.ID()
@@ -444,6 +449,6 @@ func (r *Router) Authenticate(c fiber.Ctx) error {
 	)
 	r.metrics.totalLogins.Inc()
 
-	c.Set("HX-Redirect", "/")
+	c.Set("HX-Redirect", next)
 	return c.Status(fiber.StatusNoContent).SendString("")
 }
