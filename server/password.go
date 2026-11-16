@@ -732,6 +732,7 @@ func (r *Router) PasswordExpired(c fiber.Ctx) error {
 	sess.Set(SessionKeyUsername, user.Username)
 	sess.Set(SessionKeySID, client.SessionID())
 	sess.Set(SessionKeyLoginTime, time.Now().Unix())
+	next := takeLoginNext(sess)
 
 	// capture before Save — fiber releases the session object on Save
 	sid := sess.ID()
@@ -748,6 +749,6 @@ func (r *Router) PasswordExpired(c fiber.Ctx) error {
 	)
 	r.metrics.totalPasswordResets.Inc()
 
-	c.Set("HX-Redirect", "/")
+	c.Set("HX-Redirect", next)
 	return c.Status(fiber.StatusNoContent).SendString("")
 }
