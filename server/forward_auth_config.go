@@ -49,6 +49,9 @@ func loadForwardAuthConfig() (*forwardAuthConfig, error) {
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
 		return nil, fmt.Errorf("forward_auth.url: an https URL is required, e.g. https://id.example.com")
 	}
+	if (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+		return nil, fmt.Errorf("forward_auth.url: %q must have no path, query or fragment, e.g. https://id.example.com (mokey can't run under a path prefix)", u.String())
+	}
 	c := &forwardAuthConfig{URL: u, Apps: map[string]faApp{}}
 	if c.SessionIdle, err = faDuration("forward_auth.session_idle"); err != nil {
 		return nil, err
