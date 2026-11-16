@@ -582,6 +582,7 @@ helpdesk_inactive_untracked = "FreeIPA is not recording successful logins, so in
 title = "Complete your account"
 intro = "You are creating an account for"
 create_button = "Create account"
+username_unavailable = "This username is no longer available. Ask the administrator who invited you for a new invitation."
 
 [subid]
 title = "Subordinate IDs"

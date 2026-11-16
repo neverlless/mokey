@@ -24,7 +24,7 @@
                         {{ end }}
                         <div class="mb-3">
                             <label for="first" class="form-label">{{ T "common.first_name" }}</label>
-                            <input type="text" class="form-control form-control-lg" name="first" autocomplete="given-name" id="first" value="{{ $.claims.First }}" placeholder="">
+                            <input type="text" class="form-control form-control-lg" name="first" autocomplete="given-name" id="first"{{ if $.presetUsername }} autofocus="autofocus"{{ end }} value="{{ $.claims.First }}" placeholder="">
                         </div>
                         <div class="mb-3">
                             <label for="last" class="form-label">{{ T "common.last_name" }}</label>
