@@ -6,6 +6,9 @@
 - Invites can preset the username and name (#76)
 - Phone numbers are stored in E.164 form without spaces (+380123456789);
   numbers typed with their own country code are split correctly
+- Helpdesk "Inactive" list no longer needs FreeIPA to record logins: last
+  activity is the latest of a mokey sign-in, a password change and a
+  FreeIPA login read from every server
 
 ### Upgrade notes
 

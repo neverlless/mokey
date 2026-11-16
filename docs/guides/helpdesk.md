@@ -14,7 +14,7 @@ find and fix the account without opening the FreeIPA UI.
 | Expiring | The password expires within the next N days. N is the larger of `accounts.password_expiry_warning_days` and the largest `email.password_expiry_reminders` value. | `krbPasswordExpiration` | Reset password (emails a reset link) |
 | Expired | The password expiry date has passed. The user has to set a new password at the next login. | `krbPasswordExpiration` | Reset password |
 | Locked out | Kerberos refuses the account after too many failed logins: the failed count has reached the password policy's maximum, and the lockout time has not run out yet (a lockout time of 0 lasts until an admin unlocks). The user's effective policy is used, including group policies. | `krbLoginFailedCount`, `krbLastFailedAuth`, `pwpolicy` | Clear lockout (`user_unlock`) |
-| Inactive | No successful login for more than `admin.inactive_days` days (default 90). Accounts with no recorded login are not listed. | `krbLastSuccessfulAuth` | Block |
+| Inactive | No sign of activity for more than `admin.inactive_days` days (default 90), see below. | mokey sign-ins, `krbLastPwdChange`, `krbLastSuccessfulAuth` | Block |
 
 "Locked out" is not the same as **Blocked**. An admin sets Blocked (FreeIPA
 `nsAccountLock`, "disabled"). A blocked account shows a *Blocked* badge in
@@ -24,22 +24,46 @@ Actions use the same admin routes as the Users list. They are CSRF-protected
 and recorded in the audit log ("admin user action", with the admin's name).
 Each list shows the first 100 accounts.
 
-## Inactive accounts need FreeIPA to record logins
+## How inactivity is measured
 
-FreeIPA does not record successful logins by default. On install it sets
-`KDC:Disable Last Success` in the server configuration, so
-`krbLastSuccessfulAuth` stays empty. The Inactive list then shows a note in
-place of the list, because an empty list would look like "nobody is
-inactive". To turn recording on:
+An account's last activity is the latest of:
+
+- **mokey sign-in**: every successful sign-in to the portal and every
+  OIDC login mokey accepts for Hydra. mokey stores the time itself, so
+  this works with FreeIPA's default configuration.
+- **Password change**: `krbLastPwdChange`, which FreeIPA always keeps and
+  replicates.
+- **FreeIPA login**: `krbLastSuccessfulAuth`, when FreeIPA records it (see
+  below).
+
+Each row shows the date and the source it came from. Accounts with no
+activity from any source are not listed; the view counts them in a separate
+line. They are usually new accounts or accounts used only over SSH.
+
+### Recording FreeIPA logins (optional)
+
+Users who only sign in over SSH or with `kinit` never touch mokey, so they
+show up only through FreeIPA logins. FreeIPA does not record them by
+default: on install it sets `KDC:Disable Last Success`. While it is set,
+the Inactive view shows a hint with the command to turn recording on:
 
 ```sh
 ipa config-mod --delattr ipaconfigstring="KDC:Disable Last Success"
 ```
 
-Logins are recorded from then on, so the list fills in over the following
-weeks. Recording adds a write to the directory on every successful
-Kerberos login. On large or busy deployments, check that the replicas can
-handle the extra writes.
+Logins are recorded from then on. Recording adds a directory write on
+every successful Kerberos login; on large or busy deployments, check that
+the servers can handle it. To turn it off again:
+
+```sh
+ipa config-mod --addattr ipaconfigstring="KDC:Disable Last Success"
+```
+
+`krbLastSuccessfulAuth` is not replicated: each FreeIPA server keeps the
+logins it handled. When recording is on, mokey reads it from every server
+listed as an IPA master in `ipa config-show` and takes the latest value,
+logging in to each with the service account's keytab. A server it cannot
+reach is skipped, and the view names it ("could not read logins from").
 
 ## Limits
 
