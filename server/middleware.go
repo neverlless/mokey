@@ -30,12 +30,16 @@ func SecureHeaders(c fiber.Ctx) error {
 
 	c.Set(fiber.HeaderXContentTypeOptions, "nosniff")
 	c.Set(fiber.HeaderXFrameOptions, "DENY")
-	c.Set(fiber.HeaderContentSecurityPolicy,
-		"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-"+nonce+"'")
+	c.Set(fiber.HeaderContentSecurityPolicy, contentSecurityPolicy(nonce, ""))
 
 	// Direct TLS or an X-Forwarded-Proto from a trusted proxy
 	if c.Scheme() == "https" {
 		c.Set(fiber.HeaderStrictTransportSecurity, "max-age=31536000")
+	}
+
+	// forward-auth pages on app hosts load these cross-origin with SRI
+	if strings.HasPrefix(c.Path(), "/static/") {
+		c.Set(fiber.HeaderAccessControlAllowOrigin, "*")
 	}
 
 	if !strings.HasPrefix(c.Path(), "/static") {
@@ -43,6 +47,16 @@ func SecureHeaders(c fiber.Ctx) error {
 		c.Set("Pragma", "no-cache")
 	}
 	return c.Next()
+}
+
+// contentSecurityPolicy also lets assets load from assetOrigin, for mokey
+// pages served on another host
+func contentSecurityPolicy(nonce, assetOrigin string) string {
+	if assetOrigin == "" {
+		return "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-" + nonce + "'"
+	}
+	return "default-src 'self'; img-src 'self' data: " + assetOrigin + "; style-src 'self' 'unsafe-inline' " + assetOrigin +
+		"; font-src 'self' " + assetOrigin + "; script-src 'self' 'nonce-" + nonce + "'"
 }
 
 func NotFoundHandler(c fiber.Ctx) error {

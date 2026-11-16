@@ -10,12 +10,14 @@
     </p>
 
     <ul class="nav col-md-4 justify-content-end list-unstyled d-flex align-items-center">
+      {{ if not $.asset_base }}
       <li class="ms-3">
         <button type="button" class="theme-toggle" id="theme-toggle"
                 aria-label="{{ T "common.toggle_theme" }}" title="{{ T "common.toggle_theme" }}">
           <i class="fa fa-circle-half-stroke fa-lg" aria-hidden="true"></i>
         </button>
       </li>
+      {{ end }}
       {{ with ConfigValueString "site.help_url" }}
       <li class="ms-3"><a class="text-muted" href="{{ . }}" aria-label="{{ T "common.help" }}" title="{{ T "common.help" }}"><i class="fa fa-circle-question fa-lg"></i></a></li>
       {{ end }}
@@ -25,10 +27,12 @@
 {{ if $.shell }}</div></div>{{ end }}
 <div class="mokey-toasts toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite" aria-atomic="false"></div>
 
+{{ if not $.asset_base }}
 <script src="/static/js/sweetalert2.min.js?v=20260818b" integrity="sha384-MFQHLECN7JsqezT2nLwWieqtG6G9yQWxkJh31QjDyO2dhpkHSo6vQYGDcjMVgDlc" crossorigin="anonymous"></script>
 <script src="/static/js/htmx.min.js?v=20260818b" integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq" crossorigin="anonymous"></script>
 <script src="/static/js/hyperscript.min.js?v=20260818b" integrity="sha384-5yQ5JTatiFEgeiEB4mfkRI3oTGtaNpbJGdcciZ4IEYFpLGt8yDsGAd7tKiMwnX9b" crossorigin="anonymous"></script>
 <script src="/static/js/bootstrap.bundle.min.js?v=20260818b" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 <script src="/static/js/site.js?v=20261116a"></script>
+{{ end }}
 </body>
 </html>

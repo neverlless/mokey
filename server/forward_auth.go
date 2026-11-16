@@ -44,6 +44,36 @@ func (r *Router) faAppHost(c fiber.Ctx) (faApp, bool) {
 	return r.forwardAuth.App(strings.ToLower(c.Host()))
 }
 
+// faOnAppHost marks a response the browser shows on an app's host: mokey's
+// assets then load from forward_auth.url, and the CSP allows that origin
+func (r *Router) faOnAppHost(c fiber.Ctx) {
+	origin := (&url.URL{Scheme: r.forwardAuth.URL.Scheme, Host: r.forwardAuth.URL.Host}).String()
+	c.Locals("asset_base", origin)
+	nonce, _ := c.Locals("cspNonce").(string)
+	c.Set(fiber.HeaderContentSecurityPolicy, contentSecurityPolicy(nonce, origin))
+}
+
+// faParentValid applies isLoggedIn's session checks, without the FreeIPA
+// call, to the mokey session a code was issued from
+func (r *Router) faParentValid(c fiber.Ctx, sid, username string) bool {
+	sess, err := r.sessionStore.GetByID(c, sid)
+	if err != nil {
+		return false
+	}
+	defer sess.Release()
+	name, _ := sess.Get(SessionKeyUsername).(string)
+	authed, _ := sess.Get(SessionKeyAuthenticated).(bool)
+	if !authed || name == "" || !strings.EqualFold(name, username) {
+		return false
+	}
+	marker, err := r.storage.Get(PasswordChangedPrefix + name)
+	if err != nil {
+		return false
+	}
+	loginTime, _ := sess.Get(SessionKeyLoginTime).(int64)
+	return !sessionInvalidatedByPasswordChange(loginTime, marker)
+}
+
 func (r *Router) faPage(c fiber.Ctx, status int, icon, title, message string, vars fiber.Map) error {
 	if vars == nil {
 		vars = fiber.Map{}
@@ -116,6 +146,7 @@ func faNavigation(c fiber.Ctx) bool {
 
 func (r *Router) ForwardAuthVerify(c fiber.Ctx) error {
 	c.Set(fiber.HeaderCacheControl, "no-store")
+	r.faOnAppHost(c)
 	result := r.metrics.forwardAuthRequests.WithLabelValues
 
 	orig, err := resolveOriginal(c, c.IsProxyTrusted())
@@ -131,6 +162,7 @@ func (r *Router) ForwardAuthVerify(c fiber.Ctx) error {
 
 	s, err := r.faLoadSession(c.Cookies(faSessionCookie))
 	if err != nil {
+		slog.Error("Forward-auth verify failed to read the app session", "app", app.Host, "err", err)
 		return err
 	}
 	if s == nil || s.Host != app.Host {
@@ -146,6 +178,7 @@ func (r *Router) ForwardAuthVerify(c fiber.Ctx) error {
 	if now := time.Now(); now.Sub(s.CheckedAt) >= r.forwardAuth.Recheck {
 		d, err := r.faAccess(s.Username, app)
 		if err != nil {
+			slog.Error("Forward-auth verify failed to recheck access", "username", s.Username, "app", app.Host, "err", err)
 			return err
 		}
 		if !d.Allowed {
@@ -187,6 +220,7 @@ func (r *Router) ForwardAuthStart(c fiber.Ctx) error {
 	if !ok {
 		return NotFoundHandler(c)
 	}
+	r.faOnAppHost(c)
 	raw := c.Query("rd")
 	if raw == "" {
 		raw = "https://" + app.Host + "/"
@@ -246,6 +280,10 @@ func (r *Router) ForwardAuthCallback(c fiber.Ctx) error {
 	if !ok {
 		return NotFoundHandler(c)
 	}
+	r.faOnAppHost(c)
+	// the nonce serves one attempt, whatever its outcome
+	nonce := c.Cookies(faNonceCookie)
+	faCookie(c, faNonceCookie, "", 0)
 	code, err := r.faTakeCode(c.Query("code"))
 	if err != nil {
 		return err
@@ -260,14 +298,13 @@ func (r *Router) ForwardAuthCallback(c fiber.Ctx) error {
 	if p == nil || p.Host != app.Host {
 		return r.faExpired(c, &app)
 	}
-	nonce := c.Cookies(faNonceCookie)
 	if nonce == "" || subtle.ConstantTimeCompare([]byte(nonce), []byte(p.Nonce)) != 1 {
 		slog.Warn("Forward-auth callback without the browser's sign-in nonce", "username", code.Username, "app", app.Host, "ip", RemoteIP(c))
 		return r.faPage(c, fiber.StatusForbidden, "fa-lock", TC(c, "forward_auth.expired_title"),
 			fmt.Sprintf(TC(c, "forward_auth.expired_open_again"), faAppName(app)), nil)
 	}
 	// a code issued just before sign-out must not become an app session
-	if !r.sessionAlive(code.ParentSID) {
+	if !r.faParentValid(c, code.ParentSID, code.Username) {
 		return r.faExpired(c, &app)
 	}
 	rd, ok := validRedirect(p.RD, app.Host)
@@ -291,7 +328,6 @@ func (r *Router) ForwardAuthCallback(c fiber.Ctx) error {
 		return err
 	}
 	faCookie(c, faSessionCookie, s.ID, r.forwardAuth.SessionMax)
-	faCookie(c, faNonceCookie, "", 0)
 	slog.Info("AUDIT forward-auth sign-in",
 		"username", s.Username,
 		"app", app.Host,
