@@ -107,17 +107,28 @@ func TestLoginBlockedUser(t *testing.T) {
 	fake.AddUser("walter", ipatest.User{Password: "Secret123!"})
 	viper.Set("accounts.block_users", []string{"walter"})
 
-	tc := newTestClient(t, app)
-	tc.getCSRF("/auth/login")
+	// FreeIPA accepts a login in any case, so the block list must too
+	for _, typed := range []string{"walter", "Walter", "WALTER"} {
+		tc := newTestClient(t, app)
+		tc.getCSRF("/auth/login")
 
-	resp := tc.postForm("/auth/login", url.Values{"username": {"walter"}}, nil)
-	assert.Equal(fiber.StatusUnauthorized, resp.StatusCode)
+		resp := tc.postForm("/auth/login", url.Values{"username": {typed}}, nil)
+		assert.Equal(fiber.StatusUnauthorized, resp.StatusCode, typed)
 
-	resp = tc.postForm("/auth/authenticate", url.Values{
-		"username": {"walter"},
-		"password": {"Secret123!"},
-	}, nil)
-	assert.Equal(fiber.StatusUnauthorized, resp.StatusCode)
+		resp = tc.postForm("/auth/authenticate", url.Values{
+			"username": {typed},
+			"password": {"Secret123!"},
+		}, nil)
+		assert.Equal(fiber.StatusUnauthorized, resp.StatusCode, typed)
+	}
+}
+
+func TestIsBlockedIgnoresCase(t *testing.T) {
+	viper.Set("accounts.block_users", []string{"Admin"})
+	t.Cleanup(func() { viper.Set("accounts.block_users", nil) })
+	assert.True(t, isBlocked("admin"))
+	assert.True(t, isBlocked("ADMIN"))
+	assert.False(t, isBlocked("administrator"))
 }
 
 func TestLoginLockedUser(t *testing.T) {

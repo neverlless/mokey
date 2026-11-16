@@ -42,6 +42,8 @@
   row with labels instead of hiding them under "More details"
 - Admin People and Audit log pages warn when `storage.driver` is `memory`:
   the audit log and activity data are lost on restart
+- Security: `accounts.block_users` ignores case. FreeIPA accepts a login in
+  any case, so a blocked `admin` could sign in as `Admin`
 
 ### Upgrade notes
 
