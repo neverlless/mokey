@@ -104,6 +104,10 @@ func validateUsername(user *ipa.User) error {
 		}
 	}
 
+	return validateUsernameFormat(user)
+}
+
+func validateUsernameFormat(user *ipa.User) error {
 	if !usernameRegx.MatchString(user.Username) {
 		return fmt.Errorf("%w: %s", ErrInvalidUsername, user.Username)
 	}

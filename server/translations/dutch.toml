@@ -582,6 +582,7 @@ helpdesk_inactive_untracked = "FreeIPA registreert geen geslaagde aanmeldingen, 
 title = "Account voltooien"
 intro = "U maakt een account aan voor"
 create_button = "Account aanmaken"
+username_unavailable = "Deze gebruikersnaam is niet meer beschikbaar. Vraag de beheerder die je heeft uitgenodigd om een nieuwe uitnodiging."
 
 [subid]
 title = "Subordinate ID's"

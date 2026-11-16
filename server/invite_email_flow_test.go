@@ -3,6 +3,7 @@ package server
 import (
 	"io"
 	"mime/quotedprintable"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -283,4 +284,62 @@ func TestInviteWithoutUsernameUnchanged(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("kim@example.com", claims.Email)
 	assert.Equal("", claims.First)
+}
+
+func acceptPresetInvite(t *testing.T, app *fiber.App, token, posted string) (*http.Response, string) {
+	t.Helper()
+	guest := newTestClient(t, app)
+	guest.getCSRF("/auth/invite/" + token)
+	resp := guest.postForm("/auth/invite/"+token, url.Values{
+		"username": {posted}, "first": {"Kim"}, "last": {"Wexler"},
+		"password": {"NewSecret456!"}, "password2": {"NewSecret456!"},
+	}, nil)
+	return resp, readBody(t, resp)
+}
+
+func TestInvitePresetWinsOverUsernameFromEmail(t *testing.T) {
+	assert := assert.New(t)
+	tc, router, fake, sink := inviteAdminClient(t)
+
+	// issued with the flag on
+	viper.Set("accounts.username_from_email", true)
+	tc.postForm("/admin/invite", url.Values{"email": {"kim@example.com"}, "username": {"kwexler"}}, htmx)
+	assert.Equal(1, sink.count())
+	token := inviteTokenFromMail(t, sink.all()[0])
+	resp, _ := acceptPresetInvite(t, tc.app, token, "other")
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(fakeUser(fake, "kwexler"))
+	assert.Nil(fakeUser(fake, "kim"))
+
+	// issued with the flag off, accepted with it on
+	viper.Set("accounts.username_from_email", false)
+	token, err := issueToken("lee@example.com", &Token{Username: "leew", Email: "lee@example.com"}, TokenInvite, router.storage)
+	assert.NoError(err)
+	viper.Set("accounts.username_from_email", true)
+	resp, _ = acceptPresetInvite(t, tc.app, token, "")
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(fakeUser(fake, "leew"))
+}
+
+func TestInvitePresetUsernameTakenBeforeAccept(t *testing.T) {
+	assert := assert.New(t)
+	tc, router, fake, _ := inviteAdminClient(t)
+	token, err := issueToken("kim@example.com", &Token{Username: "taken", Email: "kim@example.com"}, TokenInvite, router.storage)
+	assert.NoError(err)
+	fake.AddUser("taken", ipatest.User{Password: "Secret123!"})
+
+	resp, body := acceptPresetInvite(t, tc.app, token, "taken")
+	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
+	assert.Contains(body, T("invite.username_unavailable"))
+}
+
+func TestAdminInviteFormFieldsInsideForm(t *testing.T) {
+	assert := assert.New(t)
+	tc, _, _, _ := inviteAdminClient(t)
+	body := readBody(t, tc.get("/admin/people", htmx))
+	form := body[strings.Index(body, "<form"):strings.Index(body, "</form>")]
+	for _, n := range []string{`name="email"`, `name="username"`, `name="first"`, `name="last"`} {
+		assert.Contains(form, n)
+	}
+	assert.Contains(body, `data-hx-include="#invite-email, #invite-more"`)
 }

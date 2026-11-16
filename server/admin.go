@@ -71,9 +71,9 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 	username := strings.TrimSpace(c.FormValue("username"))
 	first := strings.TrimSpace(c.FormValue("first"))
 	last := strings.TrimSpace(c.FormValue("last"))
-	if username != "" && !viper.GetBool("accounts.username_from_email") {
+	if username != "" {
 		preset := &ipa.User{Username: username, Email: email}
-		if err := validateUsername(preset); err != nil {
+		if err := validateUsernameFormat(preset); err != nil {
 			vars["message"] = TC(c, "admin.invite_username_invalid")
 			return c.Render("admin-people.html", vars)
 		}
@@ -82,8 +82,6 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 			vars["message"] = TC(c, "admin.invite_username_taken")
 			return c.Render("admin-people.html", vars)
 		}
-	} else {
-		username = ""
 	}
 	if len(first) > 150 || len(last) > 150 {
 		vars["message"] = TC(c, "admin.invite_name_too_long")
@@ -154,7 +152,7 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 	user.First = strings.TrimSpace(c.FormValue("first"))
 	user.Last = strings.TrimSpace(c.FormValue("last"))
 
-	if err := r.accountCreate(requestLanguage(c), user, c.FormValue("password"), c.FormValue("password2"), true); err != nil {
+	if err := r.accountCreateWith(requestLanguage(c), user, c.FormValue("password"), c.FormValue("password2"), true, presetInviteUsername(claims) != ""); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 

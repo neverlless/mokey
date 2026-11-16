@@ -183,7 +183,20 @@ func (r *Router) AccountCreate(c fiber.Ctx) error {
 // FreeIPA. When verified is true (invited users whose email is already
 // proven) the account is enabled immediately and skips email verification.
 func (r *Router) accountCreate(lang string, user *ipa.User, password, passwordConfirm string, verified bool) error {
-	if err := validateUsername(user); err != nil {
+	return r.accountCreateWith(lang, user, password, passwordConfirm, verified, false)
+}
+
+// accountCreateWith with presetUsername skips the email-derived username
+// generation: an admin fixed the name on the invite and it must win.
+func (r *Router) accountCreateWith(lang string, user *ipa.User, password, passwordConfirm string, verified, presetUsername bool) error {
+	if presetUsername {
+		if err := validateEmail(user, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
+			return err
+		}
+		if err := validateUsernameFormat(user); err != nil {
+			return err
+		}
+	} else if err := validateUsername(user); err != nil {
 		return err
 	}
 
@@ -228,6 +241,9 @@ func (r *Router) accountCreate(lang string, user *ipa.User, password, passwordCo
 	if err != nil {
 		switch {
 		case errors.Is(err, ipa.ErrUserExists):
+			if presetUsername {
+				return errors.New(TL(lang, "invite.username_unavailable"))
+			}
 			return fmt.Errorf("Username already exists: %s", user.Username)
 		case errors.Is(err, ipa.ErrPasswordPolicy):
 			// UserAddWithPassword adds the user first and sets the password
