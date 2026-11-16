@@ -190,7 +190,7 @@ command goes out.
 | `tls_min_version` | string | `"1.2"` | Minimum TLS version: `1.2` or `1.3`. |
 | `tls_ciphers` | list | Go defaults | Restrict TLS 1.2 cipher suites, using [Go crypto/tls names](https://pkg.go.dev/crypto/tls#pkg-constants). TLS 1.3 suites are not configurable. |
 | `secure_cookies` | bool | `true` | Set the `Secure` flag on cookies. Disable only when serving plain HTTP behind nothing. |
-| `csrf_secret` | string | auto-generated | Secret for CSRF tokens. Auto-generated at startup when blank, with a warning — set it so sessions survive restarts. Required with `storage.driver = "redis"`, where every replica must use the same value; mokey refuses to start without it. |
+| `csrf_secret` | string | auto-generated | Seed for generating CSRF tokens; a token is checked against the copy in the session, not against this secret. Auto-generated at startup when blank, with a warning. Required with `storage.driver = "redis"`, so no replica runs on a generated one; mokey refuses to start without it. |
 | `session_idle_timeout` | int | `900` | Session inactivity timeout (seconds). |
 | `read_timeout` | int | `5` | HTTP read timeout (seconds). |
 | `write_timeout` | int | `5` | HTTP write timeout (seconds). |
@@ -245,8 +245,9 @@ replica that cannot take a lock within 6 seconds logs a warning and goes ahead
 without it. Captchas are stored as `captcha-<id>`. Each background sweep
 takes a lease (`lease-<sweep>`, held for 9/10 of its interval) before it runs;
 the other replicas, or a replica that cannot reach Redis, skip that run. Set
-`server.csrf_secret` and `email.token_secret` to the same values on every
-replica: mokey does not start on redis without them.
+`email.token_secret` (and `server.csrf_secret`) to the same values on every
+replica, so links mailed by one replica work on all: mokey does not start on
+redis without them.
 `memory` and `sqlite3` are for a single mokey process: one sqlite3
 file shared by several replicas is not supported.
 

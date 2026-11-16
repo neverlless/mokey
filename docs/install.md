@@ -83,8 +83,8 @@ At minimum set:
 - `site.keytab` (and `site.ktuser` if your principal is not `mokeyapp`)
 - the `[email]` SMTP settings and `email.from`; `email.base_url` when mokey
   runs behind a proxy
-- `email.token_secret` and `server.csrf_secret`, so links and sessions survive
-  a restart
+- `email.token_secret`, so mailed links survive a restart, and
+  `server.csrf_secret`
 - a persistent `[storage]` driver: `sqlite3` for one instance, `redis` for
   several
 
@@ -182,9 +182,9 @@ Use `storage.driver = "redis"` so all replicas share sessions, tokens and
 request queues. `memory` and `sqlite3` are per instance. With `memory`, every
 restart logs everyone out and drops pending group and OTP recovery requests.
 
-With `redis`, set `server.csrf_secret` and `email.token_secret` to the same
-values on every replica; mokey refuses to start without them. Otherwise a
-reset or invite link mailed by one replica, or a form served by it, fails on
-another. Captchas are kept in Redis too, so no sticky sessions are needed.
+With `redis`, set `email.token_secret` and `server.csrf_secret` to the same
+values on every replica; mokey refuses to start without them. A generated
+`token_secret` differs per replica, so a reset or invite link mailed by one
+replica would fail on another. Captchas are kept in Redis too, so no sticky sessions are needed.
 The background sweeps (password expiry reminders, membership expiry, Hydra
 consent sweep) run on one replica per interval.
