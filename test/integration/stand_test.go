@@ -43,6 +43,9 @@ const (
 	faAppURL = "https://app.mokey.test"
 	// the group test/forward-auth/mokey.toml gates the app on
 	faGroup = "fa-it-app"
+
+	lcPerm = "Mokey Modify Principal Expiration"
+	lcPriv = "Mokey Expiry Write"
 )
 
 func envOr(k, def string) string {
@@ -129,6 +132,18 @@ func setupStand() error {
 	prio := fmt.Sprint(100 + time.Now().UnixNano()%9000)
 	if out, err := ipaCmd("", "pwpolicy-add", policyGroup, "--priority="+prio, "--minlife=0", "--minlength=12", "--minclasses=3"); err != nil {
 		return fmt.Errorf("%w: %s", err, out)
+	}
+	// docs/install.md: mokey's role writes account expiry (lifecycle tests).
+	// Kept between runs, like the stand's other permissions.
+	for _, args := range [][]string{
+		{"permission-add", lcPerm, "--type=user", "--right=write", "--attrs=krbprincipalexpiration"},
+		{"privilege-add", lcPriv, "--desc=Write account expiry"},
+		{"privilege-add-permission", lcPriv, "--permissions=" + lcPerm},
+		{"role-add-privilege", "Mokey User Manager", "--privileges=" + lcPriv},
+	} {
+		if out, err := ipaCmd("", args...); err != nil && !strings.Contains(out, "already") {
+			return fmt.Errorf("%w: %s", err, out)
+		}
 	}
 	if faProxy != "" {
 		if out, err := ipaCmd("", "group-add", faGroup, "--desc=mokey forward-auth tests"); err != nil && !strings.Contains(out, "already exists") {
