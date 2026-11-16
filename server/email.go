@@ -217,7 +217,7 @@ func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, 
 
 // SendInviteEmail sends an account invitation to an email address. The
 // recipient completes their profile via the /auth/invite/:token link.
-func (e *Emailer) SendInviteEmail(email, username, first, last string, ctx fiber.Ctx) error {
+func (e *Emailer) SendInviteEmail(email, username, first, last, inviter string, ctx fiber.Ctx) error {
 	recipient := &ipa.User{Email: email, First: first}
 	lang := emailLanguage(recipient, ctx)
 	if username == "" {
@@ -231,6 +231,7 @@ func (e *Emailer) SendInviteEmail(email, username, first, last string, ctx fiber
 	vars := map[string]interface{}{
 		"link":         fmt.Sprintf("%s/auth/invite/%s", BaseURL(ctx), token),
 		"link_expires": linkExpires(lang),
+		"inviter":      inviter,
 	}
 	if username != email {
 		vars["preset_username"] = username
@@ -484,22 +485,39 @@ func (e *Emailer) quotedBody(body []byte) ([]byte, error) {
 // the username list) that's worth surfacing directly in Slack rather than
 // pointing the user at their email.
 func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ipa.User) string {
+	site := slackText(data["site_name"])
 	switch tmpl {
 	case "password-reset":
 		return fmt.Sprintf(
 			"[%s] (<%s|%s>)\n\n****************\nHi %s,\n****************\n\nYou recently requested to reset your password for your [%s] account. Use the link below to reset it. This password reset is only valid for the next %s.\n\nReset your password: <%s|Reset Link>\n",
-			data["site_name"], data["homepage"], data["site_name"], user.First, data["site_name"], data["link_expires"], data["link"],
+			site, data["homepage"], site, slackText(user.First), site, data["link_expires"], data["link"],
 		)
+	case "invite":
+		return fmt.Sprintf("%s invited you to %s. This invitation is valid for the next %s.\n\nCreate your account: <%s|Invitation Link>",
+			slackText(data["inviter"]), site, data["link_expires"], data["link"])
+	case "account-verify", "email-change", "otprecovery-confirm":
+		return fmt.Sprintf("Notification from %s: %s\n\nThis link is only valid for the next %s.\n<%s|Open link>",
+			site, slackText(subject), data["link_expires"], data["link"])
 	case "account-updated":
 		return "Your password has been reset successfully."
 	case "password-elsewhere":
-		return fmt.Sprintf("Notification from %s: %s\n\n%s", data["site_name"], subject, data["reason"])
+		return fmt.Sprintf("Notification from %s: %s\n\n%s", site, slackText(subject), slackText(data["reason"]))
 	case "username-reminder":
 		usernames, _ := data["usernames"].([]string)
-		return fmt.Sprintf("Notification from %s: %s\n\n%s", data["site_name"], subject, strings.Join(usernames, "\n"))
+		return fmt.Sprintf("Notification from %s: %s\n\n%s", site, slackText(subject), slackText(strings.Join(usernames, "\n")))
 	default:
-		return fmt.Sprintf("Notification from %s: %s", data["site_name"], subject)
+		return fmt.Sprintf("Notification from %s: %s", site, slackText(subject))
 	}
+}
+
+// slackReplacer neutralises Slack control characters: & < > start entities
+// and mentions, and a zero-width space after *, _, ~ and ` stops mrkdwn
+// formatting, which Slack gives no other way to escape.
+var slackReplacer = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;",
+	"*", "*\u200b", "_", "_\u200b", "~", "~\u200b", "`", "`\u200b")
+
+func slackText(v interface{}) string {
+	return slackReplacer.Replace(fmt.Sprint(v))
 }
 
 func (e *Emailer) sendEmail(user *ipa.User, ctx fiber.Ctx, lang, subject, tmpl string, data map[string]interface{}) error {
@@ -782,4 +800,11 @@ func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("unexpected SMTP LOGIN challenge: %q", fromServer)
+}
+
+func inviterName(u *ipa.User) string {
+	if u.DisplayName != "" {
+		return u.DisplayName
+	}
+	return u.Username
 }
