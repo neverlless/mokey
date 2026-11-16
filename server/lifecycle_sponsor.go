@@ -126,3 +126,34 @@ func (r *Router) SponsoredExtend(c fiber.Ctx) error {
 	r.groupsVars(c, vars)
 	return c.Render("groups-list.html", vars)
 }
+
+// accountExpiryVars adds the user's expiry facts and, inside the first
+// reminder window, the warning banner. The sponsor is looked up only when
+// there is an expiry to show; a failed lookup hides the sponsor parts.
+func (r *Router) accountExpiryVars(c fiber.Ctx, user *ipa.User, vars fiber.Map) {
+	if user.PrincipalExpire.IsZero() {
+		return
+	}
+	lang := requestLanguage(c)
+	left := time.Until(user.PrincipalExpire)
+	vars["account_expires"] = user.PrincipalExpire
+	if left > 0 {
+		days := int(math.Ceil(left.Hours() / 24))
+		vars["account_expires_days"] = days
+		if r.lifecycle.on() && len(r.lifecycle.Reminders) > 0 && left <= time.Duration(r.lifecycle.Reminders[0])*24*time.Hour {
+			vars["account_expires_warn"] = true
+			vars["account_expires_in"] = fmt.Sprintf(TL(lang, "groups.sponsored_in"), formatUnit(lang, "day", days))
+		}
+	}
+
+	uid, err := userSponsor(r.adminClient, user.Username)
+	if err == nil && uid != "" {
+		var s *ipa.User
+		if s, err = r.adminClient.UserShow(uid); err == nil {
+			vars["sponsor_uid"], vars["sponsor_name"] = uid, displayName(s)
+		}
+	}
+	if err != nil {
+		slog.Warn("Failed to look up the account sponsor", "username", user.Username, "err", err)
+	}
+}

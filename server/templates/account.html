@@ -149,6 +149,18 @@
     <dt>{{ T "account.password_expires" }}</dt>
     <dd id="password-expires">{{ if not .user.PasswdExpire.IsZero }}{{ TimeAgo .user.PasswdExpire }}{{ else }}{{ T "account.never" }}{{ end }}</dd>
   </div>
+  {{ if .account_expires }}
+  <div class="mokey-row">
+    <dt>{{ T "account.valid_until" }}</dt>
+    <dd id="account-expires">{{ Day .account_expires }}{{ if .account_expires_warn }} <span class="mokey-pill is-warn">{{ .account_expires_in }}</span>{{ end }}</dd>
+  </div>
+  {{ end }}
+  {{ if .sponsor_uid }}
+  <div class="mokey-row">
+    <dt>{{ T "account.sponsor" }}</dt>
+    <dd id="account-sponsor">{{ .sponsor_name }} <span class="mokey-mono text-muted">{{ .sponsor_uid }}</span></dd>
+  </div>
+  {{ end }}
   <div class="mokey-row">
     <dt>{{ T "account.groups" }}</dt>
     <dd class="mokey-chips">{{ range $g := .user.Groups }}<span class="mokey-chip">{{ $g }}</span>{{ else }}<span class="text-muted">{{ T "account.no_groups" }}</span>{{ end }}</dd>
