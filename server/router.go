@@ -95,6 +95,7 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	}
 
 	r.adminClient.StickySession(false)
+	r.warnMissingGroups()
 
 	r.sessionStore = session.NewStore(session.Config{
 		Storage:        storage,

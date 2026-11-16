@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 	"time"
@@ -89,6 +90,31 @@ func loadForwardAuthConfig() (*forwardAuthConfig, error) {
 		c.Apps[a.Host] = a
 	}
 	return c, nil
+}
+
+// warnMissingGroups logs groups that no FreeIPA group answers to: a typo
+// would otherwise silently lock everyone out of the app.
+func (r *Router) warnMissingGroups() {
+	if r.forwardAuth == nil {
+		return
+	}
+	checked := map[string]bool{}
+	for _, a := range r.forwardAuth.Apps {
+		for _, g := range a.Groups {
+			if checked[g] {
+				continue
+			}
+			if _, err := r.adminClient.GroupShow(g); err != nil {
+				if entryGone(err) {
+					slog.Warn("forward_auth: group does not exist in FreeIPA", "app", a.Host, "group", g)
+					continue
+				}
+				slog.Warn("forward_auth: could not check that the app groups exist in FreeIPA", "err", err)
+				return
+			}
+			checked[g] = true
+		}
+	}
 }
 
 func containsString(s []string, v string) bool {
