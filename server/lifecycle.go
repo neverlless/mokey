@@ -17,6 +17,9 @@ const (
 	lcRemindPrefix    = "lc-remind-"
 	lcHeldSample      = 20
 
+	// FreeIPA ACIError: the bind lacks a permission
+	ipaACIErrorCode = 2100
+
 	lcAuditSet      = "AUDIT lifecycle expiry set"
 	lcAuditExtended = "AUDIT lifecycle expiry extended"
 )
@@ -47,14 +50,18 @@ func (r *Router) lifecycleSweep(now time.Time) {
 	if !r.lock.lease("lifecycle", lifecycleInterval) {
 		return
 	}
-	if _, _, err := r.lifecycleRun(now, false); err != nil {
+	if _, _, err := r.lifecycleRun(now, ""); err != nil {
 		slog.Error("Account lifecycle sweep could not list users", "err", err)
 	}
 }
 
-// lifecycleRun applies the planned expiry changes and sends reminders.
-// Without force a plan larger than max_changes_per_run is held, not applied.
-func (r *Router) lifecycleRun(now time.Time, force bool) (applied int, held *lcHeld, err error) {
+// lifecycleRun applies the planned expiry changes. by "" is the sweep: it
+// holds a plan larger than max_changes_per_run and sends reminders. An admin
+// uid applies the whole plan in their name and sends no reminders.
+func (r *Router) lifecycleRun(now time.Time, by string) (applied int, held *lcHeld, err error) {
+	if !r.lifecycle.on() {
+		return 0, nil, nil
+	}
 	r.lifecycleMu.Lock()
 	defer r.lifecycleMu.Unlock()
 
@@ -90,15 +97,17 @@ func (r *Router) lifecycleRun(now time.Time, force bool) (applied int, held *lcH
 		slog.Warn("Account lifecycle sweep got a truncated user list, skipping expiry changes this run; raise the FreeIPA search size limit",
 			"users", len(entries))
 	} else {
-		applied, held = r.lifecycleApply(accts, now, force)
+		applied, held = r.lifecycleApply(accts, now, by)
 	}
-	r.lifecycleRemind(accts, users, now)
+	if by == "" {
+		r.lifecycleRemind(accts, users, now)
+	}
 	return applied, held, nil
 }
 
-func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, force bool) (int, *lcHeld) {
+func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, by string) (int, *lcHeld) {
 	changes, _ := planLifecycle(accts, now, r.lifecycle)
-	if len(changes) > r.lifecycle.MaxChanges && !force {
+	if len(changes) > r.lifecycle.MaxChanges && by == "" {
 		held := &lcHeld{Count: len(changes), At: now, Sample: changes[:min(len(changes), lcHeldSample)]}
 		slog.Warn("Account lifecycle changes held: more than lifecycle.max_changes_per_run, apply them from the admin Lifecycle page",
 			"changes", len(changes),
@@ -120,9 +129,12 @@ func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, force bool) (i
 		return 0, nil
 	}
 
-	// more lines than webhook queues hold: webhooks get the summary only
+	if by == "" {
+		by = "system"
+	}
+	// an Apply past the brake: webhooks get the summary only
 	var bulk []any
-	if len(changes) > webhookQueueSize/2 {
+	if len(changes) > r.lifecycle.MaxChanges {
 		bulk = []any{"bulk", true}
 	}
 	idx := make(map[string]int, len(accts))
@@ -131,7 +143,7 @@ func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, force bool) (i
 	}
 	applied, failed := 0, 0
 	for _, c := range changes {
-		if err := r.writeExpiry(c.UID, c.To, "system", lcAuditSet, append([]any{"reason", c.Reason, "from", c.From}, bulk...)...); err != nil {
+		if err := r.writeExpiry(c.UID, c.To, by, lcAuditSet, append([]any{"reason", c.Reason, "from", c.From}, bulk...)...); err != nil {
 			failed++
 			continue
 		}
@@ -139,7 +151,7 @@ func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, force bool) (i
 		// reminders below see the new date
 		accts[idx[c.UID]].Expires = c.To
 	}
-	slog.Info("AUDIT lifecycle run applied", "by", "system", "count", applied, "failed", failed, "planned", len(changes))
+	slog.Info("AUDIT lifecycle run applied", "by", by, "count", applied, "failed", failed, "planned", len(changes))
 	return applied, nil
 }
 
@@ -177,7 +189,12 @@ func (r *Router) applyExpiry(uid string, to time.Time, by, audit string) error {
 
 func (r *Router) writeExpiry(uid string, to time.Time, by, audit string, attrs ...any) error {
 	if err := setUserExpiry(r.adminClient, uid, to); err != nil {
-		slog.Error("FreeIPA refused the account expiry change; does mokey's role have the Mokey Modify Principal Expiration permission?",
+		msg := "Failed to change the account expiry"
+		var ierr *ipa.IpaError
+		if errors.As(err, &ierr) && ierr.Code == ipaACIErrorCode {
+			msg = "FreeIPA refused the account expiry change; does mokey's role have the Mokey Modify Principal Expiration permission?"
+		}
+		slog.Error(msg,
 			"username", uid,
 			"by", by,
 			"err", err,
@@ -198,7 +215,9 @@ func (r *Router) lifecycleRemind(accts []lcAccount, users map[string]*ipa.User, 
 	for _, a := range accts {
 		user := users[a.UID]
 		left := a.Expires.Sub(now)
-		if a.Disabled || a.Expires.IsZero() || left <= 0 || user.Email == "" {
+		sponsor := users[a.Sponsor]
+		mailSponsor := sponsor != nil && sponsor.Email != ""
+		if a.Disabled || a.Expires.IsZero() || left <= 0 || user.Email == "" && !mailSponsor {
 			continue
 		}
 		window := 0
@@ -211,14 +230,21 @@ func (r *Router) lifecycleRemind(accts []lcAccount, users map[string]*ipa.User, 
 			continue
 		}
 		marker := lcRemindMarker(a.UID, window, a.Expires)
-		if existing, _ := r.storage.Get(marker); existing != nil {
+		existing, err := r.storage.Get(marker)
+		if err != nil {
+			slog.Error("Failed to read account expiry reminder marker, skipping", "username", a.UID, "err", err)
 			continue
 		}
-		if err := r.emailer.SendAccountExpiringEmail(user, a.Expires); err != nil {
-			slog.Error("Failed to send account expiry reminder", "username", a.UID, "err", err)
+		if existing != nil {
 			continue
 		}
-		if sponsor := users[a.Sponsor]; sponsor != nil && sponsor.Email != "" {
+		if user.Email != "" {
+			if err := r.emailer.SendAccountExpiringEmail(user, a.Expires); err != nil {
+				slog.Error("Failed to send account expiry reminder", "username", a.UID, "err", err)
+				continue
+			}
+		}
+		if mailSponsor {
 			if err := r.emailer.SendSponsoredExpiringEmail(sponsor, user, a.Expires); err != nil {
 				slog.Error("Failed to send sponsored account expiry reminder", "username", a.UID, "sponsor", a.Sponsor, "err", err)
 			}

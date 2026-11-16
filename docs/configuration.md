@@ -162,7 +162,7 @@ until you set an option.
 | `expiry_reminders` | list of days | — | Remind the user and the sponsor this many days before the account expires. Example: `[30, 7, 1]`. |
 | `renewal_period` | string | — | How far a sponsor extends an account, with units `m`, `h`, `d`. Example: `"365d"`. Empty turns renewal off. |
 | `assign_missing_expiry` | bool | `false` | Give sponsored accounts without an expiry date one: now plus `renewal_period`. Needs `renewal_period`. |
-| `max_changes_per_run` | int | `50` | A sweep that would change more accounts changes none and waits for an admin to apply it. |
+| `max_changes_per_run` | int | `50` | A sweep that would change more accounts changes none and waits for an admin to apply it. When an admin applies such a run, [webhooks](#webhooks) get only its summary event (`lifecycle run applied`); every account change is still in the audit log. |
 
 ## `[email]`
 
