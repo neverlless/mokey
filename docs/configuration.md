@@ -244,7 +244,9 @@ under a short Redis lock (`lock-<key>`, released by the holder, expiring after
 replica that cannot take a lock within 6 seconds logs a warning and goes ahead
 without it. Captchas are stored as `captcha-<id>`. Each background sweep
 takes a lease (`lease-<sweep>`, held for 9/10 of its interval) before it runs;
-the other replicas, or a replica that cannot reach Redis, skip that run. Set
+the other replicas, or a replica that cannot reach Redis, skip that run. The
+lease outlives a restart (on sqlite3 too), so the first sweep after a restart
+can run up to one interval late. Set
 `email.token_secret` (and `server.csrf_secret`) to the same values on every
 replica, so links mailed by one replica work on all: mokey does not start on
 redis without them.

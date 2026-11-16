@@ -187,4 +187,5 @@ values on every replica; mokey refuses to start without them. A generated
 `token_secret` differs per replica, so a reset or invite link mailed by one
 replica would fail on another. Captchas are kept in Redis too, so no sticky sessions are needed.
 The background sweeps (password expiry reminders, membership expiry, Hydra
-consent sweep) run on one replica per interval.
+consent sweep) run on one replica per interval; after a restart the next
+sweep can be up to one interval late.

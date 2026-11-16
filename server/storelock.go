@@ -153,8 +153,9 @@ const leasePrefix = "lease-"
 
 // lease reports whether this replica runs the periodic job name now: the
 // first replica to call it holds lease-<name> for 9/10 of the interval and
-// the others skip their run. On memory and sqlite3 (one process) the lease
-// has ended by the next run, so it always succeeds.
+// the others skip their run. In one process the lease has ended by the next
+// run; a lease kept in redis or sqlite3 outlives a restart, so the first run
+// after one may be skipped and the sweep then runs up to an interval late.
 func (l *storeLock) lease(name string, interval time.Duration) bool {
 	key := leasePrefix + name
 	release, err := l.holdStrict(key)
