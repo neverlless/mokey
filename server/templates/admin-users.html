@@ -1,6 +1,12 @@
 {{ with $.users_message }}
 <div class="alert alert-danger mx-auto fade show" role="alert">{{ . }}</div>
 {{ end }}
+{{ with $.lifecycle_notice }}
+<div class="alert alert-success alert-dismissible mx-auto fade show" role="status">
+  {{ . }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
 {{ with $.reset_sent }}
 <div class="alert alert-success alert-dismissible mx-auto fade show" role="alert">
   {{ T "admin.reset_sent" }} <strong>{{ . }}</strong>
@@ -69,6 +75,29 @@
                 hx-post="/admin/user/unlock" hx-target="#admin-users">
               {{ T "admin.unlock" }}
             </button></li>
+            {{ if $.lifecycle_on }}
+            <li><hr class="dropdown-divider"></li>
+            <li><form class="px-3 py-2" hx-post="/admin/user/set-expiry" hx-target="#admin-users" hx-target-error="admin-failed"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'
+                hx-confirm="{{ T "admin.lifecycle_expiry_confirm" }}">
+              <label for="expiry-{{ $u.Username }}" class="form-label small mb-1">{{ T "admin.lifecycle_set_expiry" }}</label>
+              <div class="input-group input-group-sm">
+                <input id="expiry-{{ $u.Username }}" type="date" class="form-control" name="expires"{{ if not $u.PrincipalExpire.IsZero }} value="{{ $u.PrincipalExpire.Local.Format "2006-01-02" }}"{{ end }}>
+                <button type="submit" class="btn btn-outline-secondary">{{ T "admin.lifecycle_save" }}</button>
+              </div>
+            </form></li>
+            <li><form class="px-3 py-2" hx-post="/admin/user/set-sponsor" hx-target="#admin-users" hx-target-error="admin-failed"
+                hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
+                hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'>
+              <label for="sponsor-{{ $u.Username }}" class="form-label small mb-1">{{ T "admin.lifecycle_set_sponsor" }}</label>
+              <div class="input-group input-group-sm">
+                <input id="sponsor-{{ $u.Username }}" type="text" class="form-control" name="sponsor"
+                       placeholder="{{ T "common.username" }}" autocomplete="off" autocapitalize="off" spellcheck="false">
+                <button type="submit" class="btn btn-outline-secondary">{{ T "admin.lifecycle_save" }}</button>
+              </div>
+            </form></li>
+            {{ end }}
           </ul>
         </div>
       </td>

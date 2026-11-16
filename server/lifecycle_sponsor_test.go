@@ -22,13 +22,14 @@ import (
 // spDir adds the attributes ipatest does not keep (manager,
 // krbprincipalexpiration) on top of a shadow fake that renders the rest.
 type spDir struct {
-	mu      sync.Mutex
-	manager map[string]string
-	expires map[string]time.Time
-	refuse  bool
-	mods    int
-	fake    *ipatest.Server
-	shadow  *ipatest.Server
+	mu        sync.Mutex
+	manager   map[string]string
+	expires   map[string]time.Time
+	refuse    bool
+	truncated bool
+	mods      int
+	fake      *ipatest.Server
+	shadow    *ipatest.Server
 }
 
 const spSecret = "test-secret-placeholder"
@@ -94,7 +95,7 @@ func newSponsorApp(t *testing.T, cfg *lifecycleConfig) (*testClient, *Router, *s
 			extend(e)
 			out = append(out, e)
 		}
-		return map[string]any{"result": out, "count": len(out), "truncated": false}, nil
+		return map[string]any{"result": out, "count": len(out), "truncated": d.truncated}, nil
 	})
 	fake.Handle("user_mod", func(c ipatest.Call) (any, *ipa.IpaError) {
 		d.mu.Lock()
@@ -103,8 +104,13 @@ func newSponsorApp(t *testing.T, cfg *lifecycleConfig) (*testClient, *Router, *s
 			return nil, &ipa.IpaError{Code: 2100, Message: "Insufficient access: Insufficient 'write' privilege to the 'krbPrincipalExpiration' attribute"}
 		}
 		d.mods++
-		v, _ := c.Options["krbprincipalexpiration"].(map[string]any)
-		d.expires[c.Args[0]], _ = time.Parse(ipa.IpaDatetimeFormat, fmt.Sprint(v["__datetime__"]))
+		if m, ok := c.Options["manager"]; ok {
+			d.manager[c.Args[0]] = fmt.Sprint(m)
+		}
+		if v, ok := c.Options["krbprincipalexpiration"]; ok {
+			at, _ := v.(map[string]any)
+			d.expires[c.Args[0]], _ = time.Parse(ipa.IpaDatetimeFormat, fmt.Sprint(at["__datetime__"]))
+		}
 		return map[string]any{"result": map[string]any{}}, nil
 	})
 

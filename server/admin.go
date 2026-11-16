@@ -189,8 +189,9 @@ const (
 // adminUserVars builds the template vars for one page of the admin user table.
 func (r *Router) adminUserVars(c fiber.Ctx, search string, page int) fiber.Map {
 	vars := fiber.Map{
-		"user":   r.user(c),
-		"search": search,
+		"user":         r.user(c),
+		"search":       search,
+		"lifecycle_on": r.lifecycle.on(),
 	}
 
 	needle := strings.ToLower(strings.TrimSpace(search))
@@ -229,6 +230,8 @@ func (r *Router) adminUserVars(c fiber.Ctx, search string, page int) fiber.Map {
 				Last:     e.Str("sn"),
 				Email:    e.Str("mail"),
 				Locked:   e.Bool("nsaccountlock"),
+
+				PrincipalExpire: e.Time("krbprincipalexpiration"),
 			}
 		}
 	}
@@ -281,6 +284,10 @@ func (r *Router) AdminUserAction(c fiber.Ctx) error {
 
 	if username == "" {
 		return c.Status(fiber.StatusBadRequest).SendString("")
+	}
+
+	if action == "set-expiry" || action == "set-sponsor" {
+		return r.adminLifecycleAction(c, action, username)
 	}
 
 	if username == r.username(c) && action != "reset" {
