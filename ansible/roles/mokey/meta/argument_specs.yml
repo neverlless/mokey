@@ -56,6 +56,18 @@ argument_specs:
         elements: str
         default: []
         description: More privileges for the role, e.g. Stage User Administrators for accounts.staged_signup.
+      mokey_ipa_expiry_permission:
+        type: bool
+        default: false
+        description: Create the permission to write krbPrincipalExpiration and grant it to the role; needed for lifecycle expiry and renewal.
+      mokey_ipa_expiry_permission_name:
+        type: str
+        default: Mokey Modify Principal Expiration
+        description: Name of that permission.
+      mokey_ipa_expiry_privilege:
+        type: str
+        default: Mokey Expiry Write
+        description: Privilege that carries it.
       mokey_install_method:
         type: str
         choices: [copr, file, none]
