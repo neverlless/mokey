@@ -79,7 +79,7 @@
   </tbody>
 </table>
 {{ if $.truncated }}
-<p class="small text-muted m-3">{{ T "admin.users_truncated" }}</p>
+<p class="small text-muted m-3">{{ if $.search }}{{ T "admin.users_truncated_search" }}{{ else }}{{ T "admin.users_truncated" }}{{ end }}</p>
 {{ end }}
 {{ if gt $.total 50 }}
 <nav class="d-flex align-items-center justify-content-between gap-2 m-3" aria-label="{{ T "admin.page_nav" }}">

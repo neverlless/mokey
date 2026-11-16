@@ -445,3 +445,11 @@ func TestAdminUserListTruncationNote(t *testing.T) {
 	body = readBody(t, tc.get("/admin/users", htmx))
 	assert.NotContains(body, T("admin.users_truncated"))
 }
+
+func TestAdminUserListTruncationNoteWhenSearching(t *testing.T) {
+	assert := assert.New(t)
+	tc, _ := newPeopleApp(t, 501)
+	body := readBody(t, tc.get("/admin/users?search=u", htmx))
+	assert.Contains(body, T("admin.users_truncated_search"))
+	assert.NotContains(body, T("admin.users_truncated"))
+}

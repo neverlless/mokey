@@ -12,6 +12,17 @@
 - Admin People list is paginated (50 per page) and says when only the first
   500 accounts are loaded; search is answered by FreeIPA and no longer
   loads group memberships, so typing a username is fast
+- Searching People now runs in FreeIPA: partial email matches need `mail` in
+  its user search fields (`ipa config-mod
+  --usersearch=uid,givenname,sn,telephonenumber,ou,title,mail`); without it
+  only a full address matches
+- Slack: an invite message names the inviter and carries the link; the
+  sign-up, email-change and OTP-recovery messages carry their links too, and
+  names are escaped so they cannot inject formatting or mentions
+- Emails: no more "Hi ," without a name, no empty grey box on invites, an
+  invite says who invited you instead of describing the admin's device,
+  the site name is plain in the header and body (brackets stay in the
+  subject), and the "copy the URL" help text no longer breaks words
 
 ### Upgrade notes
 
