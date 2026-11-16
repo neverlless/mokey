@@ -147,3 +147,33 @@ func (l *storeLock) incr(key string) (int64, error) {
 	seq++
 	return seq, l.storage.Set(key, []byte(strconv.FormatInt(seq, 10)), 0)
 }
+
+const leasePrefix = "lease-"
+
+// lease reports whether this replica runs the periodic job name now: the
+// first replica to call it holds lease-<name> for 9/10 of the interval and
+// the others skip their run. On memory and sqlite3 (one process) the lease
+// has ended by the next run, so it always succeeds.
+func (l *storeLock) lease(name string, interval time.Duration) bool {
+	key := leasePrefix + name
+	release, err := l.holdStrict(key)
+	if err != nil {
+		slog.Warn("Skipping this run, storage lock unavailable", "job", name, "err", err)
+		return false
+	}
+	defer release()
+
+	held, err := l.storage.Get(key)
+	if err != nil {
+		slog.Warn("Skipping this run, storage unavailable", "job", name, "err", err)
+		return false
+	}
+	if held != nil {
+		return false
+	}
+	if err := l.storage.Set(key, []byte("1"), interval*9/10); err != nil {
+		slog.Warn("Skipping this run, storage unavailable", "job", name, "err", err)
+		return false
+	}
+	return true
+}

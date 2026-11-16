@@ -58,11 +58,12 @@ func (r *Router) StartMembershipExpiry() {
 	}
 	slog.Info("Membership expiry sweep enabled", "interval", membershipExpiryInterval)
 
-	// shortcut: no leader lock across replicas, so each may send the same
-	// expiry/reminder email once; add a lock if duplicates become a problem
 	startLoop(func() {
-		for run := 0; ; run++ {
-			r.membershipExpirySweep(time.Now(), run%reconcileEvery == 0)
+		for run := 0; ; {
+			if r.lock.lease("membership-expiry", membershipExpiryInterval) {
+				r.membershipExpirySweep(time.Now(), run%reconcileEvery == 0)
+				run++
+			}
 			time.Sleep(membershipExpiryInterval)
 		}
 	})

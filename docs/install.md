@@ -186,3 +186,5 @@ With `redis`, set `server.csrf_secret` and `email.token_secret` to the same
 values on every replica; mokey refuses to start without them. Otherwise a
 reset or invite link mailed by one replica, or a form served by it, fails on
 another. Captchas are kept in Redis too, so no sticky sessions are needed.
+The background sweeps (password expiry reminders, membership expiry, Hydra
+consent sweep) run on one replica per interval.
