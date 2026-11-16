@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -316,4 +317,50 @@ func TestFAPruneKeepsEntriesOnReadError(t *testing.T) {
 
 	r.faRevokeParent("walter", "sid1")
 	assert.False(t, faAlive(t, r, s.ID), "entry kept in the index, so revocation still finds it")
+}
+
+// FreeIPA accepts "Walter" for walter: the mokey session keeps the typed
+// name while app sessions are created under the canonical one
+func TestFARevokeMixedCaseLogin(t *testing.T) {
+	cases := map[string]func(t *testing.T, tc1 *testClient, other string) *http.Response{
+		"logout": func(t *testing.T, tc1 *testClient, _ string) *http.Response {
+			return tc1.postForm("/auth/logout", url.Values{}, nil)
+		},
+		"revoke one": func(t *testing.T, tc1 *testClient, other string) *http.Response {
+			return tc1.postForm("/security/session/revoke", url.Values{"sid": {other}}, htmx)
+		},
+		"revoke others": func(t *testing.T, tc1 *testClient, _ string) *http.Response {
+			return tc1.postForm("/security/sessions/revoke-others", url.Values{}, htmx)
+		},
+	}
+	for name, revoke := range cases {
+		t.Run(name, func(t *testing.T) {
+			app, r, fake := newTestApp(t)
+			r.forwardAuth = testFAConfig()
+			fake.AddUser("Walter", ipatest.User{Password: "Secret123!"})
+			tc1 := newTestClient(t, app)
+			tc1.login("Walter", "Secret123!")
+			tc2 := newTestClient(t, app)
+			tc2.login("Walter", "Secret123!")
+			idx := r.loadSessionIndex("Walter")
+			require.Len(t, idx, 2)
+			s1 := newFASession(t, r, "walter", idx[0].SID)
+			s2 := newFASession(t, r, "walter", idx[1].SID)
+
+			resp := revoke(t, tc1, idx[1].SID)
+			assert.Less(t, resp.StatusCode, 400)
+			if name == "logout" {
+				assert.False(t, faAlive(t, r, s1.ID))
+			} else {
+				assert.False(t, faAlive(t, r, s2.ID))
+			}
+		})
+	}
+}
+
+func TestFAUserKeyIgnoresCase(t *testing.T) {
+	r := faRouter()
+	s := newFASession(t, r, "walter", "sid1")
+	r.faRevokeUser("WALTER")
+	assert.False(t, faAlive(t, r, s.ID))
 }
