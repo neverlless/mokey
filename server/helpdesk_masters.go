@@ -28,12 +28,26 @@ type masterClients struct {
 }
 
 type masterClient struct {
-	mu       sync.Mutex
+	// fetchMu serialises fetches of one master and guards client/loggedIn
+	fetchMu  sync.Mutex
 	client   *ipa.Client
 	loggedIn bool
-	logins   map[string]time.Time
-	err      error
-	readAt   time.Time
+
+	// mu guards the cached result only, so cache readers never wait on a fetch
+	mu     sync.Mutex
+	logins map[string]time.Time
+	err    error
+	readAt time.Time
+}
+
+func (mc *masterClient) cached() (map[string]time.Time, error, bool) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	ttl := masterResultTTL
+	if mc.err != nil {
+		ttl = masterFailureTTL
+	}
+	return mc.logins, mc.err, !mc.readAt.IsZero() && time.Since(mc.readAt) < ttl
 }
 
 func (m *masterClients) get(host string) *masterClient {
@@ -51,28 +65,29 @@ func (m *masterClients) get(host string) *masterClient {
 }
 
 // masterLastAuth returns krbLastSuccessfulAuth of every user as one master
-// recorded it: FreeIPA does not replicate it. Results are cached; without
-// fetch only a fresh cached result is returned (nil, nil otherwise).
+// recorded it: FreeIPA does not replicate it. Without fetch it returns the
+// last cached result whatever its age (nil, nil if never read); with fetch
+// it reads the master again once the cached result is stale.
 func (r *Router) masterLastAuth(host string, fetch bool) (map[string]time.Time, error) {
 	mc := r.masters.get(host)
+	logins, err, fresh := mc.cached()
+	if !fetch || fresh {
+		return logins, err
+	}
+	mc.fetchMu.Lock()
+	defer mc.fetchMu.Unlock()
+	// another request may have fetched while this one waited
+	if logins, err, fresh := mc.cached(); fresh {
+		return logins, err
+	}
+	logins, err = mc.read(host)
+	if err != nil {
+		slog.Warn("Failed to read logins from a FreeIPA master", "host", host, "err", err)
+	}
 	mc.mu.Lock()
-	defer mc.mu.Unlock()
-	ttl := masterResultTTL
-	if mc.err != nil {
-		ttl = masterFailureTTL
-	}
-	if !mc.readAt.IsZero() && time.Since(mc.readAt) < ttl {
-		return mc.logins, mc.err
-	}
-	if !fetch {
-		return nil, nil
-	}
-	mc.logins, mc.err = mc.read(host)
-	mc.readAt = time.Now()
-	if mc.err != nil {
-		slog.Warn("Failed to read logins from a FreeIPA master", "host", host, "err", mc.err)
-	}
-	return mc.logins, mc.err
+	mc.logins, mc.err, mc.readAt = logins, err, time.Now()
+	mc.mu.Unlock()
+	return logins, err
 }
 
 func (mc *masterClient) read(host string) (map[string]time.Time, error) {
@@ -123,7 +138,7 @@ func (r *Router) otherMastersLastAuth(client *ipa.Client, masters []string, fetc
 		if strings.EqualFold(host, self) {
 			continue
 		}
-		wg.Go(func() {
+		read := func() {
 			logins, err := r.masterLastAuth(host, fetch)
 			mu.Lock()
 			defer mu.Unlock()
@@ -136,7 +151,12 @@ func (r *Router) otherMastersLastAuth(client *ipa.Client, masters []string, fetc
 					merged[uid] = t
 				}
 			}
-		})
+		}
+		if fetch {
+			wg.Go(read)
+		} else {
+			read()
+		}
 	}
 	wg.Wait()
 	slices.Sort(unreachable)
