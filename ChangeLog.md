@@ -47,8 +47,8 @@
 - Captchas are kept in `storage`, so with `storage.driver = "redis"` a
   captcha shown by one replica is accepted by another
 - With `storage.driver = "redis"`, mokey refuses to start unless
-  `server.csrf_secret` and `email.token_secret` are set, since replicas must
-  share them. Other drivers still generate them when blank and warn that
+  `email.token_secret` and `server.csrf_secret` are set: with a generated
+  token secret, links mailed by one replica fail on another. Other drivers still generate them when blank and warn that
   emailed links stop working after a restart. A blank `csrf_secret` (as in
   `mokey.toml.sample`) is now generated instead of used as an empty key
 - Background sweeps (password expiry reminders, membership expiry, Hydra

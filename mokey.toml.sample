@@ -281,7 +281,7 @@ read_buffer_size = 16384
 secure_cookies = true
 
 # CSRF token secret key. Should be a random string. Generated at startup
-# when blank; required with storage driver "redis" (same on every replica).
+# when blank; required with storage driver "redis".
 csrf_secret = ""
 
 # Timeouts
