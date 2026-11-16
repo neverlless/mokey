@@ -28,6 +28,11 @@ func TestUIPreviewServe(t *testing.T) {
 		t.Skip("set MOKEY_UI_PREVIEW=host:port to serve the UI preview")
 	}
 
+	// the sweeps would race the seeding below; the held plan comes from one run
+	orig := startLoop
+	startLoop = func(func()) {}
+	t.Cleanup(func() { startLoop = orig })
+
 	app, router, fake := newTestAppWith(t, func() {
 		viper.Set("accounts.enable_subid", true)
 		viper.Set("admin.enabled", true)
@@ -35,18 +40,31 @@ func TestUIPreviewServe(t *testing.T) {
 		viper.Set("storage.sqlite3.dbpath", filepath.Join(t.TempDir(), "mokey.db"))
 		viper.Set("groups.durations", []string{"8h", "7d", "30d", "90d"})
 		viper.Set("groups.rules", []any{map[string]any{"group": "glee-club", "max": "7d"}})
+		viper.Set("lifecycle.expiry_reminders", []int{30, 7, 1})
+		viper.Set("lifecycle.renewal_period", "365d")
+		viper.Set("lifecycle.max_changes_per_run", 1)
 	})
+	// users go through d.add: the fake has no manager or account expiry
+	d := newSpDir(t, fake)
+	now := time.Now()
+	day := 24 * time.Hour
 
-	fake.AddUser("walter", ipatest.User{
+	d.add("walter", ipatest.User{
 		Password: "Secret123!",
 		First:    "Walter", Last: "White",
 		Email:  "wwhite@acme.local",
 		Groups: []string{"ipausers", "chemists", "lab-admins", "admins"},
-	})
-	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
-	fake.AddUser("skinny", ipatest.User{Password: "Secret123!"})
+	}, "", now.Add(200*day))
+	// walter sponsors: one expiring soon, one expired, two past walter's
+	// own date (the held plan); gale's sponsor has expired
+	d.add("jesse", ipatest.User{Password: "Secret123!", First: "Jesse", Last: "Pinkman"}, "walter", now.Add(5*day))
+	d.add("skinny", ipatest.User{Password: "Secret123!", First: "Skinny", Last: "Pete"}, "walter", now.Add(-3*day))
+	d.add("badger", ipatest.User{First: "Brandon", Last: "Mayhew"}, "walter", now.Add(400*day))
+	d.add("huell", ipatest.User{First: "Huell", Last: "Babineaux"}, "walter", now.Add(300*day))
+	d.add("gale", ipatest.User{First: "Gale", Last: "Boetticher"}, "", now.Add(-10*day))
+	d.add("jane", ipatest.User{First: "Jane", Last: "Margolis"}, "gale", now.Add(90*day))
 	for i := 1; i <= 120; i++ {
-		fake.AddUser(fmt.Sprintf("demo%03d", i), ipatest.User{First: "Demo", Last: fmt.Sprintf("User %03d", i), Email: fmt.Sprintf("demo%03d@acme.local", i)})
+		d.add(fmt.Sprintf("demo%03d", i), ipatest.User{First: "Demo", Last: fmt.Sprintf("User %03d", i), Email: fmt.Sprintf("demo%03d@acme.local", i)}, "", time.Time{})
 	}
 	fake.AddGroup("chemists", ipatest.Group{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter", "skinny"}})
 	fake.AddGroup("glee-club", ipatest.Group{Description: "After-hours choir", ManagerUsers: []string{"jesse"}})
@@ -71,6 +89,9 @@ func TestUIPreviewServe(t *testing.T) {
 		}
 	}
 	router.recordExpiryFailure(TimedMembership{Group: "prod-sudo", Username: "badger"}, "Insufficient access: not a member manager of prod-sudo")
+	if _, held, err := router.lifecycleRun(now, ""); err != nil || held == nil {
+		t.Fatalf("lifecycle plan not held: %v", err)
+	}
 
 	t.Logf("UI preview on http://%s (walter / Secret123!)", addr)
 	if err := app.Listen(addr, fiber.ListenConfig{DisableStartupMessage: true}); err != nil {

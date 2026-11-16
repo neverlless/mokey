@@ -38,6 +38,18 @@ func newSponsorApp(t *testing.T, cfg *lifecycleConfig) (*testClient, *Router, *s
 	t.Helper()
 	app, router, fake := newTestApp(t)
 	router.lifecycle = cfg
+	d := newSpDir(t, fake)
+	var logs bytes.Buffer
+	saved := slog.Default()
+	slog.SetDefault(slog.New(NewAuditHandler(slog.NewTextHandler(&logs, nil), router.storage)))
+	t.Cleanup(func() { slog.SetDefault(saved) })
+	return newTestClient(t, app), router, d, &logs
+}
+
+// newSpDir gives fake the FreeIPA manager and krbprincipalexpiration that
+// ipatest lacks; users must be added with spDir.add.
+func newSpDir(t *testing.T, fake *ipatest.Server) *spDir {
+	t.Helper()
 	d := &spDir{manager: map[string]string{}, expires: map[string]time.Time{}, fake: fake, shadow: ipatest.NewServer(t)}
 
 	extend := func(e map[string]any) {
@@ -113,17 +125,14 @@ func newSponsorApp(t *testing.T, cfg *lifecycleConfig) (*testClient, *Router, *s
 		}
 		return map[string]any{"result": map[string]any{}}, nil
 	})
-
-	var logs bytes.Buffer
-	saved := slog.Default()
-	slog.SetDefault(slog.New(NewAuditHandler(slog.NewTextHandler(&logs, nil), router.storage)))
-	t.Cleanup(func() { slog.SetDefault(saved) })
-	return newTestClient(t, app), router, d, &logs
+	return d
 }
 
 // add creates uid; manager is stored as given (plain uid or DN).
 func (d *spDir) add(uid string, u ipatest.User, manager string, expires time.Time) {
-	u.Password = spSecret
+	if u.Password == "" {
+		u.Password = spSecret
+	}
 	d.fake.AddUser(uid, u)
 	d.shadow.AddUser(uid, u)
 	d.mu.Lock()
