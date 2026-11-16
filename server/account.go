@@ -286,7 +286,9 @@ func (r *Router) accountCreateWith(lang string, user *ipa.User, password, passwo
 
 	// Disable new users until they have verified their email address
 	err = r.adminClient.UserDisable(userRec.Username)
-	if err != nil {
+	if err == nil {
+		r.faRevokeUser(userRec.Username)
+	} else {
 		slog.Error("Failed to disable user",
 			"err", err,
 			"username", userRec.Username,
