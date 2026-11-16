@@ -1,0 +1,16 @@
+{{ template "header.html" . }}
+<main class="mokey-error">
+  <div class="mokey-card mokey-card-body text-center">
+    <span class="mokey-tile is-neutral mb-3" aria-hidden="true"><i class="fa fa-arrow-right-from-bracket"></i></span>
+    <h1 class="mb-2">{{ .title }}</h1>
+    {{ if .signed_in }}
+    <p class="text-muted mb-4">{{ printf (T "forward_auth.signedout_still_in") (ConfigValueString "site.name") }}</p>
+    <form method="post" action="/auth/logout" hx-post="/auth/logout" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+      <button type="submit" class="btn btn-primary">{{ printf (T "forward_auth.signout_mokey") (ConfigValueString "site.name") }}</button>
+    </form>
+    {{ else }}
+    <a class="btn btn-primary" href="/">{{ T "error.go_home" }}</a>
+    {{ end }}
+  </div>
+</main>
+{{ template "footer.html" . }}

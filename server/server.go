@@ -275,6 +275,14 @@ func newFiber() (*fiber.App, *Router, error) {
 				return false
 			}
 
+			// called for every app request, and 401 is its normal answer
+			if c.Path() == faVerifyPath || strings.HasPrefix(c.Path(), faVerifyPath+"/") {
+				return true
+			}
+			if strings.HasPrefix(c.Path(), "/.mokey/") || c.Path() == faContinuePath {
+				return false
+			}
+
 			if c.Method() != fiber.MethodPost {
 				return true
 			}

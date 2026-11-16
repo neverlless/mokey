@@ -191,6 +191,18 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 		get(app, "/api/v1/otp-recovery", r.RequireAPIToken, r.APIOTPRecovery)
 	}
 
+	// Forward-auth: the proxy and the app hosts call these without mokey's
+	// CSRF token; continue must not touch the session before its hop
+	if r.forwardAuth != nil {
+		app.All(faVerifyPath, r.ForwardAuthVerify)
+		app.All(faVerifyPath+"/*", r.ForwardAuthVerify)
+		get(app, faContinuePath, r.faHop, r.RequireLogin, r.ForwardAuthContinue)
+		get(app, faSignedOutPath, r.faHop, r.CSRF, r.ForwardAuthSignedOut)
+		get(app, "/.mokey/start", r.ForwardAuthStart)
+		get(app, "/.mokey/callback", r.ForwardAuthCallback)
+		get(app, "/.mokey/signout", r.ForwardAuthSignout)
+	}
+
 	// CSRF tokens stored in sessions
 	app.Use(r.CSRF)
 

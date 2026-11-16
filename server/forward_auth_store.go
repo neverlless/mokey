@@ -99,6 +99,23 @@ func (r *Router) faTakePending(id string) (*faPending, error) {
 	return &p, nil
 }
 
+// faPeekPending reads a pending sign-in without spending it: continue may
+// run several times (hop, sign-in), only the callback takes it
+func (r *Router) faPeekPending(id string) (*faPending, error) {
+	if id == "" {
+		return nil, nil
+	}
+	raw, err := r.storage.Get(faPendingPrefix + id)
+	if err != nil || raw == nil {
+		return nil, err
+	}
+	var p faPending
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func (r *Router) faNewCode(c faCode) (string, error) {
 	code, err := faRandomID()
 	if err != nil {

@@ -1,0 +1,10 @@
+{{ template "header.html" . }}
+<main class="mokey-error">
+  <div class="mokey-card mokey-card-body text-center">
+    <span class="mokey-tile is-warn mb-3" aria-hidden="true"><i class="fa {{ .icon }}"></i></span>
+    <h1 class="mb-2">{{ .title }}</h1>
+    <p class="text-muted mb-4">{{ .message }}</p>
+    {{ with .link }}<a class="btn btn-primary" href="{{ . }}">{{ $.link_text }}</a>{{ end }}
+  </div>
+</main>
+{{ template "footer.html" . }}
