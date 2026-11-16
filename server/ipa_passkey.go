@@ -45,14 +45,6 @@ func userRemovePasskey(client *ipa.Client, uid, mapping string) error {
 	return client.UserRemovePasskey(uid, mapping)
 }
 
-func userPasskeys(client *ipa.Client, uid string) ([]string, error) {
-	u, err := client.UserShow(uid)
-	if err != nil {
-		return nil, err
-	}
-	return u.Passkeys, nil
-}
-
 // passkeyMapping builds a FreeIPA passkey mapping string
 // (passkey:<credId b64>,<pubkey SPKI b64>) from a WebAuthn credential ID and
 // its COSE-encoded public key.

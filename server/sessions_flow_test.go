@@ -194,3 +194,31 @@ func TestNewLoginEmailOptIn(t *testing.T) {
 		assert.Contains(sink.all()[0], "New sign-in")
 	}
 }
+
+// The per-request user_show already carries ipapasskey; a second one per
+// page costs a FreeIPA round trip for nothing.
+func TestSecurityPagesShowUserOnce(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake := newTestApp(t)
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Passkeys: []string{"passkey:abc,def"}})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+
+	for _, path := range []string{"/security", "/passkey"} {
+		before := len(fake.Calls())
+		body := readBody(t, tc.get(path))
+		shows := 0
+		for _, c := range fake.Calls()[before:] {
+			if c.Method == "user_show" {
+				shows++
+			}
+		}
+		assert.Equal(1, shows, path)
+		if path == "/security" {
+			assert.Contains(body, `data-count="passkey"`)
+		} else {
+			assert.Contains(body, "passkey:abc,def")
+		}
+	}
+}
