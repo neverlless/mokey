@@ -162,6 +162,8 @@ func TestSponsoredSectionListsExactlyMine(t *testing.T) {
 	assert.NotContains(body, "badger")
 	assert.Contains(body, "mokey-pill is-warn")
 	assert.Contains(body, "mokey-pill is-danger")
+	assert.Contains(body, ">in 10 days<")
+	assert.Contains(body, "Extend to "+now.Add(365*24*time.Hour).Format("Jan 2, 2006")+"\n")
 	assert.Contains(body, strings.TrimSuffix(T("groups.sponsored_last_active"), "%s"))
 }
 
@@ -239,6 +241,12 @@ func TestSponsoredExtendSomeoneElses(t *testing.T) {
 	d.add("pete", ipatest.User{}, "", now.Add(24*time.Hour))
 
 	tc.login("walter", spSecret)
+	calls := len(d.fake.Calls())
+	resp := tc.postForm("/groups/sponsored/extend", url.Values{"username": {""}}, htmx)
+	assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode)
+	for _, c := range d.fake.Calls()[calls:] {
+		assert.False(t, c.Method == "user_show" && c.Args[0] != "walter", "looked up %v", c.Args)
+	}
 	for _, uid := range []string{"badger", "pete", "nobody"} {
 		resp := tc.postForm("/groups/sponsored/extend", url.Values{"username": {uid}}, htmx)
 		assert.Equal(t, fiber.StatusForbidden, resp.StatusCode, uid)
@@ -258,7 +266,7 @@ func TestSponsoredExtendSponsorExpired(t *testing.T) {
 	tc.login("walter", spSecret)
 	body := readBody(t, tc.get("/groups"))
 	assert.Contains(body, html.EscapeString(T("groups.sponsored_you_expired")))
-	assert.Contains(body, "disabled")
+	assert.Contains(body, `disabled aria-describedby="extend-reason-jesse"`)
 
 	resp := tc.postForm("/groups/sponsored/extend", url.Values{"username": {"jesse"}}, htmx)
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
