@@ -21,6 +21,8 @@ import (
 type Token struct {
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
+	First     string    `json:"first,omitempty"`
+	Last      string    `json:"last,omitempty"`
 	Timestamp time.Time `json:"-"`
 }
 
@@ -49,19 +51,20 @@ func GenerateSecretString(n int) (string, error) {
 }
 
 func NewToken(username, email, prefix string, storage fiber.Storage) (string, error) {
+	return issueToken(username, &Token{Username: username, Email: email}, prefix, storage)
+}
+
+// issueToken guards re-issue by marker; claims.Username may differ from it
+// (an invite is keyed by email but can carry a preset username).
+func issueToken(marker string, claims *Token, prefix string, storage fiber.Storage) (string, error) {
 	// A storage error means we can't prove no token is outstanding — fail
 	// closed, don't issue another one
-	tokenIssued, err := storage.Get(prefix + TokenIssuedPrefix + username)
+	tokenIssued, err := storage.Get(prefix + TokenIssuedPrefix + marker)
 	if err != nil {
 		return "", err
 	}
 	if tokenIssued != nil {
 		return "", errors.New("token already issued")
-	}
-
-	claims := &Token{
-		Username: username,
-		Email:    email,
 	}
 
 	jsonBytes, err := json.Marshal(claims)
@@ -89,7 +92,7 @@ func NewToken(username, email, prefix string, storage fiber.Storage) (string, er
 	// minutes rather than after the token's full lifetime (ubccr/mokey#17).
 	// Links issued earlier stay valid until they expire; each is single-use
 	// and every one of them goes to the same registered address.
-	if err := storage.Set(prefix+TokenIssuedPrefix+username, []byte("true"), time.Duration(viper.GetInt("email.resend_cooldown"))*time.Second); err != nil {
+	if err := storage.Set(prefix+TokenIssuedPrefix+marker, []byte("true"), time.Duration(viper.GetInt("email.resend_cooldown"))*time.Second); err != nil {
 		return "", err
 	}
 

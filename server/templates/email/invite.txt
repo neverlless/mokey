@@ -6,7 +6,9 @@
 
 {{ T "email_template.invite_body_part1" }}{{ $.site_name }}{{ T "email_template.invite_body_part2" }}{{ T "email_template.invite_body_part3" }}{{ T "email_template.invite_body_part4" }}{{ $.link_expires }}.
 
-{{ T "email_template.invite_button" }}: {{ $.link }}
+{{ with $.preset_username }}{{ T "email_template.invite_username" }}{{ . }}
+
+{{ end }}{{ T "email_template.invite_button" }}: {{ $.link }}
 
 
 

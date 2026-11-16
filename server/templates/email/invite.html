@@ -476,6 +476,7 @@
                       <div class="f-fallback">
                         <h1 style="margin-top: 0; color: #333333; font-size: 22px; font-weight: bold; text-align: left;" align="left">{{ T "email_template.invite_greeting" }} {{ $.user.First }},</h1>
                         <p style="font-size: 16px; line-height: 1.625; color: #51545E; margin: .4em 0 1.1875em;">{{ T "email_template.invite_body_part1" }}[{{ $.site_name }}]{{ T "email_template.invite_body_part2" }}{{ T "email_template.invite_body_part3" }}<strong>{{ T "email_template.invite_body_part4" }}{{ $.link_expires }}.</strong></p>
+                        {{ with $.preset_username }}<p style="font-size: 16px; line-height: 1.625; color: #51545E; margin: .4em 0 1.1875em;">{{ T "email_template.invite_username" }}<strong>{{ . }}</strong></p>{{ end }}
                         <!-- Action -->
                         <table class="body-action" align="center" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; -premailer-width: 100%; -premailer-cellpadding: 0; -premailer-cellspacing: 0; text-align: center; margin: 30px auto; padding: 0;">
                           <tr>

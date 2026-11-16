@@ -68,7 +68,29 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 		return c.Render("admin-people.html", vars)
 	}
 
-	if err := r.emailer.SendInviteEmail(email, c); err != nil {
+	username := strings.TrimSpace(c.FormValue("username"))
+	first := strings.TrimSpace(c.FormValue("first"))
+	last := strings.TrimSpace(c.FormValue("last"))
+	if username != "" && !viper.GetBool("accounts.username_from_email") {
+		preset := &ipa.User{Username: username, Email: email}
+		if err := validateUsername(preset); err != nil {
+			vars["message"] = TC(c, "admin.invite_username_invalid")
+			return c.Render("admin-people.html", vars)
+		}
+		username = preset.Username
+		if _, err := r.adminClient.UserShow(username); err == nil {
+			vars["message"] = TC(c, "admin.invite_username_taken")
+			return c.Render("admin-people.html", vars)
+		}
+	} else {
+		username = ""
+	}
+	if len(first) > 150 || len(last) > 150 {
+		vars["message"] = TC(c, "admin.invite_name_too_long")
+		return c.Render("admin-people.html", vars)
+	}
+
+	if err := r.emailer.SendInviteEmail(email, username, first, last, c); err != nil {
 		slog.Error("Failed to send invite email",
 			"email", email,
 			"err", err,
@@ -77,14 +99,23 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 		return c.Render("admin-people.html", vars)
 	}
 
-	slog.Info("AUDIT user invite sent",
-		"email", email,
-		"invited_by", r.username(c),
-		"ip", RemoteIP(c),
-	)
+	attrs := []any{"email", email, "invited_by", r.username(c), "ip", RemoteIP(c)}
+	if username != "" {
+		attrs = append(attrs, "username", username)
+	}
+	slog.Info("AUDIT user invite sent", attrs...)
 
 	vars["invite_sent"] = email
 	return c.Render("admin-people.html", vars)
+}
+
+// presetInviteUsername returns the username the admin fixed for the invite.
+// Older tokens carry the email in Username, which means "no preset".
+func presetInviteUsername(claims *Token) string {
+	if claims.Username == claims.Email {
+		return ""
+	}
+	return claims.Username
 }
 
 // InviteAccept lets an invited user complete their own account. The token
@@ -104,6 +135,7 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 	if c.Method() == fiber.MethodGet {
 		vars := fiber.Map{
 			"claims":            claims,
+			"presetUsername":    presetInviteUsername(claims),
 			"usernameFromEmail": viper.GetBool("accounts.username_from_email"),
 		}
 		if policy, err := pwPolicyShow(r.adminClient, ""); err == nil {
@@ -115,6 +147,9 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 
 	user := &ipa.User{}
 	user.Username = strings.TrimSpace(c.FormValue("username"))
+	if preset := presetInviteUsername(claims); preset != "" {
+		user.Username = preset
+	}
 	user.Email = claims.Email
 	user.First = strings.TrimSpace(c.FormValue("first"))
 	user.Last = strings.TrimSpace(c.FormValue("last"))

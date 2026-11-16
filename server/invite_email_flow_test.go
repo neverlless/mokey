@@ -1,7 +1,11 @@
 package server
 
 import (
+	"io"
+	"mime/quotedprintable"
 	"net/url"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -185,4 +189,98 @@ func TestSSHKeyAddRequiresMFA(t *testing.T) {
 
 	resp := tc.postForm("/sshkey/add", url.Values{"key": {"ssh-ed25519 AAAA test"}}, htmx)
 	assert.Equal(fiber.StatusUnauthorized, resp.StatusCode)
+}
+
+func inviteAdminClient(t *testing.T) (*testClient, *Router, *ipatest.Server, *fakeSMTP) {
+	t.Helper()
+	app, router, fake := newTestAppWith(t, func() {
+		viper.Set("admin.enabled", true)
+		viper.Set("admin.group", "admins")
+	})
+	sink := newFakeSMTP(t)
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}})
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	return tc, router, fake, sink
+}
+
+var inviteLinkRe = regexp.MustCompile(`/auth/invite/([A-Za-z0-9_-]+)`)
+
+func inviteTokenFromMail(t *testing.T, raw string) string {
+	t.Helper()
+	dec, err := io.ReadAll(quotedprintable.NewReader(strings.NewReader(raw)))
+	if err != nil {
+		dec = []byte(raw)
+	}
+	m := inviteLinkRe.FindStringSubmatch(string(dec))
+	if m == nil {
+		m = inviteLinkRe.FindStringSubmatch(raw)
+	}
+	if m == nil {
+		t.Fatalf("no invite link in mail")
+	}
+	return m[1]
+}
+
+func TestInvitePresetUsernameAndName(t *testing.T) {
+	assert := assert.New(t)
+	tc, router, fake, sink := inviteAdminClient(t)
+
+	resp := tc.postForm("/admin/invite", url.Values{
+		"email": {"kim@example.com"}, "username": {"Kim.W"}, "first": {" Kim "}, "last": {"Wexler"},
+	}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal(1, sink.count())
+	assert.Contains(sink.all()[0], "kim.w")
+
+	token := inviteTokenFromMail(t, sink.all()[0])
+	claims, err := ParseToken(token, TokenInvite, router.storage)
+	assert.NoError(err)
+	assert.Equal("kim.w", claims.Username)
+	assert.Equal("Kim", claims.First)
+	assert.Equal("Wexler", claims.Last)
+
+	guest := newTestClient(t, tc.app)
+	body := readBody(t, guest.get("/auth/invite/"+token))
+	assert.Regexp(`<input[^>]*name="username"[^>]*value="kim.w"[^>]*readonly`, body)
+	assert.Regexp(`<input[^>]*name="first"[^>]*value="Kim"`, body)
+	assert.Regexp(`<input[^>]*name="last"[^>]*value="Wexler"`, body)
+
+	guest.getCSRF("/auth/invite/" + token)
+	resp = guest.postForm("/auth/invite/"+token, url.Values{
+		"username": {"someoneelse"}, "first": {"Kim"}, "last": {"Wexler"},
+		"password": {"NewSecret456!"}, "password2": {"NewSecret456!"},
+	}, nil)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(fakeUser(fake, "kim.w"))
+	assert.Nil(fakeUser(fake, "someoneelse"))
+}
+
+func TestInvitePresetUsernameRejected(t *testing.T) {
+	assert := assert.New(t)
+	tc, _, fake, sink := inviteAdminClient(t)
+	fake.AddUser("taken", ipatest.User{Password: "Secret123!"})
+
+	for name, msg := range map[string]string{
+		"bad name!": T("admin.invite_username_invalid"),
+		"taken":     T("admin.invite_username_taken"),
+	} {
+		resp := tc.postForm("/admin/invite", url.Values{"email": {"kim@example.com"}, "username": {name}}, htmx)
+		assert.Equal(fiber.StatusOK, resp.StatusCode)
+		assert.Contains(readBody(t, resp), msg, name)
+	}
+	assert.Equal(0, sink.count())
+}
+
+func TestInviteWithoutUsernameUnchanged(t *testing.T) {
+	assert := assert.New(t)
+	tc, router, _, sink := inviteAdminClient(t)
+
+	resp := tc.postForm("/admin/invite", url.Values{"email": {"kim@example.com"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Equal(1, sink.count())
+	claims, err := ParseToken(inviteTokenFromMail(t, sink.all()[0]), TokenInvite, router.storage)
+	assert.NoError(err)
+	assert.Equal("kim@example.com", claims.Email)
+	assert.Equal("", claims.First)
 }

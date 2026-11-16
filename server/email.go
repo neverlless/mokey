@@ -217,10 +217,13 @@ func (e *Emailer) SendEmailChangedNotification(oldEmail string, user *ipa.User, 
 
 // SendInviteEmail sends an account invitation to an email address. The
 // recipient completes their profile via the /auth/invite/:token link.
-func (e *Emailer) SendInviteEmail(email string, ctx fiber.Ctx) error {
-	recipient := &ipa.User{Email: email}
+func (e *Emailer) SendInviteEmail(email, username, first, last string, ctx fiber.Ctx) error {
+	recipient := &ipa.User{Email: email, First: first}
 	lang := emailLanguage(recipient, ctx)
-	token, err := NewToken(email, email, TokenInvite, e.storage)
+	if username == "" {
+		username = email
+	}
+	token, err := issueToken(email, &Token{Username: username, Email: email, First: first, Last: last}, TokenInvite, e.storage)
 	if err != nil {
 		return err
 	}
@@ -228,6 +231,9 @@ func (e *Emailer) SendInviteEmail(email string, ctx fiber.Ctx) error {
 	vars := map[string]interface{}{
 		"link":         fmt.Sprintf("%s/auth/invite/%s", BaseURL(ctx), token),
 		"link_expires": linkExpires(lang),
+	}
+	if username != email {
+		vars["preset_username"] = username
 	}
 
 	return e.sendTokenEmail(recipient, email, TokenInvite, ctx, lang, TL(lang, "email_template.invite_subject"), "invite", vars)
