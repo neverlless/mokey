@@ -26,6 +26,10 @@ func TestLoadForwardAuthConfigErrors(t *testing.T) {
 	}{
 		{"no url", "forward_auth.url", map[string]any{"forward_auth.apps": faApps("a.example.com")}},
 		{"http url", "https", map[string]any{"forward_auth.url": "http://id.example.com", "forward_auth.apps": faApps("a.example.com")}},
+		{"url path", "no path", map[string]any{"forward_auth.url": "https://id.example.com/mokey", "forward_auth.apps": faApps("a.example.com")}},
+		{"url query", "no path", map[string]any{"forward_auth.url": "https://id.example.com/?a=1", "forward_auth.apps": faApps("a.example.com")}},
+		{"url empty query", "no path", map[string]any{"forward_auth.url": "https://id.example.com?", "forward_auth.apps": faApps("a.example.com")}},
+		{"url fragment", "no path", map[string]any{"forward_auth.url": "https://id.example.com#x", "forward_auth.apps": faApps("a.example.com")}},
 		{"no apps", "forward_auth.apps", map[string]any{"forward_auth.url": "https://id.example.com"}},
 		{"empty host", "host", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("")}},
 		{"scheme", "host", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("https://a.example.com")}},
@@ -110,4 +114,17 @@ func TestWarnMissingGroups(t *testing.T) {
 	assert.Contains(t, out, "group=scientits")
 	assert.Contains(t, out, "app="+faAppHost)
 	assert.NotContains(t, out, "group=scientists")
+}
+
+func TestLoadForwardAuthConfigURLTrailingSlash(t *testing.T) {
+	viper.Reset()
+	SetDefaults()
+	viper.Set("forward_auth.enabled", true)
+	viper.Set("forward_auth.url", "https://id.example.com/")
+	viper.Set("forward_auth.apps", faApps("a.example.com"))
+	c, err := loadForwardAuthConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "https://id.example.com/forward-auth/continue", c.URL.JoinPath("/forward-auth/continue").String())
 }
