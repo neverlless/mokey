@@ -117,3 +117,15 @@ func TestSlackMessageEscapesNames(t *testing.T) {
 		assert.Contains(t, msg, "&lt;b&gt;&amp;", tmpl)
 	}
 }
+
+func TestSlackUsernamesAreCodeSpans(t *testing.T) {
+	data := map[string]interface{}{"site_name": "Acme", "usernames": []string{"john_doe", "<!channel>"}}
+	msg := slackMessageFor("username-reminder", "s", data, &ipa.User{})
+	assert.Contains(t, msg, "`john_doe`")
+	assert.NotContains(t, msg, "\u200b")
+	assert.NotContains(t, msg, "<!channel>")
+	assert.Contains(t, msg, "`&lt;!channel&gt;`")
+
+	inv := slackMessageFor("invite", "s", map[string]interface{}{"site_name": "Acme", "inviter": "W", "link": "https://x/y", "link_expires": "1 day", "preset_username": "kim_w"}, &ipa.User{})
+	assert.Contains(t, inv, "`kim_w`")
+}
