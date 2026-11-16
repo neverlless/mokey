@@ -1,5 +1,14 @@
 # Mokey ChangeLog
 
+## Unreleased
+
+- Go 1.27.4 toolchain (GO-2026-6859 in net/http) and Fiber 3.7
+
+### Upgrade notes
+
+- Everyone signs in again once after the upgrade: Fiber 3.7 stores sessions
+  under a new storage key, so sessions from earlier releases are not found.
+
 ## [v2.10.0] - 2026-11-08
 
 - Time-bound group membership: set `groups.durations` and a join request
