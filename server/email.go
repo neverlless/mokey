@@ -421,6 +421,31 @@ func (e *Emailer) SendGroupExpiryReminderEmail(user *ipa.User, group string, unt
 	return e.sendEmail(user, nil, lang, TL(lang, "email_template.group_expiry_reminder_subject")+group, "group-expiry-reminder", vars)
 }
 
+// SendAccountExpiringEmail reminds the user that their account expires.
+func (e *Emailer) SendAccountExpiringEmail(user *ipa.User, at time.Time) error {
+	lang := userLanguage(user)
+	vars := map[string]interface{}{"until": at.UTC().Format("2006-01-02 15:04 MST")}
+	return e.sendEmail(user, nil, lang, TL(lang, "email_template.account_expiring_subject"), "account-expiring", vars)
+}
+
+// SendSponsoredExpiringEmail tells a sponsor that an account they sponsor
+// expires.
+func (e *Emailer) SendSponsoredExpiringEmail(sponsor, user *ipa.User, at time.Time) error {
+	lang := userLanguage(sponsor)
+	vars := map[string]interface{}{
+		"account": user.Username,
+		"until":   at.UTC().Format("2006-01-02 15:04 MST"),
+	}
+	return e.sendEmail(sponsor, nil, lang, TL(lang, "email_template.sponsored_expiring_subject")+user.Username, "sponsored-expiring", vars)
+}
+
+// SendAccountExtendedEmail tells the user their account was extended.
+func (e *Emailer) SendAccountExtendedEmail(user *ipa.User, at time.Time) error {
+	lang := userLanguage(user)
+	vars := map[string]interface{}{"until": at.UTC().Format("2006-01-02 15:04 MST")}
+	return e.sendEmail(user, nil, lang, TL(lang, "email_template.account_extended_subject"), "account-extended", vars)
+}
+
 // SendOTPRecoveryDecisionEmail notifies the requester that an admin approved
 // or denied their OTP recovery request. Called synchronously from
 // AdminUserAction in the request path with a nil ctx, so the base URL comes

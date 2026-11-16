@@ -87,7 +87,8 @@ func (t *webhookTarget) wants(message string) bool {
 }
 
 func (w *webhooks) send(event AuditEvent) {
-	if w == nil {
+	// per-account lines of a bulk run; its summary event is sent instead
+	if w == nil || event.Attrs["bulk"] == "true" {
 		return
 	}
 	for _, t := range w.targets {
