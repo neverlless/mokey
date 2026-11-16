@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="{{ LanguageCode }}">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="refresh" content="0;url={{ .next }}">
+	<meta name="referrer" content="no-referrer">
+	<title>{{ ConfigValueString "site.name" }}</title>
+</head>
+<body>
+	<p><a href="{{ .next }}">{{ T "forward_auth.hop_continue" }}</a></p>
+</body>
+</html>

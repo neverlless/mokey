@@ -712,3 +712,18 @@ year_other = "%d jaar"
 
 [date]
 layout = "02-01-2006 15:04 MST"
+
+[forward_auth]
+hop_continue = "Doorgaan"
+denied_title = "Geen toegang tot %s"
+denied_not_in_group = "%s is open voor leden van deze groepen: %s. Vraag om lid te worden van een ervan."
+denied_hbac = "Een toegangsregel staat je account niet toe %s te openen. Vraag het je beheerder."
+denied_mfa = "%s vereist tweestapsverificatie. Zet die aan voor je account en open de app opnieuw."
+denied_account = "Met dit account kun je niet bij apps inloggen. Neem contact op met je beheerder."
+request_group = "Groep aanvragen"
+expired_title = "Deze inloglink is verlopen"
+expired_open_again = "Open %s opnieuw om in te loggen."
+expired_generic = "Open de app opnieuw om in te loggen."
+signedout_title = "Uitgelogd bij %s"
+signedout_still_in = "Je bent nog ingelogd bij %s en de andere apps."
+signout_mokey = "Ook uitloggen bij %s"

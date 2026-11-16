@@ -23,6 +23,7 @@ type Metrics struct {
 	totalAccountVerifications     prometheus.Counter
 	totalAccountVerificationsSent prometheus.Counter
 	groupExpiryFailures           prometheus.Counter
+	forwardAuthRequests           *prometheus.CounterVec
 }
 
 var (
@@ -82,6 +83,10 @@ func newMetrics() *Metrics {
 			Name: "mokey_group_membership_expiry_failures_total",
 			Help: "The total number of ended group memberships FreeIPA refused to remove",
 		}),
+		forwardAuthRequests: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "mokey_forward_auth_requests_total",
+			Help: "The total number of forward-auth verify requests by result (allowed, denied, unauthenticated)",
+		}, []string{"result"}),
 	}
 
 	m.handler = fasthttpadaptor.NewFastHTTPHandler(promhttp.Handler())
