@@ -48,6 +48,11 @@ All variables, their types and defaults are in
 
 Keep all three in Ansible Vault; the role has no defaults for secrets.
 
+Set `mokey_ipa_expiry_permission: true` when you use `[lifecycle]` expiry or
+renewal: the role then creates the `Mokey Modify Principal Expiration`
+permission (write on `krbprincipalexpiration`) in a privilege on the role.
+It is off by default.
+
 The config gets `site`, `email` (from, base URL, SMTP), `server.listen`,
 the secrets and `storage` (sqlite3 in `/var/lib/mokey` by default) from role
 variables. Anything else goes in `mokey_config_extra`, which is merged over

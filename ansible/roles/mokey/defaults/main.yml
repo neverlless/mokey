@@ -16,6 +16,11 @@ mokey_ipa_upg_privilege: Mokey UPG Read
 # e.g. ["Stage User Administrators"] for accounts.staged_signup,
 # "Subordinate ID Administrators" for accounts.enable_subid
 mokey_ipa_extra_privileges: []
+# Permission to write krbPrincipalExpiration, for [lifecycle] expiry and
+# renewal. Creates the permission and a privilege on the role.
+mokey_ipa_expiry_permission: false
+mokey_ipa_expiry_permission_name: Mokey Modify Principal Expiration
+mokey_ipa_expiry_privilege: Mokey Expiry Write
 
 # Package: copr, file (an RPM on the controller) or none
 mokey_install_method: copr
