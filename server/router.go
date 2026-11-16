@@ -25,6 +25,7 @@ type Router struct {
 	storage      fiber.Storage
 	lock         *storeLock
 	groupExpiry  *groupExpiryConfig
+	forwardAuth  *forwardAuthConfig
 	expiryFails  expiryFailureSet
 	masters      masterClients
 
@@ -65,6 +66,14 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	}
 	if r.groupExpiry.Enabled() {
 		r.warnRedisEviction()
+	}
+
+	r.forwardAuth, err = loadForwardAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	if r.forwardAuth != nil && len(viper.GetStringSlice("server.trusted_proxies")) == 0 {
+		slog.Warn("forward_auth is enabled but server.trusted_proxies is empty: X-Original-URL and X-Forwarded-* headers are ignored and the Host header is used")
 	}
 
 	hooks, err := newWebhooks()
