@@ -385,3 +385,31 @@ func TestLifecycleRunOffDoesNothing(t *testing.T) {
 	assert.Nil(t, held)
 	assert.Len(t, dir.fake.Calls(), calls)
 }
+
+func TestLifecycleForcedRunTruncatedErrors(t *testing.T) {
+	router, dir, _ := newLifecycleApp(t, assignCfg())
+	dir.truncated = true
+	dir.add("walter", lcFakeUser{})
+	dir.add("jesse", lcFakeUser{sponsor: "walter"})
+
+	applied, _, err := router.lifecycleRun(time.Now(), "gus")
+	assert.ErrorIs(t, err, errLifecycleTruncated)
+	assert.Equal(t, 0, applied)
+	assert.Equal(t, 0, dir.modCount())
+}
+
+func TestLifecycleFailedSponsorOnlyReminderRetries(t *testing.T) {
+	router, dir, _ := newLifecycleApp(t, &lifecycleConfig{Reminders: []int{7}, MaxChanges: 50})
+	now := time.Now()
+	dir.add("walter", lcFakeUser{email: "walter@example.test"})
+	dir.add("jesse", lcFakeUser{sponsor: "walter", expires: now.Add(24 * time.Hour)})
+
+	// nothing listens on the default SMTP port: the sponsor mail fails
+	_, _, err := router.lifecycleRun(now, "")
+	require.NoError(t, err)
+
+	sink := newFakeSMTP(t)
+	_, _, err = router.lifecycleRun(now, "")
+	require.NoError(t, err)
+	assert.Equal(t, 1, sink.count())
+}

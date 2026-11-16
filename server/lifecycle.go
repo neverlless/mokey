@@ -24,6 +24,8 @@ const (
 	lcAuditExtended = "AUDIT lifecycle expiry extended"
 )
 
+var errLifecycleTruncated = errors.New("FreeIPA returned a truncated user list")
+
 // lcHeld is a plan the brake stopped, kept for the admin page.
 type lcHeld struct {
 	Count  int
@@ -65,16 +67,37 @@ func (r *Router) lifecycleRun(now time.Time, by string) (applied int, held *lcHe
 	r.lifecycleMu.Lock()
 	defer r.lifecycleMu.Unlock()
 
-	// one FreeIPA call per run; ipa.User lacks manager
-	entries, err := ipa.FindEntries(context.Background(), r.adminClient, "user_find", nil,
-		ipa.Options{"all": true, "no_members": true, "sizelimit": 0, "timelimit": 0}, 0)
-	truncated := errors.Is(err, ipa.ErrTruncated)
-	if err != nil && !truncated {
+	accts, users, truncated, err := r.lifecycleAccounts()
+	if err != nil {
 		return 0, nil, err
 	}
 
-	accts := make([]lcAccount, 0, len(entries))
-	users := make(map[string]*ipa.User, len(entries))
+	if truncated {
+		slog.Warn("Account lifecycle sweep got a truncated user list, skipping expiry changes this run; raise the FreeIPA search size limit",
+			"users", len(accts))
+		if by != "" {
+			return 0, nil, errLifecycleTruncated
+		}
+	} else {
+		applied, held = r.lifecycleApply(accts, now, by)
+	}
+	if by == "" {
+		r.lifecycleRemind(accts, users, now)
+	}
+	return applied, held, nil
+}
+
+// lifecycleAccounts reads every account in one FreeIPA call; ipa.User lacks
+// manager.
+func (r *Router) lifecycleAccounts() (accts []lcAccount, users map[string]*ipa.User, truncated bool, err error) {
+	entries, err := ipa.FindEntries(context.Background(), r.adminClient, "user_find", nil,
+		ipa.Options{"all": true, "no_members": true, "sizelimit": 0, "timelimit": 0}, 0)
+	truncated = errors.Is(err, ipa.ErrTruncated)
+	if err != nil && !truncated {
+		return nil, nil, false, err
+	}
+	accts = make([]lcAccount, 0, len(entries))
+	users = make(map[string]*ipa.User, len(entries))
 	for _, e := range entries {
 		uid := e.Str("uid")
 		accts = append(accts, lcAccount{
@@ -92,17 +115,7 @@ func (r *Router) lifecycleRun(now time.Time, by string) (applied int, held *lcHe
 			PreferredLanguage: e.Str("preferredlanguage"),
 		}
 	}
-
-	if truncated {
-		slog.Warn("Account lifecycle sweep got a truncated user list, skipping expiry changes this run; raise the FreeIPA search size limit",
-			"users", len(entries))
-	} else {
-		applied, held = r.lifecycleApply(accts, now, by)
-	}
-	if by == "" {
-		r.lifecycleRemind(accts, users, now)
-	}
-	return applied, held, nil
+	return accts, users, truncated, nil
 }
 
 func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, by string) (int, *lcHeld) {
@@ -238,16 +251,23 @@ func (r *Router) lifecycleRemind(accts []lcAccount, users map[string]*ipa.User, 
 		if existing != nil {
 			continue
 		}
+		sent := false
 		if user.Email != "" {
 			if err := r.emailer.SendAccountExpiringEmail(user, a.Expires); err != nil {
 				slog.Error("Failed to send account expiry reminder", "username", a.UID, "err", err)
 				continue
 			}
+			sent = true
 		}
 		if mailSponsor {
 			if err := r.emailer.SendSponsoredExpiringEmail(sponsor, user, a.Expires); err != nil {
 				slog.Error("Failed to send sponsored account expiry reminder", "username", a.UID, "sponsor", a.Sponsor, "err", err)
+			} else {
+				sent = true
 			}
+		}
+		if !sent {
+			continue
 		}
 		if err := r.storage.Set(marker, []byte("sent"), left+24*time.Hour); err != nil {
 			slog.Warn("Failed to record account expiry reminder, it may be sent again", "username", a.UID, "err", err)
