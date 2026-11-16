@@ -113,7 +113,7 @@ func TestLifecycleRunAppliesSmallPlan(t *testing.T) {
 	}
 	now := time.Now()
 
-	applied, held, err := router.lifecycleRun(now, false)
+	applied, held, err := router.lifecycleRun(now, "")
 	require.NoError(t, err)
 	assert.Equal(3, applied)
 	assert.Nil(held)
@@ -142,7 +142,7 @@ func TestLifecycleBrakeHoldsAndForceApplies(t *testing.T) {
 	}
 	now := time.Now()
 
-	applied, held, err := router.lifecycleRun(now, false)
+	applied, held, err := router.lifecycleRun(now, "")
 	require.NoError(t, err)
 	assert.Equal(0, applied)
 	assert.Equal(0, dir.modCount())
@@ -160,7 +160,7 @@ func TestLifecycleBrakeHoldsAndForceApplies(t *testing.T) {
 	}
 	assert.Empty(auditEvents(router, "lifecycle expiry set"))
 
-	applied, held, err = router.lifecycleRun(now, true)
+	applied, held, err = router.lifecycleRun(now, "gus")
 	require.NoError(t, err)
 	assert.Equal(60, applied)
 	assert.Nil(held)
@@ -171,10 +171,15 @@ func TestLifecycleBrakeHoldsAndForceApplies(t *testing.T) {
 	set := auditEvents(router, "lifecycle expiry set")
 	if assert.Len(set, 60) {
 		assert.Equal("true", set[0].Attrs["bulk"])
+		assert.Equal("gus", set[0].Actor)
 	}
-	assert.Len(auditEvents(router, "lifecycle run applied"), 1)
+	sum := auditEvents(router, "lifecycle run applied")
+	if assert.Len(sum, 1) {
+		assert.Equal("gus", sum[0].Actor)
+		assert.Equal("60", sum[0].Attrs["count"])
+	}
 
-	applied, _, err = router.lifecycleRun(now, true)
+	applied, _, err = router.lifecycleRun(now, "gus")
 	require.NoError(t, err)
 	assert.Equal(0, applied)
 	assert.Equal(60, dir.modCount())
@@ -197,7 +202,7 @@ func TestLifecycleReminders(t *testing.T) {
 	dir.add("jesse", lcFakeUser{sponsor: "walter", email: "jesse@example.test", expires: now.Add(7*24*time.Hour - time.Hour)})
 	dir.add("skinny", lcFakeUser{email: "skinny@example.test", expires: now.Add(60 * 24 * time.Hour)})
 
-	_, _, err := router.lifecycleRun(now, false)
+	_, _, err := router.lifecycleRun(now, "")
 	require.NoError(t, err)
 	msgs := sink.all()
 	if assert.Len(msgs, 2) {
@@ -208,12 +213,12 @@ func TestLifecycleReminders(t *testing.T) {
 		assert.Contains(joined, "walter@example.test")
 	}
 
-	_, _, err = router.lifecycleRun(now.Add(time.Hour), false)
+	_, _, err = router.lifecycleRun(now.Add(time.Hour), "")
 	require.NoError(t, err)
 	assert.Len(sink.all(), 2)
 
 	dir.users["jesse"].expires = now.Add(6 * 24 * time.Hour)
-	_, _, err = router.lifecycleRun(now.Add(2*time.Hour), false)
+	_, _, err = router.lifecycleRun(now.Add(2*time.Hour), "")
 	require.NoError(t, err)
 	assert.Len(sink.all(), 4)
 	assert.Equal(0, dir.modCount())
@@ -231,7 +236,7 @@ func TestLifecycleTruncatedSkipsChangesButReminds(t *testing.T) {
 	dir.add("jesse", lcFakeUser{sponsor: "walter"})
 	dir.add("skinny", lcFakeUser{email: "skinny@example.test", expires: now.Add(24 * time.Hour)})
 
-	applied, held, err := router.lifecycleRun(now, false)
+	applied, held, err := router.lifecycleRun(now, "")
 	require.NoError(t, err)
 	assert.Equal(0, applied)
 	assert.Nil(held)
@@ -279,7 +284,7 @@ func TestLifecycleRefusedWriteContinues(t *testing.T) {
 	}
 	dir.refuse["jesse"] = true
 
-	applied, _, err := router.lifecycleRun(time.Now(), false)
+	applied, _, err := router.lifecycleRun(time.Now(), "")
 	require.NoError(t, err)
 	assert.Equal(2, applied)
 	assert.Equal(2, dir.modCount())
@@ -310,4 +315,73 @@ func TestApplyExpiryExtendedMailsUser(t *testing.T) {
 	if assert.Len(msgs, 1) {
 		assert.Contains(msgs[0], T("email_template.account_extended_subject"))
 	}
+}
+
+func TestLifecycleForcedRunSendsNoReminders(t *testing.T) {
+	cfg := assignCfg()
+	cfg.Reminders = []int{7}
+	router, dir, _ := newLifecycleApp(t, cfg)
+	sink := newFakeSMTP(t)
+	dir.add("skinny", lcFakeUser{email: "skinny@example.test", expires: time.Now().Add(24 * time.Hour)})
+
+	_, _, err := router.lifecycleRun(time.Now(), "gus")
+	require.NoError(t, err)
+	assert.Equal(t, 0, sink.count())
+}
+
+func TestLifecycleReminderWithoutUserMailStillMailsSponsor(t *testing.T) {
+	assert := assert.New(t)
+	router, dir, _ := newLifecycleApp(t, &lifecycleConfig{Reminders: []int{7}, MaxChanges: 50})
+	sink := newFakeSMTP(t)
+	now := time.Now()
+	dir.add("walter", lcFakeUser{email: "walter@example.test"})
+	dir.add("jesse", lcFakeUser{sponsor: "walter", expires: now.Add(24 * time.Hour)})
+
+	_, _, err := router.lifecycleRun(now, "")
+	require.NoError(t, err)
+	msgs := sink.all()
+	if assert.Len(msgs, 1) {
+		assert.Contains(msgs[0], T("email_template.sponsored_expiring_subject")+"jesse")
+	}
+	_, _, err = router.lifecycleRun(now, "")
+	require.NoError(t, err)
+	assert.Equal(1, sink.count())
+}
+
+func TestLifecycleMarkerReadErrorSkipsReminder(t *testing.T) {
+	router, dir, logs := newLifecycleApp(t, &lifecycleConfig{Reminders: []int{7}, MaxChanges: 50})
+	sink := newFakeSMTP(t)
+	dir.add("skinny", lcFakeUser{email: "skinny@example.test", expires: time.Now().Add(24 * time.Hour)})
+	router.storage = &failingStorage{router.storage}
+
+	_, _, err := router.lifecycleRun(time.Now(), "")
+	require.NoError(t, err)
+	assert.Equal(t, 0, sink.count())
+	assert.Contains(t, logs.String(), "reminder marker")
+}
+
+func TestLifecycleOtherWriteErrorDoesNotNamePermission(t *testing.T) {
+	router, dir, logs := newLifecycleApp(t, assignCfg())
+	dir.add("walter", lcFakeUser{})
+	dir.add("jesse", lcFakeUser{sponsor: "walter"})
+	dir.fake.Handle("user_mod", func(ipatest.Call) (any, *ipa.IpaError) {
+		return nil, &ipa.IpaError{Code: 4001, Message: "jesse: user not found"}
+	})
+
+	applied, _, err := router.lifecycleRun(time.Now(), "")
+	require.NoError(t, err)
+	assert.Equal(t, 0, applied)
+	assert.Contains(t, logs.String(), "level=ERROR")
+	assert.NotContains(t, logs.String(), "Mokey Modify Principal Expiration")
+}
+
+func TestLifecycleRunOffDoesNothing(t *testing.T) {
+	router, dir, _ := newLifecycleApp(t, nil)
+	calls := len(dir.fake.Calls())
+
+	applied, held, err := router.lifecycleRun(time.Now(), "gus")
+	require.NoError(t, err)
+	assert.Equal(t, 0, applied)
+	assert.Nil(t, held)
+	assert.Len(t, dir.fake.Calls(), calls)
 }
