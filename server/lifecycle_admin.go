@@ -63,7 +63,9 @@ func (r *Router) lifecycleStatusVars(c fiber.Ctx, vars fiber.Map) {
 	changes, orphans := planLifecycle(accts, now, cfg)
 
 	if held != nil && len(changes) > 0 {
-		vars["lc_held"] = fmt.Sprintf(TL(lang, "admin.lifecycle_held"), formatUnit(lang, "change", len(changes)), cfg.MaxChanges)
+		if len(changes) > cfg.MaxChanges {
+			vars["lc_held"] = fmt.Sprintf(TL(lang, "admin.lifecycle_held"), formatUnit(lang, "change", len(changes)), cfg.MaxChanges)
+		}
 		rows := make([]lcPlanRow, 0, min(len(changes), lcHeldSample))
 		for _, ch := range changes[:min(len(changes), lcHeldSample)] {
 			why := "admin.lifecycle_why_cap"
@@ -125,11 +127,17 @@ func (r *Router) adminLifecycleAction(c fiber.Ctx, action, username string) erro
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 	admin := r.username(c)
-	if _, err := r.adminClient.UserShow(username); errors.Is(err, ipa.ErrNotFound) {
-		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.lifecycle_user_unknown"))
-	} else if err != nil {
-		slog.Error("Failed to look up the account", "username", username, "by", admin, "err", err)
-		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
+	// missing reports a missing or unreadable target after sending the answer
+	missing := func() bool {
+		_, err := r.adminClient.UserShow(username)
+		switch {
+		case errors.Is(err, ipa.ErrNotFound):
+			_ = c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.lifecycle_user_unknown"))
+		case err != nil:
+			slog.Error("Failed to look up the account", "username", username, "by", admin, "err", err)
+			_ = c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
+		}
+		return err != nil
 	}
 	var notice string
 	switch action {
@@ -142,8 +150,11 @@ func (r *Router) adminLifecycleAction(c fiber.Ctx, action, username string) erro
 			}
 		}
 		// an admin who expires themselves needs the FreeIPA CLI to get back in
-		if username == admin && !to.IsZero() && !to.After(time.Now()) {
+		if strings.EqualFold(username, admin) && !to.IsZero() && !to.After(time.Now()) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.lifecycle_expiry_self"))
+		}
+		if missing() {
+			return nil
 		}
 		if err := r.applyExpiry(username, to, admin, lcAuditSet); err != nil {
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "admin.lifecycle_write_failed"))
@@ -161,6 +172,9 @@ func (r *Router) adminLifecycleAction(c fiber.Ctx, action, username string) erro
 		sponsor := strings.TrimSpace(c.FormValue("sponsor"))
 		if strings.EqualFold(sponsor, username) {
 			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.lifecycle_sponsor_self"))
+		}
+		if missing() {
+			return nil
 		}
 		if sponsor != "" {
 			accts, _, truncated, err := r.lifecycleAccounts()
