@@ -45,6 +45,9 @@ func TestUIPreviewServe(t *testing.T) {
 	})
 	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
 	fake.AddUser("skinny", ipatest.User{Password: "Secret123!"})
+	for i := 1; i <= 120; i++ {
+		fake.AddUser(fmt.Sprintf("demo%03d", i), ipatest.User{First: "Demo", Last: fmt.Sprintf("User %03d", i), Email: fmt.Sprintf("demo%03d@acme.local", i)})
+	}
 	fake.AddGroup("chemists", ipatest.Group{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter", "skinny"}})
 	fake.AddGroup("glee-club", ipatest.Group{Description: "After-hours choir", ManagerUsers: []string{"jesse"}})
 	fake.AddSubID(ipatest.SubID{Owner: "walter"})

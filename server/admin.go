@@ -5,8 +5,11 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"log/slog"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -178,46 +181,97 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 	})
 }
 
-const adminUserListLimit = 50
+const (
+	adminUserListLimit = 50
+	adminUserFetchMax  = 500
+)
 
-// adminUserVars builds the template vars for the admin user table.
-// ponytail: fetches up to 500 users and filters substring in Go — fine for
-// typical directories; server-side criteria search if this becomes slow.
-func (r *Router) adminUserVars(c fiber.Ctx, search string) fiber.Map {
+// adminUserVars builds the template vars for one page of the admin user table.
+func (r *Router) adminUserVars(c fiber.Ctx, search string, page int) fiber.Map {
 	vars := fiber.Map{
 		"user":   r.user(c),
 		"search": search,
 	}
 
-	users, err := r.adminClient.UserFind(ipa.Options{"sizelimit": 500})
-	if err != nil {
-		slog.Error("Failed to list users from FreeIPA", "err", err)
-		vars["users_message"] = TC(c, "account.fatal_system_error")
-		return vars
-	}
-
 	needle := strings.ToLower(strings.TrimSpace(search))
-	matched := make([]*ipa.User, 0, len(users))
-	for _, u := range users {
-		if needle == "" ||
-			strings.Contains(strings.ToLower(u.Username), needle) ||
-			strings.Contains(strings.ToLower(u.Email), needle) ||
-			strings.Contains(strings.ToLower(u.First+" "+u.Last), needle) {
-			matched = append(matched, u)
+	fields := strings.Fields(needle)
+	queries := []ipa.Options{{"all": true, "no_members": true}}
+	var criteria []string
+	if len(fields) > 0 {
+		// FreeIPA matches one criteria string per attribute, so a full name is
+		// searched by its first word and narrowed below; a mail address is
+		// matched exactly by FreeIPA, which does not search mail by default
+		criteria = []string{fields[0]}
+		if strings.Contains(needle, "@") {
+			queries = append(queries, ipa.Options{"all": true, "no_members": true, "mail": needle})
 		}
 	}
 
-	vars["total"] = len(matched)
-	if len(matched) > adminUserListLimit {
-		matched = matched[:adminUserListLimit]
+	byUID := map[string]*ipa.User{}
+	truncated := false
+	for i, opts := range queries {
+		args := criteria
+		if i > 0 {
+			args = nil
+		}
+		entries, err := ipa.FindEntries(context.Background(), r.adminClient, "user_find", args, opts, adminUserFetchMax)
+		if errors.Is(err, ipa.ErrTruncated) {
+			truncated = true
+		} else if err != nil {
+			slog.Error("Failed to list users from FreeIPA", "err", err)
+			vars["users_message"] = TC(c, "account.fatal_system_error")
+			return vars
+		}
+		for _, e := range entries {
+			byUID[e.Str("uid")] = &ipa.User{
+				Username: e.Str("uid"),
+				First:    e.Str("givenname"),
+				Last:     e.Str("sn"),
+				Email:    e.Str("mail"),
+				Locked:   e.Bool("nsaccountlock"),
+			}
+		}
 	}
-	vars["users"] = matched
+
+	matched := make([]*ipa.User, 0, len(byUID))
+	for _, u := range byUID {
+		if len(fields) > 1 &&
+			!strings.Contains(strings.ToLower(u.Username), needle) &&
+			!strings.Contains(strings.ToLower(u.Email), needle) &&
+			!strings.Contains(strings.ToLower(u.First+" "+u.Last), needle) {
+			continue
+		}
+		matched = append(matched, u)
+	}
+	sort.Slice(matched, func(i, j int) bool { return matched[i].Username < matched[j].Username })
+
+	total := len(matched)
+	pages := max(1, (total+adminUserListLimit-1)/adminUserListLimit)
+	page = min(max(page, 1), pages)
+	from := (page - 1) * adminUserListLimit
+	to := min(from+adminUserListLimit, total)
+
+	vars["total"] = total
+	vars["users"] = matched[from:to]
+	vars["page"] = page
+	vars["page_prev"] = page - 1
+	vars["page_next"] = page + 1
+	vars["has_prev"] = page > 1
+	vars["has_next"] = page < pages
+	vars["range_from"] = from + 1
+	vars["range_to"] = to
+	vars["truncated"] = truncated
 
 	return vars
 }
 
+func pageParam(v string) int {
+	n, _ := strconv.Atoi(v)
+	return n
+}
+
 func (r *Router) AdminUserList(c fiber.Ctx) error {
-	return c.Render("admin-users.html", r.adminUserVars(c, c.Query("search")))
+	return c.Render("admin-users.html", r.adminUserVars(c, c.Query("search"), pageParam(c.Query("page"))))
 }
 
 func (r *Router) AdminUserAction(c fiber.Ctx) error {
@@ -383,7 +437,7 @@ func (r *Router) AdminUserAction(c fiber.Ctx) error {
 		return r.AdminOTPRecoveryList(c)
 	}
 
-	vars := r.adminUserVars(c, search)
+	vars := r.adminUserVars(c, search, pageParam(c.FormValue("page")))
 	if action == "reset" {
 		vars["reset_sent"] = username
 	}

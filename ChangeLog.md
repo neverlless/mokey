@@ -9,6 +9,9 @@
 - Helpdesk "Inactive" list no longer needs FreeIPA to record logins: last
   activity is the latest of a mokey sign-in, a password change and a
   FreeIPA login read from every server
+- Admin People list is paginated (50 per page) and says when only the first
+  500 accounts are loaded; search is answered by FreeIPA and no longer
+  loads group memberships, so typing a username is fast
 
 ### Upgrade notes
 
