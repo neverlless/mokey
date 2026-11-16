@@ -96,7 +96,7 @@ func (r *Router) recordUserSession(c fiber.Ctx, username, sid string) {
 
 // sessionAlive reports whether the session data still exists in storage
 func (r *Router) sessionAlive(sid string) bool {
-	raw, err := r.storage.Get(sid)
+	raw, err := r.storage.Get(sessionKey(sid))
 	return err == nil && raw != nil
 }
 
@@ -152,7 +152,7 @@ func (r *Router) revokeUserSession(username, sid string) bool {
 		return false
 	}
 
-	if err := r.storage.Delete(sid); err != nil {
+	if err := r.storage.Delete(sessionKey(sid)); err != nil {
 		slog.Error("Failed to delete session data on revoke",
 			"username", username,
 			"err", err,
@@ -175,7 +175,7 @@ func (r *Router) revokeOtherUserSessions(username, currentSID string) int {
 			kept = append(kept, s)
 			continue
 		}
-		if err := r.storage.Delete(s.SID); err == nil {
+		if err := r.storage.Delete(sessionKey(s.SID)); err == nil {
 			revoked++
 		}
 	}
