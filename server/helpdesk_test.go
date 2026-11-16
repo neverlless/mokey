@@ -1,9 +1,12 @@
 package server
 
 import (
+	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +23,7 @@ type helpdeskFixture struct {
 	failed     int
 	lastFailed time.Duration // ago
 	lastLogin  time.Duration // ago; 0 = never recorded
+	pwdChange  time.Duration // ago; 0 = never set
 	disabled   bool
 }
 
@@ -53,6 +57,9 @@ func serveHelpdeskUsers(fake *ipatest.Server, truncated bool, users ...helpdeskF
 				rec["krbloginfailedcount"] = []string{strconv.Itoa(failed)}
 				rec["krblastfailedauth"] = ipaTime(now.Add(-u.lastFailed))
 			}
+			if u.pwdChange != 0 {
+				rec["krblastpwdchange"] = ipaTime(now.Add(-u.pwdChange))
+			}
 			if u.lastLogin != 0 {
 				rec["krblastsuccessfulauth"] = ipaTime(now.Add(-u.lastLogin))
 			}
@@ -63,9 +70,12 @@ func serveHelpdeskUsers(fake *ipatest.Server, truncated bool, users ...helpdeskF
 }
 
 // ipatest answers config_show as FreeIPA ships: with KDC:Disable Last Success
-func trackLastLogin(fake *ipatest.Server) {
+func trackLastLogin(fake *ipatest.Server, masters ...string) {
 	fake.Handle("config_show", func(ipatest.Call) (any, *ipa.IpaError) {
-		return map[string]any{"result": map[string]any{"ipaconfigstring": []string{"AllowNThash"}}, "summary": nil}, nil
+		return map[string]any{"result": map[string]any{
+			"ipaconfigstring":   []string{"AllowNThash"},
+			"ipa_master_server": masters,
+		}, "summary": nil}, nil
 	})
 }
 
@@ -129,27 +139,71 @@ func TestAdminHelpdeskViews(t *testing.T) {
 
 	inactive, body := helpdeskList(t, tc, "inactive")
 	assert.Equal([]string{"skinny"}, inactive)
-	assert.NotContains(body, T("admin.helpdesk_inactive_untracked"))
+	assert.Contains(body, T("admin.helpdesk_source_ipa"))
+	assert.NotContains(body, T("admin.helpdesk_inactive_kdc_hint"))
 	assert.NotContains(body, T("admin.helpdesk_truncated"))
 }
 
-func TestAdminHelpdeskLastLoginUntracked(t *testing.T) {
+func TestAdminHelpdeskInactiveSources(t *testing.T) {
+	assert := assert.New(t)
+	_, router, fake, tc := newHelpdeskApp(t)
+	day := 24 * time.Hour
+	now := time.Now()
+
+	// FreeIPA's default config: the KDC does not record logins
+	router.recordSignIn("skinny", now.Add(-100*day))
+	router.recordSignIn("badger", now.Add(-100*day))
+	router.recordSignIn("huell", now.Add(-100*day))
+	serveHelpdeskUsers(fake, false,
+		helpdeskFixture{uid: "skinny"},                                      // only an old mokey sign-in
+		helpdeskFixture{uid: "badger", pwdChange: 5 * day},                  // recent password change wins
+		helpdeskFixture{uid: "huell", pwdChange: 200 * day, lastLogin: day}, // FreeIPA login wins
+		helpdeskFixture{uid: "kim", pwdChange: 150 * day},
+		helpdeskFixture{uid: "lalo"}, // nothing anywhere
+	)
+
+	uids, body := helpdeskList(t, tc, "inactive")
+	assert.Equal([]string{"kim", "skinny"}, uids)
+	assert.Contains(body, T("admin.helpdesk_source_mokey"))
+	assert.Contains(body, T("admin.helpdesk_source_password"))
+	assert.Contains(body, fmt.Sprintf(T("admin.helpdesk_no_activity"), 1))
+	assert.Contains(body, T("admin.helpdesk_inactive_kdc_hint"))
+	assert.Contains(body, `ipa config-mod --delattr ipaconfigstring="KDC:Disable Last Success"`)
+}
+
+func TestAdminHelpdeskReadsEveryMaster(t *testing.T) {
 	assert := assert.New(t)
 	_, _, fake, tc := newHelpdeskApp(t)
+	day := 24 * time.Hour
 
-	// FreeIPA's default config: values from before tracking was turned off
-	// are stale and do not count
-	serveHelpdeskUsers(fake, false, helpdeskFixture{uid: "skinny", lastLogin: 200 * 24 * time.Hour})
+	other := ipatest.NewServer(t)
+	other.GrantPrivilege(keytabUser, "User Administrators")
+	other.SetNegotiateUser(keytabUser)
+	serveHelpdeskUsers(other, false, helpdeskFixture{uid: "skinny", lastLogin: day})
+
+	self, _, _ := strings.Cut(fake.Host(), ":")
+	asked := []string{}
+	orig := newIPAClientForHost
+	t.Cleanup(func() { newIPAClientForHost = orig })
+	newIPAClientForHost = func(host string) (*ipa.Client, error) {
+		asked = append(asked, host)
+		if host == "ipa2.example.test" {
+			return newFakeClient(other), nil
+		}
+		return nil, errors.New("unreachable")
+	}
+
+	trackLastLogin(fake, self, "ipa2.example.test", "ipa3.example.test")
+	serveHelpdeskUsers(fake, false,
+		helpdeskFixture{uid: "skinny", lastLogin: 200 * day},
+		helpdeskFixture{uid: "saul", lastLogin: 200 * day},
+	)
+
 	uids, body := helpdeskList(t, tc, "inactive")
-	assert.Empty(uids)
-	assert.Contains(body, T("admin.helpdesk_inactive_untracked"))
-
-	// tracking on, but no krblastsuccessfulauth anywhere
-	trackLastLogin(fake)
-	serveHelpdeskUsers(fake, false, helpdeskFixture{uid: "saul"})
-	uids, body = helpdeskList(t, tc, "inactive")
-	assert.Empty(uids)
-	assert.Contains(body, T("admin.helpdesk_inactive_untracked"))
+	assert.Equal([]string{"saul"}, uids)
+	assert.ElementsMatch([]string{"ipa2.example.test", "ipa3.example.test"}, asked)
+	assert.Contains(body, fmt.Sprintf(T("admin.helpdesk_masters_unreachable"), "ipa3.example.test"))
+	assert.NotContains(body, T("admin.helpdesk_inactive_kdc_hint"))
 }
 
 func TestAdminHelpdeskTruncated(t *testing.T) {
