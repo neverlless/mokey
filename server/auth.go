@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -52,7 +53,7 @@ func (r *Router) isLoggedIn(c fiber.Ctx) (bool, error) {
 	// invalid. ponytail: 1-second resolution — a session created within
 	// the same second as the change survives; sessions carrying no
 	// login_time (pre-upgrade) are treated as older than any marker.
-	marker, _ := r.storage.Get(PasswordChangedPrefix + username.(string))
+	marker, _ := r.storage.Get(pwChangedKey(username.(string)))
 	loginTime, _ := sess.Get(SessionKeyLoginTime).(int64)
 	if sessionInvalidatedByPasswordChange(loginTime, marker) {
 		return false, errors.New("Session invalidated by password change")
@@ -95,11 +96,17 @@ func sessionInvalidatedByPasswordChange(loginTime int64, marker []byte) bool {
 	return loginTime < changedAt
 }
 
+// pwChangedKey ignores case: the session holds the login as typed, the
+// writers pass FreeIPA's canonical uid
+func pwChangedKey(username string) string {
+	return PasswordChangedPrefix + strings.ToLower(username)
+}
+
 func (r *Router) invalidateUserSessions(username string) {
 	// the marker expires long before an app session would
 	r.faRevokeUser(username)
 	ttl := time.Duration(viper.GetInt("server.session_idle_timeout"))*time.Second + time.Minute
-	if err := r.storage.Set(PasswordChangedPrefix+username, []byte(strconv.FormatInt(time.Now().Unix(), 10)), ttl); err != nil {
+	if err := r.storage.Set(pwChangedKey(username), []byte(strconv.FormatInt(time.Now().Unix(), 10)), ttl); err != nil {
 		slog.Error("Failed to invalidate sessions after password change",
 			"username", username,
 			"err", err,

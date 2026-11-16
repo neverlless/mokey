@@ -15,6 +15,7 @@ import (
 	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var htmx = map[string]string{"HX-Request": "true"}
@@ -518,4 +519,20 @@ func TestStagedSignupEnforcesPwquality(t *testing.T) {
 
 	assert.Equal(fiber.StatusOK, signup("Pinkman-1972").StatusCode)
 	assert.NotNil(fakeStageUser(fake, "jesse"))
+}
+
+// the marker is written under the canonical uid, the session holds the
+// login as typed
+func TestPasswordChangeLogsOutMixedCaseSession(t *testing.T) {
+	app, router, fake := newTestApp(t)
+	fake.AddUser("Walter", ipatest.User{Password: "Secret123!"})
+	tc := newTestClient(t, app)
+	tc.login("Walter", "Secret123!")
+	require.Equal(t, fiber.StatusOK, tc.get("/").StatusCode)
+
+	router.invalidateUserSessions("walter")
+	futureMarker(t, router, "walter")
+	resp := tc.get("/")
+	assert.Equal(t, fiber.StatusFound, resp.StatusCode)
+	assert.Equal(t, "/auth/login", resp.Header.Get("Location"))
 }
