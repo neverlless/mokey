@@ -56,20 +56,11 @@ func (r *Router) faPut(key string, v any, ttl time.Duration) error {
 	return r.storage.Set(key, raw, ttl)
 }
 
-// faTake reads and deletes key under the strict lock, so a value is handed
-// out at most once even across replicas; found is false for a missing key
+// faTake reads and deletes key in one step, so a value is handed out at
+// most once even across replicas; found is false for a missing key
 func (r *Router) faTake(key string, v any) (found bool, err error) {
-	release, err := r.lock.holdStrict(key)
-	if err != nil {
-		return false, err
-	}
-	defer release()
-
-	raw, err := r.storage.Get(key)
+	raw, err := r.lock.take(key)
 	if err != nil || raw == nil {
-		return false, err
-	}
-	if err := r.storage.Delete(key); err != nil {
 		return false, err
 	}
 	return true, json.Unmarshal(raw, v)

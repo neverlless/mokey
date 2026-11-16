@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -67,6 +69,29 @@ func TestFACodeSingleUse(t *testing.T) {
 	got, err = r.faTakeCode("")
 	assert.NoError(t, err)
 	assert.Nil(t, got)
+}
+
+func TestFACodeSingleUseConcurrent(t *testing.T) {
+	r := faRouter()
+	code, err := r.faNewCode(faCode{Username: "walter", Host: "app.example.com"})
+	require.NoError(t, err)
+
+	var got atomic.Int32
+	var wg sync.WaitGroup
+	for range 50 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c, err := r.faTakeCode(code)
+			assert.NoError(t, err)
+			if c != nil {
+				got.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, int32(1), got.Load())
+	assert.Zero(t, localLocks(r.lock), "no lock left per code")
 }
 
 func TestFACodeExpires(t *testing.T) {
