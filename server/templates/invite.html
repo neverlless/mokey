@@ -11,7 +11,12 @@
                     <div class="login-body-wrapper mx-auto">
                         <p class="text-center text-muted">{{ T "invite.intro" }} <strong>{{ $.claims.Email }}</strong></p>
                         <form>
-                        {{ if not $.usernameFromEmail }}
+                        {{ if $.presetUsername }}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">{{ T "common.username" }}</label>
+                            <input type="text" class="form-control form-control-lg" name="username" id="username" value="{{ $.presetUsername }}" readonly>
+                        </div>
+                        {{ else if not $.usernameFromEmail }}
                         <div class="mb-3">
                             <label for="username" class="form-label">{{ T "common.username" }}</label>
                             <input type="text" class="form-control form-control-lg" name="username" autocomplete="username" id="username" autofocus="autofocus" placeholder="">
@@ -19,11 +24,11 @@
                         {{ end }}
                         <div class="mb-3">
                             <label for="first" class="form-label">{{ T "common.first_name" }}</label>
-                            <input type="text" class="form-control form-control-lg" name="first" autocomplete="given-name" id="first" placeholder="">
+                            <input type="text" class="form-control form-control-lg" name="first" autocomplete="given-name" id="first" value="{{ $.claims.First }}" placeholder="">
                         </div>
                         <div class="mb-3">
                             <label for="last" class="form-label">{{ T "common.last_name" }}</label>
-                            <input type="text" class="form-control form-control-lg" name="last" autocomplete="family-name" id="last" placeholder="">
+                            <input type="text" class="form-control form-control-lg" name="last" autocomplete="family-name" id="last" value="{{ $.claims.Last }}" placeholder="">
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">{{ T "common.password" }}</label>
