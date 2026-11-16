@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -67,7 +68,7 @@ func NotFoundHandler(c fiber.Ctx) error {
 }
 
 func HTTPErrorHandler(c fiber.Ctx, err error) error {
-	username := c.Locals(ContextKeyUser)
+	username, _ := c.Locals(ContextKeyUsername).(string)
 	path := c.Path()
 	code := fiber.StatusInternalServerError
 
@@ -75,7 +76,11 @@ func HTTPErrorHandler(c fiber.Ctx, err error) error {
 		code = e.Code
 	}
 
-	slog.Error("Request failed",
+	level := slog.LevelError
+	if code < fiber.StatusInternalServerError {
+		level = slog.LevelWarn
+	}
+	slog.Log(c, level, "Request failed",
 		"err", err,
 		"code", code,
 		"username", username,
@@ -89,28 +94,32 @@ func HTTPErrorHandler(c fiber.Ctx, err error) error {
 		return c.SendString("")
 	}
 
-	if c.Get("HX-Request", "false") == "true" {
-		errorPage := fmt.Sprintf("%d-partial.html", code)
-		err := c.Render(errorPage, nil)
-		if err != nil {
-			slog.Error("Failed to render custom error partial",
-				"error", err,
-			)
-			return c.Status(code).SendString("")
-		}
-		return nil
-	}
-
+	htmx := c.Get("HX-Request", "false") == "true"
 	errorPage := fmt.Sprintf("%d.html", code)
-	err = c.Render(errorPage, nil)
-	if err != nil {
+	if htmx {
+		errorPage = fmt.Sprintf("%d-partial.html", code)
+	}
+	if !errorPages[errorPage] {
+		// e.g. 408 when a client stalls past server.read_timeout
+		if htmx {
+			return c.SendString("")
+		}
+		return c.SendString(http.StatusText(code))
+	}
+	if err := c.Render(errorPage, nil); err != nil {
 		slog.Error("Failed to render custom error page",
+			"page", errorPage,
 			"error", err,
 		)
 		return c.Status(code).SendString("")
 	}
 
 	return nil
+}
+
+var errorPages = map[string]bool{
+	"401.html": true, "403.html": true, "404.html": true, "500.html": true,
+	"403-partial.html": true, "404-partial.html": true, "500-partial.html": true,
 }
 
 func LimitReachedHandler(c fiber.Ctx) error {
