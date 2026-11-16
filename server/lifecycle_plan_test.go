@@ -137,3 +137,36 @@ func TestSponsorLoop(t *testing.T) {
 	assert.False(t, sponsorLoop(m, "d", "c"))
 	assert.False(t, sponsorLoop(map[string]string{"x": "y", "y": "x"}, "z", "x"))
 }
+
+func TestPlanLifecycleAssignEdges(t *testing.T) {
+	cfg := &lifecycleConfig{Renewal: 365 * 24 * time.Hour, AssignMissing: true, MaxChanges: 50}
+
+	ch, exp := planLifecycle([]lcAccount{
+		{UID: "s", Expires: lcDays(-3)},
+		{UID: "a", Sponsor: "s"},
+	}, lcNow, cfg)
+	assert.Empty(t, ch)
+	assert.Equal(t, []string{"a"}, exp)
+
+	cfg.AssignMissing = false
+	_, exp = planLifecycle([]lcAccount{
+		{UID: "s", Expires: lcDays(-3)},
+		{UID: "a", Sponsor: "s"},
+	}, lcNow, cfg)
+	assert.Empty(t, exp)
+
+	cfg.AssignMissing = true
+	ch, _ = planLifecycle([]lcAccount{
+		{UID: "a", Sponsor: "s"},
+		{UID: "r", Expires: lcDays(10)},
+		{UID: "s", Sponsor: "r"},
+	}, lcNow, cfg)
+	m := lcByUID(ch)
+	assert.Equal(t, lcDays(10), m["s"].To)
+	assert.Equal(t, lcDays(10), m["a"].To)
+	assert.Equal(t, "assign", m["a"].Reason)
+
+	cfg.Renewal = 0
+	ch, _ = planLifecycle([]lcAccount{{UID: "s"}, {UID: "a", Sponsor: "s"}}, lcNow, cfg)
+	assert.Empty(t, ch)
+}
