@@ -29,7 +29,7 @@ You will get an answer within 7 days. A fix and advisory are published within
 ## Operating mokey safely
 
 - Give the mokey service account only the role from the
-  [README](README.md#setup-and-configuration), not `admin`. Keep the keytab
+  [install guide](docs/install.md#1-create-the-service-account-in-freeipa), not `admin`. Keep the keytab
   readable by the mokey user only (`chmod 640`, owned by the `mokey` group).
 - Serve mokey over HTTPS, either directly (`server.ssl_cert` / `ssl_key`) or
   behind a TLS-terminating reverse proxy.
@@ -43,6 +43,6 @@ You will get an answer within 7 days. A fix and advisory are published within
   control. Use `redis` or `sqlite3` storage in production; `memory` loses
   sessions on restart.
 - Verify release artifacts against the signed `checksums.txt` (see
-  [Verifying releases](README.md#verifying-releases)).
+  [Verifying releases](docs/install.md#verifying-releases)).
 
 See the [configuration reference](docs/configuration.md) for every option.

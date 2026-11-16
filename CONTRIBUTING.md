@@ -26,6 +26,7 @@ click through the UI by hand; the test suite runs against a simulated one.
 go test -race ./...
 gofmt -l . && go vet ./...
 go run . serve --config mokey.toml --loglevel debug
+go build .                      # the mokey binary
 ```
 
 CI also runs `govulncheck`, `staticcheck` and `gosec` (see

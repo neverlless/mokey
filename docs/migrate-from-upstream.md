@@ -166,11 +166,17 @@ once you are happy.
 - The Password page shows the FreeIPA password policy, and passwords are
   checked against it before FreeIPA is asked.
 - Pages follow the browser language where a translation exists (English,
-  Dutch, Russian, Ukrainian); `[site] languages` limits the choice.
+  Dutch, Russian, Ukrainian); `[site] languages` limits the choice. The
+  Dutch translation came from
+  [@tubby1981](https://github.com/tubby1981) in
+  [ubccr/mokey#157](https://github.com/ubccr/mokey/pull/157).
+- With a `[slack]` bot token, the account emails also arrive as Slack
+  direct messages.
 
 Admins get a portal admin area (`[admin] enabled = true`, members of the
 `admins` group by default) with pending signups, OTP recovery requests,
-the user list and an audit log.
+the user list and an audit log. Load balancers and Kubernetes probes can
+use the unauthenticated `/healthz` endpoint.
 
 ## Things to keep from your old setup
 
