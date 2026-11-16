@@ -23,6 +23,8 @@
   invite says who invited you instead of describing the admin's device,
   the site name is plain in the header and body (brackets stay in the
   subject), and the "copy the URL" help text no longer breaks words
+- Pages load faster: mokey keeps its connections to FreeIPA open instead of
+  reconnecting on every request
 
 ### Upgrade notes
 
