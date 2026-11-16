@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,4 +70,37 @@ func TestNewStorageErrorRedactsRedisPassword(t *testing.T) {
 	assert.Error(t, err)
 	assert.NotContains(t, err.Error(), "s3cret")
 	assert.True(t, strings.Contains(err.Error(), "host:badport"), err.Error())
+}
+
+// A status without its own error page (a client that stalls past
+// server.read_timeout gets 408) is answered without a template error.
+func TestErrorHandlerStatusWithoutTemplate(t *testing.T) {
+	engine, err := NewTemplateRenderer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := fiber.New(fiber.Config{ErrorHandler: HTTPErrorHandler, Views: engine, PassLocalsToViews: true})
+	app.Get("/zz-timeout", func(c fiber.Ctx) error { return fiber.ErrRequestTimeout })
+
+	var logs bytes.Buffer
+	saved := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(saved) })
+
+	resp, err := app.Test(httptest.NewRequest("GET", "/zz-timeout", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != fiber.StatusRequestTimeout {
+		t.Fatalf("status %d, want 408", resp.StatusCode)
+	}
+	out := logs.String()
+	if strings.Contains(out, "Failed to render") || strings.Contains(out, "<nil>") || strings.Contains(out, "level=ERROR") {
+		t.Fatalf("unexpected log: %s", out)
+	}
+}
+
+func TestSlackTime(t *testing.T) {
+	assert.Equal(t, "2026-11-16T17:43:36.779Z", slackTime("1794851016.779229"))
+	assert.Equal(t, "not-a-ts", slackTime("not-a-ts"))
 }
