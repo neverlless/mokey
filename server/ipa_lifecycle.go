@@ -23,8 +23,12 @@ func userSponsor(client *ipa.Client, uid string) (string, error) {
 
 // sponsorUID reduces a manager value, a bare uid or a DN, to the uid.
 func sponsorUID(v string) string {
-	if rest, ok := strings.CutPrefix(v, "uid="); ok {
-		v, _, _ = strings.Cut(rest, ",")
+	if len(v) > 4 && strings.EqualFold(v[:4], "uid=") {
+		v, _, _ = strings.Cut(v[4:], ",")
+		return v
+	}
+	if strings.Contains(v, "=") {
+		return ""
 	}
 	return v
 }
@@ -44,14 +48,14 @@ func setUserSponsor(client *ipa.Client, uid, sponsor string) error {
 
 // setUserExpiry sets krbprincipalexpiration; the zero time clears it.
 func setUserExpiry(client *ipa.Client, uid string, at time.Time) error {
-	v := ""
+	var v any = ""
 	if !at.IsZero() {
-		v = at.UTC().Format(ipa.IpaDatetimeFormat)
+		v = map[string]string{"__datetime__": at.UTC().Format(ipa.IpaDatetimeFormat)}
 	}
 	return userMod(client, uid, ipa.Options{"krbprincipalexpiration": v})
 }
 
 // sponsoredBy lists the accounts whose manager is sponsor.
 func sponsoredBy(client *ipa.Client, sponsor string) ([]*ipa.User, error) {
-	return client.UserFind(ipa.Options{"manager": sponsor})
+	return client.UserFind(ipa.Options{"manager": sponsor, "sizelimit": 0, "timelimit": 0})
 }

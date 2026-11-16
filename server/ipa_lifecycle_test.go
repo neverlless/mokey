@@ -18,6 +18,8 @@ func TestUserSponsor(t *testing.T) {
 	}{
 		"plain uid": {[]string{"walter"}, "walter"},
 		"dn":        {[]string{walterDN}, "walter"},
+		"upper dn":  {[]string{"UID=walter,cn=users,dc=test"}, "walter"},
+		"other dn":  {[]string{"cn=admins,cn=groups,cn=accounts,dc=test,dc=local"}, ""},
 		"none":      {nil, ""},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -64,7 +66,7 @@ func TestSetSponsorAndExpiryWire(t *testing.T) {
 	at := time.Date(2027, 11, 16, 3, 4, 5, 0, time.FixedZone("x", 7200))
 	assert.NoError(t, setUserExpiry(admin, "jesse", at))
 	c = lastMod(t, fake)
-	assert.Equal(t, "20271116010405Z", c.Options["krbprincipalexpiration"])
+	assert.Equal(t, map[string]any{"__datetime__": "20271116010405Z"}, c.Options["krbprincipalexpiration"])
 
 	assert.NoError(t, setUserExpiry(admin, "jesse", time.Time{}))
 	assert.Equal(t, "", lastMod(t, fake).Options["krbprincipalexpiration"])
@@ -84,6 +86,8 @@ func TestSponsoredBy(t *testing.T) {
 	fake.Handle("user_find", func(c ipatest.Call) (any, *ipa.IpaError) {
 		assert.Equal(t, "walter", c.Options["manager"])
 		assert.Equal(t, true, c.Options["all"])
+		assert.Equal(t, float64(0), c.Options["sizelimit"])
+		assert.Equal(t, float64(0), c.Options["timelimit"])
 		return map[string]any{"result": []map[string]any{{"uid": []string{"jesse"}}}, "count": 1}, nil
 	})
 	users, err := sponsoredBy(fake.ClientAs("admin"), "walter")
