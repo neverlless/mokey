@@ -79,7 +79,9 @@ last activity and **Extend to &lt;date&gt;**, shown when `renewal_period` is set
 The rule: the new date is now plus `renewal_period`, but never later than
 the sponsor's own expiry, if the sponsor has one. Dates don't pile up:
 extending twice in a row doesn't add two periods. The button is disabled with a
-reason when the date would not move later. A sponsor may extend an account
+reason when the date would not move later. An account with no end date
+can't be extended: an admin sets its first date, or `assign_missing_expiry`
+gives it one. A sponsor may extend an account
 that has already expired, which restores access. Only the sponsor or an
 admin can extend; anyone else gets 403. A sponsor whose own account has
 expired cannot extend.
