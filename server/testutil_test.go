@@ -7,59 +7,27 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 )
 
-// recordingCaptchaStore remembers captcha digits so tests can "solve" them
-type recordingCaptchaStore struct {
-	mu sync.Mutex
-	m  map[string][]byte
-}
+// testCaptchaStorage is the storage of the router newTestApp built last;
+// NewRouter installs the captcha store on it
+var testCaptchaStorage fiber.Storage
 
-func (s *recordingCaptchaStore) Set(id string, digits []byte) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.m[id] = append([]byte(nil), digits...)
-}
-
-func (s *recordingCaptchaStore) Get(id string, clear bool) []byte {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	d := s.m[id]
-	if clear {
-		delete(s.m, id)
-	}
-	return d
-}
-
-var (
-	captchaStore     = &recordingCaptchaStore{m: make(map[string][]byte)}
-	captchaStoreOnce sync.Once
-)
-
-// captchaSolution returns the answer for a captcha id generated after
-// newTestApp installed the recording store
+// captchaSolution returns the answer for a captcha id the last router issued
 func captchaSolution(t *testing.T, id string) string {
 	t.Helper()
-	captchaStore.mu.Lock()
-	defer captchaStore.mu.Unlock()
-	digits, ok := captchaStore.m[id]
-	if !ok {
-		t.Fatalf("no captcha recorded for id %s", id)
+	digits, err := testCaptchaStorage.Get(captchaPrefix + id)
+	if err != nil || digits == nil {
+		t.Fatalf("no captcha stored for id %s (err %v)", id, err)
 	}
-	sol := make([]byte, len(digits))
-	for i, d := range digits {
-		sol[i] = '0' + d
-	}
-	return string(sol)
+	return digitsString(digits)
 }
 
 // newTestApp builds the real fiber app (routes, middleware, CSRF, sessions)
@@ -76,8 +44,6 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 	t.Helper()
 
 	fake := ipatest.NewServer(t)
-
-	captchaStoreOnce.Do(func() { captcha.SetCustomStore(captchaStore) })
 
 	viper.Reset()
 	SetDefaults()
@@ -147,6 +113,7 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 	// goroutines (Router.goBG); wait for them here so they can't still be
 	// reading global viper config when the next test resets it.
 	t.Cleanup(router.bg.Wait)
+	testCaptchaStorage = router.storage
 
 	return app, router, fake
 }
