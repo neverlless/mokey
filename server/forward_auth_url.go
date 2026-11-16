@@ -36,8 +36,11 @@ func resolveOriginal(c fiber.Ctx, trusted bool) (*url.URL, error) {
 			return nil, fmt.Errorf("invalid X-Forwarded-Host or X-Forwarded-Uri")
 		}
 	} else {
-		rest := strings.TrimPrefix(c.OriginalURL(), faVerifyPath)
-		if rest == "" || rest[0] != '/' && rest[0] != '?' {
+		rest := c.OriginalURL()
+		if after, ok := strings.CutPrefix(rest, faVerifyPath); ok && (after == "" || after[0] == '/' || after[0] == '?') {
+			rest = after
+		}
+		if rest == "" || rest[0] != '/' {
 			rest = "/" + rest
 		}
 		host := string(c.Request().Host())

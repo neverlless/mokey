@@ -31,6 +31,8 @@ func TestLoadForwardAuthConfigErrors(t *testing.T) {
 		{"upper", "lowercase", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("A.example.com")}},
 		{"duplicate", "duplicate", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("a.example.com", "a.example.com")}},
 		{"mokey host", "mokey", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("id.example.com")}},
+		{"mokey host with port", "mokey", map[string]any{"forward_auth.url": "https://id.example.com:8443", "forward_auth.apps": faApps("id.example.com")}},
+		{"base_url host with port", "mokey", map[string]any{"forward_auth.url": "https://id.example.com", "email.base_url": "https://portal.example.com:8443", "forward_auth.apps": faApps("portal.example.com")}},
 		{"bad idle", "session_idle", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("a.example.com"), "forward_auth.session_idle": "soon"}},
 		{"bad max", "session_max", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("a.example.com"), "forward_auth.session_max": "-1h"}},
 		{"bad recheck", "recheck", map[string]any{"forward_auth.url": "https://id.example.com", "forward_auth.apps": faApps("a.example.com"), "forward_auth.recheck": "0s"}},

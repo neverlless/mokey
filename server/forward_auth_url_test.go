@@ -47,6 +47,8 @@ func TestResolveOriginal(t *testing.T) {
 		{"traefik", true, "id.example.com", "/forward-auth/verify", map[string]string{"X-Forwarded-Proto": "https", "X-Forwarded-Host": "Kubecost.example.com", "X-Forwarded-Uri": "/a?b=1"}, "https://kubecost.example.com/a?b=1"},
 		{"envoy prefix", false, "kubecost.example.com", "/forward-auth/verify/a/b?c=2", nil, "https://kubecost.example.com/a/b?c=2"},
 		{"envoy prefix root", false, "kubecost.example.com", "/forward-auth/verify", nil, "https://kubecost.example.com/"},
+		{"prefix needs a boundary", false, "kubecost.example.com", "/forward-auth/verifyx", nil, "https://kubecost.example.com/forward-auth/verifyx"},
+		{"envoy prefix query", false, "kubecost.example.com", "/forward-auth/verify?c=2", nil, "https://kubecost.example.com/?c=2"},
 		{"cilium", true, "kubecost.example.com", "/a", nil, "https://kubecost.example.com/a"},
 		{"untrusted forwarded headers", false, "evil.example.org", "/forward-auth/verify", map[string]string{"X-Original-URL": "https://kubecost.example.com/", "X-Forwarded-Host": "kubecost.example.com", "X-Forwarded-Proto": "https"}, "https://evil.example.org/"},
 		{"bad original", true, "id.example.com", "/x", map[string]string{"X-Original-URL": "/relative"}, "ERR"},
