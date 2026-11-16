@@ -15,16 +15,31 @@ import (
 // uncaught exception the page reports
 func newPage(t *testing.T) (playwright.BrowserContext, playwright.Page) {
 	t.Helper()
+	return openPage(t, playwright.BrowserTypeLaunchOptions{}, playwright.BrowserNewContextOptions{})
+}
+
+// newProxyPage is a page that reaches id.mokey.test and app.mokey.test
+// through Traefik at faProxy and accepts its self-signed certificate
+func newProxyPage(t *testing.T) (playwright.BrowserContext, playwright.Page) {
+	t.Helper()
+	return openPage(t,
+		playwright.BrowserTypeLaunchOptions{Args: []string{"--host-resolver-rules=MAP id.mokey.test " + faProxy + ", MAP app.mokey.test " + faProxy}},
+		playwright.BrowserNewContextOptions{IgnoreHttpsErrors: playwright.Bool(true)})
+}
+
+func openPage(t *testing.T, launch playwright.BrowserTypeLaunchOptions, opts playwright.BrowserNewContextOptions) (playwright.BrowserContext, playwright.Page) {
+	t.Helper()
 	pw, err := playwright.Run()
 	if err != nil {
 		t.Fatalf("playwright: %s (install the driver: see test/README.md)", err)
 	}
 	t.Cleanup(func() { _ = pw.Stop() })
-	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{Headless: playwright.Bool(os.Getenv("MOKEY_E2E_HEADED") == "")})
+	launch.Headless = playwright.Bool(os.Getenv("MOKEY_E2E_HEADED") == "")
+	browser, err := pw.Chromium.Launch(launch)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := browser.NewContext()
+	ctx, err := browser.NewContext(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,6 +49,10 @@ func newPage(t *testing.T) (playwright.BrowserContext, playwright.Page) {
 	}
 	page.SetDefaultTimeout(15000)
 	page.OnConsole(func(m playwright.ConsoleMessage) {
+		// a page's own error status is for the test to check, not a page bug
+		if m.Location() != nil && m.Location().URL == page.URL() && strings.HasPrefix(m.Text(), "Failed to load resource") {
+			return
+		}
 		if m.Type() == "error" {
 			t.Errorf("console error on %s: %s", page.URL(), m.Text())
 		}
@@ -52,13 +71,18 @@ func must(t *testing.T, err error) {
 
 func browserLogin(t *testing.T, page playwright.Page, u *testUser) {
 	t.Helper()
-	_, err := page.Goto(baseURL + "/auth/login")
+	browserLoginAt(t, page, baseURL, u)
+}
+
+func browserLoginAt(t *testing.T, page playwright.Page, base string, u *testUser) {
+	t.Helper()
+	_, err := page.Goto(base + "/auth/login")
 	must(t, err)
 	must(t, page.Locator("#username").Fill(u.uid))
 	must(t, page.Locator("#username").Press("Enter"))
 	must(t, page.Locator("#password").Fill(u.password))
 	must(t, page.Locator("#password").Press("Enter"))
-	must(t, page.WaitForURL(baseURL+"/"))
+	must(t, page.WaitForURL(base+"/"))
 }
 
 func TestBrowserSmoke(t *testing.T) {

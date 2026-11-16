@@ -13,6 +13,12 @@ separate Go module, so Playwright never reaches mokey's own `go.mod`.
   failing on any console error, and passkey registration and removal with a
   CDP virtual authenticator, checked in FreeIPA. mokey has no passkey
   sign-in, so there is none to test.
+- Forward-auth behind Traefik (both tags, only with `MOKEY_IT_PROXY`): an
+  app without a session is sent to mokey; a member of the app's group
+  reaches `traefik/whoami` with `X-Auth-Request-User`, others get 403; in the
+  browser, a user signed in to mokey opens the app without a second login
+  form, a member removed from the group gets the styled denied page on the
+  app's host, and signing out of mokey ends the app session.
 
 Each run creates its own users (`it<random>`) and a group with a password
 policy through the `ipa` CLI in the FreeIPA container, and deletes them at
@@ -31,6 +37,20 @@ docker build -t mokey:dev .
 MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compose.yml up -d --wait mokey
 ```
 
+For the forward-auth tests add the [forward-auth overlay](forward-auth.compose.yml):
+Traefik on `127.0.0.1:443` (port 443 must be free) terminating TLS with its
+self-signed default certificate for `id.mokey.test` (mokey) and
+`app.mokey.test` (whoami gated on the FreeIPA group `fa-it-app`, which the
+tests create). Nothing needs to be added to `/etc/hosts`: the tests send
+those names to `MOKEY_IT_PROXY` themselves (a custom dialer, and Chromium's
+`--host-resolver-rules`).
+
+```sh
+MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compose.yml \
+  -f test/forward-auth.compose.yml up -d --wait mokey traefik
+export MOKEY_IT_PROXY=127.0.0.1:443
+```
+
 Then, from `test/integration`:
 
 ```sh
@@ -47,6 +67,7 @@ passkeys need a secure context.
 | Variable | Default |
 | --- | --- |
 | `MOKEY_IT_URL` | unset: skip |
+| `MOKEY_IT_PROXY` | unset: skip the forward-auth tests |
 | `MOKEY_IT_MAILPIT_URL` | `http://localhost:8025` |
 | `MOKEY_IT_IPA_CONTAINER` | `demo-ipa-1` |
 | `MOKEY_IT_IPA_ADMIN_PASSWORD` | read from `examples/demo/compose.yml` |

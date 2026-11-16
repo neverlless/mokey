@@ -1,0 +1,29 @@
+# Overlay for the forward-auth tests, on top of test/compose.yml: Traefik
+# terminates TLS on 127.0.0.1:443 for id.mokey.test (mokey) and
+# app.mokey.test (traefik/whoami gated by mokey's forward-auth). The hosts
+# are not in DNS; the tests map them to 127.0.0.1 themselves.
+# Paths are relative to examples/demo, the first compose file.
+#
+#   docker compose -f examples/demo/compose.yml -f test/compose.yml \
+#     -f test/forward-auth.compose.yml up -d --wait mokey traefik
+
+services:
+  mokey:
+    volumes:
+      - ../../test/forward-auth/mokey.toml:/etc/mokey/mokey.toml:ro
+
+  traefik:
+    image: traefik:v3.7.19
+    command:
+      - --entrypoints.websecure.address=:443
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+    volumes:
+      - ../../test/forward-auth/traefik.yml:/etc/traefik/dynamic.yml:ro
+    ports:
+      - "127.0.0.1:443:443"
+    depends_on:
+      - mokey
+      - whoami
+
+  whoami:
+    image: traefik/whoami:v1.12.0

@@ -6,12 +6,15 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html"
 	"io"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -30,6 +33,16 @@ var (
 	ipaAdminPw  = os.Getenv("MOKEY_IT_IPA_ADMIN_PASSWORD")
 	runID       = randHex(3)
 	policyGroup = "it" + runID
+	// faProxy is where Traefik of test/forward-auth.compose.yml listens; the
+	// forward-auth tests skip without it
+	faProxy = os.Getenv("MOKEY_IT_PROXY")
+)
+
+const (
+	faIDURL  = "https://id.mokey.test"
+	faAppURL = "https://app.mokey.test"
+	// the group test/forward-auth/mokey.toml gates the app on
+	faGroup = "fa-it-app"
 )
 
 func envOr(k, def string) string {
@@ -117,6 +130,11 @@ func setupStand() error {
 	if out, err := ipaCmd("", "pwpolicy-add", policyGroup, "--priority="+prio, "--minlife=0", "--minlength=12", "--minclasses=3"); err != nil {
 		return fmt.Errorf("%w: %s", err, out)
 	}
+	if faProxy != "" {
+		if out, err := ipaCmd("", "group-add", faGroup, "--desc=mokey forward-auth tests"); err != nil && !strings.Contains(out, "already exists") {
+			return fmt.Errorf("%w: %s", err, out)
+		}
+	}
 	return nil
 }
 
@@ -150,6 +168,14 @@ func stand(t *testing.T) {
 	t.Helper()
 	if baseURL == "" {
 		t.Skip("MOKEY_IT_URL is not set")
+	}
+}
+
+func faStand(t *testing.T) {
+	t.Helper()
+	stand(t)
+	if faProxy == "" {
+		t.Skip("MOKEY_IT_PROXY is not set")
 	}
 }
 
@@ -194,13 +220,14 @@ type client struct {
 	t    *testing.T
 	http *http.Client
 	csrf string
+	base string
 }
 
 var csrfRe = regexp.MustCompile(`X-CSRF-Token": "([^"]+)"`)
 
 func newClient(t *testing.T) *client {
 	jar, _ := cookiejar.New(nil)
-	return &client{t: t, http: &http.Client{
+	return &client{t: t, base: baseURL, http: &http.Client{
 		Jar:     jar,
 		Timeout: 30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -209,18 +236,42 @@ func newClient(t *testing.T) *client {
 	}}
 }
 
+// newProxyClient talks to mokey through Traefik at faIDURL: every
+// *.mokey.test:443 connection goes to faProxy, whose certificate is
+// Traefik's self-signed default
+func newProxyClient(t *testing.T) *client {
+	c := newClient(t)
+	c.base = faIDURL
+	var d net.Dialer
+	c.http.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- local test proxy with a self-signed certificate
+		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return d.DialContext(ctx, network, faProxy)
+		},
+	}
+	return c
+}
+
 func (c *client) do(method, path string, form url.Values, htmx bool) (int, string) {
 	c.t.Helper()
 	var body io.Reader
 	if form != nil {
 		body = strings.NewReader(form.Encode())
 	}
-	req, err := http.NewRequest(method, baseURL+path, body)
+	u := path
+	if !strings.HasPrefix(u, "https://") {
+		u = c.base + path
+	}
+	req, err := http.NewRequest(method, u, body)
 	if err != nil {
 		c.t.Fatal(err)
 	}
 	if form != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	if form != nil && strings.HasPrefix(c.base, "https://") {
+		// mokey's CSRF check wants an origin on HTTPS, as browsers send
+		req.Header.Set("Origin", c.base)
 	}
 	if c.csrf != "" {
 		req.Header.Set("X-CSRF-Token", c.csrf)
@@ -270,6 +321,13 @@ func (c *client) tryLogin(uid, password, otp string) int {
 func login(t *testing.T, uid, password string) *client {
 	t.Helper()
 	c := newClient(t)
+	c.login(uid, password)
+	return c
+}
+
+func (c *client) login(uid, password string) {
+	t := c.t
+	t.Helper()
 	if code := c.tryLogin(uid, password, ""); code != http.StatusNoContent {
 		t.Fatalf("login %s: want 204, got %d", uid, code)
 	}
@@ -277,7 +335,6 @@ func login(t *testing.T, uid, password string) *client {
 	if code, _ := c.get("/"); code != http.StatusOK {
 		t.Fatalf("index after login: %d", code)
 	}
-	return c
 }
 
 // mailLink waits for a message to addr in Mailpit and returns the path of the
