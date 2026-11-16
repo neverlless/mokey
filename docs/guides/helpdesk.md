@@ -59,11 +59,16 @@ the servers can handle it. To turn it off again:
 ipa config-mod --addattr ipaconfigstring="KDC:Disable Last Success"
 ```
 
+A `krbLastSuccessfulAuth` recorded before the flag was set again stays in
+the directory and still counts as a past sign of activity.
+
 `krbLastSuccessfulAuth` is not replicated: each FreeIPA server keeps the
 logins it handled. When recording is on, mokey reads it from every server
 listed as an IPA master in `ipa config-show` and takes the latest value,
-logging in to each with the service account's keytab. A server it cannot
-reach is skipped, and the view names it ("could not read logins from").
+logging in to each with the service account's keytab. Each server's
+logins are cached for five minutes and only the Inactive list fetches
+them. A server it cannot reach is skipped for a minute, and the view names
+it ("could not read logins from").
 
 ## Limits
 
