@@ -493,8 +493,12 @@ func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ip
 			site, data["homepage"], site, slackText(user.First), site, data["link_expires"], data["link"],
 		)
 	case "invite":
-		return fmt.Sprintf("%s invited you to %s. This invitation is valid for the next %s.\n\nCreate your account: <%s|Invitation Link>",
-			slackText(data["inviter"]), site, data["link_expires"], data["link"])
+		presetLine := ""
+		if u, _ := data["preset_username"].(string); u != "" {
+			presetLine = "\nYour username: " + slackCode(u)
+		}
+		return fmt.Sprintf("%s invited you to %s. This invitation is valid for the next %s.\n\nCreate your account: <%s|Invitation Link>%s",
+			slackText(data["inviter"]), site, data["link_expires"], data["link"], presetLine)
 	case "account-verify", "email-change", "otprecovery-confirm":
 		return fmt.Sprintf("Notification from %s: %s\n\nThis link is only valid for the next %s.\n<%s|Open link>",
 			site, slackText(subject), data["link_expires"], data["link"])
@@ -504,7 +508,7 @@ func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ip
 		return fmt.Sprintf("Notification from %s: %s\n\n%s", site, slackText(subject), slackText(data["reason"]))
 	case "username-reminder":
 		usernames, _ := data["usernames"].([]string)
-		return fmt.Sprintf("Notification from %s: %s\n\n%s", site, slackText(subject), slackText(strings.Join(usernames, "\n")))
+		return fmt.Sprintf("Notification from %s: %s\n\n%s", site, slackText(subject), slackCode(usernames...))
 	default:
 		return fmt.Sprintf("Notification from %s: %s", site, slackText(subject))
 	}
@@ -515,6 +519,19 @@ func slackMessageFor(tmpl, subject string, data map[string]interface{}, user *ip
 // formatting, which Slack gives no other way to escape.
 var slackReplacer = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;",
 	"*", "*\u200b", "_", "_\u200b", "~", "~\u200b", "`", "`\u200b")
+
+// slackCode renders values a user will copy (usernames) as code spans, where
+// mrkdwn is inert; only the entity characters are escaped and a backtick,
+// which FreeIPA usernames cannot contain, is dropped.
+func slackCode(vals ...string) string {
+	out := make([]string, len(vals))
+	for i, v := range vals {
+		v = strings.ReplaceAll(v, "`", "")
+		v = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;").Replace(v)
+		out[i] = "`" + v + "`"
+	}
+	return strings.Join(out, "\n")
+}
 
 func slackText(v interface{}) string {
 	return slackReplacer.Replace(fmt.Sprint(v))
