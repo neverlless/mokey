@@ -1,0 +1,95 @@
+{{ with $.lc_notice }}
+<div class="alert alert-success alert-dismissible fade show" role="status">
+  {{ . }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+{{ with $.lc_failed }}
+<div class="alert alert-danger" role="alert">{{ . }}</div>
+{{ end }}
+{{ with $.lc_error }}
+<div class="alert alert-danger" role="alert">{{ . }}</div>
+{{ end }}
+
+<div class="mokey-card mb-4">
+  <div class="mokey-row">
+    <div class="flex-grow-1">{{ T "admin.lifecycle_reminders" }}</div>
+    {{ with $.lc_reminders }}<span class="mokey-pill is-ok">{{ . }}</span>{{ else }}<span class="mokey-pill is-muted">{{ T "admin.lifecycle_off" }}</span>{{ end }}
+  </div>
+  <div class="mokey-row">
+    <div class="flex-grow-1">{{ T "admin.lifecycle_renewal" }}</div>
+    {{ with $.lc_renewal }}<span class="mokey-pill is-ok">{{ . }}</span>{{ else }}<span class="mokey-pill is-muted">{{ T "admin.lifecycle_off" }}</span>{{ end }}
+  </div>
+  <div class="mokey-row">
+    <div class="flex-grow-1">{{ T "admin.lifecycle_assign" }}</div>
+    {{ if $.lc_assign }}<span class="mokey-pill is-ok">{{ T "admin.lifecycle_on" }}</span>{{ else }}<span class="mokey-pill is-muted">{{ T "admin.lifecycle_off" }}</span>{{ end }}
+  </div>
+</div>
+
+{{ if $.lc_truncated }}
+<div class="alert alert-warning" role="status">{{ T "admin.helpdesk_truncated" }}</div>
+{{ end }}
+
+<h2 class="mokey-section-title mb-2">{{ T "admin.lifecycle_waiting" }}</h2>
+{{ if $.lc_held }}
+<div class="alert alert-warning" role="status">{{ $.lc_held }}</div>
+<div class="mokey-card mb-2">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">{{ T "admin.lifecycle_account" }}</th>
+          <th scope="col">{{ T "admin.lifecycle_change" }}</th>
+          <th scope="col">{{ T "admin.lifecycle_why" }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{ range $ch := $.lc_changes }}
+        <tr>
+          <td><span class="mokey-mono">{{ $ch.UID }}</span></td>
+          <td class="text-nowrap">{{ if $ch.From.IsZero }}{{ T "admin.lifecycle_none" }}{{ else }}{{ Day $ch.From }}{{ end }} → {{ Day $ch.To }}</td>
+          <td class="text-muted">{{ $ch.Why }}</td>
+        </tr>
+      {{ end }}
+      {{ with $.lc_more }}
+        <tr><td colspan="3" class="text-muted small">{{ . }}</td></tr>
+      {{ end }}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="d-flex gap-2 mb-4">
+  <button type="button" class="btn btn-primary"
+          hx-post="/admin/lifecycle/apply" hx-target="#admin-lifecycle" hx-disabled-elt="this"
+          hx-target-error="lifecycle-failed"
+          hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+    {{ $.lc_apply }}
+  </button>
+</div>
+{{ else }}
+<p class="text-muted mb-4">{{ T "admin.lifecycle_nothing_waiting" }}</p>
+{{ end }}
+
+{{ if $.lc_orphans }}
+<h2 class="mokey-section-title mb-2">{{ T "admin.lifecycle_sponsor_expired" }}</h2>
+<p class="text-muted small mb-2">{{ T "admin.lifecycle_sponsor_expired_hint" }}</p>
+<div class="mokey-card">
+  {{ range $o := $.lc_orphans }}
+  <div class="mokey-row flex-wrap">
+    <div class="flex-grow-1">
+      <span class="mokey-mono">{{ $o.UID }}</span>
+      <span class="text-muted small">· {{ printf (T "admin.lifecycle_sponsor_expired_by") $o.Sponsor (Day $o.SponsorExpires) }}</span>
+    </div>
+    <form class="d-flex gap-2" hx-post="/admin/user/set-sponsor" hx-target="#admin-lifecycle"
+          hx-target-error="lifecycle-failed" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+      <input type="hidden" name="username" value="{{ $o.UID }}">
+      <input type="hidden" name="from" value="lifecycle">
+      <label for="lc-sponsor-{{ $o.UID }}" class="visually-hidden">{{ printf (T "admin.lifecycle_sponsor_for") $o.UID }}</label>
+      <input id="lc-sponsor-{{ $o.UID }}" type="text" class="form-control form-control-sm" name="sponsor"
+             placeholder="{{ T "common.username" }}" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+      <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap">{{ T "admin.lifecycle_set_sponsor" }}</button>
+    </form>
+  </div>
+  {{ end }}
+</div>
+{{ end }}

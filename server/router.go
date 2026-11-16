@@ -305,6 +305,9 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	get(app, "/admin", r.RequireLogin, r.Index)
 	get(app, "/admin/people", r.RequireLogin, r.Index)
 	get(app, "/admin/log", r.RequireLogin, r.Index)
+	get(app, "/admin/lifecycle", r.RequireLogin, r.Index)
+	get(app, "/admin/lifecycle/status", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminLifecycleStatus)
+	app.Post("/admin/lifecycle/apply", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminLifecycleApply)
 	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
 	get(app, "/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
 	get(app, "/admin/pending", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminPendingList)
@@ -374,6 +377,8 @@ func navSection(path string) string {
 		return "people"
 	case "admin/log":
 		return "log"
+	case "admin/lifecycle":
+		return "lifecycle"
 	case "password", "otp", "passkey", "security":
 		return "security"
 	}
@@ -426,11 +431,16 @@ func (r *Router) Index(c fiber.Ctx) error {
 		"section":      navSection(path),
 		"initials":     initials(user),
 		"display_name": displayName(user),
+		"lifecycle_on": r.lifecycle.on(),
 	}
 	expiryWarningVars(user, vars)
 
 	if strings.HasPrefix(path, "admin") && !isAdmin(user) {
 		return c.Status(fiber.StatusForbidden).SendString("")
+	}
+
+	if path == "admin/lifecycle" && !r.lifecycle.on() {
+		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 
 	if path == "account" && viper.GetBool("accounts.enable_subid") {
