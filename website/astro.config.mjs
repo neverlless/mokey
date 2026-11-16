@@ -66,6 +66,7 @@ export default defineConfig({
 						{ label: 'App catalog', slug: 'guides/app-catalog' },
 						{ label: 'Webhooks and JSON API', slug: 'guides/webhooks-api' },
 						{ label: 'Admin helpdesk view', slug: 'guides/helpdesk' },
+						{ label: 'Account expiry and renewal', slug: 'guides/account-lifecycle' },
 					],
 				},
 				{

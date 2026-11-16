@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Account lifecycle (`[lifecycle]`, off by default): expiry dates
+  (`krbPrincipalExpiration`) shown to the user with reminder mails; the
+  sponsor of an account is its FreeIPA `manager`, sees a "People you
+  sponsor" section on Groups and extends accounts by `renewal_period`, never
+  past their own expiry; optional automatic expiry for sponsored accounts
+  with a mass-change brake; admin Lifecycle page and People actions to set
+  expiry and sponsor. There is no automatic lock of inactive accounts:
+  FreeIPA doesn't see SSH key logins. See the Account expiry guide
+- Upgrade notes: writing expiry dates needs the optional FreeIPA permission
+  `Mokey Modify Principal Expiration` on mokey's role (Install guide,
+  `mokey_ipa_expiry_permission` in the Ansible role); only with
+  `[lifecycle]` expiry or renewal
 - Forward-auth for web apps (`[forward_auth]`, off by default): Traefik,
   ingress-nginx, Caddy, Envoy Gateway and Istio ask mokey, which signs the
   user in and admits them by FreeIPA group or HBAC rule. App sessions are

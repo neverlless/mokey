@@ -57,6 +57,11 @@ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey UPG Read'
 ipa role-add-privilege 'Mokey User Manager' --privilege='Stage User Administrators'
 # Only needed with accounts.enable_subid enabled:
 ipa role-add-privilege 'Mokey User Manager' --privilege='Subordinate ID Administrators'
+# Only needed with [lifecycle] expiry or renewal (writes krbPrincipalExpiration):
+ipa permission-add 'Mokey Modify Principal Expiration' --type=user --right=write --attrs=krbprincipalexpiration
+ipa privilege-add 'Mokey Expiry Write' --desc='Write account expiry'
+ipa privilege-add-permission 'Mokey Expiry Write' --permissions='Mokey Modify Principal Expiration'
+ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expiry Write'
 ipa-getkeytab -s ipa.example.com -p mokey/mokey -k /etc/mokey/private/mokeyapp.keytab
 chmod 640 /etc/mokey/private/mokeyapp.keytab
 chgrp mokey /etc/mokey/private/mokeyapp.keytab
