@@ -158,7 +158,9 @@ func (r *Router) StartConsentSweep() {
 	go func() {
 		for {
 			time.Sleep(interval)
-			r.consentSweep()
+			if r.lock.lease("consent-sweep", interval) {
+				r.consentSweep()
+			}
 		}
 	}()
 }

@@ -51,6 +51,9 @@
   share them. Other drivers still generate them when blank and warn that
   emailed links stop working after a restart. A blank `csrf_secret` (as in
   `mokey.toml.sample`) is now generated instead of used as an empty key
+- Background sweeps (password expiry reminders, membership expiry, Hydra
+  consent sweep) run on one replica per interval instead of on every one,
+  so replicas no longer send duplicate reminder emails
 
 ### Upgrade notes
 

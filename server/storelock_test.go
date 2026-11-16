@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -83,4 +84,51 @@ func TestStoreLockRedisReplicas(t *testing.T) {
 	v, err := a.Get(storeLockPrefix + "k")
 	require.NoError(t, err)
 	assert.Equal(t, "other", string(v))
+}
+
+// two routers on one storage stand in for two replicas
+func TestSweepLeaseOneReplicaPerInterval(t *testing.T) {
+	shared := memory.New()
+	ra, rb := lockedRouter(shared), lockedRouter(shared)
+	interval := 2 * time.Second
+
+	assert.True(t, ra.lock.lease("sweep", interval))
+	assert.False(t, rb.lock.lease("sweep", interval), "the other replica skips this run")
+	assert.False(t, ra.lock.lease("sweep", interval))
+	assert.True(t, rb.lock.lease("other-sweep", interval), "leases are per sweep")
+
+	// the lease ends before the next interval, so either replica runs it
+	assert.Eventually(t, func() bool { return rb.lock.lease("sweep", interval) }, 2*interval, 50*time.Millisecond)
+}
+
+func TestSweepLeaseRedisReplicas(t *testing.T) {
+	url := os.Getenv("MOKEY_TEST_REDIS_URL")
+	if url == "" {
+		t.Skip("MOKEY_TEST_REDIS_URL not set")
+	}
+
+	a := redis.New(redis.Config{URL: url, Reset: true})
+	b := redis.New(redis.Config{URL: url})
+	t.Cleanup(func() {
+		_ = a.Reset()
+		_ = a.Close()
+		_ = b.Close()
+	})
+	ra, rb := lockedRouter(a), lockedRouter(b)
+
+	var won atomic.Int32
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		r := []*Router{ra, rb}[i%2]
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if r.lock.lease("sweep", time.Second) {
+				won.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, int32(1), won.Load())
+	assert.Eventually(t, func() bool { return rb.lock.lease("sweep", time.Second) }, 2*time.Second, 50*time.Millisecond)
 }

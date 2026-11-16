@@ -242,7 +242,12 @@ active sessions, group join requests, the OTP recovery queue) are rewritten
 under a short Redis lock (`lock-<key>`, released by the holder, expiring after
 5 seconds if a replica dies), and the audit log sequence is a Redis `INCR`. A
 replica that cannot take a lock within 6 seconds logs a warning and goes ahead
-without it. `memory` and `sqlite3` are for a single mokey process: one sqlite3
+without it. Captchas are stored as `captcha-<id>`. Each background sweep
+takes a lease (`lease-<sweep>`, held for 9/10 of its interval) before it runs;
+the other replicas, or a replica that cannot reach Redis, skip that run. Set
+`server.csrf_secret` and `email.token_secret` to the same values on every
+replica: mokey does not start on redis without them.
+`memory` and `sqlite3` are for a single mokey process: one sqlite3
 file shared by several replicas is not supported.
 
 ## `[hydra]`

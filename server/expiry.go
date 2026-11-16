@@ -41,11 +41,10 @@ func (r *Router) StartExpiryReminders() {
 	)
 
 	go func() {
-		// ponytail: single-instance sweep; multi-replica deployments send
-		// at most one duplicate per window thanks to the storage marker,
-		// and only when replicas race within the same sweep
 		for {
-			r.expiryReminderSweep()
+			if r.lock.lease("password-expiry-reminders", expirySweepInterval) {
+				r.expiryReminderSweep()
+			}
 			time.Sleep(expirySweepInterval)
 		}
 	}()
