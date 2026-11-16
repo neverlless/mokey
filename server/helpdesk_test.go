@@ -304,3 +304,68 @@ func TestAdminHelpdeskRequiresAdmin(t *testing.T) {
 	resp = tc.postForm("/admin/user/unlock?helpdesk=locked", url.Values{"username": {"jesse"}}, htmx)
 	assert.Equal(t, fiber.StatusForbidden, resp.StatusCode)
 }
+
+func TestAdminHelpdeskCacheReadsDoNotWaitForFetch(t *testing.T) {
+	assert := assert.New(t)
+	app, _, fake, tc := newHelpdeskApp(t)
+	trackLastLogin(fake, "ipa2.example.test")
+	serveHelpdeskUsers(fake, false, helpdeskFixture{uid: "saul", lastLogin: 200 * 24 * time.Hour})
+
+	entered, release := make(chan struct{}), make(chan struct{})
+	orig := newIPAClientForHost
+	t.Cleanup(func() { newIPAClientForHost = orig })
+	newIPAClientForHost = func(string) (*ipa.Client, error) {
+		close(entered)
+		<-release
+		return nil, errors.New("unreachable")
+	}
+
+	done := make(chan int)
+	go func() { done <- tc.get("/admin/helpdesk?view=inactive", htmx).StatusCode }()
+	<-entered
+
+	other := newTestClient(t, app)
+	other.login("walter", "Secret123!")
+	start := time.Now()
+	locked, _ := helpdeskList(t, other, "locked")
+	assert.Empty(locked)
+	assert.Less(time.Since(start), 2*time.Second)
+
+	close(release)
+	assert.Equal(fiber.StatusOK, <-done)
+}
+
+func TestAdminHelpdeskActionKeepsStaleMasterLogins(t *testing.T) {
+	assert := assert.New(t)
+	_, router, fake, tc := newHelpdeskApp(t)
+	day := 24 * time.Hour
+
+	other := ipatest.NewServer(t)
+	other.GrantPrivilege(keytabUser, "User Administrators")
+	other.SetNegotiateUser(keytabUser)
+	serveHelpdeskUsers(other, false, helpdeskFixture{uid: "skinny", lastLogin: day})
+	fakeMasters(t, other)
+
+	trackLastLogin(fake, "ipa2.example.test", "ipa3.example.test")
+	fake.AddUser("saul", ipatest.User{FailedLogins: 6})
+	serveHelpdeskUsers(fake, false,
+		helpdeskFixture{uid: "skinny", lastLogin: 200 * day},
+		helpdeskFixture{uid: "saul", lastLogin: 200 * day, failed: 6, lastFailed: time.Minute},
+	)
+	uids, _ := helpdeskList(t, tc, "inactive")
+	assert.Equal([]string{"saul"}, uids)
+
+	for _, host := range []string{"ipa2.example.test", "ipa3.example.test"} {
+		mc := router.masters.get(host)
+		mc.mu.Lock()
+		mc.readAt = time.Now().Add(-time.Hour)
+		mc.mu.Unlock()
+	}
+
+	resp := tc.postForm("/admin/user/unlock?helpdesk=inactive", url.Values{"username": {"saul"}}, htmx)
+	body := readBody(t, resp)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Contains(body, "<strong>saul</strong>")
+	assert.NotContains(body, "<strong>skinny</strong>")
+	assert.Contains(body, fmt.Sprintf(T("admin.helpdesk_masters_unreachable"), "ipa3.example.test"))
+}
