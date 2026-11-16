@@ -1,6 +1,7 @@
 mokey.yaml
 mokey.toml
 !examples/demo/mokey.toml
+!test/forward-auth/mokey.toml
 mokey.db
 /mokey
 .env

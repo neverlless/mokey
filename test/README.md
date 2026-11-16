@@ -41,7 +41,9 @@ For the forward-auth tests add the [forward-auth overlay](forward-auth.compose.y
 Traefik on `127.0.0.1:443` (port 443 must be free) terminating TLS with its
 self-signed default certificate for `id.mokey.test` (mokey) and
 `app.mokey.test` (whoami gated on the FreeIPA group `fa-it-app`, which the
-tests create). Nothing needs to be added to `/etc/hosts`: the tests send
+tests create). Its mokey config, [forward-auth/mokey.toml](forward-auth/mokey.toml),
+mirrors `examples/demo/mokey.toml` plus `server.trusted_proxies` and
+`[forward_auth]`: change both together. Nothing needs to be added to `/etc/hosts`: the tests send
 those names to `MOKEY_IT_PROXY` themselves (a custom dialer, and Chromium's
 `--host-resolver-rules`).
 
@@ -49,6 +51,8 @@ those names to `MOKEY_IT_PROXY` themselves (a custom dialer, and Chromium's
 MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compose.yml \
   -f test/forward-auth.compose.yml up -d --wait mokey traefik
 export MOKEY_IT_PROXY=127.0.0.1:443
+# Traefik loads its routes a moment after it starts
+until curl -sk -o /dev/null --resolve id.mokey.test:443:127.0.0.1 https://id.mokey.test/healthz; do sleep 1; done
 ```
 
 Then, from `test/integration`:

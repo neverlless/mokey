@@ -1,0 +1,56 @@
+# Mirrors examples/demo/mokey.toml plus server.trusted_proxies and
+# [forward_auth]; keep the two in step. Used by test/forward-auth.compose.yml.
+# DEMO ONLY: the secrets below are public. Never reuse this file.
+
+[site]
+name = "mokey demo"
+ktuser = "mokey/mokey"
+keytab = "/etc/mokey/private/mokeyapp.keytab"
+
+[accounts]
+enable_signup = true
+enable_groups = true
+enable_access = true
+otp_issuer = "mokey demo"
+
+[email]
+base_url = "http://localhost:8866"
+from = "mokey@mokey.test"
+token_secret = "00000000000000000000000000000000000000000000000000000000000000de"
+notify_password_change = true
+notify_new_login = true
+# Mailpit accepts plain SMTP without auth
+smtp_host = "mailpit"
+smtp_port = 1025
+smtp_tls = "off"
+
+[server]
+listen = "0.0.0.0:8866"
+# Plain HTTP on localhost
+secure_cookies = false
+csrf_secret = "mokey-demo-csrf-secret-not-secret"
+# Room for clicking around: only failed requests count
+rate_limit_expiration = 60
+rate_limit_max = 100
+# Traefik on the compose network
+trusted_proxies = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+
+[storage]
+driver = "memory"
+
+[admin]
+enabled = true
+group = "admins"
+
+# Forward-auth behind Traefik (test/forward-auth.compose.yml): mokey at
+# https://id.mokey.test, the whoami app at https://app.mokey.test
+[forward_auth]
+enabled = true
+url = "https://id.mokey.test"
+# short, so the browser test sees a removed member lose access
+recheck = "3s"
+
+[[forward_auth.apps]]
+host = "app.mokey.test"
+name = "Whoami"
+groups = ["fa-it-app"]
