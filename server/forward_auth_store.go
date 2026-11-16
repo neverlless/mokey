@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -135,8 +136,14 @@ func (r *Router) faTakeCode(code string) (*faCode, error) {
 	return &c, nil
 }
 
+// faUserKey is the index and lock key: FreeIPA accepts a login in any case,
+// so the name callers hold may differ from the canonical uid
+func faUserKey(username string) string {
+	return faUserPrefix + strings.ToLower(username)
+}
+
 func (r *Router) faLoadIndex(username string) ([]faUserEntry, error) {
-	raw, err := r.storage.Get(faUserPrefix + username)
+	raw, err := r.storage.Get(faUserKey(username))
 	if err != nil || raw == nil {
 		return nil, err
 	}
@@ -146,10 +153,10 @@ func (r *Router) faLoadIndex(username string) ([]faUserEntry, error) {
 
 func (r *Router) faSaveIndex(username string, idx []faUserEntry) error {
 	if len(idx) == 0 {
-		return r.storage.Delete(faUserPrefix + username)
+		return r.storage.Delete(faUserKey(username))
 	}
 	// every indexed session expires within SessionMax of the newest one
-	return r.faPut(faUserPrefix+username, idx, r.forwardAuth.SessionMax)
+	return r.faPut(faUserKey(username), idx, r.forwardAuth.SessionMax)
 }
 
 // faExists reports a read error as existing: dropping a live session from
@@ -175,7 +182,7 @@ func (r *Router) faCreateSession(s *faSession) error {
 	if err != nil {
 		return err
 	}
-	release, err := r.lock.holdStrict(faUserPrefix + s.Username)
+	release, err := r.lock.holdStrict(faUserKey(s.Username))
 	if err != nil {
 		return err
 	}
@@ -226,7 +233,7 @@ func (r *Router) faTouch(s *faSession) error {
 	if now.Sub(s.LastSeen) < faTouchEvery && !s.CheckedAt.After(s.LastSeen) {
 		return nil
 	}
-	release, err := r.lock.holdStrict(faUserPrefix + s.Username)
+	release, err := r.lock.holdStrict(faUserKey(s.Username))
 	if err != nil {
 		return err
 	}
@@ -251,7 +258,7 @@ func (r *Router) faRevoke(username string, match func(parentSID string) bool) {
 	if r.forwardAuth == nil {
 		return
 	}
-	release, err := r.lock.holdStrict(faUserPrefix + username)
+	release, err := r.lock.holdStrict(faUserKey(username))
 	if err != nil {
 		slog.Warn("Revoking app sessions without storage lock",
 			"username", username,
