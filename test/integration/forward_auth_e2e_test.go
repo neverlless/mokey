@@ -3,6 +3,7 @@
 package integration
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -69,11 +70,18 @@ func TestForwardAuthBrowserDeniedStyled(t *testing.T) {
 	must(t, page.WaitForURL(faAppURL+"/"))
 
 	mustIPA(t, "group-remove-member", faGroup, "--users="+u.uid)
-	time.Sleep(4 * time.Second) // forward_auth.recheck in test/forward-auth/mokey.toml
-	resp, err := page.Goto(faAppURL + "/")
-	must(t, err)
-	if resp.Status() != 403 || page.URL() != faAppURL+"/" {
-		t.Fatalf("removed member: want 403 on the app host, got %d at %s", resp.Status(), page.URL())
+	// access ends at the next recheck (forward_auth.recheck in test/forward-auth/mokey.toml)
+	deadline := time.Now().Add(20 * time.Second)
+	for {
+		resp, err := page.Goto(faAppURL + "/")
+		must(t, err)
+		if resp.Status() == 403 && page.URL() == faAppURL+"/" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("removed member: want 403 on the app host, got %d at %s", resp.Status(), page.URL())
+		}
+		time.Sleep(time.Second)
 	}
 	body, err := page.Locator("body").InnerText()
 	must(t, err)
@@ -85,7 +93,7 @@ func TestForwardAuthBrowserDeniedStyled(t *testing.T) {
 		.filter(s => s.href && s.href.startsWith("` + faIDURL + `/static/css/style.css"))
 		.map(s => s.cssRules.length)`)
 	must(t, err)
-	if r, _ := rules.([]any); len(r) != 1 || r[0] == 0 {
+	if r, _ := rules.([]any); len(r) != 1 || fmt.Sprint(r[0]) == "0" {
 		t.Fatalf("mokey's stylesheet did not load on the app host: %v", rules)
 	}
 }

@@ -55,6 +55,14 @@ jobs:
           done
           exit 1
 
+      - name: Wait for Traefik
+        run: |
+          for i in $(seq 1 30); do
+            curl -sfk --resolve id.mokey.test:443:127.0.0.1 https://id.mokey.test/healthz && exit 0
+            sleep 2
+          done
+          exit 1
+
       - name: Integration tests
         working-directory: test/integration
         run: go test -count=1 -v -timeout 20m -tags integration ./...
