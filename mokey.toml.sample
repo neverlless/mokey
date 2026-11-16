@@ -208,6 +208,8 @@ resend_cooldown = 180
 
 # Secret key for branca tokens. Must be 32 bytes. To generate run:
 #    openssl rand -hex 32 
+# Generated at startup when blank, which breaks emailed links on restart.
+# Required with storage driver "redis": every replica needs the same value.
 token_secret = ""
 
 # Email the user when their password is changed or reset (off by default).
@@ -278,7 +280,8 @@ read_buffer_size = 16384
 # Require secure cookies
 secure_cookies = true
 
-# CSRF token secret key. Should be a random string
+# CSRF token secret key. Should be a random string. Generated at startup
+# when blank; required with storage driver "redis" (same on every replica).
 csrf_secret = ""
 
 # Timeouts

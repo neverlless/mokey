@@ -162,7 +162,7 @@ enables it, needs `sqlite3` or `redis` storage and a FreeIPA privilege. See
 | `subject_prefix` | string | `"[<site name>] "` | Text placed before every subject line. Set it to `""` to drop the prefix. |
 | `subject_suffix` | string | — | Text appended to every subject line, for gateways that require a marker to pass a message. |
 | `token_max_age` | int | `3600` | Lifetime (seconds) of password-reset and account-verify links. |
-| `token_secret` | string | auto-generated | 32-byte hex secret for signing email tokens (`openssl rand -hex 32`). Auto-generated at startup when blank — set it so links survive restarts. |
+| `token_secret` | string | auto-generated | 32-byte hex secret for signing email tokens (`openssl rand -hex 32`). Auto-generated at startup when blank, with a warning: links in emails already sent stop working after a restart. Required with `storage.driver = "redis"`, where every replica must use the same value; mokey refuses to start without it. |
 | `notify_new_login` | bool | `false` | Email the user on every fresh sign-in (browser, OS, IP). Sent asynchronously. |
 | `notify_password_change` | bool | `false` | Email the user when their password is changed or reset. |
 | `password_expiry_reminders` | list | *(empty — disabled)* | Days-before-expiry thresholds for password expiry reminder emails, e.g. `[14, 7, 3, 1]`. A background sweep (every 6h) emails each user once per threshold; a password change re-arms all thresholds. Empty disables reminders. |
@@ -190,7 +190,7 @@ command goes out.
 | `tls_min_version` | string | `"1.2"` | Minimum TLS version: `1.2` or `1.3`. |
 | `tls_ciphers` | list | Go defaults | Restrict TLS 1.2 cipher suites, using [Go crypto/tls names](https://pkg.go.dev/crypto/tls#pkg-constants). TLS 1.3 suites are not configurable. |
 | `secure_cookies` | bool | `true` | Set the `Secure` flag on cookies. Disable only when serving plain HTTP behind nothing. |
-| `csrf_secret` | string | auto-generated | Secret for CSRF tokens. Auto-generated at startup when blank — set it so sessions survive restarts. |
+| `csrf_secret` | string | auto-generated | Secret for CSRF tokens. Auto-generated at startup when blank, with a warning — set it so sessions survive restarts. Required with `storage.driver = "redis"`, where every replica must use the same value; mokey refuses to start without it. |
 | `session_idle_timeout` | int | `900` | Session inactivity timeout (seconds). |
 | `read_timeout` | int | `5` | HTTP read timeout (seconds). |
 | `write_timeout` | int | `5` | HTTP write timeout (seconds). |

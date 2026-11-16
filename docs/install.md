@@ -181,3 +181,8 @@ Its README lists every variable.
 Use `storage.driver = "redis"` so all replicas share sessions, tokens and
 request queues. `memory` and `sqlite3` are per instance. With `memory`, every
 restart logs everyone out and drops pending group and OTP recovery requests.
+
+With `redis`, set `server.csrf_secret` and `email.token_secret` to the same
+values on every replica; mokey refuses to start without them. Otherwise a
+reset or invite link mailed by one replica, or a form served by it, fails on
+another. Captchas are kept in Redis too, so no sticky sessions are needed.

@@ -100,22 +100,8 @@ func initConfig() {
 		cfgFileUsed = viper.ConfigFileUsed()
 	}
 
-	if !viper.IsSet("email.token_secret") {
-		secret, err := server.GenerateSecret(32)
-		if err != nil {
-			fatal(err.Error())
-		}
-
-		viper.Set("email.token_secret", secret)
-	}
-
-	if !viper.IsSet("server.csrf_secret") {
-		secret, err := server.GenerateSecretString(16)
-		if err != nil {
-			fatal(err.Error())
-		}
-
-		viper.Set("server.csrf_secret", secret)
+	if err := server.EnsureSecrets(); err != nil {
+		fatal(err.Error())
 	}
 
 	if !viper.IsSet("site.keytab") {
