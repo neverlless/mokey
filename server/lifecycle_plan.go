@@ -41,8 +41,10 @@ func sponsorLoop(accts map[string]string, uid, sponsor string) bool {
 	return false
 }
 
+func lcPast(t, now time.Time) bool { return !t.IsZero() && !t.After(now) }
+
 // planLifecycle computes the expiry assignments and sponsor caps due now.
-// Changes are sorted by UID; disabled accounts are never changed.
+// Input UIDs must be unique and Sponsor already a plain uid. Changes are sorted by UID; disabled accounts are never changed.
 func planLifecycle(accts []lcAccount, now time.Time, cfg *lifecycleConfig) (changes []lcChange, sponsorExpired []string) {
 	accts = slices.Clone(accts)
 	slices.SortFunc(accts, func(a, b lcAccount) int { return strings.Compare(a.UID, b.UID) })
@@ -62,9 +64,10 @@ func planLifecycle(accts []lcAccount, now time.Time, cfg *lifecycleConfig) (chan
 		cur[a.UID] = to
 	}
 
-	if cfg.AssignMissing && cfg.Renewal > 0 {
+	assign := cfg.AssignMissing && cfg.Renewal > 0
+	if assign {
 		for _, a := range accts {
-			if a.Sponsor != "" && !a.Disabled && a.Expires.IsZero() {
+			if a.Sponsor != "" && !a.Disabled && a.Expires.IsZero() && !lcPast(cur[a.Sponsor], now) {
 				set(a, extendTarget(now, cfg.Renewal, cur[a.Sponsor]), "assign")
 			}
 		}
@@ -88,7 +91,8 @@ func planLifecycle(accts []lcAccount, now time.Time, cfg *lifecycleConfig) (chan
 
 	for _, a := range accts {
 		sp := cur[a.Sponsor]
-		if a.Sponsor != "" && !a.Disabled && !sp.IsZero() && !sp.After(now) && cur[a.UID].After(sp) {
+		unassigned := assign && cur[a.UID].IsZero()
+		if a.Sponsor != "" && !a.Disabled && lcPast(sp, now) && (unassigned || cur[a.UID].After(sp)) {
 			sponsorExpired = append(sponsorExpired, a.UID)
 		}
 	}
