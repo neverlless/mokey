@@ -13,6 +13,14 @@
 	</div>
 </div>
 {{ end }}
+{{ if and (eq $.path "account") $.account_expires_warn }}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+	<i class="fa fa-triangle-exclamation me-2" aria-hidden="true"></i>
+	<div>
+		{{ T "account.expires_banner_part1" }}<strong>{{ Day $.account_expires }}</strong>{{ if $.sponsor_name }}{{ T "account.expires_banner_sponsor" }}{{ $.sponsor_name }}{{ T "account.expires_banner_sponsor_end" }}{{ else }}{{ T "account.expires_banner_admin" }}{{ end }}
+	</div>
+</div>
+{{ end }}
 {{ if eq $.path "account" }}
 <div id="account">
 {{ template "account.html" . }}

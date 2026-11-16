@@ -43,7 +43,7 @@ func languageFuncs(lang string) template.FuncMap {
 		"T":            func(key string) string { return TL(lang, key) },
 		"TimeAgo":      func(t time.Time) string { return timeAgo(lang, t) },
 		"Date":         func(t time.Time) string { return t.Format(TL(lang, "date.layout")) },
-		"Day":          func(t time.Time) string { return t.Format(TL(lang, "date.day_layout")) },
+		"Day":          func(t time.Time) string { return t.Local().Format(TL(lang, "date.day_layout")) },
 		"LanguageCode": func() string { return languageCodes[lang] },
 	}
 }

@@ -19,6 +19,7 @@ func (r *Router) AccountSettings(c fiber.Ctx) error {
 	vars := fiber.Map{
 		"user": user,
 	}
+	r.accountExpiryVars(c, user, vars)
 
 	if c.Method() == fiber.MethodGet {
 		return c.Render("account.html", vars)

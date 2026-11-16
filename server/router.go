@@ -437,6 +437,10 @@ func (r *Router) Index(c fiber.Ctx) error {
 		r.subidVars(user.Username, vars)
 	}
 
+	if path == "account" {
+		r.accountExpiryVars(c, user, vars)
+	}
+
 	if path == "groups" {
 		r.groupsVars(c, vars)
 	}
