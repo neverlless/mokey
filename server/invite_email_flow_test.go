@@ -341,5 +341,6 @@ func TestAdminInviteFormFieldsInsideForm(t *testing.T) {
 	for _, n := range []string{`name="email"`, `name="username"`, `name="first"`, `name="last"`} {
 		assert.Contains(form, n)
 	}
-	assert.Contains(body, `data-hx-include="#invite-email, #invite-more"`)
+	assert.Contains(form, `hx-post="/admin/invite"`)
+	assert.Contains(form, `type="submit"`)
 }

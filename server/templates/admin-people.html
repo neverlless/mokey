@@ -16,33 +16,31 @@
 <div id="admin-failed" style="display: none" class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">
 </div>
 <h2 class="mokey-section-title mb-2">{{ T "admin.invite_title" }}</h2>
-<div class="mokey-card mb-4">
-  <form class="mokey-row">
-    <label for="invite-email" class="visually-hidden">{{ T "common.email" }}</label>
-    <input id="invite-email" type="email" class="form-control" name="email" placeholder="user@example.com">
-    <button class="btn btn-primary text-nowrap" type="button" hx-target-error="admin-failed"
-            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-            data-hx-include="#invite-email, #invite-more"
-            data-hx-target="#admin" data-hx-post="/admin/invite">
-      {{ T "admin.invite_button" }}
-    </button>
-    <details id="invite-more" class="mt-3">
-      <summary class="text-muted">{{ T "admin.invite_more" }}</summary>
-      <div class="mokey-row mt-2">
-        <div>
-          <label for="invite-username" class="form-label">{{ T "common.username" }}</label>
-          <input id="invite-username" type="text" class="form-control" name="username" autocomplete="off">
-        </div>
-        <div>
-          <label for="invite-first" class="form-label">{{ T "common.first_name" }}</label>
-          <input id="invite-first" type="text" class="form-control" name="first" autocomplete="off">
-        </div>
-        <div>
-          <label for="invite-last" class="form-label">{{ T "common.last_name" }}</label>
-          <input id="invite-last" type="text" class="form-control" name="last" autocomplete="off">
-        </div>
+<div class="mokey-card mokey-card-body mb-4">
+  <form hx-post="/admin/invite" hx-target="#admin" hx-target-error="admin-failed"
+        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-lg-4">
+        <label for="invite-email" class="form-label">{{ T "common.email" }}</label>
+        <input id="invite-email" type="email" class="form-control" name="email" placeholder="user@example.com" required>
       </div>
-    </details>
+      <div class="col-6 col-lg-2">
+        <label for="invite-first" class="form-label">{{ T "common.first_name" }}</label>
+        <input id="invite-first" type="text" class="form-control" name="first" autocomplete="off">
+      </div>
+      <div class="col-6 col-lg-2">
+        <label for="invite-last" class="form-label">{{ T "common.last_name" }}</label>
+        <input id="invite-last" type="text" class="form-control" name="last" autocomplete="off">
+      </div>
+      <div class="col-12 col-lg-2">
+        <label for="invite-username" class="form-label">{{ T "common.username" }}</label>
+        <input id="invite-username" type="text" class="form-control" name="username" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="col-12 col-lg-2">
+        <button class="btn btn-primary w-100 text-nowrap" type="submit">{{ T "admin.invite_button" }}</button>
+      </div>
+    </div>
+    <p class="text-muted small mt-2 mb-0">{{ T "admin.invite_hint" }}</p>
   </form>
 </div>
 
