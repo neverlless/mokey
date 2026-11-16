@@ -347,9 +347,15 @@ driver = "memory"
 # Hydra
 #------------------------------------------------------------------------------
 [hydra]
-# admin_url: "http://locahost:4445"
-# login_timeout: 3600
-# fake_tls_termination: true
+# Hydra admin API. Setting it turns the Hydra login and consent flow on.
+# admin_url = "http://localhost:4445"
+
+# How long Hydra remembers the login, in seconds (remember_for). Default: 0.
+# login_timeout = 3600
+
+# Send X-Forwarded-Proto: https to Hydra when TLS ends at a proxy.
+# Default: false.
+# fake_tls_termination = true
 
 # Deny clients that have no [[hydra.clients]] entry below. Default: false,
 # every FreeIPA user may sign in to every client.
