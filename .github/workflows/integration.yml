@@ -29,7 +29,8 @@ jobs:
     env:
       MOKEY_IMAGE: mokey:ci
       MOKEY_IT_URL: http://localhost:8866
-      COMPOSE: docker compose -f examples/demo/compose.yml -f test/compose.yml
+      MOKEY_IT_PROXY: 127.0.0.1:443
+      COMPOSE: docker compose -f examples/demo/compose.yml -f test/compose.yml -f test/forward-auth.compose.yml
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,7 +45,7 @@ jobs:
         run: docker build -t mokey:ci .
 
       - name: Start the demo stand
-        run: $COMPOSE up -d --wait --wait-timeout 1800 mokey
+        run: $COMPOSE up -d --wait --wait-timeout 1800 mokey traefik
 
       - name: Wait for mokey
         run: |
@@ -68,4 +69,4 @@ jobs:
 
       - name: Stand logs
         if: failure()
-        run: $COMPOSE logs --no-color ipa setup mokey | tail -n 500
+        run: $COMPOSE logs --no-color ipa setup mokey traefik | tail -n 500

@@ -1,0 +1,40 @@
+# Traefik routes for test/forward-auth.compose.yml. TLS uses Traefik's
+# built-in self-signed certificate; the tests skip verification.
+http:
+  routers:
+    mokey:
+      rule: Host(`id.mokey.test`)
+      entryPoints: [websecure]
+      tls: {}
+      service: mokey
+    app-mokey:
+      rule: Host(`app.mokey.test`) && PathPrefix(`/.mokey/`)
+      entryPoints: [websecure]
+      tls: {}
+      service: mokey
+    app:
+      rule: Host(`app.mokey.test`)
+      entryPoints: [websecure]
+      tls: {}
+      middlewares: [mokey-auth]
+      service: whoami
+
+  middlewares:
+    mokey-auth:
+      forwardAuth:
+        address: http://mokey:8866/forward-auth/verify
+        authResponseHeaders:
+          - X-Auth-Request-User
+          - X-Auth-Request-Email
+          - X-Auth-Request-Groups
+          - Remote-User
+
+  services:
+    mokey:
+      loadBalancer:
+        servers:
+          - url: http://mokey:8866
+    whoami:
+      loadBalancer:
+        servers:
+          - url: http://whoami
