@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Forward-auth for web apps (`[forward_auth]`, off by default): Traefik,
+  ingress-nginx, Caddy, Envoy Gateway and Istio ask mokey, which signs the
+  user in and admits them by FreeIPA group or HBAC rule. App sessions are
+  rechecked against FreeIPA and revoked on sign-out, password change and
+  account disable. Set `server.trusted_proxies` to the proxy; see the
+  Forward-auth guide
 - Go 1.27.4 toolchain (GO-2026-6859 in net/http) and Fiber 3.7
 - Invites can preset the username and name (#76)
 - Phone numbers are stored in E.164 form without spaces (+380123456789);

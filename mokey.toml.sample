@@ -397,6 +397,29 @@ driver = "memory"
 # tokens = ["long-random-string"]
 
 #------------------------------------------------------------------------------
+# Forward-auth: single sign-on for web apps behind Traefik, nginx, Caddy,
+# Envoy or Istio. Needs HTTPS and server.trusted_proxies. See the
+# "Forward-auth for web apps" guide.
+#------------------------------------------------------------------------------
+[forward_auth]
+# enabled = false
+# mokey's own origin as users reach it (https, no path)
+# url = "https://id.example.com"
+# App session lifetimes and how often access is re-read from FreeIPA
+# session_idle = "8h"
+# session_max = "24h"
+# recheck = "2m"
+
+# One block per protected host
+# [[forward_auth.apps]]
+# host = "kubecost.example.com"
+# name = "Kubecost"
+# Any of these groups admits the user; empty admits any signed-in user
+# groups = ["finops", "admins"]
+# Optionally also require an HBAC rule for this service
+# hbac_service = "kubecost"
+
+#------------------------------------------------------------------------------
 # Admin panel
 #------------------------------------------------------------------------------
 [admin]

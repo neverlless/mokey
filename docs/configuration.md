@@ -273,6 +273,32 @@ in FreeIPA's user search fields; without it only a full address matches:
 ipa config-mod --usersearch=uid,givenname,sn,telephonenumber,ou,title,mail
 ```
 
+## `[forward_auth]`
+
+Single sign-on for web apps without OIDC support, through the proxy in front
+of them. Off by default. See [Forward-auth for web apps](guides/forward-auth.md)
+for the proxy recipes. Needs `server.trusted_proxies` to list the proxy.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | bool | `false` | Turn on `/forward-auth/*` and `/.mokey/*`. At least one app is then required. |
+| `url` | string | — | **Required.** mokey's own origin as users reach it, `https` and without a path, e.g. `https://id.example.com`. |
+| `session_idle` | duration | `"8h"` | App session ends after this long without a request. |
+| `session_max` | duration | `"24h"` | Longest an app session lasts. |
+| `recheck` | duration | `"2m"` | How often access is re-read from FreeIPA during an app session. A lost group takes effect within this time. |
+
+### `[[forward_auth.apps]]`
+
+Repeat the block per protected host.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `host` | string | — | **Required.** Exact lowercase host name without scheme, port or path. Unique, and not mokey's own host. The app must be served over HTTPS. |
+| `name` | string | `host` | Shown on the sign-in and denied pages. |
+| `groups` | list | — | FreeIPA groups, any of which admits the user (nested groups count). Empty admits any signed-in user. |
+| `hbac_service` | string | — | Also require a passing HBAC test for this service. |
+| `hbac_host` | string | `host` | Host used for the HBAC test. |
+
 ## `[slack]`
 
 | Option | Type | Default | Description |
