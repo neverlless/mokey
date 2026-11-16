@@ -1,11 +1,14 @@
 package server
 
 import (
+	"bytes"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func faApps(hosts ...string) []any {
@@ -89,4 +92,22 @@ func TestLoadForwardAuthConfig(t *testing.T) {
 	if _, ok := c.App("other.example.com"); ok {
 		t.Fatal("unknown host matched")
 	}
+}
+
+func TestWarnMissingGroups(t *testing.T) {
+	_, r, _ := newFAApp(t, func() {
+		viper.Set("forward_auth.apps", []any{
+			map[string]any{"host": faAppHost, "groups": []string{"scientists", "scientits"}},
+			map[string]any{"host": faWikiHost},
+		})
+	})
+	var logs bytes.Buffer
+	saved := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(saved) })
+	r.warnMissingGroups()
+	out := logs.String()
+	assert.Contains(t, out, "group=scientits")
+	assert.Contains(t, out, "app="+faAppHost)
+	assert.NotContains(t, out, "group=scientists")
 }
