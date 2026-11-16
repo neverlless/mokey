@@ -972,6 +972,9 @@ i.mokey-dial-flag {
 }
 
 /* success toasts (site.js moves .alert-success out of the pane) */
+.mokey-toasts-on .mokey-main .alert-success:not([data-mokey-inline]) {
+	display: none;
+}
 .mokey-toasts {
 	z-index: 1090;
 }

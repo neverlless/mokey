@@ -196,6 +196,7 @@ function closeModal(ele) {
 (function () {
   var region = document.querySelector('.mokey-toasts');
   if (!region || !window.bootstrap) return;
+  document.documentElement.classList.add('mokey-toasts-on');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function toastAlerts() {
@@ -232,5 +233,6 @@ function closeModal(ele) {
   }
 
   document.addEventListener('DOMContentLoaded', toastAlerts);
+  document.body.addEventListener('htmx:afterSwap', toastAlerts);
   document.body.addEventListener('htmx:afterSettle', toastAlerts);
 })();
