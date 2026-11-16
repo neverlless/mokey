@@ -735,6 +735,7 @@ year_other = "%d jaar"
 
 [date]
 layout = "02-01-2006 15:04 MST"
+day_layout = "02-01-2006"
 
 [forward_auth]
 hop_continue = "Doorgaan"

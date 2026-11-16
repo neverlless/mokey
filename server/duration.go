@@ -54,8 +54,12 @@ func formatDuration(lang string, d time.Duration) string {
 		}
 	}
 
-	n := int(d / unit.size)
-	key := "duration." + unit.name + "_"
+	return formatUnit(lang, unit.name, int(d/unit.size))
+}
+
+// formatUnit renders n of a duration unit ("day", "hour", …) in lang.
+func formatUnit(lang, name string, n int) string {
+	key := "duration." + name + "_"
 	format, ok := translations[lang][key+pluralForm(lang, n)]
 	if !ok {
 		// the english forms are one/other whatever lang's plural rule is

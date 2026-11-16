@@ -105,27 +105,27 @@
 
 {{ if $.sponsored }}
 <h2 class="mokey-section-title mb-2">{{ T "groups.sponsored" }}</h2>
-<p class="text-muted small mb-2">{{ if $.sponsored_own }}{{ printf (T "groups.sponsored_hint_capped") $.sponsored_period (Date $.sponsored_own) }}{{ else }}{{ printf (T "groups.sponsored_hint") $.sponsored_period }}{{ end }}</p>
+<p class="text-muted small mb-2">{{ if $.sponsored_own }}{{ printf (T "groups.sponsored_hint_capped") $.sponsored_period (Day $.sponsored_own) }}{{ else }}{{ printf (T "groups.sponsored_hint") $.sponsored_period }}{{ end }}</p>
 <div class="mokey-card mb-4">
 	{{ range $p := $.sponsored }}
 	<div class="mokey-row">
 		<div class="flex-grow-1">
 			<strong>{{ $p.Name }}</strong> <span class="mokey-mono">{{ $p.UID }}</span>
-			<div class="text-muted small">{{ if $p.Expires.IsZero }}{{ T "groups.no_end_date" }}{{ else }}{{ printf (T "groups.sponsored_valid_until") (Date $p.Expires) }}{{ end }}{{ if not $p.LastActive.IsZero }} · {{ printf (T "groups.sponsored_last_active") (Date $p.LastActive) }}{{ end }}</div>
+			<div class="text-muted small">{{ if $p.Expires.IsZero }}{{ T "groups.no_end_date" }}{{ else }}{{ printf (T "groups.sponsored_valid_until") (Day $p.Expires) }}{{ end }}{{ if not $p.LastActive.IsZero }} · {{ printf (T "groups.sponsored_last_active") (Day $p.LastActive) }}{{ end }}</div>
 			{{ if $p.Disabled }}<div class="text-muted small" id="extend-reason-{{ $p.UID }}">{{ T $p.Disabled }}</div>{{ end }}
 		</div>
 		{{ if $p.Pill }}<span class="mokey-pill is-{{ $p.Pill }}">{{ $p.PillText }}</span>{{ end }}
 		{{ if $p.Disabled }}
 		<button class="btn btn-sm btn-outline-secondary" disabled aria-describedby="extend-reason-{{ $p.UID }}">
-			{{ printf (T "groups.sponsored_extend") (Date $p.Target) }}
+			{{ printf (T "groups.sponsored_extend") (Day $p.Target) }}
 		</button>
 		{{ else }}
 		<button class="btn btn-sm btn-outline-secondary" hx-post="/groups/sponsored/extend"
 		        hx-vals='{"username": "{{ $p.UID }}"}'
 		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
 		        hx-target="#groups-pane" hx-swap="outerHTML"
-		        aria-label="{{ printf (T "groups.sponsored_extend") (Date $p.Target) }}: {{ $p.UID }}">
-			{{ printf (T "groups.sponsored_extend") (Date $p.Target) }}
+		        aria-label="{{ printf (T "groups.sponsored_extend") (Day $p.Target) }}: {{ $p.UID }}">
+			{{ printf (T "groups.sponsored_extend") (Day $p.Target) }}
 		</button>
 		{{ end }}
 	</div>

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -73,7 +74,7 @@ func (r *Router) sponsoredVars(c fiber.Ctx, vars fiber.Map) {
 		case left <= 0:
 			row.Pill, row.PillText = "danger", TL(lang, "groups.sponsored_expired")
 		case len(r.lifecycle.Reminders) > 0 && left <= time.Duration(r.lifecycle.Reminders[0])*24*time.Hour:
-			row.Pill, row.PillText = "warn", fmt.Sprintf(TL(lang, "groups.sponsored_in"), formatDuration(lang, left))
+			row.Pill, row.PillText = "warn", fmt.Sprintf(TL(lang, "groups.sponsored_in"), formatUnit(lang, "day", int(math.Ceil(left.Hours()/24))))
 		}
 		rows = append(rows, row)
 	}
@@ -92,6 +93,9 @@ func (r *Router) SponsoredExtend(c fiber.Ctx) error {
 	}
 	user := r.user(c)
 	uid := c.FormValue("username")
+	if uid == "" {
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.sponsored_not_yours"))
+	}
 
 	e, _, err := ipa.Call[ipa.Entry](context.Background(), r.adminClient, "user_show", []string{uid}, ipa.Options{"all": true})
 	if errors.Is(err, ipa.ErrNotFound) {
@@ -117,7 +121,7 @@ func (r *Router) SponsoredExtend(c fiber.Ctx) error {
 
 	vars := fiber.Map{
 		"user":          user,
-		"groups_notice": fmt.Sprintf(TC(c, "groups.sponsored_extended"), uid, to.Format(TC(c, "date.layout"))),
+		"groups_notice": fmt.Sprintf(TC(c, "groups.sponsored_extended"), uid, to.Format(TC(c, "date.day_layout"))),
 	}
 	r.groupsVars(c, vars)
 	return c.Render("groups-list.html", vars)

@@ -736,6 +736,7 @@ year_other = "%d years"
 
 [date]
 layout = "Jan 2, 2006 15:04 MST"
+day_layout = "Jan 2, 2006"
 
 [forward_auth]
 hop_continue = "Continue"
