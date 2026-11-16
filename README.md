@@ -2,26 +2,25 @@
 
 # mokey
 
-**Self-service account management portal for FreeIPA / Red Hat IdM.**
+**Account and access lifecycle for FreeIPA / Red Hat IdM.**
 
 [![CI](https://github.com/neverlless/mokey/actions/workflows/ci.yml/badge.svg)](https://github.com/neverlless/mokey/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/neverlless/mokey)](https://github.com/neverlless/mokey/releases)
 [![Go version](https://img.shields.io/github/go-mod/go-version/neverlless/mokey)](go.mod)
 [![License](https://img.shields.io/github/license/neverlless/mokey)](LICENSE)
 
-mokey gives FreeIPA users a portal for their own account: signup, password
-change and reset, SSH keys, OTP tokens and passkeys, sessions, group requests
-and a "what can I access" view. It is a standalone web application that talks
-to the FreeIPA JSON-RPC API, needs no LDAP schema changes, and can act as the
-login and consent provider for Ory Hydra (OAuth 2.0 / OpenID Connect).
+mokey gives FreeIPA users a self-service portal for their own account, lets
+group sponsors approve access requests, optionally for a limited time, and
+signs people in to web apps: over OpenID Connect as the login and consent app
+for Ory Hydra, or with forward-auth behind a reverse proxy. Admins get a
+helpdesk view and an audit log; other systems get webhooks and a read-only
+JSON API.
 
-**Documentation: <https://neverlless.github.io/mokey/>** — task guides
-(password reset, signup, OTP, passkeys, OIDC), companion setups and
-comparisons with other FreeIPA portals.
+FreeIPA stays the single store for users, groups and credentials. mokey talks
+to the FreeIPA JSON-RPC API with a least-privilege service account, needs no
+schema changes, and every new capability is off by default.
 
-> **Note:** This project began as a fork of [ubccr/mokey](https://github.com/ubccr/mokey)
-> and is now maintained independently. See
-> [Differences from upstream](#differences-from-upstream) for what has changed.
+**Documentation: <https://neverlless.github.io/mokey/>**
 
 ## Why
 
@@ -29,12 +28,11 @@ comparisons with other FreeIPA portals.
   [the rationale](https://www.freeipa.org/page/Self-Service_Password_Reset)).
   mokey adds both as a separate application instead of a FreeIPA plugin.
 - **Keep regular users out of the FreeIPA Web UI.** By default any
-  authenticated user can browse every account there, and locking that down
-  means hand-editing ACIs the Web UI relies on. mokey shows users *their own*
-  account only; the Web UI stays with administrators.
-- **No schema changes, no separate database.** mokey uses a least-privilege
-  FreeIPA service account and keeps sessions and tokens in memory, SQLite or
-  Redis.
+  authenticated user can browse every account there. mokey shows users
+  *their own* account only; the Web UI and CLI stay with administrators.
+- **Access decisions stay in FreeIPA.** Group membership, HBAC rules and
+  member managers decide who gets in, for the portal and for the apps behind
+  it.
 
 ## How it works
 
@@ -43,25 +41,74 @@ flowchart LR
     U[Users<br/>browser] -->|HTTPS| M[mokey]
     A[OAuth / OIDC apps] --> H[Ory Hydra]
     H -->|login & consent| M
+    P[Reverse proxy<br/>forward-auth] -->|verify| M
     M -->|JSON-RPC, keytab| I[FreeIPA / IdM]
     M --> S[(Sessions<br/>memory / SQLite / Redis)]
-    M -->|SMTP, Slack| N[Verification &<br/>reset messages]
+    M -->|SMTP, Slack, webhooks| N[Notifications &<br/>events]
 ```
 
 ## Features
 
-- Account Signup
-- Forgot/Change Password
-- Add/Remove SSH Public Keys
-- Add/Remove TOTP Tokens
-- Register/Remove Passkeys (stored in FreeIPA 4.11+)
-- Enable/Disable Two-Factor Authentication
-- Hydra Consent/Login Endpoint for OAuth/OpenID Connect
-- Forward-auth single sign-on for web apps behind Traefik, nginx, Caddy, Envoy or Istio, gated by FreeIPA groups or HBAC
-- Group self-service with sponsor approval (vanilla FreeIPA member managers)
-- "What can I access" page — applicable HBAC/sudo rules and an hbactest simulator
-- OTP lockout recovery — admin-approved "lost my token" flow from the login page
-- Easy to install and configure (requires no FreeIPA/LDAP schema changes)
+**Self-service** ([password reset](docs/guides/password-reset.md),
+[signup](docs/guides/signup.md), [OTP](docs/guides/otp.md),
+[passkeys](docs/guides/passkeys.md))
+
+- Signup with email verification, optional admin approval and FreeIPA stage
+  users; invitations
+- Password change and reset, checked against the FreeIPA password policy and
+  optionally Have I Been Pwned
+- OTP tokens and two-step sign-in, with admin-approved recovery of a lost token
+- Passkeys stored in FreeIPA (4.11+), usable for SSSD host logins
+- SSH public keys, email change, subordinate IDs, active sessions and
+  recent activity
+- English, Dutch, Russian and Ukrainian, picked per request
+
+**Access and approvals** ([groups](docs/guides/groups.md),
+[Access page](docs/guides/access.md))
+
+- Join and leave requests approved by group sponsors (FreeIPA member
+  managers), in the sponsor's own FreeIPA session
+- Time-bound membership with per-group limits, reminders, renewals and
+  automatic removal
+- Access page: the HBAC and sudo rules that apply to the user, and an
+  hbactest simulator
+
+**Sign-in for web apps** ([OIDC with Hydra](docs/guides/oidc-hydra.md),
+[forward-auth](docs/guides/forward-auth.md),
+[app catalog](docs/guides/app-catalog.md))
+
+- Login, consent and logout app for Ory Hydra v2; clients limited to FreeIPA
+  groups, consent revoked when a user loses the group
+- Forward-auth for Traefik, ingress-nginx, Caddy, Envoy Gateway and Istio,
+  gated by FreeIPA groups or an HBAC rule
+- App catalog: users see the clients they can use and request access to the
+  others
+- SAML-only apps through Keycloak as a broker
+  ([guide](docs/keycloak.md)), or mokey next to an existing OIDC provider
+  ([guide](docs/companion/oidc-provider.md))
+
+**Admin and audit** ([helpdesk view](docs/guides/helpdesk.md))
+
+- Admin pages for requests (sign-ups, OTP recovery, failed membership
+  removals), people (invite, search, block and unblock) and the audit log
+- Helpdesk lists of accounts with expiring or expired passwords, Kerberos
+  lockouts and no recent activity
+
+**Integrations** ([webhooks and JSON API](docs/guides/webhooks-api.md))
+
+- Webhooks for every audit event, with a Slack format
+- Read-only JSON API with bearer tokens
+- Slack direct messages for account emails, Prometheus metrics, `/healthz`
+
+**Operations** ([install](docs/install.md),
+[configuration](docs/configuration.md))
+
+- One Go binary; container images for amd64 and arm64 signed with cosign,
+  with SBOMs and provenance
+- Helm chart, COPR packages for Fedora, RHEL, Rocky Linux and AlmaLinux,
+  deb/rpm, Ansible role
+- Several replicas with Redis storage; background sweeps run on one replica
+  per interval
 
 ## Screenshots
 
@@ -78,10 +125,16 @@ flowchart LR
 mokey is actively maintained and used in production. The core flows (login,
 password change and reset, signup and email verification, invites, OTP tokens,
 the admin panel) are covered by tests that drive the real application against
-a simulated FreeIPA server. The code base has been through a security audit
+a simulated FreeIPA server, and by integration and browser tests against a
+real one. The code base has been through a security audit
 (`gosec`, `govulncheck`, `staticcheck` and a manual review of the
 auth/session/token paths) with all high- and medium-severity findings fixed;
-see [docs/security-audit-v1.6.md](docs/security-audit-v1.6.md).
+see [docs/security-audit-v1.6.md](docs/security-audit-v1.6.md). Planned work
+is on the [roadmap](docs/ROADMAP.md).
+
+mokey began as a fork of [ubccr/mokey](https://github.com/ubccr/mokey) and is
+maintained independently; to move an upstream install, see
+[Migrating from ubccr/mokey](docs/migrate-from-upstream.md).
 
 Self-service password reset widens your attack surface. Read
 [Operating mokey safely](SECURITY.md#operating-mokey-safely) before exposing
@@ -103,7 +156,7 @@ Emails show up in Mailpit at <http://localhost:8025>. See
 ## Quick start
 
 1. **FreeIPA:** create the mokey service account and keytab as described in
-   [Setup and configuration](#setup-and-configuration).
+   [Install](docs/install.md#1-create-the-service-account-in-freeipa).
 2. **Config:** copy [mokey.toml.sample](mokey.toml.sample) and set at least
    `keytab`, the email settings and a persistent `[storage]` driver. Every
    option is in the [configuration reference](docs/configuration.md).
@@ -120,303 +173,32 @@ Emails show up in Mailpit at <http://localhost:8025>. See
    # Docker Compose
    docker compose -f examples/production/docker-compose.yml up -d
 
-   # deb / rpm package with systemd
-   systemctl enable --now mokey
+   # Fedora, RHEL, Rocky Linux, AlmaLinux
+   sudo dnf copr enable neverlless/mokey && sudo dnf install mokey
+   sudo systemctl enable --now mokey
    ```
-
-See [charts/mokey](charts/mokey) for the Helm chart options.
-
-## Requirements
-
-- FreeIPA v4.6.8 or greater
-- Linux x86_64 or aarch64
-- Redis (optional)
-- Hydra v2.x (optional)
 
 ## Install
 
-Note: mokey needs to be installed on a machine already enrolled in FreeIPA.
-It's also recommended to have the ipa-admintools package installed. Enrolling a
-host in FreeIPA is outside the scope of this document.
+Requires FreeIPA 4.6.8 or newer (or Red Hat IdM) and Linux on x86_64 or
+aarch64; Redis and Ory Hydra v2 are optional. Package installs need a host
+enrolled in FreeIPA.
 
-To install mokey download a copy of the pre-compiled binary [here](https://github.com/neverlless/mokey/releases).
+- Container image: `ghcr.io/neverlless/mokey` (linux/amd64, linux/arm64)
+- Helm chart: [charts/mokey](charts/mokey)
+- COPR, deb, rpm and tar.gz: see [Install](docs/install.md) and the
+  [releases page](https://github.com/neverlless/mokey/releases)
+- Ansible role: [ansible/roles/mokey](ansible/roles/mokey)
 
-Container image (linux/amd64, linux/arm64):
+Releases are signed with GPG and cosign:
+[Verifying releases](docs/install.md#verifying-releases). Building from
+source is described in [CONTRIBUTING.md](CONTRIBUTING.md#development).
 
-```sh
-docker pull ghcr.io/neverlless/mokey:latest
-```
+## Documentation
 
-See [examples/production/docker-compose.yml](examples/production/docker-compose.yml)
-for a docker-compose setup and [charts/mokey](charts/mokey) for the Helm
-chart (Kubernetes).
-
-tar.gz archive:
-
-```
-$ tar xvzf mokey-VERSION-linux-x86_64.tar.gz 
-```
-
-deb, rpm packages:
-
-```
-$ sudo dpkg -i mokey_VERSION_amd64.deb
-
-$ sudo rpm -ivh mokey-VERSION-amd64.rpm
-```
-
-### Verifying releases
-
-`checksums.txt` in every release is signed with the project's GPG key
-([docs/mokey-release-signing-key.asc](docs/mokey-release-signing-key.asc),
-fingerprint `8898 9195 DE87 B333 6A09 E09F 7DD4 FC45 4196 AE11`):
-
-```
-$ gpg --import mokey-release-signing-key.asc
-$ gpg --verify checksums.txt.sig checksums.txt
-$ sha256sum --check --ignore-missing checksums.txt
-```
-
-Release archives also carry an SPDX SBOM (`*.sbom.json`) and a GitHub build
-provenance attestation:
-
-```
-$ gh attestation verify mokey-VERSION-linux-x86_64.tar.gz --repo neverlless/mokey
-```
-
-Container images are signed with cosign (keyless, by the release workflow;
-verify with cosign v3 or later) and carry an SBOM and provenance attestation:
-
-```
-$ cosign verify ghcr.io/neverlless/mokey:VERSION \
-    --certificate-identity-regexp '^https://github.com/neverlless/mokey/' \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com
-$ docker buildx imagetools inspect ghcr.io/neverlless/mokey:VERSION --format '{{ json .SBOM }}'
-```
-
-## Setup and configuration
-
-Create a service account and role in FreeIPA with the "Modify users and Reset
-passwords" privilege. This service account will be used by the mokey application
-to reset users passwords. The "Modify Users" permission also needs to have the
-"ipauserauthtype" enabled. Run the following commands (requires ipa-admintools
-to be installed):
-
-```
-$ mkdir /etc/mokey/private
-$ kinit adminuser
-$ ipa role-add 'Mokey User Manager' --desc='Mokey User management'
-$ ipa role-add-privilege 'Mokey User Manager' --privilege='User Administrators'
-$ ipa role-add-privilege 'Mokey User Manager' --privilege='Password Policy Readers'
-$ ipa service-add mokey/$(hostname -f)
-$ ipa service-add-principal mokey/$(hostname -f) mokey/mokey
-$ ipa role-add-member 'Mokey User Manager' --services=mokey/$(hostname -f)
-$ ipa permission-mod 'System: Modify Users' --includedattrs=ipauserauthtype
-$ ipa privilege-add 'Mokey UPG Read' --desc='Read UPG definition'
-$ ipa privilege-add-permission 'Mokey UPG Read' --permissions='System: Read UPG Definition'
-$ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey UPG Read'
-# Only needed with groups.durations (time-bound group membership), see docs/guides/groups.md:
-$ ipa permission-add 'Mokey Modify Sponsored Group Membership' --right=write --attrs=member --type=group --filter='(membermanager=*)'
-$ ipa privilege-add 'Mokey Expire Memberships' --desc='Remove expired time-bound memberships'
-$ ipa privilege-add-permission 'Mokey Expire Memberships' --permissions='Mokey Modify Sponsored Group Membership'
-$ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expire Memberships'
-# Only needed with accounts.staged_signup enabled:
-$ ipa role-add-privilege 'Mokey User Manager' --privilege='Stage User Administrators'
-# Only needed with accounts.enable_subid enabled:
-$ ipa role-add-privilege 'Mokey User Manager' --privilege='Subordinate ID Administrators'
-$ ipa-getkeytab -s [your.ipa-master.server] -p mokey/mokey -k /etc/mokey/private/mokeyapp.keytab
-$ chmod 640 /etc/mokey/private/mokeyapp.keytab
-$ chgrp mokey /etc/mokey/private/mokeyapp.keytab
-$ kdestroy
-```
-
-Edit mokey configuration file and set path to keytab file. The values for
-`token_secret` and `csrf_secret` will be automatically generated for you if
-left blank. Set these secret values if you'd like sessions to persist after a restart.
-The full list of options is documented in the [configuration reference](docs/configuration.md); a ready starting point is [mokey.toml.sample](mokey.toml.sample):
-
-```
-$ vim /etc/mokey/mokey.toml
-# Path to keytab file
-keytab = "/etc/mokey/private/mokeyapp.keytab"
-
-# Secret key for branca tokens. Must be 32 bytes. To generate run:
-#    openssl rand -hex 32 
-token_secret = ""
-
-# CSRF token secret key. Should be a random string
-csrf_secret = ""
-```
-
-It's highly recommended to run mokey using HTTPS. You'll need an SSL
-cert/private_key either using FreeIPA's PKI, self-signed, or from a commercial
-certificate authority. Creating SSL certs is outside the scope of this
-document. You can also run mokey behind haproxy or Apache/Nginx.
-
-Start mokey service:
-
-```
-$ systemctl restart mokey
-$ systemctl enable mokey
-```
-
-## SSH Public Key Management
-
-mokey allows users to add/remove ssh public keys. Servers that are enrolled in
-FreeIPA can be configured to have sshd lookup users public keys in LDAP by
-adding the following lines in /etc/ssh/sshd_config and restarting sshd:
-
-    AuthorizedKeysCommand /usr/bin/sss_ssh_authorizedkeys
-    AuthorizedKeysCommandUser nobody
-
-## Hydra Consent and Login Endpoint for OAuth/OpenID Connect
-
-mokey implements the login/consent flow for handling challenge requests from
-Hydra. This serves as the bridge between Hydra and FreeIPA identity provider.
-For more information on Hydra and the login/consent flow see [here](https://www.ory.sh/docs/hydra/oauth2).
-
-mokey targets Hydra v2.x — upgrading from v1.x? See the
-[migration guide](docs/hydra-v2-migration.md). To configure the Hydra
-login/consent flow set the following variables in `/etc/mokey/mokey.toml`:
-
-```
-[hydra]
-admin_url = "http://127.0.0.1:4445"
-login_timeout = 86400
-fake_tls_termination = true
-```
-
-Any OAuth clients configured in Hydra will be authenticated via mokey using
-FreeIPA as the identity provider. For an example OAuth 2.0/OIDC client
-application see [here](examples/mokey-oidc/main.go). To serve SAML-only
-service providers via Keycloak as an identity broker, see the
-[Keycloak guide](docs/keycloak.md).
-
-mokey also implements the [OIDC logout flow](https://www.ory.sh/docs/hydra/concepts/logout):
-point Hydra's `urls.logout` at mokey's `/auth/logout` endpoint and users will
-be redirected back to the client's `post_logout_redirect_uri` after logout:
-
-```yaml
-# hydra.yaml
-urls:
-  login: https://mokey.example.com/oauth/login
-  consent: https://mokey.example.com/oauth/consent
-  logout: https://mokey.example.com/auth/logout
-```
-
-### Restricting clients to FreeIPA groups
-
-By default every active FreeIPA user may sign in to every OAuth client. To
-limit a client to members of FreeIPA groups, add a `[[hydra.clients]]` entry
-per client:
-
-```
-[hydra]
-# deny clients that have no [[hydra.clients]] entry (default false)
-default_deny = false
-
-[[hydra.clients]]
-client_id = "lubelogger"
-groups = ["lubelogger-users", "admins"]
-```
-
-A user must be a member of at least one listed group (names compared
-case-insensitively). Clients without an entry stay open unless
-`default_deny = true`. A denied user gets a 403 page from mokey; the consent
-request is rejected in Hydra with `access_denied`, but mokey does not redirect
-back to the client, so clients that restart login on an error callback don't
-loop. An unparseable `hydra.clients`, or an entry without `client_id` (a
-mistyped key, say), denies every client; an entry with no groups denies that
-client to everyone.
-
-Known limits:
-
-- Membership through nested groups counts, but the `groups` claim lists
-  direct groups only, so an application that checks the claim itself can
-  still refuse a user mokey let through.
-- Clients registered in Hydra with `skip_consent: true` never reach mokey's
-  consent endpoint, so the check does not apply to them.
-- Tokens already issued are revoked when a user loses the group that admits
-  them: at once when a sponsor removes them or approves their leave request
-  in mokey, and for removals made directly in FreeIPA at the next sweep
-  (`hydra.consent_sweep_interval`, hourly by default) or when the user next
-  tries that client. Until then their tokens keep working, and a client
-  that validates JWT access tokens itself accepts them until they expire.
-
-## Localization
-
-Set the interface language in `mokey.toml`:
-
-```toml
-[site]
-default_language = "dutch"   # built-in: english (default), dutch
-languages = ["dutch", "english"]   # optional: pick per request from Accept-Language
-```
-
-To add or customize a language, point `site.translations_dir` at a directory
-containing `<language>.toml` files and set `default_language` to the file
-name. Copy
-[`server/translations/english.toml`](server/translations/english.toml) as a
-starting point — a file named after a built-in language fully replaces it.
-Missing keys fall back to English. Contributions of new languages are
-welcome.
-
-## Differences from upstream
-
-This project tracks [ubccr/mokey](https://github.com/ubccr/mokey) and adds the
-following on top of it:
-
-- **Slack notifications** — account events that trigger emails are also
-  delivered to the user as a Slack direct message via a bot token (see the
-  `[slack]` section in `mokey.toml.sample`)
-- **Unauthenticated `/healthz` endpoint** — for load balancer and Kubernetes
-  liveness/readiness probes
-- **Passkey self-service** — users can register and remove FreeIPA passkeys
-  (FreeIPA 4.11+) from their account page via WebAuthn; credentials are
-  stored only in FreeIPA. Managing own passkey mappings requires the
-  corresponding FreeIPA self-service permission
-- **Multiple languages** — the interface and emails are translatable; English
-  and Dutch are built in (translations contributed by
-  [@tubby1981](https://github.com/tubby1981) in
-  [ubccr/mokey#157](https://github.com/ubccr/mokey/pull/157)). See
-  [Localization](#localization).
-
-Upstream changes are merged in periodically when relevant.
-
-## Building from source
-
-You need Go 1.26 or newer:
-
-```sh
-git clone https://github.com/neverlless/mokey
-cd mokey
-go build .
-```
-
-## FAQ
-
-**Does mokey replace the FreeIPA Web UI?**
-No. It covers what end users need for their own account. Administrators keep
-the Web UI and CLI; mokey's admin panel handles the day-to-day side of
-self-service: invitations, signup approvals, OTP recovery requests,
-blocking and unlocking users, and an audit log.
-
-**Does it work with Red Hat Identity Management?**
-IdM exposes the same JSON-RPC API as FreeIPA, so mokey talks to it the same
-way. Passkeys need FreeIPA 4.11 or newer.
-
-**Can I run more than one replica?**
-Yes, with `redis` storage so all replicas share sessions and tokens. `memory`
-and `sqlite3` are per instance. The Helm chart's `ipa.enroll` mode rotates the
-keytab on start and supports only one replica; use `existingKeytabSecret`.
-
-**Do users lose their session when mokey restarts?**
-With the default `memory` storage and blank `token_secret` / `csrf_secret`,
-yes. Set both secrets and use `sqlite3` or `redis`.
-
-**Can SAML-only applications log in through mokey?**
-Via Keycloak as an identity broker in front of Hydra; see the
-[Keycloak guide](docs/keycloak.md).
+Task guides, configuration reference, companion setups and comparisons with
+other FreeIPA portals: <https://neverlless.github.io/mokey/>. Changes per
+release are in the [ChangeLog](ChangeLog.md).
 
 ## Contributing
 
