@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	ipa "github.com/neverlless/goipa"
 )
 
 type lcPlanRow struct {
@@ -62,7 +63,7 @@ func (r *Router) lifecycleStatusVars(c fiber.Ctx, vars fiber.Map) {
 	changes, orphans := planLifecycle(accts, now, cfg)
 
 	if held != nil && len(changes) > 0 {
-		vars["lc_held"] = fmt.Sprintf(TL(lang, "admin.lifecycle_held"), held.Count, cfg.MaxChanges)
+		vars["lc_held"] = fmt.Sprintf(TL(lang, "admin.lifecycle_held"), formatUnit(lang, "change", len(changes)), cfg.MaxChanges)
 		rows := make([]lcPlanRow, 0, min(len(changes), lcHeldSample))
 		for _, ch := range changes[:min(len(changes), lcHeldSample)] {
 			why := "admin.lifecycle_why_cap"
@@ -124,6 +125,12 @@ func (r *Router) adminLifecycleAction(c fiber.Ctx, action, username string) erro
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 	admin := r.username(c)
+	if _, err := r.adminClient.UserShow(username); errors.Is(err, ipa.ErrNotFound) {
+		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.lifecycle_user_unknown"))
+	} else if err != nil {
+		slog.Error("Failed to look up the account", "username", username, "by", admin, "err", err)
+		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
+	}
 	var notice string
 	switch action {
 	case "set-expiry":
@@ -133,6 +140,10 @@ func (r *Router) adminLifecycleAction(c fiber.Ctx, action, username string) erro
 			if to, err = time.ParseInLocation("2006-01-02", v, time.Local); err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.lifecycle_expiry_invalid"))
 			}
+		}
+		// an admin who expires themselves needs the FreeIPA CLI to get back in
+		if username == admin && !to.IsZero() && !to.After(time.Now()) {
+			return c.Status(fiber.StatusBadRequest).SendString(TC(c, "admin.lifecycle_expiry_self"))
 		}
 		if err := r.applyExpiry(username, to, admin, lcAuditSet); err != nil {
 			return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "admin.lifecycle_write_failed"))

@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"html"
+	"net/http"
 	"net/url"
 	"testing"
 	"time"
@@ -92,12 +93,16 @@ func TestAdminLifecycleHeldPlanApplyOnce(t *testing.T) {
 	body := readBody(t, tc.get("/admin/lifecycle/status", htmx))
 	assert.Contains(body, fmt.Sprintf(T("admin.lifecycle_on_value"), fmt.Sprintf(T("admin.lifecycle_reminder_days"), "30, 7, 1")))
 	assert.Contains(body, fmt.Sprintf(T("admin.lifecycle_on_value"), "1 year"))
-	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_held"), 3, 2)))
+	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_held"), "3 changes", 2)))
+	// the sweep saw 3; one more account since: the page counts the current plan
+	d.add("pete", ipatest.User{}, "walter", time.Time{})
+	body = readBody(t, tc.get("/admin/lifecycle/status", htmx))
+	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_held"), "4 changes", 2)))
+	assert.Contains(body, "Apply 4 changes")
 	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_why_assign"), "walter")))
-	for _, uid := range []string{"jesse", "skinny", "badger"} {
+	for _, uid := range []string{"jesse", "skinny", "badger", "pete"} {
 		assert.Contains(body, ">"+uid+"<")
 	}
-	assert.Contains(body, "Apply 3 changes")
 	assert.Contains(body, `hx-post="/admin/lifecycle/apply"`)
 	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_sponsor_expired_by"), "gale", now.Add(-48*time.Hour).Format("Jan 2, 2006"))))
 	assert.Contains(body, ">jane<")
@@ -105,19 +110,19 @@ func TestAdminLifecycleHeldPlanApplyOnce(t *testing.T) {
 	resp := tc.postForm("/admin/lifecycle/apply", nil, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	body = readBody(t, resp)
-	assert.Equal(3, d.modCount())
-	assert.Contains(body, "3 changes applied.")
+	assert.Equal(4, d.modCount())
+	assert.Contains(body, "4 changes applied.")
 	assert.Contains(body, esc(T("admin.lifecycle_nothing_waiting")))
 	assert.NotContains(body, `hx-post="/admin/lifecycle/apply"`)
 	sum := auditEvents(router, "lifecycle run applied")
 	if assert.Len(sum, 1) {
 		assert.Equal("gus", sum[0].Actor)
-		assert.Equal("3", sum[0].Attrs["count"])
+		assert.Equal("4", sum[0].Attrs["count"])
 	}
 
 	// a second click, or a second admin
 	body = readBody(t, tc.postForm("/admin/lifecycle/apply", nil, htmx))
-	assert.Equal(3, d.modCount())
+	assert.Equal(4, d.modCount())
 	assert.Contains(body, esc(T("admin.lifecycle_nothing_waiting")))
 	assert.NotContains(body, "changes applied")
 	assert.Len(auditEvents(router, "lifecycle run applied"), 1)
@@ -131,10 +136,18 @@ func TestAdminLifecycleStatusOff(t *testing.T) {
 }
 
 func TestAdminLifecycleApplyTruncated(t *testing.T) {
-	tc, _, d := newLifecycleAdminApp(t, assignCfg())
+	tc, router, d := newLifecycleAdminApp(t, assignCfg())
 	d.add("walter", ipatest.User{}, "", time.Time{})
 	d.add("jesse", ipatest.User{}, "walter", time.Time{})
 	d.truncated = true
+
+	_, held, err := router.lifecycleRun(time.Now(), "")
+	require.NoError(t, err)
+	require.Nil(t, held)
+	require.NoError(t, router.storage.Set(lifecycleHeldKey, []byte(`{"Count":1}`), 0))
+	status := readBody(t, tc.get("/admin/lifecycle/status", htmx))
+	assert.Contains(t, status, esc(T("admin.helpdesk_truncated")))
+	assert.NotContains(t, status, `hx-post="/admin/lifecycle/apply"`)
 
 	body := readBody(t, tc.postForm("/admin/lifecycle/apply", nil, htmx))
 	assert.Contains(t, body, esc(T("admin.lifecycle_truncated")))
@@ -246,4 +259,40 @@ func TestAdminSetExpiryRefused(t *testing.T) {
 	assert.Equal(t, fiber.StatusInternalServerError, resp.StatusCode)
 	assert.Equal(t, T("admin.lifecycle_write_failed"), readBody(t, resp))
 	assert.Empty(t, auditEvents(router, "lifecycle expiry set"))
+}
+
+func TestAdminSetExpiryOwnAccount(t *testing.T) {
+	tc, router, d := newLifecycleAdminApp(t, renewalCfg())
+	post := func(v string) *http.Response {
+		return tc.postForm("/admin/user/set-expiry", url.Values{"username": {"gus"}, "expires": {v}}, htmx)
+	}
+
+	for _, v := range []string{time.Now().Format("2006-01-02"), time.Now().AddDate(0, 0, -1).Format("2006-01-02")} {
+		resp := post(v)
+		assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode, v)
+		assert.Equal(t, T("admin.lifecycle_expiry_self"), readBody(t, resp))
+	}
+	assert.Equal(t, 0, d.modCount())
+	assert.Empty(t, auditEvents(router, "lifecycle expiry set"))
+
+	assert.Equal(t, fiber.StatusOK, post(time.Now().AddDate(1, 0, 0).Format("2006-01-02")).StatusCode)
+	assert.Equal(t, fiber.StatusOK, post("").StatusCode)
+	assert.Equal(t, 2, d.modCount())
+}
+
+func TestAdminLifecycleActionUnknownUser(t *testing.T) {
+	tc, router, d := newLifecycleAdminApp(t, renewalCfg())
+	d.add("skinny", ipatest.User{}, "", time.Time{})
+	for action, form := range map[string]url.Values{
+		"set-expiry":  {"username": {"nobody"}, "expires": {"2030-01-01"}},
+		"set-sponsor": {"username": {"nobody"}, "sponsor": {"skinny"}},
+	} {
+		resp := tc.postForm("/admin/user/"+action, form, htmx)
+		assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode, action)
+		assert.Equal(t, T("admin.lifecycle_user_unknown"), readBody(t, resp), action)
+	}
+	resp := tc.postForm("/admin/user/set-sponsor", url.Values{"username": {"nobody"}, "sponsor": {""}}, htmx)
+	assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, 0, d.modCount())
+	assert.Empty(t, auditEvents(router, "lifecycle sponsor set"))
 }
