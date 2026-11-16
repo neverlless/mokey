@@ -37,12 +37,12 @@ func TestJoinPhone(t *testing.T) {
 
 	v, err := joinPhone("english", "1", "505 555 0100")
 	assert.NoError(err)
-	assert.Equal("+1 505 555 0100", v)
+	assert.Equal("+15055550100", v)
 
 	// a leading + on the code is tolerated
 	v, err = joinPhone("english", "+46", "701234567")
 	assert.NoError(err)
-	assert.Equal("+46 701234567", v)
+	assert.Equal("+46701234567", v)
 
 	// clearing the number clears the attribute, no country code needed
 	v, err = joinPhone("english", "1", "")
@@ -59,7 +59,7 @@ func TestJoinPhone(t *testing.T) {
 	// ...unless it carries its own
 	v, err = joinPhone("english", "", "+1 505 555 0100")
 	assert.NoError(err)
-	assert.Equal("+1 5055550100", v)
+	assert.Equal("+15055550100", v)
 
 	// the country code itself has to look like one
 	_, err = joinPhone("english", "abc", "5055550100")
@@ -77,7 +77,7 @@ func TestSplitPhone(t *testing.T) {
 
 	// values written outside mokey round-trip into the number field rather
 	// than being silently dropped
-	for _, legacy := range []string{"5055550100", "+15055550100", "ext 4021"} {
+	for _, legacy := range []string{"5055550100", "ext 4021", "+0123456"} {
 		code, national = splitPhone(legacy)
 		assert.Equal("", code, "%q", legacy)
 		assert.Equal(legacy, national, "%q", legacy)
@@ -91,12 +91,53 @@ func TestSplitPhone(t *testing.T) {
 // what mokey stores must survive a render/submit round trip untouched
 func TestPhoneRoundTrip(t *testing.T) {
 	assert := assert.New(t)
-	for _, stored := range []string{"+1 505 555 0100", "+46 701234567", "+380 671234567"} {
+	for _, stored := range []string{"+15055550100", "+46701234567", "+380671234567"} {
 		code, national := splitPhone(stored)
 		again, err := joinPhone("english", code, national)
 		assert.NoError(err)
 		assert.Equal(stored, again)
 	}
+}
+
+func TestInternationalNumberInTheNumberField(t *testing.T) {
+	assert := assert.New(t)
+
+	for _, tt := range []struct{ picker, typed, stored, code, national string }{
+		{"", "+380123456789", "+380123456789", "380", "123456789"},
+		{"1", "+380123456789", "+380123456789", "380", "123456789"},
+		{"", "+1 415 555 0100", "+14155550100", "1", "4155550100"},
+		{"", "+44 20 7946 0958", "+442079460958", "44", "2079460958"},
+		{"46", "+380 12 345 6789", "+380123456789", "380", "123456789"},
+	} {
+		v, err := joinPhone("english", tt.picker, tt.typed)
+		assert.NoError(err, "%q/%q", tt.picker, tt.typed)
+		assert.Equal(tt.stored, v)
+		code, national := splitPhone(v)
+		assert.Equal(tt.code, code, v)
+		assert.Equal(tt.national, national, v)
+	}
+
+	for _, bad := range []string{"+", "+0123456", "+999 123", "+38abc", "+1"} {
+		_, err := joinPhone("english", "", bad)
+		assert.Error(err, "%q", bad)
+		_, err = joinPhone("english", "1", bad)
+		assert.Error(err, "%q with picker", bad)
+	}
+}
+
+// values stored before E.164 storage keep a space after the dial code
+func TestSplitPhoneOldSpacedForm(t *testing.T) {
+	code, national := splitPhone("+380 123456789")
+	assert.Equal(t, "380", code)
+	assert.Equal(t, "123456789", national)
+
+	code, national = splitPhone("+1 505 555 0100")
+	assert.Equal(t, "1", code)
+	assert.Equal(t, "505 555 0100", national)
+
+	v, err := joinPhone("english", code, national)
+	assert.NoError(t, err)
+	assert.Equal(t, "+15055550100", v)
 }
 
 // the picker is built from the ISO 3166 / E.164 tables rather than a
