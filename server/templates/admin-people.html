@@ -50,7 +50,7 @@
 <label for="user-search" class="visually-hidden">{{ T "admin.search" }}</label>
 <input id="user-search" type="search" class="form-control mb-3" name="search"
        placeholder="{{ T "admin.search_placeholder" }}"
-       hx-get="/admin/users" hx-target="#admin-users"
+       hx-get="/admin/users" hx-target="#admin-users" hx-sync="this:replace"
        hx-trigger="input changed delay:300ms, search"
        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
 <div class="mokey-card">

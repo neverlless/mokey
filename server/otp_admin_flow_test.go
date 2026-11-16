@@ -342,3 +342,106 @@ func TestOTPTokenVerifyUnparsableURIStillFails(t *testing.T) {
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
 	assert.Contains(readBody(t, resp), T("otptoken.failed_to_verify_token"))
 }
+
+func newPeopleApp(t *testing.T, n int) (*testClient, *ipatest.Server) {
+	t.Helper()
+	app, _, fake := newTestAppWith(t, func() {
+		viper.Set("admin.enabled", true)
+	})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}, First: "Walter", Last: "White"})
+	for i := 1; i <= n; i++ {
+		fake.AddUser(fmt.Sprintf("u%03d", i), ipatest.User{First: "Fn", Last: fmt.Sprintf("Ln%03d", i), Email: fmt.Sprintf("u%03d@example.com", i)})
+	}
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	return tc, fake
+}
+
+func TestAdminUserListPagination(t *testing.T) {
+	assert := assert.New(t)
+	tc, _ := newPeopleApp(t, 120) // 121 with walter; "u" sorts before "w"
+
+	body := readBody(t, tc.get("/admin/users", htmx))
+	assert.Contains(body, "u001")
+	assert.Contains(body, "u050")
+	assert.NotContains(body, "u051")
+	assert.Contains(body, "1–50 of 121")
+	assert.Contains(body, `id="users-next"`)
+	assert.Regexp(`id="users-prev"[^>]*disabled`, body)
+
+	body = readBody(t, tc.get("/admin/users?page=3", htmx))
+	assert.Contains(body, "u101")
+	assert.Contains(body, "walter")
+	assert.NotContains(body, "u100")
+	assert.Contains(body, "101–121 of 121")
+	assert.Regexp(`id="users-next"[^>]*disabled`, body)
+
+	for _, p := range []string{"99", "0", "-4", "x"} {
+		body = readBody(t, tc.get("/admin/users?page="+p, htmx))
+		if p == "99" {
+			assert.Contains(body, "101–121 of 121", p)
+		} else {
+			assert.Contains(body, "1–50 of 121", p)
+		}
+	}
+
+	body = readBody(t, tc.get("/admin/users?search=ln&page=2", htmx))
+	assert.Contains(body, "51–100 of 120")
+	assert.Contains(body, "u051")
+	assert.NotContains(body, "walter")
+}
+
+func TestAdminUserListSmallHasNoPager(t *testing.T) {
+	tc, _ := newPeopleApp(t, 5)
+	body := readBody(t, tc.get("/admin/users", htmx))
+	assert.NotContains(t, body, "users-next")
+}
+
+func TestAdminUserActionKeepsPage(t *testing.T) {
+	assert := assert.New(t)
+	tc, _ := newPeopleApp(t, 120)
+	tc.get("/admin/users", htmx)
+	resp := tc.postForm("/admin/user/block", url.Values{"username": {"u051"}, "page": {"2"}}, htmx)
+	body := readBody(t, resp)
+	assert.Contains(body, "51–100 of 121")
+	assert.Contains(body, "u051")
+}
+
+func TestAdminUserSearchUsesCriteria(t *testing.T) {
+	assert := assert.New(t)
+	tc, fake := newPeopleApp(t, 120)
+
+	body := readBody(t, tc.get("/admin/users?search=ln007", htmx))
+	assert.Contains(body, "u007")
+	assert.NotContains(body, "u008")
+
+	var found bool
+	for _, c := range fake.Calls() {
+		if c.Method == "user_find" && len(c.Args) == 1 && c.Args[0] == "ln007" {
+			found = true
+			assert.Equal(true, c.Options["no_members"])
+		}
+	}
+	assert.True(found, "search must be sent to FreeIPA as user_find criteria")
+
+	// a full address still finds the account
+	body = readBody(t, tc.get("/admin/users?search=u042@example.com", htmx))
+	assert.Contains(body, "u042")
+	assert.NotContains(body, "u043")
+
+	// first and last name together
+	body = readBody(t, tc.get("/admin/users?search=fn+ln009", htmx))
+	assert.Contains(body, "u009")
+	assert.NotContains(body, "u010")
+}
+
+func TestAdminUserListTruncationNote(t *testing.T) {
+	assert := assert.New(t)
+	tc, _ := newPeopleApp(t, 501)
+	body := readBody(t, tc.get("/admin/users", htmx))
+	assert.Contains(body, T("admin.users_truncated"))
+
+	tc, _ = newPeopleApp(t, 10)
+	body = readBody(t, tc.get("/admin/users", htmx))
+	assert.NotContains(body, T("admin.users_truncated"))
+}
