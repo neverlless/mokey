@@ -91,7 +91,7 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 		return c.Render("admin-people.html", vars)
 	}
 
-	if err := r.emailer.SendInviteEmail(email, username, first, last, c); err != nil {
+	if err := r.emailer.SendInviteEmail(email, username, first, last, inviterName(r.user(c)), c); err != nil {
 		slog.Error("Failed to send invite email",
 			"email", email,
 			"err", err,

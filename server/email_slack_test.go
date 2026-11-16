@@ -78,3 +78,42 @@ func TestEmailSubjectAffixes(t *testing.T) {
 		assert.NotContains(t, subject, "[Acme Widgets]")
 	})
 }
+
+func TestSlackMessageForInviteHasInviterAndLink(t *testing.T) {
+	data := map[string]interface{}{
+		"site_name":    "Acme",
+		"inviter":      "Walter White",
+		"link":         "https://sso.example.com/auth/invite/tok",
+		"link_expires": "1 day",
+	}
+	msg := slackMessageFor("invite", "invited", data, &ipa.User{})
+	assert.Contains(t, msg, "Walter White")
+	assert.Contains(t, msg, "<https://sso.example.com/auth/invite/tok|")
+	assert.Contains(t, msg, "1 day")
+}
+
+func TestSlackMessageForTokenMailsCarryLink(t *testing.T) {
+	for _, tmpl := range []string{"account-verify", "email-change", "otprecovery-confirm", "password-reset"} {
+		data := map[string]interface{}{"site_name": "Acme", "link": "https://sso.example.com/x", "link_expires": "1 hour"}
+		msg := slackMessageFor(tmpl, "subject", data, &ipa.User{First: "Walter"})
+		assert.Contains(t, msg, "<https://sso.example.com/x|", tmpl)
+	}
+}
+
+func TestSlackMessageEscapesNames(t *testing.T) {
+	data := map[string]interface{}{
+		"site_name":    "A<b>&*c",
+		"inviter":      "<!channel> *x*",
+		"link":         "https://sso.example.com/x",
+		"link_expires": "1 day",
+	}
+	for _, tmpl := range []string{"invite", "password-reset", "account-verify"} {
+		msg := slackMessageFor(tmpl, "s", data, &ipa.User{First: "<!here>"})
+		assert.NotContains(t, msg, "<b>", tmpl)
+		assert.NotContains(t, msg, "<!channel>", tmpl)
+		assert.NotContains(t, msg, "<!here>", tmpl)
+		assert.NotContains(t, msg, "*c", tmpl)
+		assert.NotContains(t, msg, "*x*", tmpl)
+		assert.Contains(t, msg, "&lt;b&gt;&amp;", tmpl)
+	}
+}
