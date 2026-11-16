@@ -14,7 +14,7 @@ func (r *Router) securityVars(c fiber.Ctx, vars fiber.Map) {
 	vars["user"] = user
 
 	client := r.userClient(c)
-	otpCount, passkeyCount := 0, 0
+	otpCount := 0
 	countsKnown := true
 	if tokens, err := client.FetchOTPTokens(user.Username); err != nil {
 		slog.Error("Failed to list otp tokens", "username", user.Username, "err", err)
@@ -22,14 +22,8 @@ func (r *Router) securityVars(c fiber.Ctx, vars fiber.Map) {
 	} else {
 		otpCount = len(tokens)
 	}
-	if passkeys, err := userPasskeys(client, user.Username); err != nil {
-		slog.Error("Failed to list passkeys", "username", user.Username, "err", err)
-		countsKnown = false
-	} else {
-		passkeyCount = len(passkeys)
-	}
 	vars["otp_count"] = otpCount
-	vars["passkey_count"] = passkeyCount
+	vars["passkey_count"] = len(user.Passkeys)
 	vars["counts_known"] = countsKnown
 	vars["security_state"] = securityState(user.OTPOnly(), otpCount)
 

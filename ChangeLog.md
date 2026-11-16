@@ -25,6 +25,8 @@
   subject), and the "copy the URL" help text no longer breaks words
 - mokey keeps its connections to FreeIPA open between requests instead of
   opening a new one for every page
+- Security and Passkeys pages ask FreeIPA for the account once instead of
+  twice, which takes about 300 ms off each
 - A request that times out (408) or fails with another status that has no
   error page no longer logs "template is undefined"; failed requests log
   the username instead of `<nil>` or the whole account, client errors log

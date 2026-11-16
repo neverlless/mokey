@@ -434,14 +434,7 @@ func (r *Router) Index(c fiber.Ctx) error {
 	} else if path == "security" {
 		r.securityVars(c, vars)
 	} else if path == "passkey" {
-		passkeys, err := r.passkeyList(c)
-		if err != nil {
-			slog.Error("Failed to fetch passkeys from FreeIPA",
-				"username", r.username(c),
-				"err", err,
-			)
-		}
-		vars["passkeys"] = passkeys
+		vars["passkeys"] = r.passkeyList(c)
 	} else if path == "otp" {
 		username := r.username(c)
 		client := r.userClient(c)

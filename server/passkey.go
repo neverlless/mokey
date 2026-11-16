@@ -68,12 +68,8 @@ func (r *Router) webAuthn(c fiber.Ctx) (*webauthn.WebAuthn, error) {
 	})
 }
 
-func (r *Router) passkeyList(c fiber.Ctx) ([]fiber.Map, error) {
-	mappings, err := userPasskeys(r.userClient(c), r.username(c))
-	if err != nil {
-		return nil, err
-	}
-
+func (r *Router) passkeyList(c fiber.Ctx) []fiber.Map {
+	mappings := r.user(c).Passkeys
 	list := make([]fiber.Map, 0, len(mappings))
 	for _, m := range mappings {
 		id := strings.TrimPrefix(m, "passkey:")
@@ -86,7 +82,7 @@ func (r *Router) passkeyList(c fiber.Ctx) ([]fiber.Map, error) {
 		list = append(list, fiber.Map{"mapping": m, "shortid": id})
 	}
 
-	return list, nil
+	return list
 }
 
 func (r *Router) PasskeyBegin(c fiber.Ctx) error {
