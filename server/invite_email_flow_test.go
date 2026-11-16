@@ -260,7 +260,7 @@ func TestInvitePresetUsernameAndName(t *testing.T) {
 func TestInvitePresetUsernameRejected(t *testing.T) {
 	assert := assert.New(t)
 	tc, _, fake, sink := inviteAdminClient(t)
-	fake.AddUser("taken", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("taken", ipatest.User{})
 
 	for name, msg := range map[string]string{
 		"bad name!": T("admin.invite_username_invalid"),
@@ -326,7 +326,7 @@ func TestInvitePresetUsernameTakenBeforeAccept(t *testing.T) {
 	tc, router, fake, _ := inviteAdminClient(t)
 	token, err := issueToken("kim@example.com", &Token{Username: "taken", Email: "kim@example.com"}, TokenInvite, router.storage)
 	assert.NoError(err)
-	fake.AddUser("taken", ipatest.User{Password: "Secret123!"})
+	fake.AddUser("taken", ipatest.User{})
 
 	resp, body := acceptPresetInvite(t, tc.app, token, "taken")
 	assert.Equal(fiber.StatusBadRequest, resp.StatusCode)
