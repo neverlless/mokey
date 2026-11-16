@@ -31,11 +31,9 @@ them. How versions and supported releases work is described in the
 
 - [ ] Forward-auth endpoint for Traefik, nginx and Caddy: apps without
       OIDC get single sign-on, gated by FreeIPA groups or HBAC rules
-- [ ] Account expiry date set by admins and sponsors, shown to the user
+- [x] Account expiry date set by admins and sponsors, shown to the user
       with reminders (FreeIPA's `krbPrincipalExpiration`)
-- [ ] Inactive accounts locked after a configurable period, with a warning
-      mail first (freeipa#4975)
-- [ ] Yearly renewal confirmed by a sponsor; accounts a sponsor vouches for
+- [x] Yearly renewal confirmed by a sponsor; accounts a sponsor vouches for
       follow the sponsor's own expiry, as HPC account policies require
 
 ## Planned
@@ -49,6 +47,12 @@ release is scoped.
       IdP (CILogon) and link that identity to the FreeIPA account
 - [ ] Admin pages for OAuth clients, instead of editing Hydra by hand
 - [ ] SAML 2.0 identity provider for apps that only speak SAML
+
+### Account lifecycle
+
+- [ ] Inactive accounts locked after a configurable period, with a warning
+      mail first (freeipa#4975). Needs a reliable activity signal: FreeIPA
+      doesn't see SSH key logins, so a lock would block active users
 
 ### Directory sync
 

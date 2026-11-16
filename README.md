@@ -70,6 +70,8 @@ flowchart LR
   managers), in the sponsor's own FreeIPA session
 - Time-bound membership with per-group limits, reminders, renewals and
   automatic removal
+- Account expiry with reminders, and sponsors who renew the accounts they
+  vouch for ([guide](docs/guides/account-lifecycle.md))
 - Access page: the HBAC and sudo rules that apply to the user, and an
   hbactest simulator
 
