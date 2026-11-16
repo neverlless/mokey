@@ -12,21 +12,21 @@
 	</script>
 	<title>{{ ConfigValueString "site.name" }} - {{ T "common.identity_management" }}</title>
 	<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-    <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png"/>
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link href="/static/css/bootstrap.min.css?v=20260818b" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-	<link rel="stylesheet" href="/static/css/fontawesome.all.min.css?v=20260818b" integrity="sha384-3B6NwesSXE7YJlcLI9RpRqGf2p/EgVH8BgoKTaUrmKNDkHPStTQ3EyoYjCGXaOTS" crossorigin="anonymous">
-	<link rel="stylesheet" href="/static/css/sweetalert2.min.css?v=20260818b" integrity="sha384-SUNIgQeCps0CoAVRrheRnQztaghCAffXsWBNCCUvia+XNEh7IZg6RvTKpovgqBrc" crossorigin="anonymous">
-	<link rel="stylesheet" type="text/css" href="/static/css/fonts.css?v=20261106a" integrity="sha384-ZGWlLlzR3qAp+srbI99v11uIhmpDNTMYogWOLymaDRV2RGTnO3LujvyObjNjtIaD" crossorigin="anonymous">
-	<link rel="stylesheet" type="text/css" href="/static/css/style.css?v=20261116a" integrity="sha384-87/fQHz7sfvOw7ZSNVjRh2zr81Pf4M86pqQXOSl/3BqyWOqzyC/zxuYz9mVvrncz" crossorigin="anonymous">
+    <link rel="apple-touch-icon" href="{{ $.asset_base }}/static/images/apple-touch-icon.png"/>
+    <link rel="shortcut icon" href="{{ $.asset_base }}/favicon.ico">
+    <link href="{{ $.asset_base }}/static/css/bootstrap.min.css?v=20260818b" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+	<link rel="stylesheet" href="{{ $.asset_base }}/static/css/fontawesome.all.min.css?v=20260818b" integrity="sha384-3B6NwesSXE7YJlcLI9RpRqGf2p/EgVH8BgoKTaUrmKNDkHPStTQ3EyoYjCGXaOTS" crossorigin="anonymous">
+	<link rel="stylesheet" href="{{ $.asset_base }}/static/css/sweetalert2.min.css?v=20260818b" integrity="sha384-SUNIgQeCps0CoAVRrheRnQztaghCAffXsWBNCCUvia+XNEh7IZg6RvTKpovgqBrc" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="{{ $.asset_base }}/static/css/fonts.css?v=20261106a" integrity="sha384-ZGWlLlzR3qAp+srbI99v11uIhmpDNTMYogWOLymaDRV2RGTnO3LujvyObjNjtIaD" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="{{ $.asset_base }}/static/css/style.css?v=20261116a" integrity="sha384-87/fQHz7sfvOw7ZSNVjRh2zr81Pf4M86pqQXOSl/3BqyWOqzyC/zxuYz9mVvrncz" crossorigin="anonymous">
     {{ with ConfigValueString "site.css" }}
-	<link rel="stylesheet" type="text/css" href="/css/styles">
+	<link rel="stylesheet" type="text/css" href="{{ $.asset_base }}/css/styles">
     {{ end }}
 </head>
 <body>
     {{ if $.shell }}<a class="mokey-skip-link visually-hidden-focusable" href="#main">{{ T "common.skip_to_content" }}</a>{{ end }}
     {{ if not $.shell }}
     <div class="mokey-signin-head mokey-auth-brand">
-        <a class="mokey-signin-brand" href="/">{{ template "brand-mark.html" "mokey-mark-lg" }}{{ if not (ConfigValueString "site.logo") }}<span class="visually-hidden">{{ ConfigValueString "site.name" }}</span>{{ end }}</a>
+        <a class="mokey-signin-brand" href="{{ $.asset_base }}/">{{ if and $.asset_base (ConfigValueString "site.logo") }}<img class="mokey-logo" src="{{ $.asset_base }}/images/logo" alt="{{ ConfigValueString "site.name" }}" />{{ else }}{{ template "brand-mark.html" "mokey-mark-lg" }}{{ end }}{{ if not (ConfigValueString "site.logo") }}<span class="visually-hidden">{{ ConfigValueString "site.name" }}</span>{{ end }}</a>
     </div>
     {{ end }}

@@ -18,7 +18,7 @@ import (
 // an unstyled UI. Recompute with:
 //
 //	openssl dgst -sha384 -binary <file> | openssl base64 -A
-var sriTag = regexp.MustCompile(`(?:href|src)="(/static/[^"?]+)[^"]*"[^>]*integrity="sha384-([^"]+)"`)
+var sriTag = regexp.MustCompile(`(?:href|src)="(?:\{\{ \$\.asset_base \}\})?(/static/[^"?]+)[^"]*"[^>]*integrity="sha384-([^"]+)"`)
 
 func TestLocalAssetIntegrityHashes(t *testing.T) {
 	assert := assert.New(t)

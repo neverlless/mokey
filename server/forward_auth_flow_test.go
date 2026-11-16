@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -257,7 +258,7 @@ func TestFASignInAsksForLoginOnce(t *testing.T) {
 }
 
 func TestFACallbackRejects(t *testing.T) {
-	app, _, _ := newFAApp(t, nil)
+	app, router, _ := newFAApp(t, nil)
 
 	t.Run("replayed code", func(t *testing.T) {
 		tc := newTestClient(t, app)
@@ -305,6 +306,23 @@ func TestFACallbackRejects(t *testing.T) {
 		tc.login("walter", "Secret123!")
 		cb := faToCallback(t, tc)
 		resp := tc.send("GET", cb+"x", nil)
+		assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode)
+		assert.Nil(t, cookieNamed(resp, faSessionCookie))
+		if c := cookieNamed(resp, faNonceCookie); assert.NotNil(t, c, "nonce cleared on failure") {
+			assert.Empty(t, c.Value)
+		}
+		body := readBody(t, resp)
+		assert.Contains(t, body, `href="https://`+faMokeyHost+`/static/css/style.css`)
+	})
+	t.Run("password changed after continue", func(t *testing.T) {
+		tc := newTestClient(t, app)
+		tc.login("walter", "Secret123!")
+		cb := faToCallback(t, tc)
+		// the marker is in seconds; a later one invalidates this session
+		later := strconv.FormatInt(time.Now().Add(5*time.Second).Unix(), 10)
+		require.NoError(t, router.storage.Set(PasswordChangedPrefix+"walter", []byte(later), time.Minute))
+		defer func() { _ = router.storage.Delete(PasswordChangedPrefix + "walter") }()
+		resp := tc.send("GET", cb, nil)
 		assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode)
 		assert.Nil(t, cookieNamed(resp, faSessionCookie))
 	})
@@ -394,6 +412,7 @@ func TestFARecheckRevokes(t *testing.T) {
 			change(t, router, fake)
 			resp := tc.verify(traefik)
 			assert.Equal(t, fiber.StatusForbidden, resp.StatusCode)
+			assertAppHostPage(t, resp)
 			s, err := router.faLoadSession(tc.cookies[faSessionCookie])
 			require.NoError(t, err)
 			assert.Nil(t, s)
@@ -478,4 +497,30 @@ func TestFADisabledHasNoRoutes(t *testing.T) {
 	for _, p := range []string{faVerifyPath, faContinuePath + "?p=x", "/.mokey/start", "/.mokey/callback", "/.mokey/signout", "/forward-auth/signedout"} {
 		assert.Equal(t, fiber.StatusNotFound, tc.send("GET", "https://"+faAppHost+p, nil).StatusCode, p)
 	}
+}
+
+// a page shown on the app's host loads mokey's assets from forward_auth.url
+func assertAppHostPage(t *testing.T, resp *http.Response) {
+	t.Helper()
+	origin := "https://" + faMokeyHost
+	body := readBody(t, resp)
+	assert.Contains(t, body, `href="`+origin+`/static/css/style.css`)
+	assert.NotContains(t, body, `href="/static/`)
+	csp := resp.Header.Get("Content-Security-Policy")
+	assert.Contains(t, csp, "style-src 'self' 'unsafe-inline' "+origin)
+	assert.Contains(t, csp, "font-src 'self' "+origin)
+	assert.Contains(t, csp, "default-src 'self';")
+}
+
+func TestFAMokeyPagesKeepCSP(t *testing.T) {
+	app, _, _ := newFAApp(t, nil)
+	tc := newTestClient(t, app)
+	resp := tc.get("/auth/login")
+	csp := resp.Header.Get("Content-Security-Policy")
+	assert.NotContains(t, csp, faMokeyHost)
+	assert.NotContains(t, csp, "font-src")
+	assert.Contains(t, readBody(t, resp), `href="/static/css/style.css`)
+
+	resp = tc.get("/static/css/style.css")
+	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
 }
