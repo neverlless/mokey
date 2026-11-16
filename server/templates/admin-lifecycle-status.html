@@ -31,8 +31,8 @@
 {{ end }}
 
 <h2 class="mokey-section-title mb-2">{{ T "admin.lifecycle_waiting" }}</h2>
-{{ if $.lc_held }}
-<div class="alert alert-warning" role="status">{{ $.lc_held }}</div>
+{{ if $.lc_apply }}
+{{ with $.lc_held }}<div class="alert alert-warning" role="status">{{ . }}</div>{{ end }}
 <div class="mokey-card mb-2">
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0">

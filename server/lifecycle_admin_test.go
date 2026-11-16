@@ -271,6 +271,10 @@ func TestAdminSetExpiryOwnAccount(t *testing.T) {
 		resp := post(v)
 		assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode, v)
 		assert.Equal(t, T("admin.lifecycle_expiry_self"), readBody(t, resp))
+		// FreeIPA uids are case-insensitive
+		resp = tc.postForm("/admin/user/set-expiry", url.Values{"username": {"GUS"}, "expires": {v}}, htmx)
+		assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode, v)
+		assert.Equal(t, T("admin.lifecycle_expiry_self"), readBody(t, resp))
 	}
 	assert.Equal(t, 0, d.modCount())
 	assert.Empty(t, auditEvents(router, "lifecycle expiry set"))
@@ -295,4 +299,26 @@ func TestAdminLifecycleActionUnknownUser(t *testing.T) {
 	assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, 0, d.modCount())
 	assert.Empty(t, auditEvents(router, "lifecycle sponsor set"))
+}
+
+func TestAdminLifecycleHeldWithinLimitNow(t *testing.T) {
+	cfg := assignCfg()
+	cfg.MaxChanges = 2
+	tc, router, d := newLifecycleAdminApp(t, cfg)
+	d.add("walter", ipatest.User{}, "", time.Time{})
+	for _, uid := range []string{"jesse", "skinny", "badger"} {
+		d.add(uid, ipatest.User{}, "walter", time.Time{})
+	}
+	_, held, err := router.lifecycleRun(time.Now(), "")
+	require.NoError(t, err)
+	require.NotNil(t, held)
+
+	// one account got a date elsewhere: two changes left, within the limit
+	d.mu.Lock()
+	d.expires["badger"] = time.Now().Add(24 * time.Hour)
+	d.mu.Unlock()
+	body := readBody(t, tc.get("/admin/lifecycle/status", htmx))
+	assert.NotContains(t, body, "alert-warning")
+	assert.Contains(t, body, "Apply 2 changes")
+	assert.Contains(t, body, ">jesse<")
 }
