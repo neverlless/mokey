@@ -233,6 +233,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 		app.Post("/groups/approve", r.RequireLogin, r.RequireHTMX, r.GroupApprove)
 		app.Post("/groups/deny", r.RequireLogin, r.RequireHTMX, r.GroupDeny)
 		app.Post("/groups/remove-member", r.RequireLogin, r.RequireHTMX, r.GroupRemoveMember)
+		app.Post("/groups/sponsored/extend", r.RequireLogin, r.RequireHTMX, r.SponsoredExtend)
 	}
 
 	if viper.GetBool("accounts.enable_access") {
