@@ -58,6 +58,7 @@
     </table>
   </div>
 </div>
+{{ if not $.lc_truncated }}
 <div class="d-flex gap-2 mb-4">
   <button type="button" class="btn btn-primary"
           hx-post="/admin/lifecycle/apply" hx-target="#admin-lifecycle" hx-disabled-elt="this"
@@ -66,6 +67,7 @@
     {{ $.lc_apply }}
   </button>
 </div>
+{{ end }}
 {{ else }}
 <p class="text-muted mb-4">{{ T "admin.lifecycle_nothing_waiting" }}</p>
 {{ end }}

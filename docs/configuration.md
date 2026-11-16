@@ -164,6 +164,11 @@ until you set an option.
 | `assign_missing_expiry` | bool | `false` | Give sponsored accounts without an expiry date one: now plus `renewal_period`. Needs `renewal_period`. |
 | `max_changes_per_run` | int | `50` | A sweep that would change more accounts changes none and waits for an admin to apply it. When an admin applies such a run, [webhooks](#webhooks) get only its summary event (`lifecycle run applied`); every account change is still in the audit log. |
 
+An expiry date an admin sets on the People page takes effect at midnight,
+server-local time, at the start of that day. A sponsor caps the expiry of
+the accounts they vouch for, so giving yourself a sponsor can shorten your
+own expiry.
+
 ## `[email]`
 
 | Option | Type | Default | Description |

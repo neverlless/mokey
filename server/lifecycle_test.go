@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"net"
 	"strings"
 	"sync"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	ipa "github.com/neverlless/goipa"
 	"github.com/neverlless/goipa/ipatest"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -404,8 +406,13 @@ func TestLifecycleFailedSponsorOnlyReminderRetries(t *testing.T) {
 	dir.add("walter", lcFakeUser{email: "walter@example.test"})
 	dir.add("jesse", lcFakeUser{sponsor: "walter", expires: now.Add(24 * time.Hour)})
 
-	// nothing listens on the default SMTP port: the sponsor mail fails
-	_, _, err := router.lifecycleRun(now, "")
+	// a closed port: the sponsor mail is refused
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	viper.Set("email.smtp_host", "127.0.0.1")
+	viper.Set("email.smtp_port", ln.Addr().(*net.TCPAddr).Port)
+	require.NoError(t, ln.Close())
+	_, _, err = router.lifecycleRun(now, "")
 	require.NoError(t, err)
 
 	sink := newFakeSMTP(t)
