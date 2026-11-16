@@ -3,7 +3,8 @@
 # environment instead.)
 #
 # 1. Create mokey.toml next to this file (see mokey.toml.sample). Use
-#    driver = "redis" with url = "redis://redis:6379/0" for sessions.
+#    driver = "redis" with url = "redis://redis:6379/0" for sessions, and
+#    set server.csrf_secret and email.token_secret (required with redis).
 # 2. Either mount a ready keytab (default below) or switch to the
 #    IPA_ENROLL variables — see docker/entrypoint.sh for details.
 

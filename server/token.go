@@ -154,3 +154,36 @@ func MarkTokenUsed(token, prefix string, claims *Token, storage fiber.Storage) {
 		)
 	}
 }
+
+// EnsureSecrets generates server.csrf_secret and email.token_secret when they
+// are blank. With redis storage mokey may run as several replicas, which
+// must share both, so a missing one is an error instead.
+func EnsureSecrets() error {
+	if viper.GetString("storage.driver") == "redis" && (viper.GetString("server.csrf_secret") == "" || viper.GetString("email.token_secret") == "") {
+		return errors.New(`server.csrf_secret and email.token_secret must both be set when storage.driver = "redis": every replica needs the same secrets, or CSRF tokens and links in emails sent by one replica fail on another and stop working after a restart`)
+	}
+
+	generated := []string{}
+	if viper.GetString("email.token_secret") == "" {
+		secret, err := GenerateSecret(32)
+		if err != nil {
+			return err
+		}
+		viper.Set("email.token_secret", secret)
+		generated = append(generated, "email.token_secret")
+	}
+	if viper.GetString("server.csrf_secret") == "" {
+		secret, err := GenerateSecretString(16)
+		if err != nil {
+			return err
+		}
+		viper.Set("server.csrf_secret", secret)
+		generated = append(generated, "server.csrf_secret")
+	}
+	if len(generated) > 0 {
+		slog.Warn("Generated random secrets for this run; links in sent emails stop working after a restart. Set them in the config to keep them valid",
+			"keys", generated,
+		)
+	}
+	return nil
+}

@@ -46,9 +46,17 @@
   any case, so a blocked `admin` could sign in as `Admin`
 - Captchas are kept in `storage`, so with `storage.driver = "redis"` a
   captcha shown by one replica is accepted by another
+- With `storage.driver = "redis"`, mokey refuses to start unless
+  `server.csrf_secret` and `email.token_secret` are set, since replicas must
+  share them. Other drivers still generate them when blank and warn that
+  emailed links stop working after a restart. A blank `csrf_secret` (as in
+  `mokey.toml.sample`) is now generated instead of used as an empty key
 
 ### Upgrade notes
 
+- With `storage.driver = "redis"`, set `server.csrf_secret` and
+  `email.token_secret` (the same on every replica) before upgrading, or
+  mokey does not start.
 - Everyone signs in again once after the upgrade: Fiber 3.7 stores sessions
   under a new storage key, so sessions from earlier releases are not found.
 - Phone numbers already stored with a space (+380 123456789) keep working and
