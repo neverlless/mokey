@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dchest/captcha"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/session"
 	ipa "github.com/neverlless/goipa"
@@ -55,6 +56,7 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 		storage: storage,
 		lock:    newStoreLock(storage),
 	}
+	captcha.SetCustomStore(storageCaptchaStore{storage})
 
 	var err error
 	r.groupExpiry, err = loadGroupExpiryConfig()

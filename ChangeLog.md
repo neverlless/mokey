@@ -44,6 +44,8 @@
   the audit log and activity data are lost on restart
 - Security: `accounts.block_users` ignores case. FreeIPA accepts a login in
   any case, so a blocked `admin` could sign in as `Admin`
+- Captchas are kept in `storage`, so with `storage.driver = "redis"` a
+  captcha shown by one replica is accepted by another
 
 ### Upgrade notes
 

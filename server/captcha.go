@@ -68,3 +68,31 @@ func (r *Router) verifyCaptcha(id, sol string) error {
 
 	return nil
 }
+
+const captchaPrefix = "captcha-"
+
+// storageCaptchaStore keeps captchas in mokey's storage, so with redis a
+// captcha shown by one replica verifies on any other
+type storageCaptchaStore struct{ storage fiber.Storage }
+
+func (s storageCaptchaStore) Set(id string, digits []byte) {
+	if err := s.storage.Set(captchaPrefix+id, digits, captcha.Expiration); err != nil {
+		slog.Error("Failed to store captcha", "err", err)
+	}
+}
+
+func (s storageCaptchaStore) Get(id string, clear bool) []byte {
+	digits, err := s.storage.Get(captchaPrefix + id)
+	if err != nil {
+		slog.Error("Failed to read captcha", "err", err)
+		return nil
+	}
+	if clear && digits != nil {
+		// a captcha that cannot be used up must not verify
+		if err := s.storage.Delete(captchaPrefix + id); err != nil {
+			slog.Error("Failed to delete used captcha", "err", err)
+			return nil
+		}
+	}
+	return digits
+}
