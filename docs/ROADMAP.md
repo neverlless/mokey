@@ -29,7 +29,7 @@ them. How versions and supported releases work is described in the
 
 ## Next: v2.11 — Sign-in for web apps and account lifecycle (January 2027)
 
-- [ ] Forward-auth endpoint for Traefik, nginx and Caddy: apps without
+- [x] Forward-auth endpoint for Traefik, nginx and Caddy: apps without
       OIDC get single sign-on, gated by FreeIPA groups or HBAC rules
 - [x] Account expiry date set by admins and sponsors, shown to the user
       with reminders (FreeIPA's `krbPrincipalExpiration`)
