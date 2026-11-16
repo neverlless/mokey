@@ -8,7 +8,11 @@ separate Go module, so Playwright never reaches mokey's own `go.mod`.
 - `-tags integration`: login, password change against a FreeIPA password
   policy, forgot password through the Mailpit link, signup with email
   verification, SSH key add/remove, OTP token add and login with
-  password + TOTP.
+  password + TOTP, and the account lifecycle: an admin sets the sponsor
+  (FreeIPA `manager`) and expiry, the sponsor's Extend writes
+  `krbPrincipalExpiration` capped by the sponsor's own date, an expired
+  account can't sign in until extended, and an admin Apply goes past the
+  brake.
 - `-tags e2e` (Chromium via playwright-go): a pass over the main pages
   failing on any console error, and passkey registration and removal with a
   CDP virtual authenticator, checked in FreeIPA. mokey has no passkey
@@ -22,13 +26,16 @@ separate Go module, so Playwright never reaches mokey's own `go.mod`.
 
 Each run creates its own users (`it<random>`) and a group with a password
 policy through the `ipa` CLI in the FreeIPA container, and deletes them at
-the end.
+the end. It also grants mokey's role the account expiry permission from
+[Install](../docs/install.md) and leaves it in place.
 
 ## Run
 
 Start the stand with mokey built from your checkout and the overlay that
 turns the CAPTCHA off (signup and forgot password cannot pass it) and
-switches mokey to sqlite3 storage with `groups.durations = 1m 1h`, which the
+switches mokey to sqlite3 storage, turns on sponsor renewal
+(`lifecycle.renewal_period = 365d`, `lifecycle.max_changes_per_run = 1`)
+and sets `groups.durations = 1m 1h`, which the
 time-bound membership test needs (it waits for the 5-minute expiry sweep, so
 the suite takes about 6 minutes):
 
