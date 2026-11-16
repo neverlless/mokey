@@ -63,8 +63,9 @@ sequenceDiagram
 > Set `server.trusted_proxies` to the address of the proxy (or the
 > Kubernetes pod range). Without it mokey ignores `X-Forwarded-*` headers,
 > and every user behind the proxy shares one rate-limit key for
-> `/forward-auth/continue`, where failed requests count: a few mistyped
-> sign-ins can lock everyone out for the rate-limit window. Proxies that send
+> `/forward-auth/continue`, where failed requests count (failed
+> `/.mokey/*` requests count too): a few mistyped sign-ins can lock everyone
+> out for the rate-limit window. Proxies that send
 > no forwarded headers (Envoy, Istio, Cilium) still work through the `Host`
 > header, but the rate-limit problem remains.
 
@@ -104,7 +105,8 @@ Per app (`[[forward_auth.apps]]`):
 | `hbac_host` | Host used for that test. Defaults to `host`. |
 
 mokey refuses to start on an invalid configuration. A group that does not
-exist in FreeIPA only logs a warning. The full reference is in
+exist in FreeIPA is logged as a warning at startup, naming the app and
+group; the app stays configured, but nobody gets in through that group. The full reference is in
 [Configuration](../configuration.md#forward_auth).
 
 ## What the app receives
@@ -124,6 +126,10 @@ request to the app:
 > ones that admit them to this app, so apps that map roles from group names
 > work unchanged. It also means every protected app learns all group names
 > of its users. Do not protect apps you do not trust with that.
+
+`Remote-Groups`, `Remote-Email` and `Remote-Name` are sent too, but the
+Traefik and nginx recipes below do not copy them; add the ones your app
+reads.
 
 Copy only the headers your app reads, and make sure the proxy overwrites
 them: a client must never be able to send its own `X-Auth-Request-User`.
