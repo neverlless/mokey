@@ -32,6 +32,8 @@
 - Slack log lines show when a message was sent as a UTC time
 - Admin invite form shows email, first and last name and username in one
   row with labels instead of hiding them under "More details"
+- Admin People and Audit log pages warn when `storage.driver` is `memory`:
+  the audit log and activity data are lost on restart
 
 ### Upgrade notes
 

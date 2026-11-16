@@ -6,6 +6,7 @@
 {{ end }}
 
 <h1 class="mb-4">{{ T "admin.people_title" }}</h1>
+{{ template "storage-memory-notice.html" . }}
 
 {{  with $.message }}
 <div class="alert alert-danger alert-dismissible mx-auto fade show" role="alert">

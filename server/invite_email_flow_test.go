@@ -344,3 +344,12 @@ func TestAdminInviteFormFieldsInsideForm(t *testing.T) {
 	assert.Contains(form, `hx-post="/admin/invite"`)
 	assert.Contains(form, `type="submit"`)
 }
+
+func TestAdminWarnsAboutMemoryStorage(t *testing.T) {
+	tc, _, _, _ := inviteAdminClient(t)
+	for _, p := range []string{"/admin/people", "/admin/log"} {
+		assert.Contains(t, readBody(t, tc.get(p, htmx)), "storage.driver = &#34;memory&#34;", p)
+	}
+	viper.Set("storage.driver", "sqlite3")
+	assert.NotContains(t, readBody(t, tc.get("/admin/log", htmx)), "storage.driver")
+}
