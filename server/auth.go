@@ -428,6 +428,7 @@ func (r *Router) Authenticate(c fiber.Ctx) error {
 	}
 
 	r.recordUserSession(c, username, sid)
+	r.recordSignIn(username, time.Now())
 	r.notifyNewLogin(c, username)
 
 	if viper.IsSet("hydra.admin_url") && challenge != "" {

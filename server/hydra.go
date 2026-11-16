@@ -263,6 +263,7 @@ func (r *Router) LoginOAuthGet(c fiber.Ctx) error {
 		slog.Debug("Hydra OAuth login GET challenge signed successfully",
 			"username", subject,
 		)
+		r.recordSignIn(subject, time.Now())
 
 		c.Set("HX-Redirect", redirect.GetRedirectTo())
 		return c.Redirect().Status(fiber.StatusFound).To(redirect.GetRedirectTo())
@@ -297,6 +298,7 @@ func (r *Router) LoginOAuthPost(username, challenge string, c fiber.Ctx) error {
 	slog.Debug("Hydra OAuth2 login POST challenge signed successfully",
 		"username", username,
 	)
+	r.recordSignIn(username, time.Now())
 
 	if c.Get("HX-Request", "false") == "true" {
 		c.Set("HX-Redirect", redirect.GetRedirectTo())
