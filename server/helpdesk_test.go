@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -171,6 +173,35 @@ func TestAdminHelpdeskInactiveSources(t *testing.T) {
 	assert.Contains(body, `ipa config-mod --delattr ipaconfigstring="KDC:Disable Last Success"`)
 }
 
+// fakeMasters points newIPAClientForHost at other for ipa2.example.test and
+// fails every other host; it returns the hosts asked for and the keytab
+// logins done, in order
+func fakeMasters(t *testing.T, other *ipatest.Server) (asked, logins func() []string) {
+	var mu sync.Mutex
+	var hosts, logged []string
+	origNew, origLogin := newIPAClientForHost, ipaKeytabLogin
+	t.Cleanup(func() { newIPAClientForHost, ipaKeytabLogin = origNew, origLogin })
+	newIPAClientForHost = func(host string) (*ipa.Client, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		hosts = append(hosts, host)
+		if host == "ipa2.example.test" {
+			return newFakeClient(other), nil
+		}
+		return nil, errors.New("unreachable")
+	}
+	ipaKeytabLogin = func(c *ipa.Client, keytab, username string) error {
+		mu.Lock()
+		defer mu.Unlock()
+		logged = append(logged, c.Host())
+		return origLogin(c, keytab, username)
+	}
+	get := func(s *[]string) func() []string {
+		return func() []string { mu.Lock(); defer mu.Unlock(); return slices.Clone(*s) }
+	}
+	return get(&hosts), get(&logged)
+}
+
 func TestAdminHelpdeskReadsEveryMaster(t *testing.T) {
 	assert := assert.New(t)
 	_, _, fake, tc := newHelpdeskApp(t)
@@ -180,19 +211,9 @@ func TestAdminHelpdeskReadsEveryMaster(t *testing.T) {
 	other.GrantPrivilege(keytabUser, "User Administrators")
 	other.SetNegotiateUser(keytabUser)
 	serveHelpdeskUsers(other, false, helpdeskFixture{uid: "skinny", lastLogin: day})
+	asked, logins := fakeMasters(t, other)
 
 	self, _, _ := strings.Cut(fake.Host(), ":")
-	asked := []string{}
-	orig := newIPAClientForHost
-	t.Cleanup(func() { newIPAClientForHost = orig })
-	newIPAClientForHost = func(host string) (*ipa.Client, error) {
-		asked = append(asked, host)
-		if host == "ipa2.example.test" {
-			return newFakeClient(other), nil
-		}
-		return nil, errors.New("unreachable")
-	}
-
 	trackLastLogin(fake, self, "ipa2.example.test", "ipa3.example.test")
 	serveHelpdeskUsers(fake, false,
 		helpdeskFixture{uid: "skinny", lastLogin: 200 * day},
@@ -201,9 +222,35 @@ func TestAdminHelpdeskReadsEveryMaster(t *testing.T) {
 
 	uids, body := helpdeskList(t, tc, "inactive")
 	assert.Equal([]string{"saul"}, uids)
-	assert.ElementsMatch([]string{"ipa2.example.test", "ipa3.example.test"}, asked)
+	assert.ElementsMatch([]string{"ipa2.example.test", "ipa3.example.test"}, asked())
+	assert.Equal([]string{other.Host()}, logins())
 	assert.Contains(body, fmt.Sprintf(T("admin.helpdesk_masters_unreachable"), "ipa3.example.test"))
 	assert.NotContains(body, T("admin.helpdesk_inactive_kdc_hint"))
+
+	// the next load is served from the cache: no new client, no new login,
+	// and the failed master is not retried within its failure period
+	reads := len(other.Calls())
+	uids, body = helpdeskList(t, tc, "inactive")
+	assert.Equal([]string{"saul"}, uids)
+	assert.Len(asked(), 2)
+	assert.Len(logins(), 1)
+	assert.Equal(reads, len(other.Calls()))
+	assert.Contains(body, fmt.Sprintf(T("admin.helpdesk_masters_unreachable"), "ipa3.example.test"))
+}
+
+func TestAdminHelpdeskOtherViewsSkipMasters(t *testing.T) {
+	assert := assert.New(t)
+	_, _, fake, tc := newHelpdeskApp(t)
+	asked, _ := fakeMasters(t, ipatest.NewServer(t))
+	trackLastLogin(fake, "ipa2.example.test")
+	fake.AddUser("jesse", ipatest.User{FailedLogins: 6})
+	serveHelpdeskUsers(fake, false, helpdeskFixture{uid: "jesse", failed: 6, lastFailed: time.Minute})
+
+	helpdeskList(t, tc, "expiring")
+	helpdeskList(t, tc, "locked")
+	resp := tc.postForm("/admin/user/unlock?helpdesk=inactive", url.Values{"username": {"jesse"}}, htmx)
+	assert.Equal(fiber.StatusOK, resp.StatusCode)
+	assert.Empty(asked())
 }
 
 func TestAdminHelpdeskTruncated(t *testing.T) {
