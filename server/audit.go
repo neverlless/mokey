@@ -112,6 +112,9 @@ func (h *AuditHandler) record(r slog.Record) (AuditEvent, error) {
 	if v := data["invited_by"]; v != "" {
 		event.Actor = v
 	}
+	if v := data["by"]; v != "" {
+		event.Actor = v
+	}
 	if event.Username == "" {
 		event.Username = data["email"]
 	}
