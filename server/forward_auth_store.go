@@ -118,16 +118,13 @@ func (r *Router) faTakeCode(code string) (*faCode, error) {
 	return &c, nil
 }
 
-func (r *Router) faLoadIndex(username string) []faUserEntry {
+func (r *Router) faLoadIndex(username string) ([]faUserEntry, error) {
 	raw, err := r.storage.Get(faUserPrefix + username)
 	if err != nil || raw == nil {
-		return nil
+		return nil, err
 	}
 	var idx []faUserEntry
-	if err := json.Unmarshal(raw, &idx); err != nil {
-		return nil
-	}
-	return idx
+	return idx, json.Unmarshal(raw, &idx)
 }
 
 func (r *Router) faSaveIndex(username string, idx []faUserEntry) error {
@@ -138,9 +135,11 @@ func (r *Router) faSaveIndex(username string, idx []faUserEntry) error {
 	return r.faPut(faUserPrefix+username, idx, r.forwardAuth.SessionMax)
 }
 
-func (r *Router) faExists(id string) bool {
+// faExists reports a read error as existing: dropping a live session from
+// the index would make it unrevokable
+func (r *Router) faExists(id string) (bool, error) {
 	raw, err := r.storage.Get(faSessPrefix + id)
-	return err == nil && raw != nil
+	return err != nil || raw != nil, err
 }
 
 // faSave writes s with the time it has left until SessionMax
@@ -167,9 +166,13 @@ func (r *Router) faCreateSession(s *faSession) error {
 
 	now := time.Now()
 	s.ID, s.Created, s.LastSeen, s.CheckedAt = id, now, now, now
+	old, err := r.faLoadIndex(s.Username)
+	if err != nil {
+		return err
+	}
 	idx := []faUserEntry{{ID: id, ParentSID: s.ParentSID}}
-	for _, e := range r.faLoadIndex(s.Username) {
-		if r.faExists(e.ID) {
+	for _, e := range old {
+		if ok, _ := r.faExists(e.ID); ok {
 			idx = append(idx, e)
 		}
 	}
@@ -213,8 +216,8 @@ func (r *Router) faTouch(s *faSession) error {
 	defer release()
 	// a revocation since the load deleted the session: writing it back
 	// would leave a live session missing from the index
-	if !r.faExists(s.ID) {
-		return nil
+	if ok, err := r.faExists(s.ID); !ok || err != nil {
+		return err
 	}
 	s.LastSeen = now
 	return r.faSave(s)
@@ -241,7 +244,14 @@ func (r *Router) faRevoke(username string, match func(parentSID string) bool) {
 		defer release()
 	}
 
-	idx := r.faLoadIndex(username)
+	idx, lerr := r.faLoadIndex(username)
+	if lerr != nil {
+		slog.Error("Failed to read app session index, app sessions not revoked",
+			"username", username,
+			"err", lerr,
+		)
+		return
+	}
 	kept := idx[:0]
 	for _, e := range idx {
 		if !match(e.ParentSID) {
