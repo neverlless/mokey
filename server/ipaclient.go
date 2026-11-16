@@ -16,7 +16,10 @@ var (
 		c.SetSessionID(sid)
 		return c, nil
 	}
-	ipaKeytabLogin = func(c *ipa.Client, keytab, username string) error {
+	// newIPAClientForHost talks to one named FreeIPA master instead of the
+	// one in /etc/ipa/default.conf
+	newIPAClientForHost = func(host string) (*ipa.Client, error) { return ipa.New(ipa.WithHost(host)) }
+	ipaKeytabLogin      = func(c *ipa.Client, keytab, username string) error {
 		return c.LoginWithKeytab(keytab, username)
 	}
 )

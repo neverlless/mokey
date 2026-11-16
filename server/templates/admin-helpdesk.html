@@ -15,7 +15,7 @@
           hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
           hx-get="/admin/helpdesk?view={{ $v }}" hx-target="#admin-helpdesk">
     {{ T (printf "admin.helpdesk_view_%s" $v) }}
-    {{ if or (ne $v "inactive") $.last_login_tracked }}<span class="mokey-pill ms-1">{{ index $.counts $v }}</span>{{ end }}
+    <span class="mokey-pill ms-1">{{ index $.counts $v }}</span>
   </button>
   {{ end }}
 </div>
@@ -26,16 +26,26 @@
   {{ else }}{{ T (printf "admin.helpdesk_help_%s" $.view) }}{{ end }}
 </p>
 
+{{ if eq $.view "inactive" }}
+<p class="small text-muted">
+  {{ T "admin.helpdesk_inactive_sources" }}
+  {{ if $.no_activity }}<br>{{ printf (T "admin.helpdesk_no_activity") $.no_activity }}{{ end }}
+</p>
+{{ if $.logins_unrecorded }}
+<p class="small text-muted">
+  {{ T "admin.helpdesk_inactive_kdc_hint" }}
+  <code class="d-block mt-1">ipa config-mod --delattr ipaconfigstring="KDC:Disable Last Success"</code>
+</p>
+{{ end }}
+{{ with $.unreachable }}
+<div class="alert alert-warning" role="status">{{ printf (T "admin.helpdesk_masters_unreachable") . }}</div>
+{{ end }}
+{{ end }}
+
 {{ if $.truncated }}
 <div class="alert alert-warning" role="status">{{ T "admin.helpdesk_truncated" }}</div>
 {{ end }}
 
-{{ if and (eq $.view "inactive") (not $.last_login_tracked) }}
-<div class="alert alert-info" role="status">
-  {{ T "admin.helpdesk_inactive_untracked" }}
-  <code class="d-block mt-2">ipa config-mod --delattr ipaconfigstring="KDC:Disable Last Success"</code>
-</div>
-{{ else }}
 <div class="table-responsive">
 <table class="table table-sm align-middle">
   <caption class="visually-hidden">{{ T (printf "admin.helpdesk_view_%s" $.view) }}</caption>
@@ -58,7 +68,7 @@
       <td>{{ $r.Email }}</td>
       <td class="text-nowrap">
         <time datetime="{{ $r.Date.UTC.Format "2006-01-02T15:04:05Z" }}">{{ $r.Date.Format "2006-01-02" }}</time>
-        <div class="small text-muted">{{ TimeAgo $r.Date }}</div>
+        <div class="small text-muted">{{ with $r.Source }}{{ T (printf "admin.helpdesk_source_%s" .) }} · {{ end }}{{ TimeAgo $r.Date }}</div>
       </td>
       <td>{{ if $r.Disabled }}<span class="mokey-pill is-danger">{{ T "admin.blocked" }}</span>{{ end }}</td>
       <td class="text-end">
@@ -98,6 +108,5 @@
 </div>
 {{ if gt $.total $.row_limit }}
 <p class="small text-muted">{{ T "admin.showing_first" }} {{ $.row_limit }} / {{ $.total }}</p>
-{{ end }}
 {{ end }}
 {{ end }}
