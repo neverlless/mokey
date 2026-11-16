@@ -59,9 +59,9 @@ func loadForwardAuthConfig() (*forwardAuthConfig, error) {
 		return nil, err
 	}
 
-	mokeyHosts := []string{strings.ToLower(u.Host)}
+	mokeyHosts := []string{strings.ToLower(u.Hostname())}
 	if b, err := url.Parse(viper.GetString("email.base_url")); err == nil && b.Host != "" {
-		mokeyHosts = append(mokeyHosts, strings.ToLower(b.Host))
+		mokeyHosts = append(mokeyHosts, strings.ToLower(b.Hostname()))
 	}
 
 	var apps []faApp
