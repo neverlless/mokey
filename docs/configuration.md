@@ -266,11 +266,18 @@ OAuth2/OIDC. All options unset = disabled.
 | `users` | list | — | Additional usernames granted admin access regardless of group membership. |
 | `inactive_days` | int | `90` | Helpdesk view: an account with no successful login for more than this many days is listed as inactive. See [Helpdesk view](guides/helpdesk.md). |
 
+The People search is answered by FreeIPA. Partial email matches need `mail`
+in FreeIPA's user search fields; without it only a full address matches:
+
+```sh
+ipa config-mod --usersearch=uid,givenname,sn,telephonenumber,ou,title,mail
+```
+
 ## `[slack]`
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `token` | string | — | Slack bot token. When set, account-event emails are also delivered to the user as a Slack direct message (matched by email address). |
+| `token` | string | — | Slack bot token. When set, account-event emails are also delivered to the user as a Slack direct message (matched by email address). Links from invitation, sign-up, password-reset, email-change and OTP-recovery mails are included. |
 
 The Slack bot DMs users their own notifications. To post account events to a
 channel, point a [webhook](#webhooks) with `format = "slack"` at a Slack
