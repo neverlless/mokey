@@ -25,6 +25,13 @@
   subject), and the "copy the URL" help text no longer breaks words
 - mokey keeps its connections to FreeIPA open between requests instead of
   opening a new one for every page
+- A request that times out (408) or fails with another status that has no
+  error page no longer logs "template is undefined"; failed requests log
+  the username instead of `<nil>` or the whole account, client errors log
+  at warn level
+- Slack log lines show when a message was sent as a UTC time
+- Admin invite form shows email, first and last name and username in one
+  row with labels instead of hiding them under "More details"
 
 ### Upgrade notes
 
