@@ -132,3 +132,60 @@ func TestSweepLeaseRedisReplicas(t *testing.T) {
 	assert.Equal(t, int32(1), won.Load())
 	assert.Eventually(t, func() bool { return rb.lock.lease("sweep", time.Second) }, 2*time.Second, 50*time.Millisecond)
 }
+
+func localLocks(l *storeLock) (n int) {
+	l.local.Range(func(any, any) bool { n++; return true })
+	return n
+}
+
+// concurrent takes of one key hand the value out once, and client-chosen
+// keys leave no per-key state behind
+func takeOnce(t *testing.T, locks ...*storeLock) {
+	t.Helper()
+	for k := range 20 {
+		key := fmt.Sprintf("take-%d", k)
+		require.NoError(t, locks[0].storage.Set(key, []byte("v"), time.Minute))
+		var got atomic.Int32
+		var wg sync.WaitGroup
+		for i := range 20 {
+			l := locks[i%len(locks)]
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				raw, err := l.take(key)
+				assert.NoError(t, err)
+				if raw != nil {
+					assert.Equal(t, "v", string(raw))
+					got.Add(1)
+				}
+			}()
+		}
+		wg.Wait()
+		assert.Equal(t, int32(1), got.Load(), key)
+	}
+	for _, l := range locks {
+		assert.Zero(t, localLocks(l))
+	}
+	raw, err := locks[0].take("missing")
+	assert.NoError(t, err)
+	assert.Nil(t, raw)
+}
+
+func TestStoreTakeOnce(t *testing.T) {
+	takeOnce(t, newStoreLock(memory.New()))
+}
+
+func TestStoreTakeOnceRedisReplicas(t *testing.T) {
+	url := os.Getenv("MOKEY_TEST_REDIS_URL")
+	if url == "" {
+		t.Skip("MOKEY_TEST_REDIS_URL not set")
+	}
+	a := redis.New(redis.Config{URL: url, Reset: true})
+	b := redis.New(redis.Config{URL: url})
+	t.Cleanup(func() {
+		_ = a.Reset()
+		_ = a.Close()
+		_ = b.Close()
+	})
+	takeOnce(t, newStoreLock(a), newStoreLock(b))
+}

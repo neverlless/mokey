@@ -56,7 +56,7 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 		storage: storage,
 		lock:    newStoreLock(storage),
 	}
-	captcha.SetCustomStore(storageCaptchaStore{storage})
+	captcha.SetCustomStore(storageCaptchaStore{r.lock})
 
 	var err error
 	r.groupExpiry, err = loadGroupExpiryConfig()

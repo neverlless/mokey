@@ -1,6 +1,8 @@
 package server
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/dchest/captcha"
@@ -19,8 +21,9 @@ func digitsString(d []byte) string {
 
 // two replicas: each installs its own store on one shared storage
 func TestCaptchaSharedAcrossReplicas(t *testing.T) {
+	t.Cleanup(func() { captcha.SetCustomStore(captcha.NewMemoryStore(captcha.CollectNum, captcha.Expiration)) })
 	shared := memory.New()
-	a, b := storageCaptchaStore{shared}, storageCaptchaStore{shared}
+	a, b := storageCaptchaStore{newStoreLock(shared)}, storageCaptchaStore{newStoreLock(shared)}
 
 	captcha.SetCustomStore(a)
 	id := captcha.New()
@@ -39,4 +42,23 @@ func TestCaptchaSharedAcrossReplicas(t *testing.T) {
 	assert.False(t, captcha.VerifyString(id, sol), "single use")
 	captcha.SetCustomStore(a)
 	assert.False(t, captcha.VerifyString(id, sol), "single use on the other replica too")
+}
+
+func TestCaptchaSingleUseConcurrent(t *testing.T) {
+	s := storageCaptchaStore{newStoreLock(memory.New())}
+	s.Set("id", []byte{1, 2, 3})
+
+	var got atomic.Int32
+	var wg sync.WaitGroup
+	for range 50 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if s.Get("id", true) != nil {
+				got.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, int32(1), got.Load())
 }

@@ -42,6 +42,7 @@ type storeLock struct {
 	storage fiber.Storage
 	rdb     goredis.UniversalClient // nil unless the storage driver is redis
 	local   sync.Map                // key -> *sync.Mutex
+	takeMu  sync.Mutex
 }
 
 func newStoreLock(storage fiber.Storage) *storeLock {
@@ -176,4 +177,35 @@ func (l *storeLock) lease(name string, interval time.Duration) bool {
 		return false
 	}
 	return true
+}
+
+// get-and-delete in one step; GETDEL needs Redis 6.2
+var storeTakeScript = `local v = redis.call("get", KEYS[1]) if v then redis.call("del", KEYS[1]) end return v`
+
+// take reads and deletes key in one atomic step, so a single-use value
+// (captcha, forward-auth code) is handed out at most once even across
+// replicas. raw is nil for a missing key. Keys come from clients, so no
+// per-key lock: one mutex per process serves memory and sqlite3.
+func (l *storeLock) take(key string) (raw []byte, err error) {
+	if l.rdb != nil {
+		v, err := l.rdb.Eval(context.Background(), storeTakeScript, []string{key}).Text()
+		if errors.Is(err, goredis.Nil) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return []byte(v), nil
+	}
+
+	l.takeMu.Lock()
+	defer l.takeMu.Unlock()
+	raw, err = l.storage.Get(key)
+	if err != nil || raw == nil {
+		return nil, err
+	}
+	if err := l.storage.Delete(key); err != nil {
+		return nil, err
+	}
+	return raw, nil
 }

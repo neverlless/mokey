@@ -73,26 +73,26 @@ const captchaPrefix = "captcha-"
 
 // storageCaptchaStore keeps captchas in mokey's storage, so with redis a
 // captcha shown by one replica verifies on any other
-type storageCaptchaStore struct{ storage fiber.Storage }
+type storageCaptchaStore struct{ lock *storeLock }
 
 func (s storageCaptchaStore) Set(id string, digits []byte) {
-	if err := s.storage.Set(captchaPrefix+id, digits, captcha.Expiration); err != nil {
+	if err := s.lock.storage.Set(captchaPrefix+id, digits, captcha.Expiration); err != nil {
 		slog.Error("Failed to store captcha", "err", err)
 	}
 }
 
 func (s storageCaptchaStore) Get(id string, clear bool) []byte {
-	digits, err := s.storage.Get(captchaPrefix + id)
+	var digits []byte
+	var err error
+	if clear {
+		digits, err = s.lock.take(captchaPrefix + id)
+	} else {
+		digits, err = s.lock.storage.Get(captchaPrefix + id)
+	}
 	if err != nil {
+		// fail closed: a captcha that cannot be used up must not verify
 		slog.Error("Failed to read captcha", "err", err)
 		return nil
-	}
-	if clear && digits != nil {
-		// a captcha that cannot be used up must not verify
-		if err := s.storage.Delete(captchaPrefix + id); err != nil {
-			slog.Error("Failed to delete used captcha", "err", err)
-			return nil
-		}
 	}
 	return digits
 }
