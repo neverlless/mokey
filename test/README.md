@@ -52,7 +52,7 @@ MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compos
   -f test/forward-auth.compose.yml up -d --wait mokey traefik
 export MOKEY_IT_PROXY=127.0.0.1:443
 # Traefik loads its routes a moment after it starts
-until curl -sk -o /dev/null --resolve id.mokey.test:443:127.0.0.1 https://id.mokey.test/healthz; do sleep 1; done
+until curl -sfk -o /dev/null --resolve id.mokey.test:443:127.0.0.1 https://id.mokey.test/healthz; do sleep 1; done
 ```
 
 Then, from `test/integration`:

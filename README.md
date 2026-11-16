@@ -57,6 +57,7 @@ flowchart LR
 - Register/Remove Passkeys (stored in FreeIPA 4.11+)
 - Enable/Disable Two-Factor Authentication
 - Hydra Consent/Login Endpoint for OAuth/OpenID Connect
+- Forward-auth single sign-on for web apps behind Traefik, nginx, Caddy, Envoy or Istio, gated by FreeIPA groups or HBAC
 - Group self-service with sponsor approval (vanilla FreeIPA member managers)
 - "What can I access" page — applicable HBAC/sudo rules and an hbactest simulator
 - OTP lockout recovery — admin-approved "lost my token" flow from the login page

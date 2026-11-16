@@ -60,6 +60,7 @@ export default defineConfig({
 						{ label: 'OTP tokens', slug: 'guides/otp' },
 						{ label: 'Passkeys', slug: 'guides/passkeys' },
 						{ label: 'OIDC / SSO with Ory Hydra', slug: 'guides/oidc-hydra' },
+						{ label: 'Forward-auth for web apps', slug: 'guides/forward-auth' },
 						{ label: 'Group self-service', slug: 'guides/groups' },
 						{ label: 'Access page (HBAC and sudo)', slug: 'guides/access' },
 						{ label: 'App catalog', slug: 'guides/app-catalog' },
