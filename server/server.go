@@ -89,6 +89,10 @@ func SetDefaults() {
 	viper.SetDefault("server.read_buffer_size", 16384)
 	viper.SetDefault("storage.driver", "memory")
 	viper.SetDefault("hydra.consent_sweep_interval", "1h")
+	viper.SetDefault("forward_auth.enabled", false)
+	viper.SetDefault("forward_auth.session_idle", "8h")
+	viper.SetDefault("forward_auth.session_max", "24h")
+	viper.SetDefault("forward_auth.recheck", "2m")
 }
 
 func NewServer(address string) (*Server, error) {
