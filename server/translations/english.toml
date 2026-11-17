@@ -817,3 +817,10 @@ expired_generic = "Open the app again to sign in."
 signedout_title = "Signed out of %s"
 signedout_still_in = "You are still signed in to %s and its other apps."
 signout_mokey = "Sign out of %s too"
+
+[sync]
+managed_by_google = "Managed by Google Workspace. Name and email are changed there."
+synced_from_google = "Synced from Google"
+synced = "Synced"
+account_from_google = "Your account comes from Google Workspace. Sign in with it instead of creating a new one."
+group_from_google = "Membership of this group comes from Google Workspace."

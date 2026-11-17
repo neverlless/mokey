@@ -119,6 +119,12 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 	lang := requestLanguage(c)
 	offered := map[string][]durationOption{}
 
+	synced := map[string]bool{}
+	for _, g := range r.sync.mappedGroups() {
+		synced[g] = true
+	}
+	vars["synced"] = synced
+
 	joinable := []*ipaGroup{}
 	leavable := []*ipaGroup{}
 	myRequests := []myGroupRequest{}
@@ -160,6 +166,9 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 		}
 
 		if isManagerOf(user.Username, user.Groups, g) {
+			if synced[g.Name] {
+				reqs = nil
+			}
 			mg := managedGroup{Group: g, Requests: reqs, Until: map[string]time.Time{},
 				Requested: map[string]string{}, Approve: map[string][]durationOption{}}
 			for _, m := range g.Members {
@@ -194,6 +203,9 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 			continue
 		}
 
+		if synced[g.Name] {
+			continue
+		}
 		if myPending == groupRequestJoin {
 			myRequests = append(myRequests, myGroupRequest{Group: g.Name, Type: groupRequestJoin})
 		} else {
@@ -247,6 +259,9 @@ func (r *Router) GroupRequestJoin(c fiber.Ctx) error {
 func (r *Router) requestJoin(c fiber.Ctx, groupName, duration string) *fiber.Error {
 	user := r.user(c)
 
+	if r.syncMapped(groupName) {
+		return fiber.NewError(fiber.StatusForbidden, TC(c, "sync.group_from_google"))
+	}
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil || !g.Managed() {
 		return fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.not_joinable"))
@@ -279,6 +294,9 @@ func (r *Router) GroupRequestLeave(c fiber.Ctx) error {
 	user := r.user(c)
 	groupName := c.FormValue("group")
 
+	if r.syncMapped(groupName) {
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "sync.group_from_google"))
+	}
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil || !g.Managed() {
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))
@@ -308,6 +326,9 @@ func (r *Router) GroupRequestRenew(c fiber.Ctx) error {
 	user := r.user(c)
 	duration := c.FormValue("duration")
 
+	if r.syncMapped(c.FormValue("group")) {
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "sync.group_from_google"))
+	}
 	g, err := groupShow(r.userClient(c), c.FormValue("group"))
 	if err != nil || !g.Managed() {
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))
@@ -367,6 +388,9 @@ func (r *Router) groupDecision(c fiber.Ctx) (*ipaGroup, GroupRequest, error) {
 	groupName := c.FormValue("group")
 	target := c.FormValue("username")
 
+	if r.syncMapped(groupName) {
+		return nil, GroupRequest{}, fiber.NewError(fiber.StatusForbidden, TC(c, "sync.group_from_google"))
+	}
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil {
 		return nil, GroupRequest{}, fiber.NewError(fiber.StatusBadRequest, TC(c, "groups.not_joinable"))
@@ -632,6 +656,9 @@ func (r *Router) GroupRemoveMember(c fiber.Ctx) error {
 	groupName := c.FormValue("group")
 	target := c.FormValue("username")
 
+	if r.syncMapped(groupName) {
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "sync.group_from_google"))
+	}
 	g, err := groupShow(r.userClient(c), groupName)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.not_joinable"))

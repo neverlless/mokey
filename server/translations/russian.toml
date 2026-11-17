@@ -825,3 +825,10 @@ expired_generic = "Откройте приложение снова, чтобы 
 signedout_title = "Вы вышли из %s"
 signedout_still_in = "Вы по-прежнему вошли в %s и другие его приложения."
 signout_mokey = "Выйти и из %s"
+
+[sync]
+managed_by_google = "Управляется из Google Workspace. Имя и почта меняются там."
+synced_from_google = "Синхронизировано из Google"
+synced = "Синхронизирован"
+account_from_google = "Ваша учётная запись приходит из Google Workspace. Войдите через неё, а не создавайте новую."
+group_from_google = "Состав этой группы приходит из Google Workspace."

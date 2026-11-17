@@ -816,3 +816,10 @@ expired_generic = "Open de app opnieuw om in te loggen."
 signedout_title = "Uitgelogd bij %s"
 signedout_still_in = "Je bent nog ingelogd bij %s en de andere apps."
 signout_mokey = "Ook uitloggen bij %s"
+
+[sync]
+managed_by_google = "Beheerd vanuit Google Workspace. Naam en e-mail wijzig je daar."
+synced_from_google = "Gesynchroniseerd vanuit Google"
+synced = "Gesynchroniseerd"
+account_from_google = "Je account komt uit Google Workspace. Log daarmee in in plaats van een nieuw account te maken."
+group_from_google = "Het lidmaatschap van deze groep komt uit Google Workspace."

@@ -71,6 +71,11 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 		return c.Render("admin-people.html", vars)
 	}
 
+	if r.syncDomain(email) {
+		vars["message"] = TC(c, "sync.account_from_google")
+		return c.Render("admin-people.html", vars)
+	}
+
 	username := strings.TrimSpace(c.FormValue("username"))
 	first := strings.TrimSpace(c.FormValue("first"))
 	last := strings.TrimSpace(c.FormValue("last"))
@@ -253,6 +258,18 @@ func (r *Router) adminUserVars(c fiber.Ctx, search string, page int) fiber.Map {
 	page = min(max(page, 1), pages)
 	from := (page - 1) * adminUserListLimit
 	to := min(from+adminUserListLimit, total)
+
+	synced := map[string]bool{}
+	vars["synced"] = synced
+	if r.sync.on() {
+		if g, err := groupShow(r.adminClient, r.sync.ManagedGroup); err != nil {
+			slog.Error("Failed to read the sync-managed group", "group", r.sync.ManagedGroup, "err", err)
+		} else {
+			for _, m := range g.Members {
+				synced[m] = true
+			}
+		}
+	}
 
 	vars["total"] = total
 	vars["users"] = matched[from:to]

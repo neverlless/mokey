@@ -77,6 +77,9 @@
 			{{ if $g.Description }}<div class="text-muted small">{{ $g.Description }}</div>{{ end }}
 			{{ if not $until.IsZero }}<div class="text-muted small">{{ printf (T "groups.until") (Date $until) }}</div>{{ end }}
 		</div>
+		{{ if index $.synced $g.Name }}
+		<span class="mokey-pill">{{ T "sync.synced_from_google" }}</span>
+		{{ else }}
 		<div class="d-flex flex-wrap flex-shrink-1 gap-2">
 		{{ if and (not $until.IsZero) (not (index $.renewing $g.Name)) }}
 		<label class="visually-hidden" for="renew-duration-{{ $g.Name }}">{{ T "groups.duration_label" }}: {{ $g.Name }}</label>
@@ -98,6 +101,7 @@
 			{{ T "groups.request_leave" }}
 		</button>
 		</div>
+		{{ end }}
 	</div>
 	{{ end }}
 </div>
@@ -139,6 +143,7 @@
 <div class="mokey-card mb-4">
 	<div class="mokey-row">
 		<div class="flex-grow-1"><strong>{{ $m.Group.Name }}</strong></div>
+		{{ if index $.synced $m.Group.Name }}<span class="mokey-pill">{{ T "sync.synced_from_google" }}</span>{{ end }}
 		{{ if $m.Requests }}<span class="mokey-pill is-warn">{{ printf (T "groups.count_requests") (len $m.Requests) }}</span>{{ end }}
 	</div>
 	{{ range $req := $m.Requests }}
@@ -173,7 +178,7 @@
 		</div>
 	</div>
 	{{ else }}
-	<div class="mokey-row text-muted small">{{ T "groups.no_requests" }}</div>
+	{{ if not (index $.synced $m.Group.Name) }}<div class="mokey-row text-muted small">{{ T "groups.no_requests" }}</div>{{ end }}
 	{{ end }}
 	{{ if $m.Group.Members }}
 	<div class="mokey-row text-muted small py-2">{{ T "groups.members" }}</div>
@@ -184,6 +189,7 @@
 			<span class="mokey-mono">{{ $member }}</span>
 			{{ $u := index $m.Until $member }}{{ if not $u.IsZero }}<div class="text-muted small">{{ printf (T "groups.until") (Date $u) }}</div>{{ end }}
 		</div>
+		{{ if not (index $.synced $m.Group.Name) }}
 		<button class="btn btn-sm btn-outline-danger" hx-post="/groups/remove-member"
 		        hx-vals='{"group": "{{ $m.Group.Name }}", "username": "{{ $member }}"}'
 		        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
@@ -192,6 +198,7 @@
 		        aria-label="{{ T "groups.remove_member" }}: {{ $member }}">
 			{{ T "groups.remove_member" }}
 		</button>
+		{{ end }}
 	</div>
 	{{ end }}
 </div>
