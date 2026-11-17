@@ -41,7 +41,7 @@
   </div></div>
 </div>
 
-<ul class="nav nav-tabs flex-nowrap overflow-auto mb-3" role="tablist">
+<ul class="nav nav-tabs mokey-tabs-scroll mb-3" role="tablist">
   {{ range $t := $.sy_tabs }}
   <li class="nav-item" role="presentation">
     <a class="nav-link text-nowrap{{ if eq $t.Key $.sy_tab }} active{{ end }}" role="tab" id="sync-tab-{{ $t.Key }}"
