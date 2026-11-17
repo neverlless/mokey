@@ -10,7 +10,7 @@ require (
 	github.com/gofiber/storage/redis/v3 v3.6.4
 	github.com/gofiber/storage/sqlite3/v2 v2.3.3
 	github.com/mileusna/useragent v1.3.5
-	github.com/neverlless/goipa v1.1.0
+	github.com/neverlless/goipa v1.2.0
 	github.com/ory/hydra-client-go/v26 v26.2.0
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.25.0
