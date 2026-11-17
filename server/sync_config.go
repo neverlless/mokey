@@ -116,6 +116,9 @@ func loadSyncConfig() (*syncConfig, error) {
 
 	for k, groups := range viper.GetStringMapStringSlice("sync.google.group_mapping") {
 		k = strings.ToLower(k)
+		if slices.Contains(groups, "") {
+			return nil, fmt.Errorf("sync.google.group_mapping: %q lists an empty group name", k)
+		}
 		c.GroupMapping[k] = append(c.GroupMapping[k], groups...)
 	}
 	ge, err := loadGroupExpiryConfig()

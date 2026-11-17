@@ -354,7 +354,7 @@ enable_metrics = false
 #------------------------------------------------------------------------------
 [sync]
 # enabled = false
-# Run a sync in `serve` this often. Empty = only `mokey sync` and admin Apply.
+# Run a sync in `serve` this often. "" = only `mokey sync` and admin Apply.
 # interval = "1h"
 # managed_group = "google2ipa-managed"
 # default_groups = []

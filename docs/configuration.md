@@ -174,12 +174,14 @@ own expiry.
 Directory sync: Google Workspace as an account source. Off until
 `enabled = true`. It needs `sqlite3` or `redis` storage, and
 `[sync.google] admin_email` must be set. Secrets can come from the
-environment, for example `MOKEY_SYNC_GOOGLE_CREDENTIALS_FILE`.
+environment, for example `MOKEY_SYNC_GOOGLE_CREDENTIALS_FILE`. List options and
+`[sync.google.group_mapping]` are config-file only: an environment variable
+can't set them, mokey reads them as empty.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enabled` | bool | `false` | Master switch. |
-| `interval` | string | — | Run a sync in `mokey serve` this often, with units `m`, `h`, `d`. Empty means only `mokey sync` and the admin Apply button run it. |
+| `interval` | string | `"1h"` | Run a sync in `mokey serve` this often, with units `m`, `h`, `d`. Empty (`""`) means only `mokey sync` and the admin Apply button run it. |
 | `managed_group` | string | `"google2ipa-managed"` | FreeIPA group that marks accounts owned by the sync. |
 | `default_groups` | list | `[]` | Groups every created account joins. |
 | `exclude_users` | list | `["admin"]` | Accounts the sync never touches. |
