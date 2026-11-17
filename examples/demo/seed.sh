@@ -65,6 +65,7 @@ echo "Creating the mokey service account and role..."
 ipa_ role-add 'Mokey User Manager' --desc='Mokey User management'
 ipa_ role-add-privilege 'Mokey User Manager' --privilege='User Administrators'
 ipa_ role-add-privilege 'Mokey User Manager' --privilege='Password Policy Readers'
+ipa_ role-add-privilege 'Mokey User Manager' --privilege='RBAC Readers'
 ipa_ host-add mokey.mokey.test --force
 ipa_ service-add mokey/mokey.mokey.test --force
 ipa_ service-add-principal mokey/mokey.mokey.test mokey/mokey

@@ -17,6 +17,11 @@
   `manager` from FreeIPA's `User Self service` rule so users can't change
   their own sponsor (Account expiry guide, `mokey_ipa_selfservice_no_manager`
   in the Ansible role); mokey warns at startup while the rule allows it
+- Upgrade notes: the standard install now gives mokey's role the read-only
+  `RBAC Readers` privilege, which the startup check of the `User Self
+  service` rule needs. Existing installs: `ipa role-add-privilege 'Mokey
+  User Manager' --privilege='RBAC Readers'` (the Ansible role adds it);
+  without it mokey logs "could not check"
 - Forward-auth for web apps (`[forward_auth]`, off by default): Traefik,
   ingress-nginx, Caddy, Envoy Gateway and Istio ask mokey, which signs the
   user in and admits them by FreeIPA group or HBAC rule. App sessions are

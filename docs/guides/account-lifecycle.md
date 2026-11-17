@@ -71,11 +71,13 @@ does this with `mokey_ipa_selfservice_no_manager: true`.
 With `renewal_period` set, mokey checks the self-service rules at startup
 and logs a warning naming each rule that still lets users write `manager`.
 FreeIPA shows the rules only to roles with the read-only `RBAC Readers`
-privilege; without it mokey logs once that it couldn't check. To let it
-check:
+privilege, which is part of the standard
+[install](../install.md#1-create-the-service-account-in-freeipa). A role set
+up before v2.11 lacks it, and mokey then logs once that it couldn't check.
+Add it with:
 
 ```sh
-ipa role-add-privilege 'Mokey User Manager' --privileges='RBAC Readers'
+ipa role-add-privilege 'Mokey User Manager' --privilege='RBAC Readers'
 ```
 
 ## Enable it
