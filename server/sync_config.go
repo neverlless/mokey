@@ -157,6 +157,11 @@ func syncNames(s []string) []string {
 // on is nil-safe: a nil config is the disabled feature.
 func (c *syncConfig) on() bool { return c != nil }
 
+// groups returns the sorted, unique managed, default and mapped groups.
+func (c *syncConfig) groups() []string {
+	return slices.Compact(slices.Sorted(slices.Values(append(append([]string{c.ManagedGroup}, c.DefaultGroups...), c.mappedGroups()...))))
+}
+
 // mappedGroups returns the sorted, unique FreeIPA groups named in GroupMapping.
 func (c *syncConfig) mappedGroups() []string {
 	if c == nil {

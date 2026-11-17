@@ -864,6 +864,7 @@ admin_run_failed = "De run kon Google of FreeIPA niet lezen. Details staan in he
 admin_running = "Bezig"
 admin_running_hint = "Een run voert wijzigingen door. Deze pagina wordt bijgewerkt als die klaar is."
 admin_back_in_google = "is geblokkeerd en staat weer in Google. De synchronisatie laat het met rust; deblokkeer het met de hand als dat klopt."
+admin_no_member_write = "mokey kan de leden van %s niet wijzigen, dus de groepswijzigingen worden overgeslagen. Voeg de groep toe aan het filter van de permissie 'Mokey Sync Group Membership'."
 admin_open_people = "Openen in Personen"
 admin_legacy_lock = "geblokkeerd door google2ipa"
 admin_import = "%s importeren"

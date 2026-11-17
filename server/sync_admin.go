@@ -202,6 +202,9 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		for _, uid := range last.Plan.BackInGoogle {
 			decisions = append(decisions, syncDecision{UID: uid, Text: TL(lang, "sync.admin_back_in_google"), People: true})
 		}
+		for _, g := range last.Plan.NoMemberWrite {
+			decisions = append(decisions, syncDecision{Text: fmt.Sprintf(TL(lang, "sync.admin_no_member_write"), g)})
+		}
 	}
 	pending, err := r.syncLegacyPending()
 	if err != nil {

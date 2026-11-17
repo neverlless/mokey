@@ -413,3 +413,12 @@ func TestAdminSyncApplyPanicReleasesClaim(t *testing.T) {
 	require.True(t, ok, "run lock still held after the panic")
 	release()
 }
+
+func TestAdminSyncDecisionGroupWithoutMemberWrite(t *testing.T) {
+	tc, router, _, _ := syncAdminApp(t)
+	storeSyncResult(t, router, syncLastKey, syncRunResult{At: time.Now(), Plan: syncPlan{NoMemberWrite: []string{"eng"}}, Errors: []string{"x"}})
+
+	body := readBody(t, tc.get("/admin/sync/status?tab=decisions", htmx))
+	assert.Contains(t, body, esc(fmt.Sprintf(T("sync.admin_no_member_write"), "eng")))
+	assert.Contains(t, body, "Decisions · 1")
+}

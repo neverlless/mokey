@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	ipa "github.com/neverlless/goipa"
@@ -19,7 +20,7 @@ const syncMarkerPrefix = "sync-marker-"
 // memberof_group. Groups holds only the managed, default and mapped groups.
 func (r *Router) syncLoadIPA(ctx context.Context, cfg *syncConfig, uids []string, now time.Time) (map[string]syncIPAUser, error) {
 	members := map[string][]string{}
-	for _, g := range slices.Compact(slices.Sorted(slices.Values(append(append([]string{cfg.ManagedGroup}, cfg.DefaultGroups...), cfg.mappedGroups()...)))) {
+	for _, g := range cfg.groups() {
 		grp, err := r.adminClient.GroupShow(g)
 		if err != nil {
 			return nil, fmt.Errorf("group %s: %w", g, err)
@@ -60,6 +61,33 @@ func (r *Router) syncLoadIPA(ctx context.Context, cfg *syncConfig, uids []string
 				return nil, err
 			}
 			out[uid] = u
+		}
+	}
+	return out, nil
+}
+
+// syncNoMemberWrite returns the groups whose member attribute the service
+// account can't write, from FreeIPA's effective rights. A reply without
+// rights (ipatest) counts as writable: FreeIPA enforces its ACIs anyway,
+// this turns a stale permission filter into one clear error.
+func (r *Router) syncNoMemberWrite(ctx context.Context, groups []string) ([]string, error) {
+	var out []string
+	for _, g := range groups {
+		// raw group_show: goipa's GroupShow has no rights option
+		res, err := r.adminClient.RPCContext(ctx, "group_show", []string{g}, ipa.Options{"all": true, "rights": true, "no_members": true})
+		if err != nil {
+			return nil, fmt.Errorf("group %s rights: %w", g, err)
+		}
+		var e struct {
+			Rights map[string]string `json:"attributelevelrights"`
+		}
+		if res.Result != nil {
+			if err := json.Unmarshal(res.Result.Data, &e); err != nil {
+				return nil, fmt.Errorf("group %s rights: %w", g, err)
+			}
+		}
+		if e.Rights != nil && !strings.Contains(e.Rights["member"], "w") {
+			out = append(out, g)
 		}
 	}
 	return out, nil

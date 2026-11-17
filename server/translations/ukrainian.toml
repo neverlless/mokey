@@ -874,6 +874,7 @@ admin_run_failed = "Запуск не зміг прочитати Google або 
 admin_running = "Виконується"
 admin_running_hint = "Запуск застосовує зміни. Сторінка оновиться, коли він завершиться."
 admin_back_in_google = "заблоковано, і він знову є в Google. Синхронізація його не чіпає; розблокуйте вручну, якщо це правильно."
+admin_no_member_write = "mokey не може змінювати учасників групи %s, тому її зміни пропущено. Додайте її до фільтра дозволу 'Mokey Sync Group Membership'."
 admin_open_people = "Відкрити в «Люди»"
 admin_legacy_lock = "заблоковано google2ipa"
 admin_import = "Імпортувати: %s"
