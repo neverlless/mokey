@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -48,11 +49,17 @@ type Router struct {
 	hooks *webhooks
 }
 
-// goBG runs fn in a tracked goroutine (see bg above).
+// goBG runs fn in a tracked goroutine (see bg above). A panic is logged
+// instead of taking the process down; fn's own defers still run.
 func (r *Router) goBG(fn func()) {
 	r.bg.Add(1)
 	go func() {
 		defer r.bg.Done()
+		defer func() {
+			if p := recover(); p != nil {
+				slog.Error("Background task panicked", "panic", p, "stack", string(debug.Stack()))
+			}
+		}()
 		fn()
 	}()
 }
