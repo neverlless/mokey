@@ -109,8 +109,9 @@ func TestAdminLifecycleHeldPlanApplyOnce(t *testing.T) {
 
 	resp := tc.postForm("/admin/lifecycle/apply", nil, htmx)
 	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	body = readBody(t, resp)
+	waitLifecycleRun(t, router)
 	assert.Equal(4, d.modCount())
+	body = readBody(t, tc.get("/admin/lifecycle/status", htmx))
 	assert.Contains(body, "4 changes applied.")
 	assert.Contains(body, esc(T("admin.lifecycle_nothing_waiting")))
 	assert.NotContains(body, `hx-post="/admin/lifecycle/apply"`)
@@ -121,11 +122,84 @@ func TestAdminLifecycleHeldPlanApplyOnce(t *testing.T) {
 	}
 
 	// a second click, or a second admin
-	body = readBody(t, tc.postForm("/admin/lifecycle/apply", nil, htmx))
+	tc.postForm("/admin/lifecycle/apply", nil, htmx)
+	waitLifecycleRun(t, router)
+	body = readBody(t, tc.get("/admin/lifecycle/status", htmx))
 	assert.Equal(4, d.modCount())
 	assert.Contains(body, esc(T("admin.lifecycle_nothing_waiting")))
-	assert.NotContains(body, "changes applied")
 	assert.Len(auditEvents(router, "lifecycle run applied"), 1)
+}
+
+// waitLifecycleRun waits for a background Apply to release the run lock.
+func waitLifecycleRun(t *testing.T, router *Router) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		v, err := router.storage.Get(lifecycleRunKey)
+		return err == nil && v == nil
+	}, 5*time.Second, 10*time.Millisecond)
+}
+
+func lastApplyAt(t *testing.T, router *Router) string {
+	t.Helper()
+	last, err := router.lifecycleLastApply()
+	require.NoError(t, err)
+	require.NotNil(t, last)
+	return last.At.Local().Format(T("date.layout"))
+}
+
+func TestAdminLifecycleApplyInBackground(t *testing.T) {
+	assert := assert.New(t)
+	cfg := assignCfg()
+	cfg.MaxChanges = 1
+	cfg.Reminders = []int{7}
+	tc, router, d := newLifecycleAdminApp(t, cfg)
+	sink := newFakeSMTP(t)
+	d.add("walter", ipatest.User{}, "", time.Time{})
+	for _, uid := range []string{"jesse", "skinny"} {
+		d.add(uid, ipatest.User{}, "walter", time.Time{})
+	}
+	_, held, err := router.lifecycleRun(time.Now(), "")
+	require.NoError(t, err)
+	require.NotNil(t, held)
+	d.add("badger", ipatest.User{Email: "badger@example.test"}, "", time.Now().Add(24*time.Hour))
+	d.gate = make(chan struct{})
+
+	// the answer comes before the writes
+	body := readBody(t, tc.postForm("/admin/lifecycle/apply", nil, htmx))
+	assert.Contains(body, esc(T("admin.lifecycle_running")))
+	assert.Contains(body, `hx-trigger="load delay:3s"`)
+	assert.NotContains(body, `hx-post="/admin/lifecycle/apply"`)
+
+	// a second click, here or on another replica, is refused
+	router.lock = newStoreLock(router.storage)
+	body = readBody(t, tc.postForm("/admin/lifecycle/apply", nil, htmx))
+	assert.Contains(body, esc(T("admin.lifecycle_already_running")))
+	// so is the sweep, even with its lease free
+	require.NoError(t, router.storage.Delete(leasePrefix+"lifecycle"))
+	router.lifecycleSweep(time.Now())
+	assert.Equal(0, sink.count(), "the sweep would have sent badger a reminder")
+	assert.Contains(readBody(t, tc.get("/admin/lifecycle/status", htmx)), esc(T("admin.lifecycle_running")))
+
+	d.gate <- struct{}{}
+	d.gate <- struct{}{}
+	waitLifecycleRun(t, router)
+	assert.Equal(2, d.modCount())
+	assert.Len(auditEvents(router, "lifecycle run applied"), 1)
+	body = readBody(t, tc.get("/admin/lifecycle/status", htmx))
+	assert.NotContains(body, esc(T("admin.lifecycle_running")))
+	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_last_apply"), "gus", lastApplyAt(t, router), "2 changes")))
+}
+
+func TestAdminLifecycleApplyFailuresInSummary(t *testing.T) {
+	tc, router, d := newLifecycleAdminApp(t, assignCfg())
+	d.add("walter", ipatest.User{}, "", time.Time{})
+	d.add("jesse", ipatest.User{}, "walter", time.Time{})
+	d.refuse = true
+
+	tc.postForm("/admin/lifecycle/apply", nil, htmx)
+	waitLifecycleRun(t, router)
+	body := readBody(t, tc.get("/admin/lifecycle/status", htmx))
+	assert.Contains(t, body, esc(fmt.Sprintf(T("admin.lifecycle_last_apply_failed"), "gus", lastApplyAt(t, router), "0 changes", 1)))
 }
 
 func TestAdminLifecycleStatusOff(t *testing.T) {
@@ -149,7 +223,9 @@ func TestAdminLifecycleApplyTruncated(t *testing.T) {
 	assert.Contains(t, status, esc(T("admin.helpdesk_truncated")))
 	assert.NotContains(t, status, `hx-post="/admin/lifecycle/apply"`)
 
-	body := readBody(t, tc.postForm("/admin/lifecycle/apply", nil, htmx))
+	tc.postForm("/admin/lifecycle/apply", nil, htmx)
+	waitLifecycleRun(t, router)
+	body := readBody(t, tc.get("/admin/lifecycle/status", htmx))
 	assert.Contains(t, body, esc(T("admin.lifecycle_truncated")))
 	assert.Equal(t, 0, d.modCount())
 }

@@ -101,6 +101,24 @@ func TestSweepLeaseOneReplicaPerInterval(t *testing.T) {
 	assert.Eventually(t, func() bool { return rb.lock.lease("sweep", interval) }, 2*interval, 50*time.Millisecond)
 }
 
+func TestStoreLockClaimOneHolder(t *testing.T) {
+	shared := memory.New()
+	ra, rb := lockedRouter(shared), lockedRouter(shared)
+
+	release, ok, err := ra.lock.claim("run", time.Minute)
+	require.NoError(t, err)
+	require.True(t, ok)
+	_, ok, err = rb.lock.claim("run", time.Minute)
+	require.NoError(t, err)
+	assert.False(t, ok, "the other replica is refused while the run is on")
+
+	release()
+	release, ok, err = rb.lock.claim("run", time.Minute)
+	require.NoError(t, err)
+	assert.True(t, ok, "released at once, not at the TTL")
+	release()
+}
+
 func TestSweepLeaseRedisReplicas(t *testing.T) {
 	url := os.Getenv("MOKEY_TEST_REDIS_URL")
 	if url == "" {

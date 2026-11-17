@@ -16,6 +16,11 @@ const (
 	lifecycleHeldKey  = "lifecycle-held"
 	lcRemindPrefix    = "lc-remind-"
 	lcHeldSample      = 20
+	lifecycleRunKey   = "lifecycle-run"
+	// longer than any Apply: it only frees the lock of a replica that died
+	// mid-run
+	lifecycleRunTTL  = time.Hour
+	lifecycleLastKey = "lifecycle-last-apply"
 
 	// FreeIPA ACIError: the bind lacks a permission
 	ipaACIErrorCode = 2100
@@ -31,6 +36,14 @@ type lcHeld struct {
 	Count  int
 	At     time.Time
 	Sample []lcChange
+}
+
+// lcLastApply is the outcome of the last admin Apply, for the admin page.
+type lcLastApply struct {
+	By              string
+	At              time.Time
+	Applied, Failed int
+	Error           string // translation key
 }
 
 // StartLifecycle runs the account lifecycle sweep for the lifetime of the
@@ -52,20 +65,34 @@ func (r *Router) lifecycleSweep(now time.Time) {
 	if !r.lock.lease("lifecycle", lifecycleInterval) {
 		return
 	}
+	release, ok, err := r.lock.claim(lifecycleRunKey, lifecycleRunTTL)
+	switch {
+	case err != nil:
+		slog.Warn("Account lifecycle sweep skipped, storage unavailable", "err", err)
+		return
+	case !ok:
+		slog.Info("Account lifecycle sweep skipped, an admin Apply is running")
+		return
+	}
+	defer release()
 	if _, _, err := r.lifecycleRun(now, ""); err != nil {
 		slog.Error("Account lifecycle sweep could not list users", "err", err)
 	}
 }
 
-// lifecycleRun applies the planned expiry changes. by "" is the sweep: it
-// holds a plan larger than max_changes_per_run and sends reminders. An admin
-// uid applies the whole plan in their name and sends no reminders.
+// lifecycleRun applies the planned expiry changes; callers hold
+// lifecycleRunKey. by "" is the sweep: it holds a plan larger than
+// max_changes_per_run and sends reminders. An admin uid applies the whole
+// plan in their name, sends no reminders and records the outcome for the
+// admin page.
 func (r *Router) lifecycleRun(now time.Time, by string) (applied int, held *lcHeld, err error) {
 	if !r.lifecycle.on() {
 		return 0, nil, nil
 	}
-	r.lifecycleMu.Lock()
-	defer r.lifecycleMu.Unlock()
+	failed := 0
+	if by != "" {
+		defer func() { r.lifecycleSaveLastApply(by, now, applied, failed, err) }()
+	}
 
 	accts, users, truncated, err := r.lifecycleAccounts()
 	if err != nil {
@@ -79,7 +106,7 @@ func (r *Router) lifecycleRun(now time.Time, by string) (applied int, held *lcHe
 			return 0, nil, errLifecycleTruncated
 		}
 	} else {
-		applied, held = r.lifecycleApply(accts, now, by)
+		applied, failed, held = r.lifecycleApply(accts, now, by)
 	}
 	if by == "" {
 		r.lifecycleRemind(accts, users, now)
@@ -118,10 +145,10 @@ func (r *Router) lifecycleAccounts() (accts []lcAccount, users map[string]*ipa.U
 	return accts, users, truncated, nil
 }
 
-func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, by string) (int, *lcHeld) {
+func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, by string) (applied, failed int, held *lcHeld) {
 	changes, _ := planLifecycle(accts, now, r.lifecycle)
 	if len(changes) > r.lifecycle.MaxChanges && by == "" {
-		held := &lcHeld{Count: len(changes), At: now, Sample: changes[:min(len(changes), lcHeldSample)]}
+		held = &lcHeld{Count: len(changes), At: now, Sample: changes[:min(len(changes), lcHeldSample)]}
 		slog.Warn("Account lifecycle changes held: more than lifecycle.max_changes_per_run, apply them from the admin Lifecycle page",
 			"changes", len(changes),
 			"max_changes_per_run", r.lifecycle.MaxChanges,
@@ -133,13 +160,13 @@ func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, by string) (in
 		if err != nil {
 			slog.Error("Failed to store held lifecycle changes", "err", err)
 		}
-		return 0, held
+		return 0, 0, held
 	}
 	if err := r.storage.Delete(lifecycleHeldKey); err != nil {
 		slog.Error("Failed to clear held lifecycle changes", "err", err)
 	}
 	if len(changes) == 0 {
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	if by == "" {
@@ -154,7 +181,6 @@ func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, by string) (in
 	for i, a := range accts {
 		idx[a.UID] = i
 	}
-	applied, failed := 0, 0
 	for _, c := range changes {
 		if err := r.writeExpiry(c.UID, c.To, by, lcAuditSet, append([]any{"reason", c.Reason, "from", c.From}, bulk...)...); err != nil {
 			failed++
@@ -165,7 +191,53 @@ func (r *Router) lifecycleApply(accts []lcAccount, now time.Time, by string) (in
 		accts[idx[c.UID]].Expires = c.To
 	}
 	slog.Info("AUDIT lifecycle run applied", "by", by, "count", applied, "failed", failed, "planned", len(changes))
-	return applied, nil
+	return applied, failed, nil
+}
+
+// lifecycleApplyInBackground starts an admin Apply unless a run holds
+// lifecycleRunKey. A long Apply would outlast a proxy's request timeout.
+func (r *Router) lifecycleApplyInBackground(by string) (started bool, err error) {
+	release, ok, err := r.lock.claim(lifecycleRunKey, lifecycleRunTTL)
+	if !ok {
+		return false, err
+	}
+	r.goBG(func() {
+		defer release()
+		if _, _, err := r.lifecycleRun(time.Now(), by); err != nil {
+			slog.Error("Admin lifecycle apply failed", "admin", by, "err", err)
+		}
+	})
+	return true, nil
+}
+
+func (r *Router) lifecycleSaveLastApply(by string, at time.Time, applied, failed int, err error) {
+	last := lcLastApply{By: by, At: at, Applied: applied, Failed: failed}
+	switch {
+	case errors.Is(err, errLifecycleTruncated):
+		last.Error = "admin.lifecycle_truncated"
+	case err != nil:
+		last.Error = "account.fatal_system_error"
+	}
+	b, err := json.Marshal(last)
+	if err == nil {
+		err = r.storage.Set(lifecycleLastKey, b, 0)
+	}
+	if err != nil {
+		slog.Error("Failed to store the lifecycle Apply result", "err", err)
+	}
+}
+
+// lifecycleLastApply returns the outcome of the last admin Apply, or nil.
+func (r *Router) lifecycleLastApply() (*lcLastApply, error) {
+	raw, err := r.storage.Get(lifecycleLastKey)
+	if err != nil || raw == nil {
+		return nil, err
+	}
+	last := &lcLastApply{}
+	if err := json.Unmarshal(raw, last); err != nil {
+		return nil, err
+	}
+	return last, nil
 }
 
 // lifecycleHeld returns the plan the brake last held, or nil.

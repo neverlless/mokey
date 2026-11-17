@@ -28,7 +28,6 @@ type Router struct {
 	groupExpiry  *groupExpiryConfig
 	forwardAuth  *forwardAuthConfig
 	lifecycle    *lifecycleConfig
-	lifecycleMu  sync.Mutex // one run at a time: the sweep and admin Apply
 	expiryFails  expiryFailureSet
 	masters      masterClients
 

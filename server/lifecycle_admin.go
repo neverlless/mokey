@@ -42,6 +42,28 @@ func (r *Router) lifecycleStatusVars(c fiber.Ctx, vars fiber.Map) {
 	}
 	vars["lc_assign"] = cfg.AssignMissing
 
+	running, err := r.storage.Get(lifecycleRunKey)
+	if err != nil {
+		slog.Error("Failed to read the lifecycle run lock", "err", err)
+	}
+	vars["lc_running"] = running != nil
+	last, err := r.lifecycleLastApply()
+	if err != nil {
+		slog.Error("Failed to read the lifecycle Apply result", "err", err)
+	}
+	if last != nil {
+		at := last.At.Local().Format(TL(lang, "date.layout"))
+		applied := formatUnit(lang, "change", last.Applied)
+		switch {
+		case last.Error != "":
+			vars["lc_last_failed"] = fmt.Sprintf(TL(lang, "admin.lifecycle_last_apply_error"), last.By, at, TL(lang, last.Error))
+		case last.Failed > 0:
+			vars["lc_last_failed"] = fmt.Sprintf(TL(lang, "admin.lifecycle_last_apply_failed"), last.By, at, applied, last.Failed)
+		default:
+			vars["lc_last"] = fmt.Sprintf(TL(lang, "admin.lifecycle_last_apply"), last.By, at, applied)
+		}
+	}
+
 	held, err := r.lifecycleHeld()
 	if err != nil {
 		slog.Error("Failed to read held lifecycle changes", "err", err)
@@ -100,22 +122,21 @@ func (r *Router) AdminLifecycleStatus(c fiber.Ctx) error {
 	return r.renderLifecycleStatus(c, fiber.Map{})
 }
 
-// AdminLifecycleApply runs the plan past the brake in the admin's name. It
-// recomputes the plan, so a second click finds nothing left to apply.
+// AdminLifecycleApply starts the plan past the brake in the admin's name and
+// answers at once; the status fragment shows the run and then its outcome.
+// The run recomputes the plan, so a later click finds nothing left to apply.
 func (r *Router) AdminLifecycleApply(c fiber.Ctx) error {
 	if !r.lifecycle.on() {
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 	vars := fiber.Map{}
-	applied, _, err := r.lifecycleRun(time.Now(), r.username(c))
+	started, err := r.lifecycleApplyInBackground(r.username(c))
 	switch {
-	case errors.Is(err, errLifecycleTruncated):
-		vars["lc_failed"] = TC(c, "admin.lifecycle_truncated")
 	case err != nil:
-		slog.Error("Admin lifecycle apply failed", "admin", r.username(c), "err", err)
+		slog.Error("Admin lifecycle apply could not start", "admin", r.username(c), "err", err)
 		vars["lc_failed"] = TC(c, "account.fatal_system_error")
-	case applied > 0:
-		vars["lc_notice"] = fmt.Sprintf(TC(c, "admin.lifecycle_applied"), formatUnit(requestLanguage(c), "change", applied))
+	case !started:
+		vars["lc_failed"] = TC(c, "admin.lifecycle_already_running")
 	}
 	return r.renderLifecycleStatus(c, vars)
 }
