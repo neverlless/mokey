@@ -44,6 +44,8 @@ type Router struct {
 	// handlers, so tests can wait for them to finish before the next
 	// test resets shared state (e.g. global viper config).
 	bg sync.WaitGroup
+
+	hooks *webhooks
 }
 
 // goBG runs fn in a tracked goroutine (see bg above).
@@ -98,6 +100,7 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	}
 	audit := NewAuditHandler(NewLogHandler(os.Stderr), storage)
 	audit.hooks = hooks
+	r.hooks = hooks
 	slog.SetDefault(slog.New(audit))
 
 	r.adminClient, err = newIPAClient()

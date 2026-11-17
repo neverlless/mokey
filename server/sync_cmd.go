@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"slices"
 	"time"
 
 	"github.com/spf13/viper"
 )
+
+const syncHookFlush = 30 * time.Second
 
 // RunSync is `mokey sync`: one pass without HTTP or background loops. Exit
 // codes: 0 ok, 1 errors or another run holds the claim, 2 held by the brake.
@@ -31,6 +34,12 @@ func RunSync(ctx context.Context, dryRun bool, out io.Writer) (int, error) {
 }
 
 func (r *Router) runSync(ctx context.Context, dryRun bool, out io.Writer) (int, error) {
+	// the process exits next: let the webhook queues drain first
+	defer func() {
+		if !r.hooks.flush(syncHookFlush) {
+			slog.Warn("Webhook events of the sync run not delivered before exit", "timeout", syncHookFlush)
+		}
+	}()
 	if !r.sync.on() {
 		return 1, errors.New("directory sync is not enabled: set sync.enabled = true")
 	}

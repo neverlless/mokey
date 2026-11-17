@@ -119,3 +119,32 @@ func TestWebhookConfigRejected(t *testing.T) {
 	_, err = newWebhooks()
 	assert.Error(t, err)
 }
+
+func TestWebhookFlush(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	got := &hookRecorder{}
+	stuck := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { <-stuck }))
+	t.Cleanup(slow.Close)
+	t.Cleanup(func() { close(stuck) })
+
+	viper.Set("webhooks", []map[string]any{{"url": got.serve(t)}})
+	hooks, err := newWebhooks()
+	require.NoError(t, err)
+	for i := range 3 {
+		hooks.send(AuditEvent{Seq: int64(i), Message: "sync user created"})
+	}
+	// a short-lived `mokey sync` exits right after flush
+	assert.True(t, hooks.flush(5*time.Second))
+	assert.Equal(t, 3, got.count())
+
+	viper.Set("webhooks", []map[string]any{{"url": slow.URL}})
+	hooks, err = newWebhooks()
+	require.NoError(t, err)
+	hooks.send(AuditEvent{Message: "sync run"})
+	assert.False(t, hooks.flush(50*time.Millisecond))
+
+	assert.True(t, (*webhooks)(nil).flush(time.Second))
+}

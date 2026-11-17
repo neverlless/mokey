@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -47,6 +48,7 @@ type webhookTarget struct {
 type webhooks struct {
 	targets []*webhookTarget
 	client  *http.Client
+	pending sync.WaitGroup // queued or in-flight events
 }
 
 func newWebhooks() (*webhooks, error) {
@@ -95,9 +97,11 @@ func (w *webhooks) send(event AuditEvent) {
 		if !t.wants(event.Message) {
 			continue
 		}
+		w.pending.Add(1)
 		select {
 		case t.queue <- event:
 		default:
+			w.pending.Done()
 			slog.Warn("Webhook queue full, dropping event",
 				"url", redactURL(t.URL),
 				"seq", event.Seq,
@@ -108,25 +112,50 @@ func (w *webhooks) send(event AuditEvent) {
 
 func (w *webhooks) run(t *webhookTarget) {
 	for event := range t.queue {
-		body, err := t.body(event)
-		if err != nil {
-			continue
+		w.deliver(t, event)
+		w.pending.Done()
+	}
+}
+
+// flush waits up to timeout for queued events to be delivered or given up
+// on; false means some were still pending. A short-lived process such as
+// `mokey sync` would otherwise exit with its events in the queues.
+func (w *webhooks) flush(timeout time.Duration) bool {
+	if w == nil {
+		return true
+	}
+	done := make(chan struct{})
+	go func() {
+		w.pending.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+func (w *webhooks) deliver(t *webhookTarget, event AuditEvent) {
+	body, err := t.body(event)
+	if err != nil {
+		return
+	}
+	for attempt := 1; ; attempt++ {
+		err = w.post(t, body)
+		if err == nil {
+			break
 		}
-		for attempt := 1; ; attempt++ {
-			err = w.post(t, body)
-			if err == nil {
-				break
-			}
-			if attempt == webhookAttempts {
-				slog.Error("Webhook delivery failed",
-					"url", redactURL(t.URL),
-					"seq", event.Seq,
-					"err", err,
-				)
-				break
-			}
-			time.Sleep(webhookBackoff * time.Duration(attempt))
+		if attempt == webhookAttempts {
+			slog.Error("Webhook delivery failed",
+				"url", redactURL(t.URL),
+				"seq", event.Seq,
+				"err", err,
+			)
+			break
 		}
+		time.Sleep(webhookBackoff * time.Duration(attempt))
 	}
 }
 
