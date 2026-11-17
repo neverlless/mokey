@@ -1,0 +1,59 @@
+# Mirrors examples/demo/mokey.toml plus [sync]; keep the two in step. Used by
+# test/sync.compose.yml. The Directory API is the fake that the sync test
+# runs on the host; the test writes the throwaway key file below with a
+# token_uri on the same fake before its first run.
+
+[site]
+name = "mokey demo"
+ktuser = "mokey/mokey"
+keytab = "/etc/mokey/private/mokeyapp.keytab"
+
+[accounts]
+enable_signup = true
+enable_groups = true
+enable_access = true
+otp_issuer = "mokey demo"
+
+[email]
+base_url = "http://localhost:8866"
+from = "mokey@mokey.test"
+token_secret = "00000000000000000000000000000000000000000000000000000000000000de"
+notify_password_change = true
+notify_new_login = true
+# Mailpit accepts plain SMTP without auth
+smtp_host = "mailpit"
+smtp_port = 1025
+smtp_tls = "off"
+
+[server]
+listen = "0.0.0.0:8866"
+# Plain HTTP on localhost
+secure_cookies = false
+csrf_secret = "mokey-demo-csrf-secret-not-secret"
+# Room for clicking around: only failed requests count
+rate_limit_expiration = 60
+rate_limit_max = 100
+
+[storage]
+driver = "memory"
+
+[admin]
+enabled = true
+group = "admins"
+
+# Directory sync (test/integration/sync_test.go). No schedule: only the
+# test's admin Apply runs it. The brake is on as by default; Apply goes past it.
+[sync]
+enabled = true
+interval = ""
+managed_group = "it-sync-managed"
+delete_after = "0"
+
+[sync.google]
+credentials_file = "/tmp/google-sa.json"
+admin_email = "admin@sync.test"
+domains = ["sync.test"]
+endpoint = "http://host.docker.internal:18867/"
+
+[sync.google.group_mapping]
+"devs@sync.test" = ["it-sync-devs"]

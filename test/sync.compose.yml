@@ -1,0 +1,13 @@
+# Overlay for the directory sync test, on top of test/compose.yml: mokey reads
+# the Google Directory API from a fake the test serves on the host's port
+# 18867. Paths are relative to examples/demo, the first compose file.
+#
+#   docker compose -f examples/demo/compose.yml -f test/compose.yml \
+#     -f test/sync.compose.yml up -d --wait mokey
+
+services:
+  mokey:
+    volumes:
+      - ../../test/sync/mokey.toml:/etc/mokey/mokey.toml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
