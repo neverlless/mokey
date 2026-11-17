@@ -54,6 +54,8 @@
   has its own page; Requests lists only what waits for a decision
 - Admin People and Audit log pages warn when `storage.driver` is `memory`:
   the audit log and activity data are lost on restart
+- `mokey.toml.sample`: the `[hydra]` examples use TOML syntax, so they
+  work when uncommented (#80, thanks @leonitousconforti)
 - Security: every portal form posts. Pressing Enter on the password step
   before the page had wired its button (or a password manager submitting at
   once) sent the form as a GET, putting the password in the URL, browser
