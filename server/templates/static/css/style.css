@@ -1037,3 +1037,23 @@ i.mokey-dial-flag {
 	font-size: 0.75rem;
 	color: var(--mokey-muted);
 }
+
+/* tabs that scroll sideways on narrow screens without a visible scrollbar */
+.mokey-tabs-scroll {
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+}
+.mokey-tabs-scroll::-webkit-scrollbar {
+	display: none;
+}
+.mokey-tabs-scroll .nav-link:focus-visible {
+	box-shadow: inset 0 0 0 0.2rem var(--bs-focus-ring-color);
+}
+@media (min-width: 768px) {
+	.mokey-tabs-scroll {
+		overflow: visible;
+	}
+}
+
