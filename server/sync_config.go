@@ -54,9 +54,9 @@ func loadSyncConfig() (*syncConfig, error) {
 		return nil, nil
 	}
 	c := &syncConfig{
-		ManagedGroup:      viper.GetString("sync.managed_group"),
-		DefaultGroups:     viper.GetStringSlice("sync.default_groups"),
-		ExcludeUsers:      viper.GetStringSlice("sync.exclude_users"),
+		ManagedGroup:      syncName(viper.GetString("sync.managed_group")),
+		DefaultGroups:     syncNames(viper.GetStringSlice("sync.default_groups")),
+		ExcludeUsers:      syncNames(viper.GetStringSlice("sync.exclude_users")),
 		Username:          viper.GetString("sync.username"),
 		AdoptExisting:     viper.GetBool("sync.adopt_existing"),
 		MaxDisablePercent: viper.GetInt("sync.max_disable_percent"),
@@ -78,7 +78,7 @@ func loadSyncConfig() (*syncConfig, error) {
 		GroupMapping: map[string][]string{},
 	}
 	for _, d := range viper.GetStringSlice("sync.google.domains") {
-		c.Google.Domains = append(c.Google.Domains, strings.ToLower(d))
+		c.Google.Domains = append(c.Google.Domains, syncName(d))
 	}
 
 	var err error
@@ -122,7 +122,7 @@ func loadSyncConfig() (*syncConfig, error) {
 	}
 
 	for k, groups := range viper.GetStringMapStringSlice("sync.google.group_mapping") {
-		k = strings.ToLower(k)
+		k, groups = syncName(k), syncNames(groups)
 		if slices.Contains(groups, "") {
 			return nil, fmt.Errorf("sync.google.group_mapping: %q lists an empty group name", k)
 		}
@@ -140,6 +140,17 @@ func loadSyncConfig() (*syncConfig, error) {
 		}
 	}
 	return c, nil
+}
+
+// FreeIPA uids and group names are lowercase; the config may not be.
+func syncName(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
+
+func syncNames(s []string) []string {
+	out := make([]string, len(s))
+	for i, v := range s {
+		out[i] = syncName(v)
+	}
+	return out
 }
 
 // on is nil-safe: a nil config is the disabled feature.

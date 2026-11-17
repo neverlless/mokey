@@ -133,3 +133,22 @@ func TestSyncConfigLowercasesMappingKeys(t *testing.T) {
 		t.Fatalf("mappedGroups: %v", got)
 	}
 }
+
+func TestSyncConfigNormalizesNames(t *testing.T) {
+	c, err := loadSync(syncOn(map[string]any{
+		"sync.managed_group":        " Google2IPA-Managed ",
+		"sync.default_groups":       []string{"Staff ", "staff"},
+		"sync.exclude_users":        []string{" Admin"},
+		"sync.google.group_mapping": map[string]any{" Dev@Example.org ": []string{"DevOps", " ops"}},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ManagedGroup != "google2ipa-managed" || !slices.Equal(c.DefaultGroups, []string{"staff", "staff"}) ||
+		!slices.Equal(c.ExcludeUsers, []string{"admin"}) || !slices.Equal(c.GroupMapping["dev@example.org"], []string{"devops", "ops"}) {
+		t.Fatalf("not normalized: %+v", c)
+	}
+	if _, err := loadSync(syncOn(map[string]any{"sync.google.group_mapping": map[string]any{"a@example.org": []string{" "}}})); err == nil {
+		t.Fatal("a blank group name must be rejected")
+	}
+}
