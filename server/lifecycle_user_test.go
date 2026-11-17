@@ -1,11 +1,15 @@
 package server
 
 import (
+	"os"
+	"os/exec"
 	"testing"
 	"time"
 
 	"github.com/neverlless/goipa/ipatest"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func userCfg() *lifecycleConfig {
@@ -64,10 +68,24 @@ func TestUserSponsorLookupFailureHidesSponsor(t *testing.T) {
 	assert.NotContains(t, body, T("account.sponsor"))
 }
 
+// Day uses the server's local zone. The zone is set through TZ in a child
+// test process: writing time.Local here races with goroutines that other
+// tests leave running (loggers, fasthttp's date cache).
 func TestDayFormatsInLocalTime(t *testing.T) {
-	saved := time.Local
-	t.Cleanup(func() { time.Local = saved })
-	time.Local = time.FixedZone("plus5", 5*3600)
+	if os.Getenv("MOKEY_TEST_DAY_CHILD") == "" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestDayFormatsInLocalTime$", "-test.count=1") // #nosec G204 -- the test binary itself
+		cmd.Env = append(os.Environ(), "MOKEY_TEST_DAY_CHILD=1", "TZ=Asia/Karachi")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("child: %s\n%s", err, out)
+		}
+		return
+	}
+	viper.Reset()
+	SetDefaults()
+	t.Cleanup(viper.Reset)
+	require.NoError(t, LoadTranslations())
+	_, off := time.Now().Zone()
+	require.Equal(t, 5*3600, off, "TZ=Asia/Karachi not loaded")
 	f := languageFuncs("english")["Day"].(func(time.Time) string)
 	assert.Equal(t, "Dec 3, 2026", f(time.Date(2026, 12, 2, 22, 0, 0, 0, time.UTC)))
 }
