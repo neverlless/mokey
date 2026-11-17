@@ -92,6 +92,13 @@ func loadSyncConfig() (*syncConfig, error) {
 		return nil, err
 	}
 
+	if c.WelcomeLinkTTL <= 0 {
+		return nil, fmt.Errorf("sync.welcome_link_ttl: must be a positive duration")
+	}
+	if c.WelcomeMail && viper.GetString("email.base_url") == "" {
+		return nil, fmt.Errorf("sync.welcome_mail: requires email.base_url")
+	}
+
 	if c.Google.AdminEmail == "" {
 		return nil, fmt.Errorf("sync.google.admin_email: required when sync.enabled is true")
 	}

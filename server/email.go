@@ -341,7 +341,7 @@ func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) erro
 // link valid for ttl. Sent from the background run — no request context.
 func (e *Emailer) SendSyncWelcomeEmail(user *ipa.User, ttl time.Duration) error {
 	lang := userLanguage(user)
-	token, err := issueToken(user.Username, &Token{Username: user.Username, Email: user.Email, MaxAge: int(ttl.Seconds())}, TokenPasswordReset, e.storage)
+	token, err := issueToken(user.Username, &Token{Username: user.Username, Email: user.Email, MaxAge: int64(ttl / time.Second)}, TokenPasswordReset, e.storage)
 	if err != nil {
 		return err
 	}

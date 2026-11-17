@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math"
 	"math/big"
 	"time"
 
@@ -23,7 +24,8 @@ type Token struct {
 	Email     string    `json:"email"`
 	First     string    `json:"first,omitempty"`
 	Last      string    `json:"last,omitempty"`
-	MaxAge    int       `json:"max_age,omitempty"` // seconds; overrides email.token_max_age
+	Kind      string    `json:"kind,omitempty"`    // the issuing prefix; empty on tokens issued before it existed
+	MaxAge    int64     `json:"max_age,omitempty"` // seconds; overrides email.token_max_age, only with a matching Kind
 	Timestamp time.Time `json:"-"`
 }
 
@@ -68,6 +70,7 @@ func issueToken(marker string, claims *Token, prefix string, storage fiber.Stora
 		return "", errors.New("token already issued")
 	}
 
+	claims.Kind = prefix
 	jsonBytes, err := json.Marshal(claims)
 	if err != nil {
 		return "", err
@@ -133,9 +136,14 @@ func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
 		return nil, err
 	}
 
+	if tk.Kind != "" && tk.Kind != prefix {
+		return nil, errors.New("token of another kind")
+	}
 	maxAge := viper.GetUint32("email.token_max_age")
-	if tk.MaxAge > 0 {
+	if tk.Kind == prefix && tk.MaxAge > 0 && tk.MaxAge <= math.MaxUint32 {
 		maxAge = uint32(tk.MaxAge)
+	} else {
+		tk.MaxAge = 0
 	}
 	if brancaToken.IsExpired(maxAge) {
 		return nil, errors.New("Token expired")
@@ -150,7 +158,7 @@ func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
 // failure cannot be rolled back: it is logged, and the token stays valid until
 // it expires
 func MarkTokenUsed(token, prefix string, claims *Token, storage fiber.Storage) {
-	maxAge := viper.GetInt("email.token_max_age")
+	maxAge := int64(viper.GetInt("email.token_max_age"))
 	if claims.MaxAge > 0 {
 		maxAge = claims.MaxAge
 	}
