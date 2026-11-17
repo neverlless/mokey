@@ -40,6 +40,9 @@
 			{{ if $.lifecycle_on }}
 			<a class="mokey-nav-link" href="/admin/lifecycle"{{ if eq $.section "lifecycle" }} aria-current="page"{{ end }}><i class="fa fa-hourglass-half" aria-hidden="true"></i> {{ T "nav.lifecycle" }}</a>
 			{{ end }}
+			{{ if $.sync_on }}
+			<a class="mokey-nav-link" href="/admin/sync"{{ if eq $.section "sync" }} aria-current="page"{{ end }}><i class="fa fa-rotate" aria-hidden="true"></i> {{ T "nav.sync" }}</a>
+			{{ end }}
 			<a class="mokey-nav-link" href="/admin/log"{{ if eq $.section "log" }} aria-current="page"{{ end }}><i class="fa fa-clock-rotate-left" aria-hidden="true"></i> {{ T "nav.audit" }}</a>
 			{{ end }}
 		</nav>

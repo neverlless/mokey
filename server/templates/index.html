@@ -82,6 +82,10 @@
 <div id="admin">
 {{ template "admin-lifecycle.html" . }}
 </div>
+{{ else if eq $.path "admin/sync" }}
+<div id="admin">
+{{ template "admin-sync.html" . }}
+</div>
 {{ end }}
 </main>
 {{/* footer.html closes .mokey-column and .mokey-shell when $.shell is set */}}

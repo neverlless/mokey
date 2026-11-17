@@ -47,12 +47,12 @@
 
 <h2 class="mokey-section-title mb-2">{{ T "admin.users_title" }}</h2>
 <label for="user-search" class="visually-hidden">{{ T "admin.search" }}</label>
-<input id="user-search" type="search" class="form-control mb-3" name="search"
+<input id="user-search" type="search" class="form-control mb-3" name="search" value="{{ $.search }}"
        placeholder="{{ T "admin.search_placeholder" }}"
        hx-get="/admin/users" hx-target="#admin-users" hx-sync="this:replace"
        hx-trigger="input changed delay:300ms, search"
        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
 <div class="mokey-card">
-  <div id="admin-users" hx-get="/admin/users" hx-trigger="load"
+  <div id="admin-users" hx-get="/admin/users{{ with $.search }}?search={{ . }}{{ end }}" hx-trigger="load"
        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
 </div>
