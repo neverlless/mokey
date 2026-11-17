@@ -211,7 +211,7 @@ can't set them, mokey reads them as empty.
 | `domains` | list | `[]` | Limit to these email domains (lowercased). |
 
 `[sync.google.group_mapping]` maps a Google group email to FreeIPA groups,
-for example `"devops@example.com" = ["admins"]`. Keys are lowercased. A
+for example `"devops@example.com" = ["devops-team"]`. Keys are lowercased. A
 mapped group can't have a time limit in `[[groups.rules]]`: mokey refuses
 to start.
 

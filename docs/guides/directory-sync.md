@@ -63,7 +63,7 @@ admin_email = "admin@example.org"
 domains = ["example.org"]
 
 [sync.google.group_mapping]
-"devops@example.org" = ["admins"]
+"devops@example.org" = ["devops-team"]
 ```
 
 Keep the key file out of the config; `MOKEY_SYNC_GOOGLE_CREDENTIALS_FILE` works
@@ -203,8 +203,9 @@ privilege; add the `sync` keys through `mokey_config_extra`. See the
 [role README](https://github.com/neverlless/mokey/tree/main/ansible/roles/mokey).
 
 Helm: `sync.cronjob.enabled: true` renders a CronJob that runs
-`mokey sync` on `sync.cronjob.schedule` with the same config, keytab and
-environment as the deployment. It needs Redis. Off by default; with it on,
+`mokey sync` on `sync.cronjob.schedule` with the same config and keytab
+secrets as the deployment. It needs Redis and `existingKeytabSecret`: with
+`ipa.enroll` alone the chart refuses to render it. Off by default; with it on,
 you can set `sync.interval = ""` in the config so only the CronJob runs.
 
 ## Migrating from google2ipa

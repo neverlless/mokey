@@ -1,4 +1,7 @@
 {{- if .Values.sync.cronjob.enabled }}
+{{- if and .Values.ipa.enroll (not .Values.existingKeytabSecret) }}
+{{- fail "sync.cronjob.enabled needs existingKeytabSecret: the CronJob does not enroll, and enrolling per job would rotate the keytab" }}
+{{- end }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:

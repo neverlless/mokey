@@ -396,7 +396,7 @@ enable_metrics = false
 # Google group email -> FreeIPA groups. Mapped groups must not have a
 # [[groups.rules]] time limit.
 [sync.google.group_mapping]
-# "devops@example.com" = ["admins"]
+# "devops@example.com" = ["devops-team"]
 
 #------------------------------------------------------------------------------
 # Storage

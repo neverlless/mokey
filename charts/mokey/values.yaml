@@ -67,6 +67,7 @@ serviceMonitor:
 
 # Directory sync as a CronJob (`mokey sync`), apart from the portal. Needs
 # storage.driver = "redis" in the config; the schedule is cron syntax.
+# Needs existingKeytabSecret (the chart fails with ipa.enroll alone).
 # Set sync.interval = "" in the config so serve doesn't also run it.
 sync:
   cronjob:
