@@ -375,3 +375,17 @@ func TestAdminSyncStatusReadErrorsShown(t *testing.T) {
 		assert.Contains(t, body, T("account.fatal_system_error"), key)
 	}
 }
+
+func TestAdminSyncDecisionCountSameOnEveryTab(t *testing.T) {
+	tc, router, fake, _ := syncAdminApp(t)
+	router.sync.ImportLegacyLocks = true
+	lockedAt := time.Now().Add(-30 * 24 * time.Hour)
+	fake.AddUser("gale", ipatest.User{Locked: true, PrincipalExpire: lockedAt})
+	fake.AddUser("jane", ipatest.User{Locked: true, PrincipalExpire: lockedAt})
+	fake.AddGroup("google2ipa-managed", ipatest.Group{Members: []string{"gale", "jane"}})
+
+	for _, tab := range []string{"decisions", "settings", "last"} {
+		body := readBody(t, tc.get("/admin/sync/status?tab="+tab, htmx))
+		assert.Contains(t, body, "Decisions · 2<", tab)
+	}
+}

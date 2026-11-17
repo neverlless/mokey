@@ -13,7 +13,11 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-const syncLegacyKey = "sync-legacy-imported"
+const (
+	syncLegacyKey = "sync-legacy-imported"
+	// the candidate count the Decisions tab last listed, for the other tabs
+	syncLegacyCountKey = "sync-legacy-candidates"
+)
 
 type syncRow struct{ UID, Change, Why string }
 
@@ -214,18 +218,31 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		}
 	}
 	// the candidates need a full FreeIPA read: only for the tab that lists them
-	if pending && tab == "decisions" {
+	decideN := len(decisions)
+	switch {
+	case pending && tab == "decisions":
 		cands, err := r.syncLegacyCandidates(c.Context(), now)
 		if err != nil {
 			slog.Error("Failed to list google2ipa locks", "err", err)
 			vars["sy_error"] = TL(lang, "account.fatal_system_error")
+		} else if err := r.storage.Set(syncLegacyCountKey, []byte(strconv.Itoa(len(cands))), 0); err != nil {
+			slog.Error("Failed to store the google2ipa lock count", "err", err)
 		}
 		for _, uid := range cands {
 			decisions = append(decisions, syncDecision{UID: uid, Text: TL(lang, "sync.admin_legacy_lock")})
 		}
+		decideN = len(decisions)
 		if len(cands) > 0 {
 			vars["sy_import"] = fmt.Sprintf(TL(lang, "sync.admin_import"), formatUnit(lang, "account", len(cands)))
 		}
+	case pending:
+		raw, err := r.storage.Get(syncLegacyCountKey)
+		if err != nil {
+			slog.Error("Failed to read the google2ipa lock count", "err", err)
+			vars["sy_error"] = TL(lang, "account.fatal_system_error")
+		}
+		n, _ := strconv.Atoi(string(raw))
+		decideN += n
 	}
 	vars["sy_decisions"] = decisions
 
@@ -259,12 +276,12 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		vars["sy_groups"] = last.Applied["group_add"] + last.Applied["group_remove"]
 	}
 	vars["sy_held_n"] = heldCount
-	vars["sy_decide_n"] = len(decisions)
+	vars["sy_decide_n"] = decideN
 
 	vars["sy_tab"] = tab
 	vars["sy_tabs"] = []syncTab{
 		{"held", fmt.Sprintf("%s · %d", TL(lang, "sync.admin_tab_held"), heldCount)},
-		{"decisions", fmt.Sprintf("%s · %d", TL(lang, "sync.admin_tab_decisions"), len(decisions))},
+		{"decisions", fmt.Sprintf("%s · %d", TL(lang, "sync.admin_tab_decisions"), decideN)},
 		{"last", TL(lang, "sync.admin_tab_last")},
 		{"settings", TL(lang, "sync.admin_tab_settings")},
 	}
