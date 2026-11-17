@@ -18,7 +18,7 @@
 </div>
 <h2 class="mokey-section-title mb-2">{{ T "admin.invite_title" }}</h2>
 <div class="mokey-card mokey-card-body mb-4">
-  <form hx-post="/admin/invite" hx-target="#admin" hx-target-error="admin-failed"
+  <form method="post" hx-post="/admin/invite" hx-target="#admin" hx-target-error="admin-failed"
         hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
     <div class="row g-2 align-items-end">
       <div class="col-12 col-lg-4">

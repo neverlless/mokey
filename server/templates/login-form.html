@@ -2,7 +2,7 @@
     <div class="login-body">
         <div class="login-body-wrapper mx-auto">
             <h2 class="login-step">{{ if $.user.OTPOnly }}{{ T "login.otp_authentication" }}{{ else }}{{ T "common.password" }}{{ end }}</h2>
-            <form>
+            <form method="post">
             <div class="mb-3">
                 <label for="username" class="form-label">{{ T "common.username" }}</label>
                 <input id="username" type="text" autocomplete="username" class="form-control form-control-lg" value="{{ $.user.Username }}" disabled="disabled">

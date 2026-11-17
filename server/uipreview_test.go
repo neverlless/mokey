@@ -415,3 +415,25 @@ func TestSkipLinkTargetsMain(t *testing.T) {
 		t.Error(`index.html must have exactly one id="main"`)
 	}
 }
+
+// A form without a method submits as GET when Enter beats htmx, which puts
+// passwords in the URL; with method="post" the CSRF check rejects it instead.
+func TestFormsDeclarePost(t *testing.T) {
+	pages, err := filepath.Glob("templates/*.html")
+	if err != nil || len(pages) == 0 {
+		t.Fatalf("glob templates: %v", err)
+	}
+	partials, _ := filepath.Glob("templates/partials/*.html")
+	form := regexp.MustCompile(`<form\b[^>]*>`)
+	for _, p := range append(pages, partials...) {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range form.FindAllString(string(b), -1) {
+			if !strings.Contains(f, `method="post"`) {
+				t.Errorf("%s: %s has no method=\"post\"", p, f)
+			}
+		}
+	}
+}

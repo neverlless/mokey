@@ -54,6 +54,10 @@
   has its own page; Requests lists only what waits for a decision
 - Admin People and Audit log pages warn when `storage.driver` is `memory`:
   the audit log and activity data are lost on restart
+- Security: every portal form posts. Pressing Enter on the password step
+  before the page had wired its button (or a password manager submitting at
+  once) sent the form as a GET, putting the password in the URL, browser
+  history and proxy access logs
 - Security: `accounts.block_users` ignores case. FreeIPA accepts a login in
   any case, so a blocked `admin` could sign in as `Admin`
 - Captchas are kept in `storage`, so with `storage.driver = "redis"` a

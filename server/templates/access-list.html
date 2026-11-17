@@ -11,7 +11,7 @@
 <h2 class="mokey-section-title mb-2">{{ T "access.test_title" }}</h2>
 <div class="mokey-card mokey-card-body mb-4">
 <p class="text-muted mb-3">{{ T "access.test_hint" }}</p>
-<form class="row g-2" hx-post="/access/test"
+<form method="post" class="row g-2" hx-post="/access/test"
       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
       hx-target="#access-test-result" hx-swap="innerHTML">
 	<div class="col-md-5">
