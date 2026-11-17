@@ -155,7 +155,7 @@ func (r *Router) syncEnable(uid string, m syncMarker) error {
 			return err
 		}
 	}
-	if err := r.adminClient.UserEnable(uid); err != nil {
+	if err := r.adminClient.UserEnable(uid); err != nil && !errors.Is(err, &ipa.IpaError{Code: ipa.CodeAlreadyActive}) {
 		return err
 	}
 	return r.syncClearMarker(uid)
