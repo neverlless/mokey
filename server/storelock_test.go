@@ -262,3 +262,18 @@ func TestStoreTakeOnceRedisReplicas(t *testing.T) {
 	})
 	takeOnce(t, newStoreLock(a), newStoreLock(b))
 }
+
+func TestGoBGRecoversAndReleases(t *testing.T) {
+	r := lockedRouter(memory.New())
+	release, ok, err := r.lock.claimKept("run", time.Minute)
+	require.NoError(t, err)
+	require.True(t, ok)
+	r.goBG(func() {
+		defer release()
+		panic("boom")
+	})
+	r.bg.Wait()
+	_, ok, err = r.lock.claim("run", time.Minute)
+	require.NoError(t, err)
+	assert.True(t, ok, "the claim is released when the task panics")
+}
