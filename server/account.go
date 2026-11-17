@@ -27,17 +27,21 @@ func (r *Router) AccountSettings(c fiber.Ctx) error {
 		return c.Render("account.html", vars)
 	}
 
+	same := func(field, stored string) bool {
+		return strings.TrimSpace(c.FormValue(field)) == strings.TrimSpace(stored)
+	}
 	if synced &&
-		(strings.TrimSpace(c.FormValue("first")) != user.First ||
-			strings.TrimSpace(c.FormValue("last")) != user.Last ||
-			strings.TrimSpace(c.FormValue("displayname")) != user.DisplayName ||
-			!strings.EqualFold(strings.TrimSpace(c.FormValue("email")), user.Email)) {
+		(!same("first", user.First) || !same("last", user.Last) || !same("displayname", user.DisplayName) ||
+			!strings.EqualFold(strings.TrimSpace(c.FormValue("email")), strings.TrimSpace(user.Email))) {
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "sync.managed_by_google"))
 	}
 
-	user.First = strings.TrimSpace(c.FormValue("first"))
-	user.Last = strings.TrimSpace(c.FormValue("last"))
-	user.DisplayName = strings.TrimSpace(c.FormValue("displayname"))
+	// a managed account keeps the names sync wrote
+	if !synced {
+		user.First = strings.TrimSpace(c.FormValue("first"))
+		user.Last = strings.TrimSpace(c.FormValue("last"))
+		user.DisplayName = strings.TrimSpace(c.FormValue("displayname"))
+	}
 
 	// Phone numbers arrive as a country code and a national number (#22).
 	// On rejection the submitted halves go back into the form, so the user
@@ -86,7 +90,7 @@ func (r *Router) AccountSettings(c fiber.Ctx) error {
 	// Email changes are not applied directly: a confirmation link is sent
 	// to the new address and the change happens in EmailChangeConfirm
 	newEmail := strings.TrimSpace(strings.ToLower(c.FormValue("email")))
-	emailChangeRequested := newEmail != "" && !strings.EqualFold(newEmail, user.Email)
+	emailChangeRequested := newEmail != "" && !strings.EqualFold(newEmail, strings.TrimSpace(user.Email))
 	if emailChangeRequested {
 		check := &ipa.User{Email: newEmail}
 		if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
