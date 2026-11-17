@@ -62,6 +62,26 @@ export MOKEY_IT_PROXY=127.0.0.1:443
 until curl -sfk -o /dev/null --resolve id.mokey.test:443:127.0.0.1 https://id.mokey.test/healthz; do sleep 1; done
 ```
 
+For the directory sync test add the [sync overlay](sync.compose.yml)
+instead (only with `MOKEY_IT_SYNC`): its mokey config,
+[sync/mokey.toml](sync/mokey.toml), mirrors `examples/demo/mokey.toml` plus
+`[sync]`, with `[sync.google] endpoint` on a fake Directory API that the test
+serves on the host's port 18867 (port must be free), reached from mokey as
+`host.docker.internal`. The test copies a throwaway service account key into
+the mokey container (`MOKEY_IT_MOKEY_CONTAINER`) whose `token_uri` is the
+same fake, grants mokey's role `Group Administrators` for the run (and takes it
+back: the time-bound membership test needs the role without it), and
+creates the groups `it-sync-managed` and `it-sync-devs`, kept between runs. It
+creates three accounts from Google, checks the managed and mapped groups, no
+password and `cn`, then a leaver is locked, a rename updates `cn`, an
+admin-blocked account stays locked, and the leaver's return unlocks it.
+
+```sh
+MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compose.yml \
+  -f test/sync.compose.yml up -d --wait mokey
+export MOKEY_IT_SYNC=1
+```
+
 Then, from `test/integration`:
 
 ```sh
@@ -79,6 +99,8 @@ passkeys need a secure context.
 | --- | --- |
 | `MOKEY_IT_URL` | unset: skip |
 | `MOKEY_IT_PROXY` | unset: skip the forward-auth tests |
+| `MOKEY_IT_SYNC` | unset: skip the directory sync test |
+| `MOKEY_IT_MOKEY_CONTAINER` | `demo-mokey-1` |
 | `MOKEY_IT_MAILPIT_URL` | `http://localhost:8025` |
 | `MOKEY_IT_IPA_CONTAINER` | `demo-ipa-1` |
 | `MOKEY_IT_IPA_ADMIN_PASSWORD` | read from `examples/demo/compose.yml` |
