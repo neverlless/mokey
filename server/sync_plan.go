@@ -55,6 +55,7 @@ type syncPlan struct {
 	Enable, Disable, Delete []string
 	AddGroups, RemoveGroups map[string][]string
 	NewMarkers              map[string]syncMarker // "found" markers to write
+	ClearMarkers            []string              // unlocked accounts that still carry a marker
 	BackInGoogle            []string              // locked without a re-enable marker, present in Google
 	Braked                  bool                  // disable/delete suppressed by the safety brake
 	Conflicts               []string
@@ -62,7 +63,7 @@ type syncPlan struct {
 }
 
 func (p syncPlan) Empty() bool {
-	return p.Changes()+len(p.NewMarkers) == 0 && !p.Braked
+	return p.Changes()+len(p.NewMarkers)+len(p.ClearMarkers) == 0 && !p.Braked
 }
 
 // Changes counts account and group changes, one per group membership.
@@ -153,7 +154,7 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 		case !cur.Managed && !cfg.AdoptExisting:
 			p.Unmanaged = append(p.Unmanaged, u.UID)
 			continue
-		case !cur.Managed && cur.Email != "" && !strings.EqualFold(cur.Email, u.Email):
+		case (!cur.Managed || cur.Locked) && cur.Email != "" && !strings.EqualFold(cur.Email, u.Email):
 			// Same uid, different person (reused local part or email): never
 			// hand an old account, its groups and password to someone else.
 			p.Conflicts = append(p.Conflicts, fmt.Sprintf("uid %s belongs to %s in FreeIPA but to %s in Google; left alone", u.UID, cur.Email, u.Email))
@@ -239,6 +240,12 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 
 	if pct := cfg.MaxDisablePercent; pct > 0 && len(p.Disable) > 1 && len(p.Disable)*100 > pct*active {
 		p.Braked, p.Disable, p.Delete = true, nil, nil
+	}
+	for _, uid := range slices.Sorted(maps.Keys(ipa)) {
+		// A disable rewrites the marker itself; clearing it too would race.
+		if cur := ipa[uid]; !cur.Locked && cur.Marker != nil && !slices.Contains(p.Disable, uid) {
+			p.ClearMarkers = append(p.ClearMarkers, uid)
+		}
 	}
 	return p
 }

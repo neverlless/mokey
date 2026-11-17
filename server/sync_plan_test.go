@@ -271,12 +271,24 @@ func TestSyncBuildLegacyEnable(t *testing.T) {
 	syncCheck(t, "BackInGoogle", p.BackInGoogle, nil)
 }
 
-func TestSyncBuildUnlockedMarkerNotEnabled(t *testing.T) {
-	// marker left behind after an enable whose marker removal failed
-	ipa := map[string]syncIPAUser{"half": {UID: "half", Email: "half@example.com", Managed: true, Marker: syncMarkerAgo(syncMarkerSync, time.Hour), Groups: []string{"staff"}}}
-	p := syncBuild([]syncUser{syncU("half")}, nil, ipa, syncTestConfig(nil), syncTestNow)
-	if !p.Empty() {
-		t.Errorf("plan = %+v", p)
+func TestSyncBuildStaleMarkerCleared(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		// marker left behind after an enable whose marker removal failed
+		"half": {UID: "half", Email: "half@example.com", Managed: true, Marker: syncMarkerAgo(syncMarkerSync, time.Hour), Groups: []string{"staff"}},
+		// unlocked by an admin after a found marker, then gone again: disabled, marker kept for the runner to rewrite
+		"left":   {UID: "left", Managed: true, Marker: syncMarkerAgo(syncMarkerFound, syncDay)},
+		"legacy": {UID: "legacy", Email: "legacy@example.com", Managed: true, Marker: syncMarkerAgo(syncMarkerLegacy, syncDay), Groups: []string{"staff"}},
+		"locked": {UID: "locked", Email: "locked@example.com", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerFound, syncDay), Groups: []string{"staff"}},
+	}
+	p := syncBuild([]syncUser{syncU("half"), syncU("legacy"), syncU("locked")}, nil, ipa, syncTestConfig(nil), syncTestNow)
+	syncCheck(t, "ClearMarkers", p.ClearMarkers, []string{"half", "legacy"})
+	syncCheck(t, "Enable", p.Enable, nil)
+	syncCheck(t, "Disable", p.Disable, []string{"left"})
+	if p.Empty() || p.Changes() != 1 {
+		t.Errorf("Empty=%v Changes=%d", p.Empty(), p.Changes())
+	}
+	if !(syncPlan{}).Empty() || (syncPlan{ClearMarkers: []string{"x"}}).Empty() || (syncPlan{ClearMarkers: []string{"x"}}).Changes() != 0 {
+		t.Error("ClearMarkers counts for Empty, not for Changes")
 	}
 }
 
@@ -310,7 +322,7 @@ func TestSyncBuildUpdateNames(t *testing.T) {
 
 func TestSyncBuildUpdateEmailManaged(t *testing.T) {
 	ipa := map[string]syncIPAUser{
-		"john": {UID: "john", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, time.Hour), Email: "john@a.com", Groups: []string{"staff"}},
+		"john": {UID: "john", Managed: true, Email: "john@a.com", Groups: []string{"staff"}},
 		"case": {UID: "case", Managed: true, Email: "Case@Example.com", Groups: []string{"staff"}},
 		"none": {UID: "none", Managed: true, Groups: []string{"staff"}},
 	}
@@ -323,7 +335,6 @@ func TestSyncBuildUpdateEmailManaged(t *testing.T) {
 	if len(p.Conflicts) != 0 {
 		t.Errorf("Conflicts = %v", p.Conflicts)
 	}
-	syncCheck(t, "Enable", p.Enable, []string{"john"})
 	var uids []string
 	for _, up := range p.Update {
 		uids = append(uids, up.UID)
@@ -332,6 +343,33 @@ func TestSyncBuildUpdateEmailManaged(t *testing.T) {
 		}
 	}
 	syncCheck(t, "Update", uids, []string{"john", "none"})
+}
+
+func TestSyncBuildLockedReusedUIDConflict(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		"john": {UID: "john", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, time.Hour), Email: "john@a.com", GivenName: "John", Groups: []string{"staff", "admins"}},
+		"same": {UID: "same", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, time.Hour), Email: "Same@Example.com", Groups: []string{"staff"}},
+	}
+	users := []syncUser{
+		{UID: "john", syncSourceUser: syncSourceUser{Email: "john@b.com", GivenName: "Johnny"}},
+		syncU("same"),
+	}
+	p := syncBuild(users, nil, ipa, syncTestConfig(nil), syncTestNow)
+	syncCheck(t, "Enable", p.Enable, []string{"same"})
+	syncCheck(t, "BackInGoogle", p.BackInGoogle, nil)
+	want := "uid john belongs to john@a.com in FreeIPA but to john@b.com in Google; left alone"
+	if len(p.Conflicts) != 1 || p.Conflicts[0] != want {
+		t.Errorf("Conflicts = %v", p.Conflicts)
+	}
+	if len(p.Update) != 0 {
+		t.Errorf("Update = %+v", p.Update)
+	}
+	if _, ok := p.RemoveGroups["john"]; ok {
+		t.Error("conflicting user must get no group changes")
+	}
+	if len(p.Delete)+len(p.Disable)+len(p.NewMarkers) != 0 {
+		t.Errorf("plan = %+v", p)
+	}
 }
 
 func TestSyncBuildEmailConflictUnmanaged(t *testing.T) {
