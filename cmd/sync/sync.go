@@ -2,6 +2,8 @@ package sync
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/neverlless/mokey/v2/cmd"
 	"github.com/neverlless/mokey/v2/server"
@@ -18,7 +20,9 @@ var syncCmd = &cobra.Command{
 			return err
 		}
 		command.SilenceUsage = true
-		code, err := server.RunSync(command.Context(), dry, command.OutOrStdout())
+		ctx, stop := signal.NotifyContext(command.Context(), os.Interrupt, syscall.SIGTERM)
+		code, err := server.RunSync(ctx, dry, command.OutOrStdout())
+		stop()
 		if err != nil {
 			command.PrintErrln("Error:", err)
 		}
