@@ -26,6 +26,11 @@ func RunSync(ctx context.Context, dryRun bool, out io.Writer) (int, error) {
 	if err != nil {
 		return 1, err
 	}
+	defer func() {
+		if err := storage.Close(); err != nil {
+			slog.Warn("Failed to close storage", "err", err)
+		}
+	}()
 	r, err := NewRouter(storage)
 	if err != nil {
 		return 1, err
