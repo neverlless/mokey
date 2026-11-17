@@ -249,7 +249,8 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 	}
 
 	if pct := cfg.MaxDisablePercent; pct > 0 && len(p.Disable) > 1 && len(p.Disable)*100 > pct*active {
-		p.Braked, p.Disable, p.Delete = true, nil, nil
+		// a suspect source starts no delete clocks either
+		p.Braked, p.Disable, p.Delete, p.NewMarkers = true, nil, nil, map[string]syncMarker{}
 	}
 	for _, uid := range slices.Sorted(maps.Keys(ipa)) {
 		// A disable rewrites the marker itself; clearing it too would race.

@@ -461,3 +461,22 @@ func TestSyncPlanChanges(t *testing.T) {
 		t.Error("informational lists are not changes")
 	}
 }
+
+func TestSyncBuildBrakeNoFoundMarkers(t *testing.T) {
+	ipa := map[string]syncIPAUser{"x": {UID: "x", Managed: true, Locked: true}}
+	var users []syncUser
+	for _, id := range []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"} {
+		ipa[id] = syncIPAUser{UID: id, Email: id + "@example.com", Managed: true}
+		users = append(users, syncU(id))
+	}
+	brake := syncTestConfig(func(c *syncConfig) { c.MaxDisablePercent = 20 })
+
+	p := syncBuild(users, nil, ipa, brake, syncTestNow)
+	if p.Braked || len(p.NewMarkers) != 1 {
+		t.Fatalf("unbraked: %+v", p)
+	}
+	p = syncBuild(users[:7], nil, ipa, brake, syncTestNow)
+	if !p.Braked || len(p.NewMarkers) != 0 {
+		t.Fatalf("braked plan writes found markers: %+v", p.NewMarkers)
+	}
+}
