@@ -365,3 +365,13 @@ func TestAdminSyncApplyBackgroundKeepsCap(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 6, held.HeldDisable)
 }
+
+func TestAdminSyncStatusReadErrorsShown(t *testing.T) {
+	for _, key := range []string{syncRunKey, syncLegacyKey} {
+		tc, router, _, _ := syncAdminApp(t)
+		router.sync.ImportLegacyLocks = true
+		router.storage = &failingGetStorage{Storage: router.storage, prefix: key}
+		body := readBody(t, tc.get("/admin/sync/status?tab=settings", htmx))
+		assert.Contains(t, body, T("account.fatal_system_error"), key)
+	}
+}

@@ -131,6 +131,7 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	running, err := r.storage.Get(syncRunKey)
 	if err != nil {
 		slog.Error("Failed to read the sync run lock", "err", err)
+		vars["sy_error"] = TL(lang, "account.fatal_system_error")
 	}
 	vars["sy_running"] = running != nil
 	switch {
@@ -200,6 +201,7 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	pending, err := r.syncLegacyPending()
 	if err != nil {
 		slog.Error("Failed to read the google2ipa import marker", "err", err)
+		vars["sy_error"] = TL(lang, "account.fatal_system_error")
 	}
 	if !slices.Contains([]string{"held", "decisions", "last", "settings"}, tab) {
 		switch {
