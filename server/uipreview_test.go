@@ -116,6 +116,7 @@ func TestUIPreviewServe(t *testing.T) {
 	last.Plan = syncPlan{
 		Conflicts:    []string{"uid tuco belongs to tuco@old.acme.local in FreeIPA but to tuco@acme.local in Google; left alone"},
 		BackInGoogle: []string{"lydia"},
+		Skipped:      []string{"o.brien"},
 	}
 	last.SkipReasons = []string{`skip uid "o.brien": derived from several Google users (o.brien@acme.local, o.brien@labs.acme.local)`}
 	for key, res := range map[string]syncRunResult{syncHeldKey: held, syncLastKey: last} {

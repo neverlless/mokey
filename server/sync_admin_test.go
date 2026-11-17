@@ -2,11 +2,13 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -127,13 +129,16 @@ func TestAdminSyncDefaultTab(t *testing.T) {
 
 	storeSyncResult(t, router, syncLastKey, syncRunResult{
 		At: time.Now(), Applied: map[string]int{"create": 2, "group_add": 3, "group_remove": 1},
-		Plan:        syncPlan{Conflicts: []string{"uid jdoe belongs to a@x in FreeIPA but to jdoe@example.org in Google; left alone"}, BackInGoogle: []string{"kwalsh"}},
+		Plan:        syncPlan{Conflicts: []string{"uid jdoe belongs to a@x in FreeIPA but to jdoe@example.org in Google; left alone"}, BackInGoogle: []string{"kwalsh"}, Skipped: []string{"obrien"}},
 		SkipReasons: []string{"skip uid \"obrien\": derived from several Google users"},
 	})
 	page = readBody(t, tc.get("/admin/sync"))
 	assert.Equal(t, "decisions", selectedTab(t, page))
 	assert.Contains(t, page, esc(T("sync.admin_tab_decisions"))+" · 3")
 	assert.Contains(t, page, "uid jdoe belongs to")
+	for _, uid := range []string{"jdoe", "obrien", "kwalsh"} {
+		assert.Contains(t, page, `<span class="mokey-mono">`+uid+`</span>`)
+	}
 	assert.Contains(t, page, `href="/admin/people?search=kwalsh"`)
 
 	storeSyncResult(t, router, syncHeldKey, syncRunResult{At: time.Now(), Held: true, HeldCount: 7, HeldDisable: 6, HeldDelete: 1, Plan: syncPlan{Disable: []string{"rmiller"}}})
@@ -185,6 +190,10 @@ func TestAdminSyncApplyRefusedWhenPlanGrew(t *testing.T) {
 	assert.Contains(t, body, esc(T("sync.admin_plan_changed")))
 	assert.Equal(t, "held", selectedTab(t, body))
 	assert.Contains(t, body, `name="disable" value="6"`)
+	held, err := router.syncHeld()
+	require.NoError(t, err)
+	assert.Equal(t, 6, held.HeldDisable)
+	assert.Contains(t, readBody(t, tc.get("/admin/sync")), `name="disable" value="6"`)
 	for i := 4; i < 10; i++ {
 		assert.False(t, locked(fake, fmt.Sprintf("user%d", i)))
 	}
@@ -310,4 +319,49 @@ func TestAdminSyncImportLegacyOnce(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, m)
 	assert.NotContains(t, readBody(t, tc.get("/admin/sync?tab=decisions")), ">lydia<")
+}
+
+// seqSource answers each Users call with the next list, then the last one.
+type seqSource struct {
+	mu    sync.Mutex
+	lists [][]syncSourceUser
+}
+
+func (s *seqSource) Users(context.Context) ([]syncSourceUser, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	l := s.lists[0]
+	if len(s.lists) > 1 {
+		s.lists = s.lists[1:]
+	}
+	return l, nil
+}
+
+// Google shrinks between the Apply check and the background run: the run
+// keeps the counts the admin approved and applies nothing.
+func TestAdminSyncApplyBackgroundKeepsCap(t *testing.T) {
+	tc, router, fake, src := syncAdminApp(t)
+	syncBrakeHeld(t, router, fake, src)
+	router.syncSrc = &seqSource{lists: [][]syncSourceUser{src.users, src.users[:4]}}
+
+	readBody(t, tc.postForm("/admin/sync/apply", url.Values{"disable": {"5"}, "delete": {"0"}}, htmx))
+	router.bg.Wait()
+	for i := range 10 {
+		assert.False(t, locked(fake, fmt.Sprintf("user%d", i)))
+	}
+	last, err := router.syncLastRun()
+	require.NoError(t, err)
+	assert.Equal(t, "skyler", last.By)
+	assert.Contains(t, last.Errors, errSyncPlanGrew.Error())
+	assert.Empty(t, last.Applied)
+	aborted := 0
+	for _, ev := range auditEvents(router, "sync run") {
+		if ev.Attrs["aborted"] == "true" {
+			aborted++
+		}
+	}
+	assert.Equal(t, 1, aborted)
+	held, err := router.syncHeld()
+	require.NoError(t, err)
+	assert.Equal(t, 6, held.HeldDisable)
 }

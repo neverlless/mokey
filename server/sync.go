@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -86,11 +87,22 @@ func (r *Router) syncGoogle() (syncSource, error) {
 	return r.syncSrc, nil
 }
 
+// syncCaps bound an admin Apply to the disables and deletes the admin saw.
+type syncCaps struct{ Disable, Delete int }
+
+var errSyncPlanGrew = errors.New("the plan changed since the admin opened it: more locks or deletes than approved, nothing applied")
+
 // syncRun plans and applies one pass; the caller holds syncRunKey. by "" is
 // the schedule or `mokey sync`: the brake holds disables and deletes. An
 // admin uid applies the whole plan in their name. A dry run returns the
 // plan and writes nothing.
 func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun bool) (*syncRunResult, error) {
+	return r.syncRunCapped(ctx, now, by, dryRun, nil)
+}
+
+// syncRunCapped is syncRun that, with caps, applies nothing when the plan
+// disables or deletes more than caps allow.
+func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dryRun bool, caps *syncCaps) (*syncRunResult, error) {
 	res := &syncRunResult{At: now, By: by, DryRun: dryRun, Applied: map[string]int{}}
 	actor := by
 	if actor == "" {
@@ -120,17 +132,25 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 	if dryRun {
 		return res, nil
 	}
+	if caps != nil && (len(plan.Disable) > caps.Disable || len(plan.Delete) > caps.Delete) {
+		res.Errors = []string{errSyncPlanGrew.Error()}
+		slog.Error(syncAuditRun, "by", actor, "aborted", true, "err", errSyncPlanGrew,
+			"disable", len(plan.Disable), "approved_disable", caps.Disable, "delete", len(plan.Delete), "approved_delete", caps.Delete)
+		if err := r.syncStoreHeld(syncHeldOf(now, plan, in.reasons)); err != nil {
+			res.Errors = append(res.Errors, err.Error())
+		}
+		r.syncFinish(res)
+		return res, errSyncPlanGrew
+	}
 
 	var held *syncRunResult
 	if plan.Braked {
 		noBrake := *cfg
 		noBrake.MaxDisablePercent = 0
-		full := in.build(&noBrake, now)
+		held = syncHeldOf(now, in.build(&noBrake, now), in.reasons)
+		held.By = by
 		res.Held = true
-		res.HeldDisable, res.HeldDelete = len(full.Disable), len(full.Delete)
-		res.HeldCount = res.HeldDisable + res.HeldDelete
-		held = &syncRunResult{At: now, By: by, Held: true, HeldCount: res.HeldCount, HeldDisable: res.HeldDisable, HeldDelete: res.HeldDelete,
-			Plan: full.sample(syncSampleN), SkipReasons: in.reasons}
+		res.HeldDisable, res.HeldDelete, res.HeldCount = held.HeldDisable, held.HeldDelete, held.HeldCount
 		slog.Warn("Directory sync disables and deletes held: more than sync.max_disable_percent of managed accounts, apply them from the admin Sync page",
 			"held", res.HeldCount, "max_disable_percent", cfg.MaxDisablePercent)
 	}
@@ -141,6 +161,12 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 	r.syncApply(ctx, res, in.ipa, cfg, now, actor)
 	r.syncFinish(res)
 	return res, nil
+}
+
+// syncHeldOf is the stored held result for full, a plan without the brake.
+func syncHeldOf(now time.Time, full syncPlan, reasons []string) *syncRunResult {
+	return &syncRunResult{At: now, Held: true, HeldCount: len(full.Disable) + len(full.Delete),
+		HeldDisable: len(full.Disable), HeldDelete: len(full.Delete), Plan: full.sample(syncSampleN), SkipReasons: reasons}
 }
 
 type syncInputs struct {

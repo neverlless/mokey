@@ -184,6 +184,12 @@ h1,
 	background: var(--mokey-danger-bg);
 	color: var(--mokey-danger);
 }
+.mokey-text-warn {
+	color: var(--mokey-warn);
+}
+.mokey-text-danger {
+	color: var(--mokey-danger);
+}
 
 .mokey-tile {
 	display: inline-flex;

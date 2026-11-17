@@ -180,8 +180,18 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 
 	var decisions []syncDecision
 	if last != nil {
-		for _, s := range append(slices.Clone(last.Plan.Conflicts), last.SkipReasons...) {
-			decisions = append(decisions, syncDecision{Text: s})
+		for _, text := range last.Plan.Conflicts {
+			// the planner starts every conflict with "uid <uid> "
+			uid, _, _ := strings.Cut(strings.TrimPrefix(text, "uid "), " ")
+			decisions = append(decisions, syncDecision{UID: uid, Text: text})
+		}
+		// SkipReasons and Plan.Skipped come from syncResolve in the same order
+		for i, text := range last.SkipReasons {
+			d := syncDecision{Text: text}
+			if i < len(last.Plan.Skipped) {
+				d.UID = last.Plan.Skipped[i]
+			}
+			decisions = append(decisions, d)
 		}
 		for _, uid := range last.Plan.BackInGoogle {
 			decisions = append(decisions, syncDecision{UID: uid, Text: TL(lang, "sync.admin_back_in_google"), People: true})
@@ -349,6 +359,10 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 		return r.renderSyncStatus(c, fiber.Map{"sy_error": TC(c, "sync.admin_run_failed")}, "")
 	}
 	if len(fresh.Plan.Disable) > disable || len(fresh.Plan.Delete) > del {
+		// a reload shows the plan the admin now has to check
+		if err := r.syncStoreHeld(syncHeldOf(time.Now(), fresh.Plan, fresh.SkipReasons)); err != nil {
+			slog.Error("Failed to store the fresh held sync plan", "admin", admin, "err", err)
+		}
 		release()
 		slog.Warn("Admin sync apply refused, the plan grew", "admin", admin,
 			"disable", disable, "now_disable", len(fresh.Plan.Disable), "delete", del, "now_delete", len(fresh.Plan.Delete))
@@ -356,7 +370,8 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 	}
 	r.goBG(func() {
 		defer release()
-		if _, err := r.syncRun(context.Background(), time.Now(), admin, false); err != nil {
+		// a second read: Google may have shrunk since the check
+		if _, err := r.syncRunCapped(context.Background(), time.Now(), admin, false, &syncCaps{Disable: disable, Delete: del}); err != nil {
 			slog.Error("Admin sync apply failed", "admin", admin, "err", err)
 		}
 	})
