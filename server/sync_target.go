@@ -75,7 +75,7 @@ func (r *Router) syncCreate(u syncUser, cfg *syncConfig) error {
 	}, false); err != nil {
 		return err
 	}
-	return r.syncGroups(u.UID, append([]string{cfg.ManagedGroup}, cfg.DefaultGroups...), nil)
+	return r.syncGroups(u.UID, []string{cfg.ManagedGroup}, nil)
 }
 
 func (r *Router) syncUpdate(u syncUpdate) error {

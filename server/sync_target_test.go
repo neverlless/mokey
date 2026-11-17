@@ -44,10 +44,10 @@ func TestSyncTargetCreateNoPassword(t *testing.T) {
 			assert.NotContains(t, c.Options, "userpassword")
 		}
 	}
-	for _, g := range []string{"google2ipa-managed", "staff"} {
-		grp, _ := fake.Group(g)
-		assert.Contains(t, grp.Members, "jesse", g)
-	}
+	managed, _ := fake.Group("google2ipa-managed")
+	assert.Contains(t, managed.Members, "jesse")
+	staff, _ := fake.Group("staff")
+	assert.NotContains(t, staff.Members, "jesse", "default groups come from the plan's AddGroups")
 }
 
 func TestSyncTargetUpdate(t *testing.T) {
