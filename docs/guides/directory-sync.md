@@ -179,9 +179,9 @@ and the sync records when and why in storage, a marker of one of three kinds:
 Created accounts have no password. With `welcome_mail = true` the user gets a
 mail with a link to set one. It needs `email.base_url`. The link uses the
 password reset flow, works once, and expires after `welcome_link_ttl`
-(default 7 days). No password is ever mailed. The welcome link shares the
-`email.resend_cooldown` with forgot-password: a user who asks for a reset
-right after the welcome mail gets no second link until the cooldown is over.
+(default 7 days). No password is ever mailed. A user who asks for a reset
+right after the welcome mail gets a reset link at once: the welcome mail has
+its own `email.resend_cooldown`.
 
 Sign-up, invites and email changes to an address in `[sync.google] domains`
 are refused with "Your account comes from Google Workspace", so the source and
