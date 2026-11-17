@@ -30,6 +30,8 @@ type syncRunResult struct {
 	Applied map[string]int // kind → count
 	Errors  []string
 	Held    bool
+	// SkipReasons are the fix texts of Plan.Skipped
+	SkipReasons []string
 	// HeldCount is the number of disables and deletes the brake held; a
 	// stored result keeps only the first rows of its plan.
 	HeldCount int
@@ -110,7 +112,7 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 		return res, err
 	}
 	plan := in.build(cfg, now)
-	res.Plan = plan
+	res.Plan, res.SkipReasons = plan, in.reasons
 	if dryRun {
 		return res, nil
 	}
@@ -122,7 +124,7 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 		full := in.build(&noBrake, now)
 		res.Held = true
 		res.HeldCount = len(full.Disable) + len(full.Delete)
-		held = &syncRunResult{At: now, By: by, Held: true, HeldCount: res.HeldCount, Plan: full.sample(syncSampleN)}
+		held = &syncRunResult{At: now, By: by, Held: true, HeldCount: res.HeldCount, Plan: full.sample(syncSampleN), SkipReasons: in.reasons}
 		slog.Warn("Directory sync disables and deletes held: more than sync.max_disable_percent of managed accounts, apply them from the admin Sync page",
 			"held", res.HeldCount, "max_disable_percent", cfg.MaxDisablePercent)
 	}
@@ -138,6 +140,7 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 type syncInputs struct {
 	users   []syncUser
 	skipped []string
+	reasons []string
 	ipa     map[string]syncIPAUser
 }
 
@@ -160,6 +163,7 @@ func (r *Router) syncRead(ctx context.Context, cfg *syncConfig, now time.Time) (
 	in.users, in.skipped, errs = syncResolve(raw, cfg.Username, cfg.ExcludeUsers, cfg.MaxUsernameLength)
 	for _, e := range errs {
 		slog.Warn("Directory sync skipped a Google user", "err", e)
+		in.reasons = append(in.reasons, e.Error())
 	}
 	uids := make([]string, len(in.users))
 	for i, u := range in.users {

@@ -292,7 +292,7 @@ func (s *keyFailingSetStorage) Set(key string, val []byte, exp time.Duration) er
 	return s.Storage.Set(key, val, exp)
 }
 
-func TestSyncRunMarkerWriteFailure(t *testing.T) {
+func TestSyncRunLastRunSaveFailure(t *testing.T) {
 	r, fake, src, _ := syncRunRouter(t)
 	managed(fake, "jesse", "walt")
 	src.users = []syncSourceUser{googleUser("walt")}
@@ -334,4 +334,45 @@ func gaugeValue(t *testing.T, g prometheus.Gauge) float64 {
 	var m dto.Metric
 	require.NoError(t, g.Write(&m))
 	return m.GetGauge().GetValue()
+}
+
+func TestSyncRunMarkerWriteFailure(t *testing.T) {
+	r, fake, src, _ := syncRunRouter(t)
+	r.sync.MaxDisablePercent = 0
+	managed(fake, "jesse", "walt", "skyler")
+	src.users = []syncSourceUser{googleUser("skyler")}
+	r.storage = &keyFailingSetStorage{r.storage, syncMarkerPrefix + "jesse"}
+
+	res, err := r.syncRun(context.Background(), time.Now(), "", false)
+	require.NoError(t, err)
+	assert.False(t, locked(fake, "jesse"), "no lock without a marker")
+	assert.True(t, locked(fake, "walt"), "the run continues")
+	assert.Equal(t, 1, res.Applied["disable"])
+	if assert.Len(t, res.Errors, 1) {
+		assert.Contains(t, res.Errors[0], "disable jesse")
+	}
+}
+
+func TestSyncRunKeepsSkipReasons(t *testing.T) {
+	r, fake := brakeSetup(t)
+	src := r.syncSrc.(*fakeSyncSource)
+	src.users = append(src.users, syncSourceUser{Email: "Bad User@example.org", GivenName: "Bad", FamilyName: "User"})
+
+	res, err := r.syncRun(context.Background(), time.Now(), "", true)
+	require.NoError(t, err)
+	require.Len(t, res.SkipReasons, 1)
+	assert.Contains(t, res.SkipReasons[0], "not a valid FreeIPA uid")
+	assert.Equal(t, []string{"bad user"}, res.Plan.Skipped)
+
+	res, err = r.syncRun(context.Background(), time.Now(), "", false)
+	require.NoError(t, err)
+	assert.True(t, res.Held)
+	_, ok := fake.User("bad user")
+	assert.False(t, ok)
+	for _, load := range []func() (*syncRunResult, error){r.syncLastRun, r.syncHeld} {
+		stored, err := load()
+		require.NoError(t, err)
+		require.NotNil(t, stored)
+		assert.Equal(t, res.SkipReasons, stored.SkipReasons)
+	}
 }
