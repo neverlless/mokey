@@ -5,7 +5,7 @@ in FreeIPA and sets up everything around it:
 
 1. In FreeIPA: the `mokey/<host>` service principal (with the `mokey/mokey`
    alias), the `Mokey User Manager` role with the User Administrators,
-   Password Policy Readers and `Mokey UPG Read` privileges, and
+   Password Policy Readers, RBAC Readers and `Mokey UPG Read` privileges, and
    `ipauserauthtype` on the `System: Modify Users` permission. The same
    objects as step 1 of the [install guide](../../../docs/install.md).
    Members are only added, so privileges granted by hand stay.
@@ -60,8 +60,8 @@ friend who then extends them. The role removes `manager` from that rule and
 leaves its other attributes as they are. It changes a FreeIPA default for
 everyone, so it is off by default; see the
 [account lifecycle guide](../../../docs/guides/account-lifecycle.md#stop-users-choosing-their-own-sponsor).
-Add `RBAC Readers` to `mokey_ipa_extra_privileges` to let mokey check the
-rule at startup.
+mokey checks the rule at startup with the `RBAC Readers` privilege the role
+grants.
 
 The config gets `site`, `email` (from, base URL, SMTP), `server.listen`,
 the secrets and `storage` (sqlite3 in `/var/lib/mokey` by default) from role

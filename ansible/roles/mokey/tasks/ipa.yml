@@ -84,7 +84,7 @@
         ipaadmin_password: "{{ mokey_ipa_admin_password }}"
         name: "{{ mokey_ipa_role }}"
         privilege: >-
-          {{ ['User Administrators', 'Password Policy Readers', mokey_ipa_upg_privilege]
+          {{ ['User Administrators', 'Password Policy Readers', 'RBAC Readers', mokey_ipa_upg_privilege]
           + ([mokey_ipa_expiry_privilege] if mokey_ipa_expiry_permission else [])
           + mokey_ipa_extra_privileges }}
         service: ["{{ mokey_service_principal }}"]
