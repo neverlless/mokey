@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [v2.11.0] - 2026-11-17
+
 - Account lifecycle (`[lifecycle]`, off by default): expiry dates
   (`krbPrincipalExpiration`) shown to the user with reminder mails; the
   sponsor of an account is its FreeIPA `manager`, sees a "People you
@@ -10,18 +12,6 @@
   with a mass-change brake; admin Lifecycle page and People actions to set
   expiry and sponsor. There is no automatic lock of inactive accounts:
   FreeIPA doesn't see SSH key logins. See the Account expiry guide
-- Upgrade notes: writing expiry dates needs the optional FreeIPA permission
-  `Mokey Modify Principal Expiration` on mokey's role (Install guide,
-  `mokey_ipa_expiry_permission` in the Ansible role); only with
-  `[lifecycle]` renewal or admin-set expiry. With `renewal_period`, remove
-  `manager` from FreeIPA's `User Self service` rule so users can't change
-  their own sponsor (Account expiry guide, `mokey_ipa_selfservice_no_manager`
-  in the Ansible role); mokey warns at startup while the rule allows it
-- Upgrade notes: the standard install now gives mokey's role the read-only
-  `RBAC Readers` privilege, which the startup check of the `User Self
-  service` rule needs. Existing installs: `ipa role-add-privilege 'Mokey
-  User Manager' --privilege='RBAC Readers'` (the Ansible role adds it);
-  without it mokey logs "could not check"
 - Forward-auth for web apps (`[forward_auth]`, off by default): Traefik,
   ingress-nginx, Caddy, Envoy Gateway and Istio ask mokey, which signs the
   user in and admits them by FreeIPA group or HBAC rule. App sessions are
@@ -60,6 +50,8 @@
 - Slack log lines show when a message was sent as a UTC time
 - Admin invite form shows email, first and last name and username in one
   row with labels instead of hiding them under "More details"
+- Admin: Helpdesk (password expiring and expired, locked out, inactive)
+  has its own page; Requests lists only what waits for a decision
 - Admin People and Audit log pages warn when `storage.driver` is `memory`:
   the audit log and activity data are lost on restart
 - Security: `accounts.block_users` ignores case. FreeIPA accepts a login in
@@ -77,6 +69,18 @@
 
 ### Upgrade notes
 
+- Writing expiry dates needs the optional FreeIPA permission
+  `Mokey Modify Principal Expiration` on mokey's role (Install guide,
+  `mokey_ipa_expiry_permission` in the Ansible role); only with
+  `[lifecycle]` renewal or admin-set expiry. With `renewal_period`, remove
+  `manager` from FreeIPA's `User Self service` rule so users can't change
+  their own sponsor (Account expiry guide, `mokey_ipa_selfservice_no_manager`
+  in the Ansible role); mokey warns at startup while the rule allows it
+- The standard install now gives mokey's role the read-only
+  `RBAC Readers` privilege, which the startup check of the `User Self
+  service` rule needs. Existing installs: `ipa role-add-privilege 'Mokey
+  User Manager' --privilege='RBAC Readers'` (the Ansible role adds it);
+  without it mokey logs "could not check"
 - With `storage.driver = "redis"`, set `server.csrf_secret` and
   `email.token_secret` (the same on every replica) before upgrading, or
   mokey does not start.
