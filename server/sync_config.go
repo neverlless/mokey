@@ -10,8 +10,8 @@ import (
 )
 
 type googleSourceConfig struct {
-	CredentialsFile, ServiceAccountEmail, AdminEmail, Customer, Query string
-	OrgUnits, Domains                                                 []string
+	CredentialsFile, ServiceAccountEmail, AdminEmail, Customer, Query, Endpoint string
+	OrgUnits, Domains                                                           []string
 }
 
 type syncConfig struct {
@@ -73,6 +73,7 @@ func loadSyncConfig() (*syncConfig, error) {
 			AdminEmail:          viper.GetString("sync.google.admin_email"),
 			Customer:            viper.GetString("sync.google.customer"),
 			Query:               viper.GetString("sync.google.query"),
+			Endpoint:            viper.GetString("sync.google.endpoint"),
 			OrgUnits:            viper.GetStringSlice("sync.google.org_units"),
 		},
 		GroupMapping: map[string][]string{},
