@@ -74,24 +74,45 @@ too. List options and `group_mapping` are config-file only.
 The sync acts as mokey's service account, which already holds
 `User Administrators` for the portal: that covers adding, modifying,
 locking, unlocking and deleting users, and `preserve` moves them to the
-preserved users. What it adds is group membership, and the expiry permission
-for the one-time google2ipa import. Create the managed group and the mapped
-groups first.
+preserved users. What it adds is changing the members of the managed, default
+and mapped groups, through a permission limited to those groups, and the
+expiry permission for the one-time google2ipa import. Create the groups first.
 
 ```sh
 kinit adminuser
 ipa group-add google-managed --desc='Accounts owned by the Google sync'
-# Add and remove members of the managed, mapped and default groups:
-ipa role-add-privilege 'Mokey User Manager' --privilege='Group Administrators'
+# Members of the managed, default and mapped groups, and of no other group:
+ipa permission-add 'Mokey Sync Group Membership' --type=group --right=write \
+  --attrs=member --filter='(|(cn=google-managed)(cn=devops-team))'
+ipa privilege-add 'Mokey Directory Sync' --desc='Directory sync group membership'
+ipa privilege-add-permission 'Mokey Directory Sync' --permissions='Mokey Sync Group Membership'
+ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Directory Sync'
 # Only for import_google2ipa_locks (clears krbPrincipalExpiration of a
 # google2ipa lock); the same permission as for account expiry in the
 # install guide:
 ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expiry Write'
 ```
 
-The [Ansible role](#ansible-and-helm) can do this with
-`mokey_ipa_sync_privileges: true` (plus `mokey_ipa_expiry_permission: true`
-for the import).
+When you change `managed_group`, `default_groups` or `group_mapping`, update
+the filter to list every group again, for example:
+
+```sh
+ipa permission-mod 'Mokey Sync Group Membership' \
+  --filter='(|(cn=google-managed)(cn=devops-team)(cn=new-team))'
+```
+
+Before it changes anything, each run checks that mokey may write the members
+of every one of these groups. A group missing from the filter is one run
+error and a row under **Decisions**; its group changes are skipped until you
+fix the filter, and if it is the managed group, no account is created or
+adopted. Don't grant `Group Administrators` instead: it lets the service
+account change every group, and then a group without member managers loses
+its expired [time-bound members](groups.md#time-bound-membership) instead of
+showing a failed expiry.
+
+The [Ansible role](#ansible-and-helm) does this with `mokey_ipa_sync_groups`
+set to the same groups (plus `mokey_ipa_expiry_permission: true` for the
+import).
 
 > [!NOTE]
 > Group changes run as the service account, not in a sponsor's session. This
@@ -207,8 +228,9 @@ resolve such cases by hand.
 
 ## Ansible and Helm
 
-Ansible: set `mokey_ipa_sync_privileges: true` to grant the role the groups
-privilege; add the `sync` keys through `mokey_config_extra`. See the
+Ansible: set `mokey_ipa_sync_groups` to the managed, default and mapped
+groups to create the scoped permission and grant it to the role; add the
+`sync` keys through `mokey_config_extra`. See the
 [role README](https://github.com/neverlless/mokey/tree/main/ansible/roles/mokey).
 
 Helm: `sync.cronjob.enabled: true` renders a CronJob that runs

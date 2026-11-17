@@ -68,10 +68,21 @@ argument_specs:
         type: str
         default: Mokey Expiry Write
         description: Privilege that carries it.
-      mokey_ipa_sync_privileges:
-        type: bool
-        default: false
-        description: Grant the role Group Administrators so directory sync can change group members; create the managed and mapped groups first.
+      mokey_ipa_sync_groups:
+        type: list
+        elements: str
+        default: []
+        description: >-
+          FreeIPA groups directory sync changes members of (managed, default and mapped; they must exist);
+          creates a permission scoped to them and grants it to the role. Empty is off.
+      mokey_ipa_sync_permission:
+        type: str
+        default: Mokey Sync Group Membership
+        description: Name of that permission.
+      mokey_ipa_sync_privilege:
+        type: str
+        default: Mokey Directory Sync
+        description: Privilege that carries it.
       mokey_ipa_selfservice_no_manager:
         type: bool
         default: false

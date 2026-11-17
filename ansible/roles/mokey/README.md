@@ -53,11 +53,13 @@ renewal: the role then creates the `Mokey Modify Principal Expiration`
 permission (write on `krbprincipalexpiration`) in a privilege on the role.
 It is off by default.
 
-Set `mokey_ipa_sync_privileges: true` with `[sync]` (directory sync): the role
-adds `Group Administrators` so the service account can change members of the
-managed and mapped groups. Create those groups first; add
-`mokey_ipa_expiry_permission: true` as well for `import_google2ipa_locks`.
-Off by default. See the
+Set `mokey_ipa_sync_groups` with `[sync]` (directory sync) to the managed,
+default and mapped FreeIPA groups: the role creates the
+`Mokey Sync Group Membership` permission, which writes `member` of those
+groups only, and grants it to the role in the `Mokey Directory Sync`
+privilege. Create the groups first and keep the list in step with `[sync]`;
+add `mokey_ipa_expiry_permission: true` as well for `import_google2ipa_locks`.
+Off (empty) by default. See the
 [directory sync guide](../../../docs/guides/directory-sync.md).
 
 Set `mokey_ipa_selfservice_no_manager: true` with `lifecycle.renewal_period`.
