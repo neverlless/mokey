@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"errors"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,8 +30,50 @@ func syncTargetRouter(t *testing.T) (*Router, *ipatest.Server, *syncConfig) {
 	return &Router{adminClient: fake.ClientAs("admin"), storage: memory.New()}, fake, cfg
 }
 
+// stubCN serves user_mod with cn, which ipatest doesn't model: setattr
+// calls are recorded, the rest applied to the fake's user.
+func stubCN(fake *ipatest.Server) map[string]string {
+	cn := map[string]string{}
+	var mu sync.Mutex
+	fake.Handle("user_mod", func(c ipatest.Call) (any, *ipa.IpaError) {
+		uid := c.Args[0]
+		mu.Lock()
+		defer mu.Unlock()
+		for _, a := range strs(c.Options["setattr"]) {
+			if v, ok := strings.CutPrefix(a, "cn="); ok {
+				if cn[uid] == v {
+					return nil, ipa.ErrEmptyModlist
+				}
+				cn[uid] = v
+			}
+		}
+		if _, ok := c.Options["setattr"]; !ok {
+			fake.UpdateUser(uid, func(u *ipatest.User) {
+				u.Email, _ = c.Options["mail"].(string)
+				u.First, _ = c.Options["givenname"].(string)
+				u.Last, _ = c.Options["sn"].(string)
+				u.DisplayName, _ = c.Options["displayname"].(string)
+			})
+		}
+		return map[string]any{"result": map[string]any{"uid": []string{uid}}, "value": uid, "summary": ""}, nil
+	})
+	return cn
+}
+
+func strs(v any) []string {
+	var out []string
+	if l, ok := v.([]any); ok {
+		for _, e := range l {
+			s, _ := e.(string)
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func TestSyncTargetCreateNoPassword(t *testing.T) {
 	r, fake, cfg := syncTargetRouter(t)
+	cn := stubCN(fake)
 	u := syncUser{UID: "jesse", syncSourceUser: syncSourceUser{Email: "jesse@example.org", GivenName: "Jesse", FamilyName: "Pinkman", FullName: "Jesse Pinkman"}}
 	require.NoError(t, r.syncCreate(u, cfg))
 
@@ -38,6 +82,7 @@ func TestSyncTargetCreateNoPassword(t *testing.T) {
 	assert.Empty(t, got.Password)
 	assert.Equal(t, "jesse@example.org", got.Email)
 	assert.Equal(t, "Jesse Pinkman", got.DisplayName)
+	assert.Equal(t, "Jesse Pinkman", cn["jesse"])
 	for _, c := range fake.Calls() {
 		if c.Method == "user_add" {
 			assert.NotContains(t, c.Options, "random")
@@ -52,10 +97,40 @@ func TestSyncTargetCreateNoPassword(t *testing.T) {
 
 func TestSyncTargetUpdate(t *testing.T) {
 	r, fake, _ := syncTargetRouter(t)
+	cn := stubCN(fake)
 	fake.AddUser("jesse", ipatest.User{Email: "old@example.org", First: "J", Last: "P"})
+	cn["jesse"] = "J P"
 	require.NoError(t, r.syncUpdate(syncUpdate{UID: "jesse", To: syncSourceUser{Email: "jesse@example.org", GivenName: "Jesse", FamilyName: "Pinkman", FullName: "Jesse Pinkman"}}))
 	got, _ := fake.User("jesse")
 	assert.Equal(t, []string{"jesse@example.org", "Jesse", "Pinkman", "Jesse Pinkman"}, []string{got.Email, got.First, got.Last, got.DisplayName})
+	assert.Equal(t, "Jesse Pinkman", cn["jesse"], "cn follows a Google rename")
+	require.NoError(t, r.syncSetCN("jesse", "Jesse Pinkman"), "unchanged cn is not an error")
+}
+
+func TestSyncTargetCreateManagedAddFails(t *testing.T) {
+	r, fake, cfg := syncTargetRouter(t)
+	stubCN(fake)
+	cfg.ManagedGroup = "missing"
+	err := r.syncCreate(syncUser{UID: "jesse", syncSourceUser: syncSourceUser{GivenName: "Jesse", FamilyName: "Pinkman"}}, cfg)
+	assert.ErrorContains(t, err, "created jesse, not managed")
+}
+
+func TestSyncTargetDisableKeepsAdminLock(t *testing.T) {
+	r, fake, _ := syncTargetRouter(t)
+	fake.AddUser("jesse", ipatest.User{Locked: true})
+	fake.AddUser("walt", ipatest.User{Locked: true})
+	found := syncMarker{Kind: syncMarkerFound, At: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), By: "sync"}
+	require.NoError(t, r.syncSetMarker("walt", found))
+
+	assert.Error(t, r.syncDisable("jesse", time.Now(), "sync"))
+	m, err := r.syncGetMarker("jesse")
+	require.NoError(t, err)
+	assert.Nil(t, m, "an admin lock gets no sync marker")
+
+	assert.Error(t, r.syncDisable("walt", time.Now(), "sync"))
+	m, err = r.syncGetMarker("walt")
+	require.NoError(t, err)
+	assert.Equal(t, &found, m)
 }
 
 func TestSyncTargetGroupsIdempotent(t *testing.T) {
