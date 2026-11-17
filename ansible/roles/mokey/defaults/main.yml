@@ -21,10 +21,13 @@ mokey_ipa_extra_privileges: []
 mokey_ipa_expiry_permission: false
 mokey_ipa_expiry_permission_name: Mokey Modify Principal Expiration
 mokey_ipa_expiry_privilege: Mokey Expiry Write
-# Group membership write for [sync]: adds the Group Administrators privilege
-# to the role. The managed and mapped groups must exist. Set
+# [sync]: a permission to change members of exactly these FreeIPA groups,
+# the managed, default and mapped ones (they must exist), in a privilege on
+# the role. Empty is off. Keep it in step with [sync]. Set
 # mokey_ipa_expiry_permission too for import_google2ipa_locks.
-mokey_ipa_sync_privileges: false
+mokey_ipa_sync_groups: []
+mokey_ipa_sync_permission: Mokey Sync Group Membership
+mokey_ipa_sync_privilege: Mokey Directory Sync
 # Remove manager from FreeIPA's default "User Self service" rule, so users
 # can't pick or drop their own sponsor. Needed with lifecycle.renewal_period.
 mokey_ipa_selfservice_no_manager: false

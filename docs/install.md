@@ -64,9 +64,12 @@ ipa permission-add 'Mokey Modify Principal Expiration' --type=user --right=write
 ipa privilege-add 'Mokey Expiry Write' --desc='Write account expiry'
 ipa privilege-add-permission 'Mokey Expiry Write' --permissions='Mokey Modify Principal Expiration'
 ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expiry Write'
-# Only needed with sync.enabled (adds and removes members of the managed,
-# mapped and default groups; see the directory sync guide):
-ipa role-add-privilege 'Mokey User Manager' --privilege='Group Administrators'
+# Only needed with sync.enabled: members of the managed, default and mapped
+# groups only (list them all in the filter; see the directory sync guide):
+ipa permission-add 'Mokey Sync Group Membership' --type=group --right=write --attrs=member --filter='(|(cn=google-managed)(cn=devops-team))'
+ipa privilege-add 'Mokey Directory Sync' --desc='Directory sync group membership'
+ipa privilege-add-permission 'Mokey Directory Sync' --permissions='Mokey Sync Group Membership'
+ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Directory Sync'
 # Required with lifecycle.renewal_period: users must not change their own
 # sponsor. Check the list first with ipa selfservice-show "User Self service";
 # this is FreeIPA's default list without manager (bash brace expansion):

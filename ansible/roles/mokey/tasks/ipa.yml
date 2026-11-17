@@ -61,6 +61,26 @@
         permission: ["{{ mokey_ipa_expiry_permission_name }}"]
       when: mokey_ipa_expiry_permission
 
+    - name: Permission to change members of the sync groups
+      freeipa.ansible_freeipa.ipapermission:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_ipa_sync_permission }}"
+        object_type: group
+        right: write
+        attrs: [member]
+        filter: "(|{% for g in mokey_ipa_sync_groups %}(cn={{ g }}){% endfor %})"
+      when: mokey_ipa_sync_groups | length > 0
+
+    - name: Privilege for the sync permission
+      freeipa.ansible_freeipa.ipaprivilege:
+        ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
+        ipaadmin_password: "{{ mokey_ipa_admin_password }}"
+        name: "{{ mokey_ipa_sync_privilege }}"
+        description: Directory sync group membership
+        permission: ["{{ mokey_ipa_sync_permission }}"]
+      when: mokey_ipa_sync_groups | length > 0
+
     - name: Users can't change their own sponsor (manager)
       freeipa.ansible_freeipa.ipaselfservice:
         ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
@@ -86,7 +106,7 @@
         privilege: >-
           {{ ['User Administrators', 'Password Policy Readers', 'RBAC Readers', mokey_ipa_upg_privilege]
           + ([mokey_ipa_expiry_privilege] if mokey_ipa_expiry_permission else [])
-          + (['Group Administrators'] if mokey_ipa_sync_privileges else [])
+          + ([mokey_ipa_sync_privilege] if mokey_ipa_sync_groups | length > 0 else [])
           + mokey_ipa_extra_privileges }}
         service: ["{{ mokey_service_principal }}"]
         action: member
