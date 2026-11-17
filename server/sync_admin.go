@@ -116,10 +116,16 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	now := time.Now()
 	vars["user"] = r.user(c)
 
-	scope := strings.Join(append(slices.Clone(cfg.Google.Domains), cfg.Google.OrgUnits...), ", ")
-	vars["sy_scope"] = scope
+	source := []string{"Google Workspace"}
+	if len(cfg.Google.Domains) > 0 {
+		source = append(source, strings.Join(cfg.Google.Domains, ", "))
+	}
+	if len(cfg.Google.OrgUnits) > 0 {
+		source = append(source, fmt.Sprintf(TL(lang, "sync.admin_source_ou"), strings.Join(cfg.Google.OrgUnits, ", ")))
+	}
+	vars["sy_source"] = strings.Join(source, " · ")
 	vars["sy_managed"] = cfg.ManagedGroup
-	vars["sy_mapped"] = fmt.Sprintf(TL(lang, "sync.admin_mapped"), len(cfg.mappedGroups()))
+	vars["sy_mapped"] = formatUnit(lang, "mapped_group", len(cfg.mappedGroups()))
 
 	last, err := r.syncLastRun()
 	if err != nil {
