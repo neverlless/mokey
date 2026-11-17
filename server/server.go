@@ -57,6 +57,7 @@ func SetDefaults() {
 	viper.SetDefault("groups.allow_permanent", true)
 	viper.SetDefault("lifecycle.max_changes_per_run", 50)
 	viper.SetDefault("sync.enabled", false)
+	viper.SetDefault("sync.interval", "1h")
 	viper.SetDefault("sync.managed_group", "google2ipa-managed")
 	viper.SetDefault("sync.exclude_users", []string{"admin"})
 	viper.SetDefault("sync.username", "local_part")

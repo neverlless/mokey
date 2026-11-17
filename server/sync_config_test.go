@@ -46,7 +46,7 @@ func TestSyncConfigDefaults(t *testing.T) {
 	if err != nil || !c.on() {
 		t.Fatalf("load: %+v, %v", c, err)
 	}
-	if c.Interval != 0 || c.ManagedGroup != "google2ipa-managed" || len(c.DefaultGroups) != 0 ||
+	if c.Interval != time.Hour || c.ManagedGroup != "google2ipa-managed" || len(c.DefaultGroups) != 0 ||
 		!slices.Equal(c.ExcludeUsers, []string{"admin"}) || c.Username != "local_part" || c.AdoptExisting ||
 		c.MaxDisablePercent != 20 || c.MaxUsernameLength != 32 || c.Concurrency != 4 || !c.Disable ||
 		c.DeleteAfter != 30*24*time.Hour || !c.Preserve || c.WelcomeMail || c.WelcomeLinkTTL != 7*24*time.Hour ||
@@ -59,8 +59,8 @@ func TestSyncConfigDefaults(t *testing.T) {
 }
 
 func TestSyncConfigValues(t *testing.T) {
-	c, err := loadSync(syncOn(map[string]any{"sync.interval": "1h", "sync.delete_after": "0", "sync.username": "email"}))
-	if err != nil || c.Interval != time.Hour || c.DeleteAfter != 0 || c.Username != "email" {
+	c, err := loadSync(syncOn(map[string]any{"sync.interval": "", "sync.delete_after": "0", "sync.username": "email"}))
+	if err != nil || c.Interval != 0 || c.DeleteAfter != 0 || c.Username != "email" {
 		t.Fatalf("values: %+v, %v", c, err)
 	}
 }
@@ -78,6 +78,7 @@ func TestSyncConfigErrors(t *testing.T) {
 		{"bad ttl", "sync.welcome_link_ttl", map[string]any{"sync.welcome_link_ttl": "-1h"}},
 		{"percent", "sync.max_disable_percent", map[string]any{"sync.max_disable_percent": 101}},
 		{"concurrency", "sync.concurrency", map[string]any{"sync.concurrency": 0}},
+		{"empty group", "devs@example.org", map[string]any{"sync.google.group_mapping": map[string]any{"devs@example.org": []string{"ops", ""}}}},
 		{"time-limited group", `"ops"`, map[string]any{
 			"groups.durations":          []string{"1d"},
 			"groups.rules":              []any{map[string]any{"group": "ops", "max": "1d"}},
@@ -90,6 +91,21 @@ func TestSyncConfigErrors(t *testing.T) {
 				t.Fatalf("err = %v, c = %v; want containing %q", err, c, tc.want)
 			}
 		})
+	}
+}
+
+func TestSyncConfigMappingFromTOML(t *testing.T) {
+	viper.Reset()
+	SetDefaults()
+	viper.SetConfigType("toml")
+	toml := "[sync]\nenabled = true\n[sync.google]\nadmin_email = \"a@example.com\"\n[sync.google.group_mapping]\n\"Devops@Example.com\" = [\"admins\"]\n"
+	if err := viper.ReadConfig(strings.NewReader(toml)); err != nil {
+		t.Fatal(err)
+	}
+	viper.Set("storage.driver", "sqlite3")
+	c, err := loadSyncConfig()
+	if err != nil || !slices.Equal(c.GroupMapping["devops@example.com"], []string{"admins"}) {
+		t.Fatalf("mapping: %+v, %v", c, err)
 	}
 }
 
