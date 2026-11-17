@@ -49,6 +49,7 @@ func (r *Router) syncLoadIPA(ctx context.Context, cfg *syncConfig, uids []string
 				GivenName:  e.Str("givenname"),
 				FamilyName: e.Str("sn"),
 				FullName:   e.Str("displayname"),
+				CN:         e.Str("cn"),
 				Managed:    managed,
 				Locked:     e.Bool("nsaccountlock"),
 				Preserved:  preserved,
@@ -76,11 +77,12 @@ func (r *Router) syncCreate(u syncUser, cfg *syncConfig) error {
 	}, false); err != nil {
 		return err
 	}
-	if err := r.syncGroups(u.UID, []string{cfg.ManagedGroup}, nil); err != nil {
-		return fmt.Errorf("created %s, not managed: %w", u.UID, err)
-	}
+	// cn first: an account is managed only with its Google cn
 	if err := r.syncSetCN(u.UID, u.FullName); err != nil {
 		return fmt.Errorf("created %s, full name not set: %w", u.UID, err)
+	}
+	if err := r.syncGroups(u.UID, []string{cfg.ManagedGroup}, nil); err != nil {
+		return fmt.Errorf("created %s, not managed: %w", u.UID, err)
 	}
 	return nil
 }

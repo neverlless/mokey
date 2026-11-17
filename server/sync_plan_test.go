@@ -537,3 +537,21 @@ func TestSyncBuildSkippedLockedNotEnabled(t *testing.T) {
 		t.Errorf("skipped uid planned changes: %+v", p)
 	}
 }
+
+func TestSyncBuildCNDrift(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		"n":       {UID: "n", Email: "n@example.com", GivenName: "Nat", FamilyName: "Lee", FullName: "Nat Lee", CN: "nat by hand", Managed: true},
+		"same":    {UID: "same", Email: "same@example.com", GivenName: "Nat", FamilyName: "Lee", FullName: "Nat Lee", CN: "Nat Lee", Managed: true},
+		"unknown": {UID: "unknown", Email: "unknown@example.com", GivenName: "Nat", FamilyName: "Lee", FullName: "Nat Lee", Managed: true},
+	}
+	var users []syncUser
+	for _, uid := range []string{"n", "same", "unknown"} {
+		u := syncU(uid)
+		u.GivenName, u.FamilyName, u.FullName = "Nat", "Lee", "Nat Lee"
+		users = append(users, u)
+	}
+	p := syncBuild(users, nil, ipa, syncTestConfig(nil), syncTestNow)
+	if len(p.Update) != 1 || p.Update[0].UID != "n" || p.Update[0].To.FullName != "Nat Lee" {
+		t.Fatalf("Update = %+v", p.Update)
+	}
+}
