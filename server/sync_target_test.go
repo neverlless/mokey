@@ -318,3 +318,14 @@ func TestSyncTargetGroupsMemberFailure(t *testing.T) {
 	r.adminClient = fake.ClientAs("hank")
 	assert.ErrorContains(t, r.syncGroups("jesse", nil, []string{"staff"}), "remove jesse from staff")
 }
+
+func TestSyncTargetEnableAlreadyActive(t *testing.T) {
+	r, fake, _ := syncTargetRouter(t)
+	fake.AddUser("jesse", ipatest.User{})
+	m := syncMarker{Kind: syncMarkerSync, At: time.Now(), By: "sync"}
+	require.NoError(t, r.syncSetMarker("jesse", m))
+	require.NoError(t, r.syncEnable("jesse", m), "unlocked meanwhile is the wanted state")
+	mk, err := r.syncGetMarker("jesse")
+	require.NoError(t, err)
+	assert.Nil(t, mk)
+}
