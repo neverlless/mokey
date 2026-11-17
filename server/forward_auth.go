@@ -134,7 +134,16 @@ func (r *Router) faHop(c fiber.Ctx) error {
 	} else {
 		next += "?hop=1"
 	}
-	return c.Render("forward-auth-hop.html", fiber.Map{"next": safeNextPath(next)})
+	vars := fiber.Map{"next": safeNextPath(next)}
+	// the name is cosmetic: a storage error surfaces on the next request
+	if p, _ := r.faPeekPending(c.Query("p")); p != nil {
+		if app, ok := r.forwardAuth.App(p.Host); ok {
+			vars["app"] = faAppName(app)
+		}
+	} else if app, ok := r.forwardAuth.App(c.Query("app")); ok {
+		vars["app"] = faAppName(app)
+	}
+	return c.Render("forward-auth-hop.html", vars)
 }
 
 func faNavigation(c fiber.Ctx) bool {

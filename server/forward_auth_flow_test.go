@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -175,6 +176,9 @@ func TestFAFullFlow(t *testing.T) {
 	body := readBody(t, resp)
 	assert.Contains(body, `http-equiv="refresh"`)
 	assert.Contains(body, "hop=1")
+	assert.Contains(body, fmt.Sprintf(T("forward_auth.hop_continuing"), "Kubecost"))
+	assert.Contains(body, `href="/static/css/style.css`)
+	assert.Regexp(`<script nonce="[^"]+">`, body)
 
 	resp = tc.send("GET", cont+"&hop=1", nil)
 	require.Equal(t, fiber.StatusFound, resp.StatusCode)

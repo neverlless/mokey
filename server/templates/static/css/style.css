@@ -88,6 +88,7 @@ body {
 	flex-direction: column;
 	min-height: 100vh;
 	min-height: 100dvh;
+	margin: 0;
 	background: var(--bs-body-bg);
 	color: var(--bs-body-color);
 	font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -1014,4 +1015,19 @@ i.mokey-dial-flag {
 }
 #main:focus {
 	outline: none;
+}
+
+/* forward-auth hand-off: shown for a moment while the page reloads itself */
+.mokey-hop {
+	margin: auto;
+	padding: 16px;
+	text-align: center;
+	color: var(--mokey-muted);
+}
+.mokey-hop p {
+	margin: 0 0 4px;
+}
+.mokey-hop a {
+	font-size: 0.75rem;
+	color: var(--mokey-muted);
 }

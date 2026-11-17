@@ -806,6 +806,8 @@ day_layout = "02.01.2006"
 
 [forward_auth]
 hop_continue = "Продолжить"
+hop_continuing = "Переходим в %s…"
+hop_continuing_generic = "Переходим…"
 denied_title = "Нет доступа к %s"
 denied_not_in_group = "%s открыт участникам групп: %s. Попросите добавить вас в одну из них."
 denied_hbac = "Правило доступа не разрешает вашей учётной записи открывать %s. Обратитесь к администратору."

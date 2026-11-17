@@ -4,9 +4,23 @@
 	<meta charset="UTF-8">
 	<meta http-equiv="refresh" content="0;url={{ .next }}">
 	<meta name="referrer" content="no-referrer">
+	<meta content="width=device-width, initial-scale=1" name="viewport">
+	<script nonce="{{ $.cspNonce }}">
+		// same pre-paint theme pick as header.html, so a dark page does not flash white
+		(function () {
+			var t = localStorage.getItem("mokey-theme");
+			if (!t) { t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+			document.documentElement.setAttribute("data-bs-theme", t);
+		})();
+	</script>
+	<link rel="stylesheet" type="text/css" href="/static/css/fonts.css?v=20261106a" integrity="sha384-ZGWlLlzR3qAp+srbI99v11uIhmpDNTMYogWOLymaDRV2RGTnO3LujvyObjNjtIaD" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="/static/css/style.css?v=20261116b" integrity="sha384-VMU4oBDucll7lMrURh84nH32tvLUyV8Cqnc89z0fPhSz1mibd84iMEaaQMLYsvmA" crossorigin="anonymous">
 	<title>{{ ConfigValueString "site.name" }}</title>
 </head>
 <body>
-	<p><a href="{{ .next }}">{{ T "forward_auth.hop_continue" }}</a></p>
+	<main class="mokey-hop">
+		<p role="status">{{ with .app }}{{ printf (T "forward_auth.hop_continuing") . }}{{ else }}{{ T "forward_auth.hop_continuing_generic" }}{{ end }}</p>
+		<a href="{{ .next }}">{{ T "forward_auth.hop_continue" }}</a>
+	</main>
 </body>
 </html>

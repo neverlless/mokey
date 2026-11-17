@@ -798,6 +798,8 @@ day_layout = "Jan 2, 2006"
 
 [forward_auth]
 hop_continue = "Continue"
+hop_continuing = "Continuing to %s…"
+hop_continuing_generic = "Continuing…"
 denied_title = "No access to %s"
 denied_not_in_group = "%s is open to members of these groups: %s. Ask to join one of them."
 denied_hbac = "An access rule does not let your account open %s. Ask your administrator."
