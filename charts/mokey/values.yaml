@@ -65,6 +65,15 @@ serviceMonitor:
   interval: 30s
   labels: {}
 
+# Directory sync as a CronJob (`mokey sync`), apart from the portal. Needs
+# storage.driver = "redis" in the config; the schedule is cron syntax.
+# Set sync.interval = "" in the config so serve doesn't also run it.
+sync:
+  cronjob:
+    enabled: false
+    schedule: "0 * * * *"
+    resources: {}
+
 resources:
   limits:
     memory: 512Mi
