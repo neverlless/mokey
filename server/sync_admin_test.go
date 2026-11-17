@@ -422,3 +422,12 @@ func TestAdminSyncDecisionGroupWithoutMemberWrite(t *testing.T) {
 	assert.Contains(t, body, esc(fmt.Sprintf(T("sync.admin_no_member_write"), "eng")))
 	assert.Contains(t, body, "Decisions · 1")
 }
+
+func TestAdminSyncHeader(t *testing.T) {
+	tc, router, _, _ := syncAdminApp(t)
+	router.sync.Google.OrgUnits = []string{"/Staff"}
+
+	page := readBody(t, tc.get("/admin/sync"))
+	assert.Contains(t, page, "Google Workspace · example.org · "+fmt.Sprintf(T("sync.admin_source_ou"), "/Staff")+"<br>")
+	assert.Contains(t, page, `<span class="mokey-mono">google2ipa-managed</span> · <span class="text-nowrap">1 mapped group</span></p>`)
+}
