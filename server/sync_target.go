@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -75,7 +76,25 @@ func (r *Router) syncCreate(u syncUser, cfg *syncConfig) error {
 	}, false); err != nil {
 		return err
 	}
-	return r.syncGroups(u.UID, []string{cfg.ManagedGroup}, nil)
+	if err := r.syncGroups(u.UID, []string{cfg.ManagedGroup}, nil); err != nil {
+		return fmt.Errorf("created %s, not managed: %w", u.UID, err)
+	}
+	if err := r.syncSetCN(u.UID, u.FullName); err != nil {
+		return fmt.Errorf("created %s, full name not set: %w", u.UID, err)
+	}
+	return nil
+}
+
+// syncSetCN writes cn as google2ipa did; goipa's User has no cn field.
+func (r *Router) syncSetCN(uid, cn string) error {
+	if cn == "" {
+		return nil
+	}
+	_, err := r.adminClient.Modify("user_mod", uid).Set("cn", cn).Run(context.Background())
+	if errors.Is(err, ipa.ErrEmptyModlist) {
+		return nil
+	}
+	return err
 }
 
 func (r *Router) syncUpdate(u syncUpdate) error {
@@ -87,18 +106,32 @@ func (r *Router) syncUpdate(u syncUpdate) error {
 	if len(cur.Emails) > 0 {
 		cur.Emails[0] = u.To.Email
 	}
-	_, err = r.adminClient.UserMod(cur)
-	return err
+	if _, err := r.adminClient.UserMod(cur); err != nil {
+		return err
+	}
+	return r.syncSetCN(u.UID, u.To.FullName)
 }
 
 // syncDisable writes the marker first: a lock sync made but didn't record
 // would never be undone by sync. A marker left on an account that stayed
-// unlocked is cleared by a later run.
+// unlocked is cleared by a later run, but one on an account someone else
+// locked meanwhile would let sync unlock it, so that one is rolled back.
 func (r *Router) syncDisable(uid string, now time.Time, by string) error {
+	prev, err := r.syncGetMarker(uid)
+	if err != nil {
+		return err
+	}
 	if err := r.syncSetMarker(uid, syncMarker{Kind: syncMarkerSync, At: now, By: by}); err != nil {
 		return err
 	}
-	return r.adminClient.UserDisable(uid)
+	err = r.adminClient.UserDisable(uid)
+	if !errors.Is(err, &ipa.IpaError{Code: ipa.CodeAlreadyInactive}) {
+		return err
+	}
+	if prev == nil {
+		return errors.Join(err, r.syncClearMarker(uid))
+	}
+	return errors.Join(err, r.syncSetMarker(uid, *prev))
 }
 
 // syncEnable clears krbPrincipalExpiration only for a google2ipa lock,
