@@ -135,7 +135,7 @@ func TestSyncBuildLifecycle(t *testing.T) {
 }
 
 func TestSyncBuildAdopt(t *testing.T) {
-	ipa := map[string]syncIPAUser{"legacy": {UID: "legacy", GivenName: "Old"}}
+	ipa := map[string]syncIPAUser{"legacy": {UID: "legacy", Email: "Legacy@Example.com", GivenName: "Old"}}
 	p := syncBuild([]syncUser{syncU("legacy")}, nil, ipa, syncTestConfig(func(c *syncConfig) { c.AdoptExisting = true }), syncTestNow)
 	syncCheck(t, "Adopt", p.Adopt, []string{"legacy"})
 	syncCheck(t, "AddGroups", p.AddGroups["legacy"], []string{"staff"})
@@ -428,6 +428,25 @@ func TestSyncBuildEmailConflictUnmanaged(t *testing.T) {
 	}
 	if len(p.Update) != 0 {
 		t.Errorf("Update = %+v", p.Update)
+	}
+}
+
+func TestSyncBuildNoEmailConflict(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		// a service account without mail must not be handed to backup@ in Google
+		"backup": {UID: "backup"},
+		"gone":   {UID: "gone", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, time.Hour)},
+	}
+	p := syncBuild([]syncUser{syncU("backup"), syncU("gone")}, nil, ipa, syncTestConfig(func(c *syncConfig) { c.AdoptExisting = true }), syncTestNow)
+	syncCheck(t, "Adopt", p.Adopt, nil)
+	syncCheck(t, "Enable", p.Enable, nil)
+	want := []string{
+		"uid backup has no email in FreeIPA but belongs to backup@example.com in Google; left alone",
+		"uid gone has no email in FreeIPA but belongs to gone@example.com in Google; left alone",
+	}
+	syncCheck(t, "Conflicts", p.Conflicts, want)
+	if len(p.AddGroups)+len(p.Update) != 0 {
+		t.Errorf("plan = %+v", p)
 	}
 }
 
