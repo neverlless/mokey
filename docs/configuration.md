@@ -169,6 +169,50 @@ server-local time, at the start of that day. A sponsor caps the expiry of
 the accounts they vouch for, so giving yourself a sponsor can shorten your
 own expiry.
 
+## `[sync]`
+
+Directory sync: Google Workspace as an account source. Off until
+`enabled = true`. It needs `sqlite3` or `redis` storage, and
+`[sync.google] admin_email` must be set. Secrets can come from the
+environment, for example `MOKEY_SYNC_GOOGLE_CREDENTIALS_FILE`.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | bool | `false` | Master switch. |
+| `interval` | string | — | Run a sync in `mokey serve` this often, with units `m`, `h`, `d`. Empty means only `mokey sync` and the admin Apply button run it. |
+| `managed_group` | string | `"google2ipa-managed"` | FreeIPA group that marks accounts owned by the sync. |
+| `default_groups` | list | `[]` | Groups every created account joins. |
+| `exclude_users` | list | `["admin"]` | Accounts the sync never touches. |
+| `username` | string | `"local_part"` | Derive the uid from the part of the email before `@` (`"local_part"`) or the whole address (`"email"`). |
+| `adopt_existing` | bool | `false` | Take over existing FreeIPA accounts whose uid and email match. |
+| `max_disable_percent` | int | `20` | A run that would lock more than this percent of managed accounts locks none. `0` turns the brake off. |
+| `max_username_length` | int | `32` | Longest uid the sync creates. |
+| `concurrency` | int | `4` | Parallel FreeIPA calls. |
+| `disable` | bool | `true` | Lock accounts that left Google. |
+| `delete_after` | string | `"30d"` | Delete locked accounts after this long. `"0"` means never. |
+| `preserve` | bool | `true` | Delete into FreeIPA's preserved users instead of removing them. |
+| `welcome_mail` | bool | `false` | Mail created users a link to set their first password. |
+| `welcome_link_ttl` | string | `"7d"` | How long that link works. |
+| `max_events_per_run` | int | `50` | A run with more changes sends [webhooks](#webhooks) one summary event; every change is still in the audit log. |
+| `import_google2ipa_locks` | bool | `false` | One-time takeover of accounts a google2ipa run locked; an admin reviews and applies it on `/admin/sync`. |
+
+### `[sync.google]`
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `credentials_file` | string | — | Service account key file. Empty means application default credentials with `service_account_email`. |
+| `service_account_email` | string | — | Service account to impersonate with default credentials. |
+| `admin_email` | string | — | Workspace admin the service account acts as. Required when sync is enabled. |
+| `customer` | string | `"my_customer"` | Workspace customer id. |
+| `query` | string | — | Google user search query that limits who is synced. |
+| `org_units` | list | `[]` | Limit to these organizational units. |
+| `domains` | list | `[]` | Limit to these email domains (lowercased). |
+
+`[sync.google.group_mapping]` maps a Google group email to FreeIPA groups,
+for example `"devops@example.com" = ["admins"]`. Keys are lowercased. A
+mapped group can't have a time limit in `[[groups.rules]]`: mokey refuses
+to start.
+
 ## `[email]`
 
 | Option | Type | Default | Description |
