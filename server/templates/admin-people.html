@@ -53,6 +53,6 @@
        hx-trigger="input changed delay:300ms, search"
        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
 <div class="mokey-card">
-  <div id="admin-users" hx-get="/admin/users{{ with $.search }}?search={{ . }}{{ end }}" hx-trigger="load"
+  <div id="admin-users" hx-get="/admin/users{{ with $.search }}?search={{ urlquery . }}{{ end }}" hx-trigger="load"
        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
 </div>
