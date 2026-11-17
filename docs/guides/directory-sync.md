@@ -143,6 +143,13 @@ percent of active managed accounts, it locks none and starts no delete
 clocks. Creates, updates, unlocks and group changes still go ahead. The held
 plan waits on `/admin/sync`.
 
+The brake counts locks only. Deletes of accounts that are already locked
+don't count towards it: they are held only when the locks of the same run
+trip the brake. A run whose leavers are all locked already deletes every
+account whose `delete_after` is up, however many. Keep `delete_after`
+generous, and run a **Dry run** after every change to `query` or
+`org_units`, before the next scheduled run applies it.
+
 **Apply** recomputes the plan and applies it past the brake in your name,
 in the background. If the plan now locks or deletes more per kind than it did
 when you opened the page, Apply refuses and shows the new plan to check again.
@@ -172,7 +179,9 @@ and the sync records when and why in storage, a marker of one of three kinds:
 Created accounts have no password. With `welcome_mail = true` the user gets a
 mail with a link to set one. It needs `email.base_url`. The link uses the
 password reset flow, works once, and expires after `welcome_link_ttl`
-(default 7 days). No password is ever mailed.
+(default 7 days). No password is ever mailed. The welcome link shares the
+`email.resend_cooldown` with forgot-password: a user who asks for a reset
+right after the welcome mail gets no second link until the cooldown is over.
 
 Sign-up, invites and email changes to an address in `[sync.google] domains`
 are refused with "Your account comes from Google Workspace", so the source and
