@@ -294,7 +294,9 @@ func TestSyncBuildStaleMarkerCleared(t *testing.T) {
 		"locked": {UID: "locked", Email: "locked@example.com", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerFound, syncDay), Groups: []string{"staff"}},
 	}
 	p := syncBuild([]syncUser{syncU("half"), syncU("legacy"), syncU("locked")}, nil, ipa, syncTestConfig(nil), syncTestNow)
-	syncCheck(t, "ClearMarkers", p.ClearMarkers, []string{"half", "legacy"})
+	// "locked" is back in Google: its old found marker must not make a later departure an instant delete
+	syncCheck(t, "ClearMarkers", p.ClearMarkers, []string{"half", "legacy", "locked"})
+	syncCheck(t, "BackInGoogle", p.BackInGoogle, []string{"locked"})
 	syncCheck(t, "Enable", p.Enable, nil)
 	syncCheck(t, "Disable", p.Disable, []string{"left"})
 	if p.Empty() || p.Changes() != 1 {

@@ -55,7 +55,7 @@ type syncPlan struct {
 	Enable, Disable, Delete []string
 	AddGroups, RemoveGroups map[string][]string
 	NewMarkers              map[string]syncMarker // "found" markers to write
-	ClearMarkers            []string              // unlocked accounts that still carry a marker
+	ClearMarkers            []string              // unlocked accounts that still carry a marker, and found markers of BackInGoogle
 	BackInGoogle            []string              // locked without a re-enable marker, present in Google
 	Braked                  bool                  // disable/delete suppressed by the safety brake
 	Conflicts               []string
@@ -259,7 +259,14 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 	}
 	for _, uid := range slices.Sorted(maps.Keys(ipa)) {
 		// A disable rewrites the marker itself; clearing it too would race.
-		if cur := ipa[uid]; !cur.Locked && cur.Marker != nil && !slices.Contains(p.Disable, uid) {
+		cur := ipa[uid]
+		if cur.Marker == nil {
+			continue
+		}
+		// a found marker of an account back in Google would make its next
+		// departure an instant delete
+		back := cur.Marker.Kind == syncMarkerFound && slices.Contains(p.BackInGoogle, uid)
+		if (!cur.Locked && !slices.Contains(p.Disable, uid)) || back {
 			p.ClearMarkers = append(p.ClearMarkers, uid)
 		}
 	}
