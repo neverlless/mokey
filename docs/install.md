@@ -64,6 +64,9 @@ ipa permission-add 'Mokey Modify Principal Expiration' --type=user --right=write
 ipa privilege-add 'Mokey Expiry Write' --desc='Write account expiry'
 ipa privilege-add-permission 'Mokey Expiry Write' --permissions='Mokey Modify Principal Expiration'
 ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expiry Write'
+# Only needed with sync.enabled (adds and removes members of the managed,
+# mapped and default groups; see the directory sync guide):
+ipa role-add-privilege 'Mokey User Manager' --privilege='Group Administrators'
 # Required with lifecycle.renewal_period: users must not change their own
 # sponsor. Check the list first with ipa selfservice-show "User Self service";
 # this is FreeIPA's default list without manager (bash brace expansion):

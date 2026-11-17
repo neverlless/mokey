@@ -67,6 +67,7 @@ export default defineConfig({
 						{ label: 'Webhooks and JSON API', slug: 'guides/webhooks-api' },
 						{ label: 'Admin helpdesk view', slug: 'guides/helpdesk' },
 						{ label: 'Account expiry and renewal', slug: 'guides/account-lifecycle' },
+						{ label: 'Directory sync (Google)', slug: 'guides/directory-sync' },
 					],
 				},
 				{

@@ -68,6 +68,10 @@ argument_specs:
         type: str
         default: Mokey Expiry Write
         description: Privilege that carries it.
+      mokey_ipa_sync_privileges:
+        type: bool
+        default: false
+        description: Grant the role Group Administrators so directory sync can change group members; create the managed and mapped groups first.
       mokey_ipa_selfservice_no_manager:
         type: bool
         default: false

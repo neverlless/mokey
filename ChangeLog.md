@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Directory sync (`[sync]`, off by default): Google Workspace as an account
+  source, ported from google2ipa. Creates, updates, locks, unlocks and
+  deletes FreeIPA accounts and maps Google groups to FreeIPA groups, with a
+  dry run, a mass-lock brake, lock markers kept in mokey storage (so
+  `krbPrincipalExpiration` stays with account expiry), an admin page at
+  `/admin/sync`, `mokey sync [--dry-run]` for a CronJob or timer, and a Helm
+  CronJob. Synced fields and groups are read-only in the portal. Needs
+  sqlite3 or redis storage. See the Directory sync guide, including the
+  migration from google2ipa
+
 ## [v2.11.0] - 2026-11-17
 
 - Account lifecycle (`[lifecycle]`, off by default): expiry dates

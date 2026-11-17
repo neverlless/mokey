@@ -86,6 +86,7 @@
         privilege: >-
           {{ ['User Administrators', 'Password Policy Readers', 'RBAC Readers', mokey_ipa_upg_privilege]
           + ([mokey_ipa_expiry_privilege] if mokey_ipa_expiry_permission else [])
+          + (['Group Administrators'] if mokey_ipa_sync_privileges else [])
           + mokey_ipa_extra_privileges }}
         service: ["{{ mokey_service_principal }}"]
         action: member
