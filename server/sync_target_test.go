@@ -329,3 +329,32 @@ func TestSyncTargetEnableAlreadyActive(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, mk)
 }
+
+func TestSyncTargetLoadReadsCN(t *testing.T) {
+	r, fake, cfg := syncTargetRouter(t)
+	fake.AddGroup("google2ipa-managed", ipatest.Group{Members: []string{"jesse"}})
+	// ipatest renders no cn (goipa#37)
+	fake.Handle("user_find", func(c ipatest.Call) (any, *ipa.IpaError) {
+		res := []map[string]any{}
+		if p, _ := c.Options["preserved"].(bool); !p {
+			res = append(res, map[string]any{"uid": []string{"jesse"}, "cn": []string{"jesse by hand"}})
+		}
+		return map[string]any{"result": res, "count": len(res), "truncated": false, "summary": ""}, nil
+	})
+	got, err := r.syncLoadIPA(context.Background(), cfg, nil, time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, "jesse by hand", got["jesse"].CN)
+}
+
+func TestSyncTargetCreateCNBeforeManaged(t *testing.T) {
+	r, fake, cfg := syncTargetRouter(t)
+	stubCN(fake)
+	require.NoError(t, r.syncCreate(syncUser{UID: "jesse", syncSourceUser: syncSourceUser{GivenName: "Jesse", FamilyName: "Pinkman", FullName: "Jesse Pinkman"}}, cfg))
+	var order []string
+	for _, c := range fake.Calls() {
+		if c.Method == "user_mod" || c.Method == "group_add_member" {
+			order = append(order, c.Method)
+		}
+	}
+	assert.Equal(t, []string{"user_mod", "group_add_member"}, order)
+}

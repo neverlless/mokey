@@ -37,6 +37,7 @@ type syncMarker struct {
 
 type syncIPAUser struct {
 	UID, Email, GivenName, FamilyName, FullName string
+	CN                                          string // "" when not read
 	Managed, Locked, Preserved                  bool
 	Expired                                     bool // krbPrincipalExpiration in the past
 	Groups                                      []string
@@ -183,7 +184,9 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 					*f.to = *f.from
 				}
 			}
-			if from.Email != to.Email || from.GivenName != to.GivenName || from.FamilyName != to.FamilyName || from.FullName != to.FullName {
+			// syncUpdate rewrites cn too: a hand-edited cn is corrected
+			cnDrift := cur.CN != "" && to.FullName != "" && cur.CN != to.FullName
+			if cnDrift || from.Email != to.Email || from.GivenName != to.GivenName || from.FamilyName != to.FamilyName || from.FullName != to.FullName {
 				p.Update = append(p.Update, syncUpdate{UID: u.UID, From: from, To: to})
 			}
 			if cur.Locked {
