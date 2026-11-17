@@ -287,3 +287,13 @@ func keys[V any](m map[string]V) []string {
 type failingDeleteStorage struct{ fiber.Storage }
 
 func (s *failingDeleteStorage) Delete(string) error { return errors.New("storage down") }
+
+func TestSyncTargetDisableRevokesAppSessions(t *testing.T) {
+	r, fake, _ := syncTargetRouter(t)
+	r.lock = newStoreLock(r.storage)
+	r.forwardAuth = testFAConfig()
+	fake.AddUser("walter", ipatest.User{})
+	s := newFASession(t, r, "walter", "sid1")
+	require.NoError(t, r.syncDisable("walter", time.Now(), "sync"))
+	assert.False(t, faAlive(t, r, s.ID))
+}
