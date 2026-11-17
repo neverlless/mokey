@@ -14,8 +14,8 @@ import (
 
 const (
 	syncRunKey = "sync-run"
-	// longer than any run: it only frees the lock of a replica that died
-	// mid-run
+	// renewed while a run is on: it only frees the lock of a replica that
+	// died mid-run
 	syncRunTTL   = time.Hour
 	syncHeldKey  = "sync-held"
 	syncLastKey  = "sync-last-run"
@@ -50,9 +50,12 @@ func (r *Router) StartSync() {
 	startLoop(func() {
 		for {
 			if r.lock.lease("sync", r.sync.Interval) {
-				if _, ran, err := r.syncRunLocked(context.Background(), time.Now(), "", false); err != nil {
+				switch _, ran, err := r.syncRunLocked(context.Background(), time.Now(), "", false); {
+				case !ran && err != nil:
+					slog.Warn("Directory sync skipped, storage unavailable", "err", err)
+				case err != nil:
 					slog.Error("Directory sync run failed", "err", err)
-				} else if !ran {
+				case !ran:
 					slog.Info("Directory sync skipped, another run is in progress")
 				}
 			}
@@ -64,7 +67,7 @@ func (r *Router) StartSync() {
 // syncRunLocked runs syncRun unless another run, on any replica, holds
 // syncRunKey; ran is false then.
 func (r *Router) syncRunLocked(ctx context.Context, now time.Time, by string, dryRun bool) (*syncRunResult, bool, error) {
-	release, ok, err := r.lock.claim(syncRunKey, syncRunTTL)
+	release, ok, err := r.lock.claimKept(syncRunKey, syncRunTTL)
 	if !ok {
 		return nil, false, err
 	}

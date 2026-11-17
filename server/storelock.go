@@ -166,26 +166,105 @@ func (l *storeLock) lease(name string, interval time.Duration) bool {
 
 // claim takes key for ttl unless another caller, on any replica, holds it.
 // release frees it before the ttl; the ttl frees the claim of a replica
-// that died holding it.
+// that died holding it. release leaves a claim that expired and was taken
+// by someone else.
 func (l *storeLock) claim(key string, ttl time.Duration) (release func(), ok bool, err error) {
+	token, ok, err := l.claimToken(key, ttl)
+	if !ok {
+		return nil, false, err
+	}
+	return func() { l.unclaim(key, token) }, true, nil
+}
+
+// claimKept is claim for a run that may outlast ttl: the claim is renewed
+// every ttl/3 until release.
+func (l *storeLock) claimKept(key string, ttl time.Duration) (release func(), ok bool, err error) {
+	token, ok, err := l.claimToken(key, ttl)
+	if !ok {
+		return nil, false, err
+	}
+	stop, done := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		t := time.NewTicker(ttl / 3)
+		defer t.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-t.C:
+				if !l.renew(key, token, ttl) {
+					return
+				}
+			}
+		}
+	}()
+	return sync.OnceFunc(func() {
+		close(stop)
+		<-done
+		l.unclaim(key, token)
+	}), true, nil
+}
+
+func (l *storeLock) claimToken(key string, ttl time.Duration) (string, bool, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", false, err
+	}
+	token := hex.EncodeToString(b)
+
 	unlock, err := l.holdStrict(key)
 	if err != nil {
-		return nil, false, err
+		return "", false, err
 	}
 	defer unlock()
 
 	held, err := l.storage.Get(key)
 	if err != nil || held != nil {
-		return nil, false, err
+		return "", false, err
 	}
-	if err := l.storage.Set(key, []byte("1"), ttl); err != nil {
-		return nil, false, err
+	if err := l.storage.Set(key, []byte(token), ttl); err != nil {
+		return "", false, err
 	}
-	return func() {
-		if err := l.storage.Delete(key); err != nil {
-			slog.Warn("Failed to release a run lock, it expires on its own", "key", key, "err", err)
-		}
-	}, true, nil
+	return token, true, nil
+}
+
+// renew extends the claim while it is still ours; false once it is lost.
+func (l *storeLock) renew(key, token string, ttl time.Duration) bool {
+	unlock, err := l.holdStrict(key)
+	if err != nil {
+		slog.Warn("Failed to renew a run lock, retrying", "key", key, "err", err)
+		return true
+	}
+	defer unlock()
+	held, err := l.storage.Get(key)
+	if err == nil && string(held) != token {
+		slog.Warn("Run lock lost, another run may start", "key", key)
+		return false
+	}
+	if err == nil {
+		err = l.storage.Set(key, []byte(token), ttl)
+	}
+	if err != nil {
+		slog.Warn("Failed to renew a run lock, retrying", "key", key, "err", err)
+	}
+	return true
+}
+
+func (l *storeLock) unclaim(key, token string) {
+	unlock, err := l.holdStrict(key)
+	if err != nil {
+		slog.Warn("Failed to release a run lock, it expires on its own", "key", key, "err", err)
+		return
+	}
+	defer unlock()
+	held, err := l.storage.Get(key)
+	if err == nil && string(held) == token {
+		err = l.storage.Delete(key)
+	}
+	if err != nil {
+		slog.Warn("Failed to release a run lock, it expires on its own", "key", key, "err", err)
+	}
 }
 
 // get-and-delete in one step; GETDEL needs Redis 6.2
