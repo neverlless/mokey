@@ -118,6 +118,7 @@ func TestUIPreviewServe(t *testing.T) {
 		BackInGoogle: []string{"lydia"},
 		Skipped:      []string{"o.brien"},
 	}
+	last.Errors = []string{"group_add o.brien glee-club: FreeIPA refused the change"}
 	last.SkipReasons = []string{`skip uid "o.brien": derived from several Google users (o.brien@acme.local, o.brien@labs.acme.local)`}
 	for key, res := range map[string]syncRunResult{syncHeldKey: held, syncLastKey: last} {
 		b, err := json.Marshal(res)

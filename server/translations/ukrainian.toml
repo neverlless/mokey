@@ -811,6 +811,9 @@ year_many = "%d років"
 mapped_group_one = "%d зіставлена група"
 mapped_group_few = "%d зіставлені групи"
 mapped_group_many = "%d зіставлених груп"
+error_one = "%d помилка"
+error_few = "%d помилки"
+error_many = "%d помилок"
 
 [date]
 layout = "02.01.2006 15:04 MST"
