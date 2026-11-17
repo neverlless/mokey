@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -138,6 +139,10 @@ func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dr
 	}
 	plan := in.build(cfg, now)
 	res.Plan, res.SkipReasons = plan, in.reasons
+	if len(plan.NoMemberWrite) > 0 {
+		res.Errors = append(res.Errors, syncNoWriteError(plan.NoMemberWrite))
+		slog.Error("Directory sync skipped groups mokey can't change members of", "groups", plan.NoMemberWrite, "by", actor)
+	}
 	if dryRun {
 		return res, nil
 	}
@@ -185,10 +190,17 @@ type syncInputs struct {
 	skipped []string
 	reasons []string
 	ipa     map[string]syncIPAUser
+	noWrite []string // groups the service account can't change members of
 }
 
 func (in syncInputs) build(cfg *syncConfig, now time.Time) syncPlan {
-	return syncBuild(in.users, in.skipped, in.ipa, cfg, now)
+	p := syncBuild(in.users, in.skipped, in.ipa, cfg, now)
+	p.withoutGroups(in.noWrite, cfg.ManagedGroup)
+	return p
+}
+
+func syncNoWriteError(groups []string) string {
+	return fmt.Sprintf("mokey can't change members of %s: add them to the filter of the 'Mokey Sync Group Membership' permission; their changes were skipped", strings.Join(groups, ", "))
 }
 
 // syncRead reads Google and FreeIPA; any read error aborts the run.
@@ -213,6 +225,9 @@ func (r *Router) syncRead(ctx context.Context, cfg *syncConfig, now time.Time) (
 		uids[i] = u.UID
 	}
 	if in.ipa, err = r.syncLoadIPA(ctx, cfg, uids, now); err != nil {
+		return syncInputs{}, fmt.Errorf("freeipa: %w", err)
+	}
+	if in.noWrite, err = r.syncNoMemberWrite(ctx, cfg.groups()); err != nil {
 		return syncInputs{}, fmt.Errorf("freeipa: %w", err)
 	}
 	return in, nil

@@ -61,6 +61,37 @@ type syncPlan struct {
 	Braked                  bool                  // disable/delete suppressed by the safety brake
 	Conflicts               []string
 	Skipped                 []string
+	NoMemberWrite           []string // groups whose members the service account can't change
+}
+
+// withoutGroups drops the changes to groups the service account can't
+// write: they would fail once per account. Without the managed group no
+// account can be created or adopted.
+func (p *syncPlan) withoutGroups(noWrite []string, managed string) {
+	if len(noWrite) == 0 {
+		return
+	}
+	p.NoMemberWrite = noWrite
+	if slices.Contains(noWrite, managed) {
+		for _, u := range p.Create {
+			delete(p.AddGroups, u.UID)
+		}
+		for _, uid := range p.Adopt {
+			delete(p.AddGroups, uid)
+			delete(p.RemoveGroups, uid)
+		}
+		p.Create, p.Adopt = nil, nil
+	}
+	for _, m := range []map[string][]string{p.AddGroups, p.RemoveGroups} {
+		for uid, gs := range m {
+			gs = slices.DeleteFunc(slices.Clone(gs), func(g string) bool { return slices.Contains(noWrite, g) })
+			if len(gs) == 0 {
+				delete(m, uid)
+			} else {
+				m[uid] = gs
+			}
+		}
+	}
 }
 
 func (p syncPlan) Empty() bool {

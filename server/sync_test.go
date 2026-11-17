@@ -409,3 +409,67 @@ func TestSyncApplyStopsOnCancel(t *testing.T) {
 	}
 	assert.False(t, locked(fake, "walt"))
 }
+
+// stubMemberRights serves group_show from the fake's groups with FreeIPA's
+// effective rights, which ipatest doesn't model: member is "rsc" (no write)
+// for the groups in noWrite, "rscwo" for the rest.
+func stubMemberRights(fake *ipatest.Server, noWrite ...string) {
+	fake.Handle("group_show", func(c ipatest.Call) (any, *ipa.IpaError) {
+		cn := c.Args[0]
+		g, ok := fake.Group(cn)
+		if !ok {
+			return nil, &ipa.IpaError{Code: ipa.CodeNotFound, Message: cn + ": group not found"}
+		}
+		rec := map[string]any{"cn": []string{cn}, "member_user": g.Members}
+		if c.Options["rights"] == true {
+			member := "rscwo"
+			if slices.Contains(noWrite, cn) {
+				member = "rsc"
+			}
+			rec["attributelevelrights"] = map[string]string{"member": member, "cn": "rsc"}
+		}
+		return map[string]any{"result": rec, "value": cn, "summary": ""}, nil
+	})
+}
+
+// A mapped or default group outside the service account's permission: one
+// run error, no group change for it, everything else applied.
+func TestSyncRunGroupWithoutMemberWrite(t *testing.T) {
+	r, fake, src, _ := syncRunRouter(t)
+	managed(fake, "jesse")
+	stubMemberRights(fake, "eng", "staff")
+	u := googleUser("jesse")
+	u.Groups = []string{"eng@example.org"}
+	src.users = []syncSourceUser{u, googleUser("walt")}
+
+	res, err := r.syncRun(context.Background(), time.Now(), "", false)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"eng", "staff"}, res.Plan.NoMemberWrite)
+	if assert.Len(t, res.Errors, 1) {
+		assert.Contains(t, res.Errors[0], "eng, staff")
+		assert.Contains(t, res.Errors[0], "Mokey Sync Group Membership")
+	}
+	assert.Equal(t, 1, res.Applied["create"])
+	assert.Zero(t, res.Applied["group_add"])
+	for _, c := range fake.Calls() {
+		if c.Method == "group_add_member" {
+			assert.Equal(t, "google2ipa-managed", c.Args[0], "group change for a group without the right")
+		}
+	}
+}
+
+// Without the managed group nothing can be created or adopted.
+func TestSyncRunManagedGroupWithoutMemberWrite(t *testing.T) {
+	r, fake, src, _ := syncRunRouter(t)
+	managed(fake)
+	stubMemberRights(fake, "google2ipa-managed")
+	src.users = []syncSourceUser{googleUser("walt")}
+
+	res, err := r.syncRun(context.Background(), time.Now(), "", true)
+	require.NoError(t, err)
+	assert.Empty(t, res.Plan.Create)
+	assert.Empty(t, res.Plan.AddGroups)
+	assert.Equal(t, []string{"google2ipa-managed"}, res.Plan.NoMemberWrite)
+	assert.Len(t, res.Errors, 1)
+	assert.Empty(t, writeCalls(fake))
+}
