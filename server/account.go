@@ -30,6 +30,7 @@ func (r *Router) AccountSettings(c fiber.Ctx) error {
 	if synced &&
 		(strings.TrimSpace(c.FormValue("first")) != user.First ||
 			strings.TrimSpace(c.FormValue("last")) != user.Last ||
+			strings.TrimSpace(c.FormValue("displayname")) != user.DisplayName ||
 			!strings.EqualFold(strings.TrimSpace(c.FormValue("email")), user.Email)) {
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "sync.managed_by_google"))
 	}

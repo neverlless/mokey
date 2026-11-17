@@ -43,8 +43,10 @@ func TestManagedSettingsReadOnly(t *testing.T) {
 	assert.Regexp(t, `<input[^>]*name="first"[^>]*readonly`, body)
 	assert.Regexp(t, `<input[^>]*name="last"[^>]*readonly`, body)
 	assert.Regexp(t, `<input[^>]*name="email"[^>]*readonly`, body)
+	assert.Regexp(t, `<input[^>]*name="displayname"[^>]*readonly`, body)
 
 	for _, f := range []url.Values{
+		{"first": {"Walter"}, "last": {"White"}, "email": {"walter@example.org"}, "displayname": {"Heisenberg"}},
 		{"first": {"Heisenberg"}, "last": {"White"}, "email": {"walter@example.org"}},
 		{"first": {"Walter"}, "last": {"Black"}, "email": {"walter@example.org"}},
 		{"first": {"Walter"}, "last": {"White"}, "email": {"other@example.org"}},
@@ -54,10 +56,12 @@ func TestManagedSettingsReadOnly(t *testing.T) {
 	}
 	assert.Equal(t, "Walter", fakeUser(fake, "walter").First)
 
+	// sync owns the display name too; the rest of the form still saves
 	resp := tc.postForm("/account/settings", url.Values{
-		"first": {"Walter"}, "last": {"White"}, "email": {"walter@example.org"}, "displayname": {"Heisenberg"},
+		"first": {"Walter"}, "last": {"White"}, "email": {"walter@example.org"}, "phone_cc": {"+1"}, "phone": {"5055550100"},
 	}, htmx)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	assert.NotEmpty(t, fakeUser(fake, "walter").Mobile)
 }
 
 func TestUnmanagedSettingsEditable(t *testing.T) {
