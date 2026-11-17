@@ -53,6 +53,16 @@ renewal: the role then creates the `Mokey Modify Principal Expiration`
 permission (write on `krbprincipalexpiration`) in a privilege on the role.
 It is off by default.
 
+Set `mokey_ipa_selfservice_no_manager: true` with `lifecycle.renewal_period`.
+FreeIPA's default `User Self service` rule lets every user write their own
+`manager`, which is their sponsor in mokey: they could drop it or name a
+friend who then extends them. The role removes `manager` from that rule and
+leaves its other attributes as they are. It changes a FreeIPA default for
+everyone, so it is off by default; see the
+[account lifecycle guide](../../../docs/guides/account-lifecycle.md#stop-users-choosing-their-own-sponsor).
+Add `RBAC Readers` to `mokey_ipa_extra_privileges` to let mokey check the
+rule at startup.
+
 The config gets `site`, `email` (from, base URL, SMTP), `server.listen`,
 the secrets and `storage` (sqlite3 in `/var/lib/mokey` by default) from role
 variables. Anything else goes in `mokey_config_extra`, which is merged over

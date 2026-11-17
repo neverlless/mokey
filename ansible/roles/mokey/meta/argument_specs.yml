@@ -68,6 +68,10 @@ argument_specs:
         type: str
         default: Mokey Expiry Write
         description: Privilege that carries it.
+      mokey_ipa_selfservice_no_manager:
+        type: bool
+        default: false
+        description: Remove manager from FreeIPA's "User Self service" rule, so users can't change their own sponsor; needed with lifecycle.renewal_period.
       mokey_install_method:
         type: str
         choices: [copr, file, none]
