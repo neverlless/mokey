@@ -64,6 +64,16 @@ func TestManagedSettingsReadOnly(t *testing.T) {
 	assert.NotEmpty(t, fakeUser(fake, "walter").Mobile)
 }
 
+func TestManagedSettingsStoredWhitespace(t *testing.T) {
+	tc, _, fake := portalSyncApp(t)
+	fake.UpdateUser("walter", func(u *ipatest.User) { u.First, u.DisplayName = "Walter ", " Walter White" })
+	resp := tc.postForm("/account/settings", url.Values{
+		"first": {"Walter"}, "last": {"White"}, "displayname": {"Walter White"}, "email": {"walter@example.org"},
+	}, htmx)
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	assert.Equal(t, "Walter ", fakeUser(fake, "walter").First, "names of a managed account stay as sync wrote them")
+}
+
 func TestEmailChangeIntoSyncedDomainRefused(t *testing.T) {
 	tc, _, fake := portalSyncApp(t)
 	fake.AddUser("jesse", ipatest.User{Password: "Secret123!", Email: "jesse@elsewhere.test", First: "Jesse", Last: "Pinkman"})
