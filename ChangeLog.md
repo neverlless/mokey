@@ -13,7 +13,10 @@
 - Upgrade notes: writing expiry dates needs the optional FreeIPA permission
   `Mokey Modify Principal Expiration` on mokey's role (Install guide,
   `mokey_ipa_expiry_permission` in the Ansible role); only with
-  `[lifecycle]` expiry or renewal
+  `[lifecycle]` renewal or admin-set expiry. With `renewal_period`, remove
+  `manager` from FreeIPA's `User Self service` rule so users can't change
+  their own sponsor (Account expiry guide, `mokey_ipa_selfservice_no_manager`
+  in the Ansible role); mokey warns at startup while the rule allows it
 - Forward-auth for web apps (`[forward_auth]`, off by default): Traefik,
   ingress-nginx, Caddy, Envoy Gateway and Istio ask mokey, which signs the
   user in and admits them by FreeIPA group or HBAC rule. App sessions are
