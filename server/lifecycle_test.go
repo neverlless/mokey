@@ -219,7 +219,8 @@ func TestLifecycleReminders(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(sink.all(), 2)
 
-	dir.users["jesse"].expires = now.Add(6 * 24 * time.Hour)
+	// markers are per UTC day: 7d-1h and 6d share one after 23:00 UTC
+	dir.users["jesse"].expires = now.Add(5 * 24 * time.Hour)
 	_, _, err = router.lifecycleRun(now.Add(2*time.Hour), "")
 	require.NoError(t, err)
 	assert.Len(sink.all(), 4)
