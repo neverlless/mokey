@@ -53,7 +53,7 @@
                   aria-label="{{ printf (T "admin.row_actions") $u.Username }}">
             <i class="fa fa-ellipsis" aria-hidden="true"></i>
           </button>
-          <ul class="dropdown-menu dropdown-menu-end">
+          <ul class="dropdown-menu dropdown-menu-end{{ if $.lifecycle_on }} mokey-menu-wide{{ end }}">
             {{ if not $u.Locked }}
             <li><button type="button" class="dropdown-item text-danger"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
@@ -78,20 +78,27 @@
             </button></li>
             {{ if $.lifecycle_on }}
             <li><hr class="dropdown-divider"></li>
-            <li><form method="post" class="px-3 py-2" hx-post="/admin/user/set-expiry" hx-target="#admin-users" hx-target-error="admin-failed"
+            <li><form method="post" class="mokey-menu-form" hx-post="/admin/user/set-expiry" hx-target="#admin-users" hx-target-error="admin-failed"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'
                 hx-confirm="{{ T "admin.lifecycle_expiry_confirm" }}">
-              <label for="expiry-{{ $u.Username }}" class="form-label small mb-1">{{ T "admin.lifecycle_set_expiry" }}</label>
+              <label for="expiry-{{ $u.Username }}" class="form-label small fw-semibold mb-0">{{ T "admin.lifecycle_set_expiry" }}</label>
+              <div class="small text-muted mb-2">{{ if $u.PrincipalExpire.IsZero }}{{ T "admin.lifecycle_not_set" }}{{ else }}{{ printf (T "admin.lifecycle_now") (Day $u.PrincipalExpire) }}{{ end }}</div>
               <div class="input-group input-group-sm">
                 <input id="expiry-{{ $u.Username }}" type="date" class="form-control" name="expires"{{ if not $u.PrincipalExpire.IsZero }} value="{{ $u.PrincipalExpire.Local.Format "2006-01-02" }}"{{ end }}>
                 <button type="submit" class="btn btn-outline-secondary">{{ T "admin.lifecycle_save" }}</button>
               </div>
+              {{ if not $u.PrincipalExpire.IsZero }}
+              <button type="button" class="btn btn-link btn-sm px-0 mt-1"
+                  hx-post="/admin/user/set-expiry"
+                  hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}, "expires": ""}'>{{ T "admin.lifecycle_clear" }}</button>
+              {{ end }}
             </form></li>
-            <li><form method="post" class="px-3 py-2" hx-post="/admin/user/set-sponsor" hx-target="#admin-users" hx-target-error="admin-failed"
+            <li><form method="post" class="mokey-menu-form" hx-post="/admin/user/set-sponsor" hx-target="#admin-users" hx-target-error="admin-failed"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'>
-              <label for="sponsor-{{ $u.Username }}" class="form-label small mb-1">{{ T "admin.lifecycle_set_sponsor" }}</label>
+              <label for="sponsor-{{ $u.Username }}" class="form-label small fw-semibold mb-0">{{ T "admin.lifecycle_set_sponsor" }}</label>
+              <div class="small text-muted mb-2">{{ with index $.sponsors $u.Username }}{{ printf (T "admin.lifecycle_now") . }}{{ else }}{{ T "admin.lifecycle_not_set" }}{{ end }}</div>
               <div class="input-group input-group-sm">
                 <input id="sponsor-{{ $u.Username }}" type="text" class="form-control" name="sponsor"
                        placeholder="{{ T "common.username" }}" autocomplete="off" autocapitalize="off" spellcheck="false">

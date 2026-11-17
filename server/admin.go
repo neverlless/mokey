@@ -214,6 +214,8 @@ func (r *Router) adminUserVars(c fiber.Ctx, search string, page int) fiber.Map {
 	}
 
 	byUID := map[string]*ipa.User{}
+	sponsors := map[string]string{}
+	vars["sponsors"] = sponsors
 	truncated := false
 	for i, opts := range queries {
 		args := criteria
@@ -238,6 +240,7 @@ func (r *Router) adminUserVars(c fiber.Ctx, search string, page int) fiber.Map {
 
 				PrincipalExpire: e.Time("krbprincipalexpiration"),
 			}
+			sponsors[e.Str("uid")] = sponsorUID(e.Str("manager"))
 		}
 	}
 

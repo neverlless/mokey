@@ -1057,3 +1057,10 @@ i.mokey-dial-flag {
 	}
 }
 
+/* row-action menus that hold small forms */
+.mokey-menu-wide {
+	min-width: min(18rem, calc(100vw - 2rem));
+}
+.mokey-menu-form {
+	padding: 0.5rem 1rem;
+}
