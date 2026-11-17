@@ -1,0 +1,25 @@
+<div class="mokey-card mb-2">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">{{ T "admin.lifecycle_account" }}</th>
+          <th scope="col">{{ T "admin.lifecycle_change" }}</th>
+          <th scope="col">{{ T "admin.lifecycle_why" }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{ range $r := .Rows }}
+        <tr>
+          <td><span class="mokey-mono">{{ $r.UID }}</span></td>
+          <td class="text-nowrap">{{ $r.Change }}</td>
+          <td class="text-muted">{{ $r.Why }}</td>
+        </tr>
+      {{ end }}
+      {{ with .More }}
+        <tr><td colspan="3" class="text-muted small">{{ . }}</td></tr>
+      {{ end }}
+      </tbody>
+    </table>
+  </div>
+</div>

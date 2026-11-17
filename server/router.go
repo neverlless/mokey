@@ -317,6 +317,11 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	get(app, "/admin/lifecycle", r.RequireLogin, r.Index)
 	get(app, "/admin/lifecycle/status", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminLifecycleStatus)
 	app.Post("/admin/lifecycle/apply", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminLifecycleApply)
+	get(app, "/admin/sync", r.RequireLogin, r.Index)
+	get(app, "/admin/sync/status", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminSyncStatus)
+	app.Post("/admin/sync/dry-run", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminSyncDryRun)
+	app.Post("/admin/sync/apply", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminSyncApply)
+	app.Post("/admin/sync/import-legacy", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminSyncImportLegacy)
 	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
 	get(app, "/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
 	get(app, "/admin/pending", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminPendingList)
@@ -390,6 +395,8 @@ func navSection(path string) string {
 		return "log"
 	case "admin/lifecycle":
 		return "lifecycle"
+	case "admin/sync":
+		return "sync"
 	case "password", "otp", "passkey", "security":
 		return "security"
 	}
@@ -443,6 +450,7 @@ func (r *Router) Index(c fiber.Ctx) error {
 		"initials":     initials(user),
 		"display_name": displayName(user),
 		"lifecycle_on": r.lifecycle.on(),
+		"sync_on":      r.sync.on(),
 	}
 	expiryWarningVars(user, vars)
 
@@ -452,6 +460,17 @@ func (r *Router) Index(c fiber.Ctx) error {
 
 	if path == "admin/lifecycle" && !r.lifecycle.on() {
 		return c.Status(fiber.StatusNotFound).SendString("")
+	}
+
+	if path == "admin/sync" {
+		if !r.sync.on() {
+			return c.Status(fiber.StatusNotFound).SendString("")
+		}
+		r.syncStatusVars(c, vars, c.Query("tab"))
+	}
+
+	if path == "admin/people" {
+		vars["search"] = c.Query("search")
 	}
 
 	if path == "account" && viper.GetBool("accounts.enable_subid") {

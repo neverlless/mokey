@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -91,6 +92,40 @@ func TestUIPreviewServe(t *testing.T) {
 	router.recordExpiryFailure(TimedMembership{Group: "prod-sudo", Username: "badger"}, "Insufficient access: not a member manager of prod-sudo")
 	if _, held, err := router.lifecycleRun(now, ""); err != nil || held == nil {
 		t.Fatalf("lifecycle plan not held: %v", err)
+	}
+
+	// directory sync: a run 12 minutes ago held 23 locks and deletes, left a
+	// conflict, a uid collision and an account locked and back in Google
+	router.sync = &syncConfig{
+		Interval: time.Hour, ManagedGroup: "google2ipa-managed", Username: "local_part",
+		MaxUsernameLength: 32, Concurrency: 4, MaxEventsPerRun: 50, MaxDisablePercent: 20,
+		Disable: true, DeleteAfter: 30 * day, Preserve: true, WelcomeMail: true,
+		Google:       googleSourceConfig{Domains: []string{"acme.local"}, OrgUnits: []string{"/Staff"}},
+		GroupMapping: map[string][]string{"lab@acme.local": {"chemists"}, "choir@acme.local": {"glee-club"}},
+	}
+	router.syncSrc = &fakeSyncSource{}
+	fake.AddGroup("google2ipa-managed", ipatest.Group{})
+	var gone []string
+	for i := 1; i <= 18; i++ {
+		gone = append(gone, fmt.Sprintf("demo%03d", i))
+	}
+	held := syncRunResult{At: now.Add(-12 * time.Minute), Held: true, HeldCount: 23,
+		Plan: syncPlan{Disable: gone, Delete: []string{"demo019", "demo020"}}}
+	last := held
+	last.Applied = map[string]int{"create": 2, "update": 1, "group_add": 4, "group_remove": 1}
+	last.Plan = syncPlan{
+		Conflicts:    []string{"uid tuco belongs to tuco@old.acme.local in FreeIPA but to tuco@acme.local in Google; left alone"},
+		BackInGoogle: []string{"lydia"},
+	}
+	last.SkipReasons = []string{`skip uid "o.brien": derived from several Google users (o.brien@acme.local, o.brien@labs.acme.local)`}
+	for key, res := range map[string]syncRunResult{syncHeldKey: held, syncLastKey: last} {
+		b, err := json.Marshal(res)
+		if err == nil {
+			err = router.storage.Set(key, b, 0)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	t.Logf("UI preview on http://%s (walter / Secret123!)", addr)

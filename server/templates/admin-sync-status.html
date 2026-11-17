@@ -1,0 +1,118 @@
+{{ with $.sy_error }}<div class="alert alert-danger" role="alert">{{ . }}</div>{{ end }}
+{{ with $.sy_alert }}<div class="alert alert-warning" role="alert">{{ . }}</div>{{ end }}
+{{ with $.sy_done }}
+<div class="alert alert-success alert-dismissible fade show" role="status">
+  {{ . }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
+</div>
+{{ end }}
+
+<div class="d-flex align-items-center gap-2 mb-3">
+  <span class="mokey-pill {{ $.sy_state_class }} text-nowrap">{{ $.sy_state }}</span>
+  <span class="text-muted small">{{ $.sy_when }}</span>
+  <button type="button" class="btn btn-sm btn-outline-secondary ms-auto text-nowrap"
+          hx-post="/admin/sync/dry-run" hx-target="#admin-sync" hx-disabled-elt="this"
+          hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "sync.admin_dry_run" }}</button>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="mokey-card h-100 p-3">
+    <div class="fs-3 fw-semibold">{{ or $.sy_created 0 }}</div>
+    <div class="text-muted small">{{ T "sync.admin_tile_created" }} · {{ T "sync.admin_cap_last" }}</div>
+  </div></div>
+  <div class="col-6 col-lg-3"><div class="mokey-card h-100 p-3">
+    <div class="fs-3 fw-semibold">{{ or $.sy_groups 0 }}</div>
+    <div class="text-muted small">{{ T "sync.admin_tile_groups" }} · {{ T "sync.admin_cap_last" }}</div>
+  </div></div>
+  <div class="col-6 col-lg-3"><div class="mokey-card h-100 p-3">
+    <div class="fs-3 fw-semibold{{ if $.sy_held_n }} text-warning{{ end }}">{{ $.sy_held_n }}</div>
+    <div class="text-muted small">{{ T "sync.admin_tile_held" }} · {{ T "sync.admin_cap_waiting" }}</div>
+  </div></div>
+  <div class="col-6 col-lg-3"><div class="mokey-card h-100 p-3">
+    <div class="fs-3 fw-semibold{{ if $.sy_decide_n }} text-danger{{ end }}">{{ $.sy_decide_n }}</div>
+    <div class="text-muted small">{{ T "sync.admin_tile_decide" }} · {{ T "sync.admin_cap_waiting" }}</div>
+  </div></div>
+</div>
+
+<ul class="nav nav-tabs flex-nowrap overflow-auto mb-3" role="tablist">
+  {{ range $t := $.sy_tabs }}
+  <li class="nav-item" role="presentation">
+    <a class="nav-link text-nowrap{{ if eq $t.Key $.sy_tab }} active{{ end }}" role="tab" id="sync-tab-{{ $t.Key }}"
+       href="/admin/sync?tab={{ $t.Key }}" aria-selected="{{ if eq $t.Key $.sy_tab }}true{{ else }}false{{ end }}" aria-controls="sync-pane"
+       hx-get="/admin/sync/status?tab={{ $t.Key }}" hx-target="#admin-sync" hx-push-url="/admin/sync?tab={{ $t.Key }}"
+       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ $t.Label }}</a>
+  </li>
+  {{ end }}
+</ul>
+
+<div id="sync-pane" role="tabpanel" aria-labelledby="sync-tab-{{ $.sy_tab }}">
+{{ if eq $.sy_tab "held" }}
+  {{ if $.sy_held_table }}
+  <div class="alert alert-warning" role="status">{{ $.sy_brake }}</div>
+  {{ template "admin-sync-rows.html" $.sy_held_table }}
+  <form method="post" class="mb-4" hx-post="/admin/sync/apply" hx-target="#admin-sync" hx-disabled-elt="find button"
+        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+    <input type="hidden" name="expected" value="{{ $.sy_expected }}">
+    <button type="submit" class="btn btn-primary">{{ $.sy_apply }}</button>
+  </form>
+  {{ else }}
+  <p class="text-muted">{{ T "sync.admin_nothing_held" }}</p>
+  {{ end }}
+
+{{ else if eq $.sy_tab "decisions" }}
+  {{ if $.sy_decisions }}
+  <div class="mokey-card mb-3">
+    {{ range $d := $.sy_decisions }}
+    <div class="mokey-row flex-wrap">
+      <div class="flex-grow-1">{{ with $d.UID }}<span class="mokey-mono">{{ . }}</span> <span class="text-muted small">· {{ end }}{{ $d.Text }}{{ if $d.UID }}</span>{{ end }}</div>
+      {{ if $d.People }}<a class="btn btn-sm btn-outline-secondary text-nowrap" href="/admin/people?search={{ $d.UID }}">{{ T "sync.admin_open_people" }}</a>{{ end }}
+    </div>
+    {{ end }}
+  </div>
+  {{ with $.sy_import }}
+  <p class="text-muted small mb-2">{{ T "sync.admin_import_hint" }}</p>
+  <form method="post" class="mb-4" hx-post="/admin/sync/import-legacy" hx-target="#admin-sync" hx-disabled-elt="find button"
+        hx-confirm="{{ T "sync.admin_import_confirm" }}" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+    <button type="submit" class="btn btn-outline-secondary">{{ . }}</button>
+  </form>
+  {{ end }}
+  {{ else }}
+  <p class="text-muted">{{ T "sync.admin_nothing_decide" }}</p>
+  {{ end }}
+
+{{ else if eq $.sy_tab "last" }}
+  {{ if $.sy_run_at }}
+  {{ if $.sy_dry }}<div class="alert alert-info" role="status">{{ T "sync.admin_dry_banner" }}</div>{{ end }}
+  <div class="mokey-card mb-3">
+    <div class="mokey-row">
+      <div class="flex-grow-1">{{ $.sy_run_at }}</div>
+      <span class="text-muted small">{{ with $.sy_run_by }}{{ printf (T "sync.admin_by") . }}{{ else }}{{ T "sync.admin_by_schedule" }}{{ end }}</span>
+    </div>
+    {{ range $n := $.sy_counts }}
+    <div class="mokey-row"><div class="flex-grow-1">{{ $n.Label }}</div><span class="fw-semibold">{{ $n.N }}</span></div>
+    {{ else }}
+    <div class="mokey-row"><div class="flex-grow-1 text-muted">{{ T "sync.admin_no_changes" }}</div></div>
+    {{ end }}
+  </div>
+  {{ with $.sy_dry_table }}{{ template "admin-sync-rows.html" . }}{{ end }}
+  {{ if $.sy_errors }}
+  <h2 class="mokey-section-title mb-2">{{ T "sync.admin_errors" }}</h2>
+  <div class="mokey-card">
+    {{ range $e := $.sy_errors }}<div class="mokey-row"><div class="flex-grow-1 small">{{ $e }}</div></div>{{ end }}
+  </div>
+  {{ end }}
+  {{ else }}
+  <p class="text-muted">{{ T "sync.admin_no_run" }}</p>
+  {{ end }}
+
+{{ else }}
+  <div class="mokey-card">
+    {{ range $s := $.sy_settings }}
+    <div class="mokey-row">
+      <div class="flex-grow-1">{{ $s.Label }}</div>
+      <span class="mokey-pill {{ if $s.On }}is-ok{{ else }}is-muted{{ end }}">{{ $s.Value }}</span>
+    </div>
+    {{ end }}
+  </div>
+{{ end }}
+</div>

@@ -1,0 +1,6 @@
+<h1 class="mb-1">{{ T "sync.admin_title" }}</h1>
+<p class="text-muted mb-4">{{ with $.sy_scope }}{{ printf (T "sync.admin_from") . }}{{ else }}{{ T "sync.admin_from_all" }}{{ end }}
+  {{ T "sync.admin_managed_group" }} <span class="mokey-mono">{{ $.sy_managed }}</span>, {{ $.sy_mapped }}.</p>
+<div id="admin-sync">
+{{ template "admin-sync-status.html" . }}
+</div>
