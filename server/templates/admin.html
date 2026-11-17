@@ -39,13 +39,8 @@
 {{ end }}
 
 <h2 class="mokey-section-title mb-2">{{ T "admin.otprecovery_title" }}</h2>
-<div class="mokey-card p-3 mb-4">
+<div class="mokey-card p-3">
   <div id="admin-otprecovery" hx-get="/admin/otprecovery" hx-trigger="load"
        hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
 </div>
 
-<h2 class="mokey-section-title mb-2">{{ T "admin.helpdesk_title" }}</h2>
-<div class="mokey-card p-3">
-  <div id="admin-helpdesk" hx-get="/admin/helpdesk" hx-trigger="load"
-       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
-</div>

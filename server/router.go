@@ -303,6 +303,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	// SSH Keys
 	// Admin
 	get(app, "/admin", r.RequireLogin, r.Index)
+	get(app, "/admin/helpdesk", r.RequireLogin, r.Index)
 	get(app, "/admin/people", r.RequireLogin, r.Index)
 	get(app, "/admin/log", r.RequireLogin, r.Index)
 	get(app, "/admin/lifecycle", r.RequireLogin, r.Index)
@@ -313,7 +314,7 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	get(app, "/admin/pending", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminPendingList)
 	get(app, "/admin/otprecovery", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminOTPRecoveryList)
 	get(app, "/admin/audit", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAuditList)
-	get(app, "/admin/helpdesk", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminHelpdesk)
+	get(app, "/admin/helpdesk/list", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminHelpdesk)
 	app.Post("/admin/user/:action", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserAction)
 	get(app, "/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
 	app.Post("/auth/invite/:token", r.RequireNoLogin, r.InviteAccept)
@@ -373,6 +374,8 @@ func (r *Router) user(c fiber.Ctx) *ipa.User {
 // navSection maps a page path to the sidebar entry that owns it
 func navSection(path string) string {
 	switch path {
+	case "admin/helpdesk":
+		return "helpdesk"
 	case "admin/people":
 		return "people"
 	case "admin/log":

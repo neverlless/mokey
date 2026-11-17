@@ -47,7 +47,8 @@ func TestNavSection(t *testing.T) {
 	for in, want := range map[string]string{
 		"account": "account", "password": "security", "otp": "security", "passkey": "security",
 		"security": "security", "admin": "admin", "admin/people": "people", "admin/log": "log",
-		"groups": "groups",
+		"admin/helpdesk": "helpdesk",
+		"groups":         "groups",
 	} {
 		assert.Equal(t, want, navSection(in), in)
 	}

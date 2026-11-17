@@ -35,6 +35,7 @@
 			{{ if $.is_admin }}
 			<div class="mokey-nav-group">{{ T "nav.group_admin" }}</div>
 			<a class="mokey-nav-link" id="admin-tab" href="/admin"{{ if eq $.section "admin" }} aria-current="page"{{ end }}><i class="fa fa-inbox" aria-hidden="true"></i> {{ T "nav.requests" }}</a>
+			<a class="mokey-nav-link" href="/admin/helpdesk"{{ if eq $.section "helpdesk" }} aria-current="page"{{ end }}><i class="fa fa-life-ring" aria-hidden="true"></i> {{ T "nav.helpdesk" }}</a>
 			<a class="mokey-nav-link" href="/admin/people"{{ if eq $.section "people" }} aria-current="page"{{ end }}><i class="fa fa-users-gear" aria-hidden="true"></i> {{ T "nav.people" }}</a>
 			{{ if $.lifecycle_on }}
 			<a class="mokey-nav-link" href="/admin/lifecycle"{{ if eq $.section "lifecycle" }} aria-current="page"{{ end }}><i class="fa fa-hourglass-half" aria-hidden="true"></i> {{ T "nav.lifecycle" }}</a>
