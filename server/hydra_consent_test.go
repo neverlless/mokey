@@ -138,3 +138,11 @@ func TestNextPageToken(t *testing.T) {
 	assert.Equal(t, "", nextPageToken(&http.Response{Header: http.Header{}}))
 	assert.Equal(t, "", nextPageToken(nil))
 }
+
+func TestSyncGroupRemoveRevokesConsent(t *testing.T) {
+	_, router, fake, hy := newConsentRevokeApp(t)
+	// sync runs with the privileges the sync guide grants, not the portal's
+	router.adminClient = fake.ClientAs("admin")
+	require.NoError(t, router.syncGroups("walter", nil, []string{"chemists"}))
+	assert.Equal(t, []revokedConsent{{Subject: "walter", Client: "lubelogger"}}, hy.revokedConsents)
+}

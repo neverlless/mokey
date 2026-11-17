@@ -135,6 +135,9 @@ func (r *Router) syncDisable(uid string, now time.Time, by string) error {
 		return err
 	}
 	err = r.adminClient.UserDisable(uid)
+	if err == nil {
+		r.faRevokeUser(uid)
+	}
 	if !errors.Is(err, &ipa.IpaError{Code: ipa.CodeAlreadyInactive}) {
 		return err
 	}
@@ -175,6 +178,9 @@ func (r *Router) syncGroups(uid string, add, remove []string) error {
 		if err := groupRemoveMember(r.adminClient, g, uid); err != nil {
 			return fmt.Errorf("remove %s from %s: %w", uid, g, err)
 		}
+	}
+	if len(remove) > 0 {
+		r.revokeConsentsOf(uid)
 	}
 	return nil
 }
