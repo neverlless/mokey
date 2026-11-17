@@ -138,3 +138,15 @@ func TestSyncWelcomeUsedLinkStaysRejected(t *testing.T) {
 	time.Sleep(2100 * time.Millisecond)
 	assert.Equal(t, fiber.StatusNotFound, tc.get("/auth/resetpw/"+token).StatusCode)
 }
+
+func TestSyncWelcomeOwnCooldown(t *testing.T) {
+	_, router, _, sink := welcomeApp(t, 7*24*time.Hour)
+	_, err := router.syncRun(t.Context(), time.Now(), "", false)
+	require.NoError(t, err)
+	require.Equal(t, 1, sink.count())
+
+	user, err := router.adminClient.UserShow("newbie")
+	require.NoError(t, err)
+	require.NoError(t, router.emailer.SendPasswordResetEmail(user, nil), "the welcome mail does not rate-limit a reset")
+	assert.Equal(t, 2, sink.count())
+}
