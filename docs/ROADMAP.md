@@ -27,15 +27,6 @@ Dates are targets, not promises. Priorities move with feedback: open an
 them. How versions and supported releases work is described in the
 [release policy](releases.md).
 
-## Next: v2.11 — Sign-in for web apps and account lifecycle (January 2027)
-
-- [x] Forward-auth endpoint for Traefik, nginx and Caddy: apps without
-      OIDC get single sign-on, gated by FreeIPA groups or HBAC rules
-- [x] Account expiry date set by admins and sponsors, shown to the user
-      with reminders (FreeIPA's `krbPrincipalExpiration`)
-- [x] Yearly renewal confirmed by a sponsor; accounts a sponsor vouches for
-      follow the sponsor's own expiry, as HPC account policies require
-
 ## Planned
 
 Grouped by theme, roughly in order. Version numbers are assigned when a
@@ -122,6 +113,7 @@ repository.
 
 | Release | Highlights |
 | --- | --- |
+| v2.11 (Nov 2026) | Forward-auth sign-in for web apps behind Traefik, ingress-nginx, Caddy, Envoy and Istio; account expiry with sponsor renewal; several replicas behind a load balancer; Helpdesk on its own page |
 | v2.10 (Nov 2026) | Time-bound group membership with per-group limits, renewals and automatic removal; COPR packages for RHEL, Rocky and AlmaLinux 8, 9 and 10; migration guide from ubccr/mokey; minor-version image tags |
 | v2.9 (Nov 2026) | Redesigned UI: grouped sidebar, security hub, admin split into Requests, People and Audit log; docs on Astro Starlight |
 | v2.8 (Nov 2026) | Webhooks and a read-only JSON API, app catalog, admin helpdesk view, Ansible role, Fedora COPR |
