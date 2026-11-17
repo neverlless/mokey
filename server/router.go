@@ -28,6 +28,7 @@ type Router struct {
 	groupExpiry  *groupExpiryConfig
 	forwardAuth  *forwardAuthConfig
 	lifecycle    *lifecycleConfig
+	sync         *syncConfig
 	expiryFails  expiryFailureSet
 	masters      masterClients
 
@@ -80,6 +81,11 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	}
 
 	r.lifecycle, err = loadLifecycleConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	r.sync, err = loadSyncConfig()
 	if err != nil {
 		return nil, err
 	}

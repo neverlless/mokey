@@ -349,6 +349,56 @@ enable_metrics = false
 # max_changes_per_run = 50
 
 #------------------------------------------------------------------------------
+# Directory sync: Google Workspace as an account source. Needs sqlite3 or
+# redis storage.
+#------------------------------------------------------------------------------
+[sync]
+# enabled = false
+# Run a sync in `serve` this often. Empty = only `mokey sync` and admin Apply.
+# interval = "1h"
+# managed_group = "google2ipa-managed"
+# default_groups = []
+# exclude_users = ["admin"]
+# "local_part" or "email"
+# username = "local_part"
+# Take over existing FreeIPA accounts with a matching uid and email.
+# adopt_existing = false
+# A run that would lock more than this percent of managed accounts locks
+# none. 0 = off.
+# max_disable_percent = 20
+# max_username_length = 32
+# concurrency = 4
+# Lock accounts that left Google.
+# disable = true
+# Delete locked accounts after this long. "0" = never.
+# delete_after = "30d"
+# Delete into FreeIPA's preserved users instead of removing them.
+# preserve = true
+# welcome_mail = false
+# welcome_link_ttl = "7d"
+# More changes than this in one run reach webhooks as one summary event.
+# max_events_per_run = 50
+# One-time takeover of accounts locked by google2ipa (review on /admin/sync).
+# import_google2ipa_locks = false
+
+[sync.google]
+# Service account key; empty = application default credentials plus
+# service_account_email. Env: MOKEY_SYNC_GOOGLE_CREDENTIALS_FILE
+# credentials_file = ""
+# service_account_email = ""
+# Workspace admin to impersonate; required when sync is enabled.
+# admin_email = ""
+# customer = "my_customer"
+# query = ""
+# org_units = []
+# domains = []
+
+# Google group email -> FreeIPA groups. Mapped groups must not have a
+# [[groups.rules]] time limit.
+[sync.google.group_mapping]
+# "devops@example.com" = ["admins"]
+
+#------------------------------------------------------------------------------
 # Storage
 #------------------------------------------------------------------------------
 [storage]
