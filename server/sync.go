@@ -139,7 +139,9 @@ func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dr
 		res.Errors = []string{errSyncPlanGrew.Error()}
 		slog.Error(syncAuditRun, "by", actor, "aborted", true, "err", errSyncPlanGrew,
 			"disable", len(plan.Disable), "approved_disable", caps.Disable, "delete", len(plan.Delete), "approved_delete", caps.Delete)
-		if err := r.syncStoreHeld(syncHeldOf(now, plan, in.reasons)); err != nil {
+		held := syncHeldOf(now, plan, in.reasons)
+		held.By = by
+		if err := r.syncStoreHeld(held); err != nil {
 			res.Errors = append(res.Errors, err.Error())
 		}
 		r.syncFinish(res)

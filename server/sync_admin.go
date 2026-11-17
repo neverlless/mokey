@@ -380,7 +380,9 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 	}
 	if len(fresh.Plan.Disable) > disable || len(fresh.Plan.Delete) > del {
 		// a reload shows the plan the admin now has to check
-		if err := r.syncStoreHeld(syncHeldOf(time.Now(), fresh.Plan, fresh.SkipReasons)); err != nil {
+		held := syncHeldOf(time.Now(), fresh.Plan, fresh.SkipReasons)
+		held.By = admin
+		if err := r.syncStoreHeld(held); err != nil {
 			slog.Error("Failed to store the fresh held sync plan", "admin", admin, "err", err)
 		}
 		release()
