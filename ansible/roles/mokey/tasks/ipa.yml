@@ -61,6 +61,14 @@
         permission: ["{{ mokey_ipa_expiry_permission_name }}"]
       when: mokey_ipa_expiry_permission
 
+    # a stray character such as '*' would widen the permission's filter
+    - name: Sync group names are plain FreeIPA group names
+      ansible.builtin.assert:
+        that: item is match('^[A-Za-z0-9_.][A-Za-z0-9_.$-]*$')
+        fail_msg: "mokey_ipa_sync_groups: {{ item }} is not a FreeIPA group name"
+        quiet: true
+      loop: "{{ mokey_ipa_sync_groups }}"
+
     - name: Permission to change members of the sync groups
       freeipa.ansible_freeipa.ipapermission:
         ipaadmin_principal: "{{ mokey_ipa_admin_principal }}"
