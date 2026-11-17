@@ -29,6 +29,8 @@ type Router struct {
 	forwardAuth  *forwardAuthConfig
 	lifecycle    *lifecycleConfig
 	sync         *syncConfig
+	syncSrc      syncSource // built on the first run; tests set a fake
+	syncMu       sync.Mutex
 	expiryFails  expiryFailureSet
 	masters      masterClients
 

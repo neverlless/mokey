@@ -24,6 +24,10 @@ type Metrics struct {
 	totalAccountVerificationsSent prometheus.Counter
 	groupExpiryFailures           prometheus.Counter
 	forwardAuthRequests           *prometheus.CounterVec
+	syncLastRun                   prometheus.Gauge
+	syncLastSuccess               prometheus.Gauge
+	syncChanges                   *prometheus.CounterVec
+	syncHeld                      prometheus.Gauge
 }
 
 var (
@@ -87,6 +91,22 @@ func newMetrics() *Metrics {
 			Name: "mokey_forward_auth_requests_total",
 			Help: "The total number of forward-auth verify requests by result (allowed, denied, unauthenticated)",
 		}, []string{"result"}),
+		syncLastRun: promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "mokey_sync_last_run_timestamp_seconds",
+			Help: "Unix time of the last directory sync run, dry runs excluded",
+		}),
+		syncLastSuccess: promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "mokey_sync_last_success_timestamp_seconds",
+			Help: "Unix time of the last directory sync run that finished without errors",
+		}),
+		syncChanges: promauto.NewCounterVec(prometheus.CounterOpts{
+			Name: "mokey_sync_changes_total",
+			Help: "The total number of changes directory sync applied, by kind",
+		}, []string{"kind"}),
+		syncHeld: promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "mokey_sync_held",
+			Help: "1 when the safety brake held the disables and deletes of the last directory sync run",
+		}),
 	}
 
 	m.handler = fasthttpadaptor.NewFastHTTPHandler(promhttp.Handler())
