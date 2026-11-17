@@ -78,9 +78,22 @@ func TestSyncResolveTooLong(t *testing.T) {
 }
 
 func TestSyncResolveCase(t *testing.T) {
-	got, skipped, errs := syncResolve([]syncSourceUser{{Email: " Jo@Example.org "}}, "local_part", nil, 32)
+	in := []syncSourceUser{{Email: " Jo@Example.org ", Groups: []string{" Dev@Example.com", "ops@example.com"}}}
+	got, skipped, errs := syncResolve(in, "local_part", nil, 32)
 	if len(got) != 1 || got[0].UID != "jo" || len(skipped)+len(errs) != 0 {
 		t.Fatalf("got=%+v skipped=%v errs=%v", got, skipped, errs)
+	}
+	if got[0].Email != "jo@example.org" {
+		t.Errorf("Email = %q", got[0].Email)
+	}
+	syncCheck(t, "Groups", got[0].Groups, []string{"dev@example.com", "ops@example.com"})
+	if in[0].Groups[0] != " Dev@Example.com" {
+		t.Error("input groups must not be modified")
+	}
+	ipa := map[string]syncIPAUser{"jo": {UID: "jo", Email: "jo@example.org", Managed: true, Groups: []string{"staff", "developers", "admins", "ops"}}}
+	p := syncBuild(got, nil, ipa, syncTestConfig(nil), syncTestNow)
+	if len(p.AddGroups)+len(p.RemoveGroups)+len(p.Update) != 0 {
+		t.Errorf("normalized user plans changes: %+v", p)
 	}
 	got, _, _ = syncResolve([]syncSourceUser{{Email: " Jo@Example.org "}}, "email", nil, 32)
 	if len(got) != 1 || got[0].UID != "jo.example.org" {
@@ -370,6 +383,30 @@ func TestSyncBuildLockedReusedUIDConflict(t *testing.T) {
 	if len(p.Delete)+len(p.Disable)+len(p.NewMarkers) != 0 {
 		t.Errorf("plan = %+v", p)
 	}
+}
+
+func TestSyncBuildLockedNoGroupChanges(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		"blocked": {UID: "blocked", Email: "blocked@example.com", Managed: true, Locked: true, Groups: []string{"admins"}},
+		"found":   {UID: "found", Email: "found@example.com", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerFound, syncDay), Groups: []string{"admins"}},
+		"reused":  {UID: "reused", Email: "reused@a.com", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, syncDay), Groups: []string{"admins"}},
+		"adopted": {UID: "adopted", Email: "adopted@example.com", Locked: true},
+		"back":    {UID: "back", Email: "back@example.com", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, syncDay), Groups: []string{"admins"}},
+	}
+	users := []syncUser{syncU("blocked", "dev@example.com"), syncU("found"), {UID: "reused", syncSourceUser: syncSourceUser{Email: "reused@b.com"}}, syncU("adopted"), syncU("back")}
+	p := syncBuild(users, nil, ipa, syncTestConfig(func(c *syncConfig) { c.AdoptExisting = true }), syncTestNow)
+	syncCheck(t, "Enable", p.Enable, []string{"back"})
+	syncCheck(t, "Adopt", p.Adopt, []string{"adopted"})
+	for _, uid := range []string{"blocked", "found", "reused", "adopted"} {
+		if _, ok := p.AddGroups[uid]; ok {
+			t.Errorf("AddGroups[%s] = %v", uid, p.AddGroups[uid])
+		}
+		if _, ok := p.RemoveGroups[uid]; ok {
+			t.Errorf("RemoveGroups[%s] = %v", uid, p.RemoveGroups[uid])
+		}
+	}
+	syncCheck(t, "AddGroups[back]", p.AddGroups["back"], []string{"staff"})
+	syncCheck(t, "RemoveGroups[back]", p.RemoveGroups["back"], []string{"admins"})
 }
 
 func TestSyncBuildEmailConflictUnmanaged(t *testing.T) {

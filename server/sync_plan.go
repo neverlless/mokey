@@ -95,6 +95,11 @@ func syncDeriveUID(email, mode string) string {
 func syncResolve(users []syncSourceUser, mode string, exclude []string, maxLen int) (resolved []syncUser, skipped []string, errs []error) {
 	byUID := map[string][]syncSourceUser{}
 	for _, u := range users {
+		u.Email = strings.ToLower(strings.TrimSpace(u.Email))
+		u.Groups = slices.Clone(u.Groups)
+		for i, g := range u.Groups {
+			u.Groups[i] = strings.ToLower(strings.TrimSpace(g))
+		}
 		uid := syncDeriveUID(u.Email, mode)
 		if slices.Contains(exclude, uid) {
 			continue
@@ -185,6 +190,11 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 					p.BackInGoogle = append(p.BackInGoogle, u.UID)
 				}
 			}
+		}
+
+		// An account waiting for a human (locked, not enabled now) is not changed.
+		if exists && cur.Locked && !slices.Contains(p.Enable, u.UID) {
+			continue
 		}
 
 		want := slices.Clone(cfg.DefaultGroups)
