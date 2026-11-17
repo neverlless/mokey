@@ -115,8 +115,8 @@ func (r *Router) lifecycleRun(now time.Time, by string) (applied int, held *lcHe
 	return applied, held, nil
 }
 
-// lifecycleAccounts reads every account in one FreeIPA call; ipa.User lacks
-// manager.
+// lifecycleAccounts reads every account in one FreeIPA call; FindEntries
+// keeps no_members, which UserFind turns off.
 func (r *Router) lifecycleAccounts() (accts []lcAccount, users map[string]*ipa.User, truncated bool, err error) {
 	entries, err := ipa.FindEntries(context.Background(), r.adminClient, "user_find", nil,
 		ipa.Options{"all": true, "no_members": true, "sizelimit": 0, "timelimit": 0}, 0)

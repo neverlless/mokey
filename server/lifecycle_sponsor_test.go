@@ -124,8 +124,7 @@ func newSpDir(t *testing.T, fake *ipatest.Server) *spDir {
 			d.manager[c.Args[0]] = fmt.Sprint(m)
 		}
 		if v, ok := c.Options["krbprincipalexpiration"]; ok {
-			at, _ := v.(map[string]any)
-			d.expires[c.Args[0]], _ = time.Parse(ipa.IpaDatetimeFormat, fmt.Sprint(at["__datetime__"]))
+			d.expires[c.Args[0]], _ = time.Parse(ipa.IpaDatetimeFormat, fmt.Sprint(v))
 		}
 		return map[string]any{"result": map[string]any{}}, nil
 	})

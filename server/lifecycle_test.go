@@ -70,8 +70,7 @@ func newLifecycleApp(t *testing.T, cfg *lifecycleConfig) (*Router, *lcDir, *byte
 			return nil, &ipa.IpaError{Code: 2100, Message: "Insufficient access: Insufficient 'write' privilege to the 'krbPrincipalExpiration' attribute"}
 		}
 		dir.mods++
-		v, _ := c.Options["krbprincipalexpiration"].(map[string]any)
-		dir.users[uid].expires, _ = time.Parse(ipa.IpaDatetimeFormat, fmt.Sprint(v["__datetime__"]))
+		dir.users[uid].expires, _ = time.Parse(ipa.IpaDatetimeFormat, fmt.Sprint(c.Options["krbprincipalexpiration"]))
 		return map[string]any{"result": map[string]any{}}, nil
 	})
 

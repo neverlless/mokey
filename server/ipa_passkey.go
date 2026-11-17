@@ -34,8 +34,7 @@ func addPasskey(user, admin *ipa.Client, uid, mapping string) error {
 	if !errors.Is(err, ipa.ErrACI) {
 		return err
 	}
-	// shortcut: raw user_mod until goipa has a typed call (neverlless/goipa#25)
-	if _, err := admin.RPC("user_mod", []string{uid}, ipa.Options{"addattr": "objectclass=ipapasskeyuser"}); err != nil && !errors.Is(err, ipa.ErrEmptyModlist) {
+	if err := admin.UserAddObjectClass(uid, "ipapasskeyuser"); err != nil {
 		return err
 	}
 	return userAddPasskey(user, uid, mapping)

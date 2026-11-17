@@ -11,12 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ipatest does not model config_show (goipa gap), so the server-wide
-// ipauserauthtype is served by an override
 func setDefaultAuthTypes(fake *ipatest.Server, types ...string) {
-	fake.Handle("config_show", func(ipatest.Call) (any, *ipa.IpaError) {
-		return map[string]any{"result": map[string]any{"ipauserauthtype": types}, "summary": nil}, nil
-	})
+	fake.SetConfig(ipatest.Config{UserAuthTypes: types})
 }
 
 func TestPasswordElsewhere(t *testing.T) {
