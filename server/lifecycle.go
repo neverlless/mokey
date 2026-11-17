@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ipa "github.com/neverlless/goipa"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -297,6 +298,7 @@ func lcRemindMarker(uid string, days int, expires time.Time) string {
 // lifecycleRemind mails each enabled account once in the tightest reminder
 // window its expiry falls into, and its sponsor with it.
 func (r *Router) lifecycleRemind(accts []lcAccount, users map[string]*ipa.User, now time.Time) {
+	canExtend := r.lifecycle.Renewal > 0 && viper.GetBool("accounts.enable_groups")
 	for _, a := range accts {
 		user := users[a.UID]
 		left := a.Expires.Sub(now)
@@ -332,7 +334,7 @@ func (r *Router) lifecycleRemind(accts []lcAccount, users map[string]*ipa.User, 
 			sent = true
 		}
 		if mailSponsor {
-			if err := r.emailer.SendSponsoredExpiringEmail(sponsor, user, a.Expires); err != nil {
+			if err := r.emailer.SendSponsoredExpiringEmail(sponsor, user, a.Expires, canExtend); err != nil {
 				slog.Error("Failed to send sponsored account expiry reminder", "username", a.UID, "sponsor", a.Sponsor, "err", err)
 			} else {
 				sent = true

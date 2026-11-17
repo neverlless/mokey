@@ -123,6 +123,7 @@ sponsored_expiring_subject = "Скоро закінчиться термін о�
 sponsored_expiring_body = "Обліковий запис, за який ви поручилися, "
 sponsored_expiring_body_part2 = ", діє до "
 sponsored_expiring_hint = "Продовжити його можна на сторінці «Групи»."
+sponsored_expiring_hint_admin = "Якщо він ще потрібен, попросіть адміністратора продовжити його."
 account_extended_subject = "Ваш обліковий запис продовжено"
 account_extended_body = "Тепер ваш обліковий запис діє до "
 otprecovery_approved_subject = "Відновлення OTP схвалено"

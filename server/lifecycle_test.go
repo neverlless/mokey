@@ -3,7 +3,9 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log/slog"
+	"mime/quotedprintable"
 	"net"
 	"strings"
 	"sync"
@@ -489,5 +491,63 @@ func TestWarnSelfServiceManager(t *testing.T) {
 		router.warnSelfServiceManager()
 		assert.Len(t, dir.fake.Calls(), calls)
 		assert.Empty(t, logs.String())
+	})
+}
+
+func TestLifecycleMailDatesAndSponsorLink(t *testing.T) {
+	// a date set on the People page: local midnight, another day in UTC east of it
+	at := time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local)
+	now := at.Add(-3 * 24 * time.Hour)
+
+	run := func(t *testing.T, cfg *lifecycleConfig, groups bool) []string {
+		router, dir, _ := newLifecycleApp(t, cfg)
+		viper.Set("accounts.enable_groups", groups)
+		sink := newFakeSMTP(t)
+		dir.add("walter", lcFakeUser{email: "walter@example.test"})
+		dir.add("jesse", lcFakeUser{sponsor: "walter", email: "jesse@example.test", expires: at})
+		_, _, err := router.lifecycleRun(now, "")
+		require.NoError(t, err)
+		msgs := sink.all()
+		for i, m := range msgs {
+			b, err := io.ReadAll(quotedprintable.NewReader(strings.NewReader(m)))
+			require.NoError(t, err)
+			msgs[i] = string(b)
+		}
+		return msgs
+	}
+	sponsorMail := func(msgs []string) string {
+		for _, m := range msgs {
+			if strings.Contains(m, "To: walter@example.test") {
+				return m
+			}
+		}
+		return ""
+	}
+
+	t.Run("renewal and groups on", func(t *testing.T) {
+		cfg := renewalCfg()
+		cfg.Reminders = []int{7}
+		msgs := run(t, cfg, true)
+		require.Len(t, msgs, 2)
+		for _, m := range msgs {
+			assert.Contains(t, m, "Jan 1, 2027")
+			assert.NotContains(t, m, "UTC")
+		}
+		m := sponsorMail(msgs)
+		assert.Contains(t, m, T("email_template.sponsored_expiring_hint"))
+		assert.Contains(t, m, "/groups")
+	})
+	t.Run("reminders only", func(t *testing.T) {
+		m := sponsorMail(run(t, &lifecycleConfig{Reminders: []int{7}, MaxChanges: 50}, true))
+		assert.Contains(t, m, T("email_template.sponsored_expiring_hint_admin"))
+		assert.NotContains(t, m, T("email_template.sponsored_expiring_hint"))
+		assert.NotContains(t, m, "/groups")
+	})
+	t.Run("groups off", func(t *testing.T) {
+		cfg := renewalCfg()
+		cfg.Reminders = []int{7}
+		m := sponsorMail(run(t, cfg, false))
+		assert.Contains(t, m, T("email_template.sponsored_expiring_hint_admin"))
+		assert.NotContains(t, m, "/groups")
 	})
 }

@@ -424,17 +424,22 @@ func (e *Emailer) SendGroupExpiryReminderEmail(user *ipa.User, group string, unt
 // SendAccountExpiringEmail reminds the user that their account expires.
 func (e *Emailer) SendAccountExpiringEmail(user *ipa.User, at time.Time) error {
 	lang := userLanguage(user)
-	vars := map[string]interface{}{"until": at.UTC().Format("2006-01-02 15:04 MST")}
+	vars := map[string]interface{}{"until": at.Local().Format(TL(lang, "date.day_layout"))}
 	return e.sendEmail(user, nil, lang, TL(lang, "email_template.account_expiring_subject"), "account-expiring", vars)
 }
 
 // SendSponsoredExpiringEmail tells a sponsor that an account they sponsor
-// expires.
-func (e *Emailer) SendSponsoredExpiringEmail(sponsor, user *ipa.User, at time.Time) error {
+// expires; canExtend points them to Extend on the Groups page.
+func (e *Emailer) SendSponsoredExpiringEmail(sponsor, user *ipa.User, at time.Time, canExtend bool) error {
 	lang := userLanguage(sponsor)
 	vars := map[string]interface{}{
 		"account": user.Username,
-		"until":   at.UTC().Format("2006-01-02 15:04 MST"),
+		"until":   at.Local().Format(TL(lang, "date.day_layout")),
+		"hint":    "email_template.sponsored_expiring_hint_admin",
+		"path":    "/",
+	}
+	if canExtend {
+		vars["hint"], vars["path"] = "email_template.sponsored_expiring_hint", "/groups"
 	}
 	return e.sendEmail(sponsor, nil, lang, TL(lang, "email_template.sponsored_expiring_subject")+user.Username, "sponsored-expiring", vars)
 }
@@ -442,7 +447,7 @@ func (e *Emailer) SendSponsoredExpiringEmail(sponsor, user *ipa.User, at time.Ti
 // SendAccountExtendedEmail tells the user their account was extended.
 func (e *Emailer) SendAccountExtendedEmail(user *ipa.User, at time.Time) error {
 	lang := userLanguage(user)
-	vars := map[string]interface{}{"until": at.UTC().Format("2006-01-02 15:04 MST")}
+	vars := map[string]interface{}{"until": at.Local().Format(TL(lang, "date.day_layout"))}
 	return e.sendEmail(user, nil, lang, TL(lang, "email_template.account_extended_subject"), "account-extended", vars)
 }
 
