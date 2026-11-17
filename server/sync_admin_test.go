@@ -197,6 +197,7 @@ func TestAdminSyncApplyRefusedWhenPlanGrew(t *testing.T) {
 	held, err := router.syncHeld()
 	require.NoError(t, err)
 	assert.Equal(t, 6, held.HeldDisable)
+	assert.Equal(t, "skyler", held.By)
 	assert.Contains(t, readBody(t, tc.get("/admin/sync")), `name="disable" value="6"`)
 	for i := 4; i < 10; i++ {
 		assert.False(t, locked(fake, fmt.Sprintf("user%d", i)))
@@ -368,6 +369,7 @@ func TestAdminSyncApplyBackgroundKeepsCap(t *testing.T) {
 	held, err := router.syncHeld()
 	require.NoError(t, err)
 	assert.Equal(t, 6, held.HeldDisable)
+	assert.Equal(t, "skyler", held.By)
 }
 
 func TestAdminSyncStatusReadErrorsShown(t *testing.T) {
