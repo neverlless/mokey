@@ -11,6 +11,14 @@
   CronJob. Synced fields and groups are read-only in the portal. Needs
   sqlite3 or redis storage. See the Directory sync guide, including the
   migration from google2ipa
+- Directory sync changes group members through a permission scoped to the
+  managed, default and mapped groups (`Mokey Sync Group Membership`), not
+  `Group Administrators`. Don't put `Group Administrators` on mokey's role:
+  it lets the service account change every group. A run reports groups
+  outside the permission as one error and skips their changes
+- Moving from google2ipa: the first sync run updates `cn` on every managed
+  account whose `cn` differs from the Google full name, a one-time burst of
+  updates
 
 ## [v2.11.0] - 2026-11-17
 
