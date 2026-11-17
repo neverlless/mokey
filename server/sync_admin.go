@@ -128,7 +128,14 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		vars["sy_error"] = TL(lang, "account.fatal_system_error")
 	}
 
+	running, err := r.storage.Get(syncRunKey)
+	if err != nil {
+		slog.Error("Failed to read the sync run lock", "err", err)
+	}
+	vars["sy_running"] = running != nil
 	switch {
+	case running != nil:
+		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_running"), "is-muted"
 	case last == nil:
 		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_never"), "is-muted"
 	case len(last.Errors) > 0:
@@ -155,20 +162,20 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	vars["sy_when"] = strings.Join(when, " · ")
 
 	// held: the stored plan, or the fresh one an Apply refused
-	heldCount := 0
+	var heldDisable, heldDelete int
 	var heldPlan syncPlan
 	if held != nil {
-		heldCount, heldPlan = held.HeldCount, held.Plan
+		heldDisable, heldDelete, heldPlan = held.HeldDisable, held.HeldDelete, held.Plan
 	}
 	if fresh, ok := vars["sy_fresh"].(*syncRunResult); ok {
-		heldPlan = fresh.Plan
-		heldCount = len(fresh.Plan.Disable) + len(fresh.Plan.Delete)
+		heldDisable, heldDelete, heldPlan = len(fresh.Plan.Disable), len(fresh.Plan.Delete), fresh.Plan
 	}
+	heldCount := heldDisable + heldDelete
 	if heldCount > 0 {
 		vars["sy_held_table"] = syncHeldTable(lang, heldPlan, heldCount, cfg.DeleteAfter)
 		vars["sy_brake"] = fmt.Sprintf(TL(lang, "sync.admin_brake"), formatUnit(lang, "account", heldCount), cfg.MaxDisablePercent)
 		vars["sy_apply"] = fmt.Sprintf(TL(lang, "sync.admin_apply"), formatUnit(lang, "change", heldCount))
-		vars["sy_expected"] = heldCount
+		vars["sy_expect_disable"], vars["sy_expect_delete"] = heldDisable, heldDelete
 	}
 
 	var decisions []syncDecision
@@ -184,7 +191,18 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	if err != nil {
 		slog.Error("Failed to read the google2ipa import marker", "err", err)
 	}
-	if pending {
+	if !slices.Contains([]string{"held", "decisions", "last", "settings"}, tab) {
+		switch {
+		case heldCount > 0:
+			tab = "held"
+		case len(decisions) > 0 || pending:
+			tab = "decisions"
+		default:
+			tab = "last"
+		}
+	}
+	// the candidates need a full FreeIPA read: only for the tab that lists them
+	if pending && tab == "decisions" {
 		cands, err := r.syncLegacyCandidates(c.Context(), now)
 		if err != nil {
 			slog.Error("Failed to list google2ipa locks", "err", err)
@@ -231,16 +249,6 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	vars["sy_held_n"] = heldCount
 	vars["sy_decide_n"] = len(decisions)
 
-	if !slices.Contains([]string{"held", "decisions", "last", "settings"}, tab) {
-		switch {
-		case heldCount > 0:
-			tab = "held"
-		case len(decisions) > 0:
-			tab = "decisions"
-		default:
-			tab = "last"
-		}
-	}
 	vars["sy_tab"] = tab
 	vars["sy_tabs"] = []syncTab{
 		{"held", fmt.Sprintf("%s · %d", TL(lang, "sync.admin_tab_held"), heldCount)},
@@ -319,35 +327,40 @@ func (r *Router) AdminSyncDryRun(c fiber.Ctx) error {
 	return r.renderSyncStatus(c, vars, "last")
 }
 
-// AdminSyncApply applies the whole plan past the brake in the admin's
-// name, unless the plan now locks or deletes more than the admin saw.
-// Background context: a closed tab must not stop a run half-way.
+// AdminSyncApply checks the plan in the request, then applies it past the
+// brake in the admin's name in the background: a long run would outlast a
+// proxy's request timeout. It refuses when the plan now locks or deletes
+// more than the admin saw.
 func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 	if !r.sync.on() {
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 	admin := r.username(c)
-	expected, _ := strconv.Atoi(c.FormValue("expected"))
+	// a missing count is 0: nothing to lock or delete was seen
+	disable, _ := strconv.Atoi(c.FormValue("disable"))
+	del, _ := strconv.Atoi(c.FormValue("delete"))
 	release, ok, err := r.lock.claim(syncRunKey, syncRunTTL)
 	if !ok {
 		return r.syncBusy(c, err)
 	}
-	defer release()
-
-	ctx, now := context.Background(), time.Now()
-	fresh, err := r.syncRun(ctx, now, admin, true)
+	fresh, err := r.syncRun(context.Background(), time.Now(), admin, true)
 	if err != nil {
+		release()
 		return r.renderSyncStatus(c, fiber.Map{"sy_error": TC(c, "sync.admin_run_failed")}, "")
 	}
-	if n := len(fresh.Plan.Disable) + len(fresh.Plan.Delete); n > expected {
-		slog.Warn("Admin sync apply refused, the plan grew", "admin", admin, "expected", expected, "now", n)
+	if len(fresh.Plan.Disable) > disable || len(fresh.Plan.Delete) > del {
+		release()
+		slog.Warn("Admin sync apply refused, the plan grew", "admin", admin,
+			"disable", disable, "now_disable", len(fresh.Plan.Disable), "delete", del, "now_delete", len(fresh.Plan.Delete))
 		return r.renderSyncStatus(c, fiber.Map{"sy_fresh": fresh, "sy_alert": TC(c, "sync.admin_plan_changed")}, "held")
 	}
-	vars := fiber.Map{"sy_done": TC(c, "sync.admin_applied")}
-	if _, err := r.syncRun(ctx, now, admin, false); err != nil {
-		vars = fiber.Map{"sy_error": TC(c, "sync.admin_run_failed")}
-	}
-	return r.renderSyncStatus(c, vars, "last")
+	r.goBG(func() {
+		defer release()
+		if _, err := r.syncRun(context.Background(), time.Now(), admin, false); err != nil {
+			slog.Error("Admin sync apply failed", "admin", admin, "err", err)
+		}
+	})
+	return r.renderSyncStatus(c, fiber.Map{}, "last")
 }
 
 // AdminSyncImportLegacy tags the google2ipa locks once; afterwards

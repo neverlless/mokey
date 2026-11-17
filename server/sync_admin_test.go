@@ -136,11 +136,12 @@ func TestAdminSyncDefaultTab(t *testing.T) {
 	assert.Contains(t, page, "uid jdoe belongs to")
 	assert.Contains(t, page, `href="/admin/people?search=kwalsh"`)
 
-	storeSyncResult(t, router, syncHeldKey, syncRunResult{At: time.Now(), Held: true, HeldCount: 7, Plan: syncPlan{Disable: []string{"rmiller"}}})
+	storeSyncResult(t, router, syncHeldKey, syncRunResult{At: time.Now(), Held: true, HeldCount: 7, HeldDisable: 6, HeldDelete: 1, Plan: syncPlan{Disable: []string{"rmiller"}}})
 	page = readBody(t, tc.get("/admin/sync"))
 	assert.Equal(t, "held", selectedTab(t, page))
 	assert.Contains(t, page, ">rmiller<")
-	assert.Contains(t, page, `name="expected" value="7"`)
+	assert.Contains(t, page, `name="disable" value="6"`)
+	assert.Contains(t, page, `name="delete" value="1"`)
 
 	// an explicit tab wins, from the page and from the htmx pane
 	assert.Equal(t, "settings", selectedTab(t, readBody(t, tc.get("/admin/sync?tab=settings"))))
@@ -155,8 +156,9 @@ func TestAdminSyncApplyLiftsBrake(t *testing.T) {
 		require.False(t, locked(fake, fmt.Sprintf("user%d", i)))
 	}
 
-	body := readBody(t, tc.postForm("/admin/sync/apply", url.Values{"expected": {"5"}}, htmx))
+	body := readBody(t, tc.postForm("/admin/sync/apply", url.Values{"disable": {"5"}, "delete": {"0"}}, htmx))
 	assert.Equal(t, "last", selectedTab(t, body))
+	router.bg.Wait()
 	for i := 5; i < 10; i++ {
 		assert.True(t, locked(fake, fmt.Sprintf("user%d", i)))
 	}
@@ -167,6 +169,7 @@ func TestAdminSyncApplyLiftsBrake(t *testing.T) {
 	held, err := router.syncHeld()
 	require.NoError(t, err)
 	assert.Nil(t, held)
+	assert.NotContains(t, readBody(t, tc.get("/admin/sync/status", htmx)), esc(T("sync.admin_running_hint")))
 	if ev := auditEvents(router, "sync user disabled"); assert.Len(t, ev, 5) {
 		assert.Equal(t, "skyler", ev[0].Actor)
 	}
@@ -177,10 +180,11 @@ func TestAdminSyncApplyRefusedWhenPlanGrew(t *testing.T) {
 	syncBrakeHeld(t, router, fake, src)
 	src.users = src.users[:4]
 
-	body := readBody(t, tc.postForm("/admin/sync/apply", url.Values{"expected": {"5"}}, htmx))
+	body := readBody(t, tc.postForm("/admin/sync/apply", url.Values{"disable": {"5"}, "delete": {"0"}}, htmx))
+	router.bg.Wait()
 	assert.Contains(t, body, esc(T("sync.admin_plan_changed")))
 	assert.Equal(t, "held", selectedTab(t, body))
-	assert.Contains(t, body, `name="expected" value="6"`)
+	assert.Contains(t, body, `name="disable" value="6"`)
 	for i := 4; i < 10; i++ {
 		assert.False(t, locked(fake, fmt.Sprintf("user%d", i)))
 	}
@@ -190,6 +194,27 @@ func TestAdminSyncApplyRefusedWhenPlanGrew(t *testing.T) {
 
 	// a missing count is zero, never "anything goes"
 	readBody(t, tc.postForm("/admin/sync/apply", nil, htmx))
+	router.bg.Wait()
+	assert.False(t, locked(fake, "user9"))
+}
+
+// fewer locks but a new delete: the same total must not pass
+func TestAdminSyncApplyRefusedNewDelete(t *testing.T) {
+	tc, router, fake, src := syncAdminApp(t)
+	syncBrakeHeld(t, router, fake, src)
+	router.sync.DeleteAfter = 24 * time.Hour
+	src.users = append(src.users, googleUser("user5"))
+	fake.AddUser("gus", ipatest.User{Locked: true})
+	fake.AddGroup("google2ipa-managed", ipatest.Group{Members: []string{"user0", "user1", "user2", "user3", "user4", "user5", "user6", "user7", "user8", "user9", "gus"}})
+	require.NoError(t, router.syncSetMarker("gus", syncMarker{Kind: syncMarkerSync, At: time.Now().Add(-48 * time.Hour), By: "sync"}))
+
+	body := readBody(t, tc.postForm("/admin/sync/apply", url.Values{"disable": {"5"}, "delete": {"0"}}, htmx))
+	router.bg.Wait()
+	assert.Contains(t, body, esc(T("sync.admin_plan_changed")))
+	assert.Contains(t, body, `name="disable" value="4"`)
+	assert.Contains(t, body, `name="delete" value="1"`)
+	_, ok := fake.User("gus")
+	assert.True(t, ok)
 	assert.False(t, locked(fake, "user9"))
 }
 
@@ -214,10 +239,16 @@ func TestAdminSyncClaimHeld(t *testing.T) {
 	defer release()
 
 	for _, p := range []string{"/admin/sync/dry-run", "/admin/sync/apply"} {
-		body := readBody(t, tc.postForm(p, url.Values{"expected": {"5"}}, htmx))
+		body := readBody(t, tc.postForm(p, url.Values{"disable": {"5"}, "delete": {"0"}}, htmx))
 		assert.Contains(t, body, esc(T("sync.admin_busy")), p)
 	}
 	assert.False(t, locked(fake, "user9"))
+
+	// a run in progress: the pane polls and offers no Apply
+	body := readBody(t, tc.get("/admin/sync/status", htmx))
+	assert.Contains(t, body, esc(T("sync.admin_running_hint")))
+	assert.Contains(t, body, `hx-trigger="load delay:3s"`)
+	assert.NotContains(t, body, `hx-post="/admin/sync/apply"`)
 }
 
 func TestAdminSyncImportLegacyOnce(t *testing.T) {
@@ -234,6 +265,15 @@ func TestAdminSyncImportLegacyOnce(t *testing.T) {
 	fake.AddGroup("google2ipa-managed", ipatest.Group{Members: []string{"gale", "jane", "hank", "pete"}})
 	require.NoError(t, router.syncSetMarker("jane", syncMarker{Kind: syncMarkerFound, At: foundAt, By: "sync"}))
 	require.NoError(t, router.syncSetMarker("pete", syncMarker{Kind: syncMarkerSync, At: now, By: "sync"}))
+
+	// other tabs don't read FreeIPA for the candidates
+	before := len(fake.Calls())
+	readBody(t, tc.get("/admin/sync?tab=settings"))
+	for _, c := range fake.Calls()[before:] {
+		assert.NotEqual(t, "user_find", c.Method)
+	}
+	// with nothing else waiting, a pending import opens Decisions
+	assert.Equal(t, "decisions", selectedTab(t, readBody(t, tc.get("/admin/sync"))))
 
 	body := readBody(t, tc.get("/admin/sync?tab=decisions"))
 	assert.Contains(t, body, ">gale<")

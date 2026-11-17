@@ -35,6 +35,8 @@ type syncRunResult struct {
 	// HeldCount is the number of disables and deletes the brake held; a
 	// stored result keeps only the first rows of its plan.
 	HeldCount int
+	// HeldDisable and HeldDelete split HeldCount by kind
+	HeldDisable, HeldDelete int
 }
 
 // StartSync runs the directory sync every sync.interval for the lifetime of
@@ -125,8 +127,10 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 		noBrake.MaxDisablePercent = 0
 		full := in.build(&noBrake, now)
 		res.Held = true
-		res.HeldCount = len(full.Disable) + len(full.Delete)
-		held = &syncRunResult{At: now, By: by, Held: true, HeldCount: res.HeldCount, Plan: full.sample(syncSampleN), SkipReasons: in.reasons}
+		res.HeldDisable, res.HeldDelete = len(full.Disable), len(full.Delete)
+		res.HeldCount = res.HeldDisable + res.HeldDelete
+		held = &syncRunResult{At: now, By: by, Held: true, HeldCount: res.HeldCount, HeldDisable: res.HeldDisable, HeldDelete: res.HeldDelete,
+			Plan: full.sample(syncSampleN), SkipReasons: in.reasons}
 		slog.Warn("Directory sync disables and deletes held: more than sync.max_disable_percent of managed accounts, apply them from the admin Sync page",
 			"held", res.HeldCount, "max_disable_percent", cfg.MaxDisablePercent)
 	}
