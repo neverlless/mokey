@@ -29,17 +29,18 @@
 </div>
 <h2 class="mokey-section-title mb-2">{{ T "account.details_title" }}</h2>
 <form method="post" class="mokey-card mokey-card-body mb-4">
+{{ if $.synced }}<p class="text-muted small" id="synced-note"><i class="fa fa-lock" aria-hidden="true"></i> {{ T "sync.managed_by_google" }}</p>{{ end }}
 <div class="row">
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label for="first" class="form-label">{{ T "common.first_name" }}</label>
-		  	<input id="first" type="text" class="form-control" name="first" autocomplete="given-name" value="{{ .user.First }}">
+		  	<input id="first" type="text" class="form-control" name="first" autocomplete="given-name" value="{{ .user.First }}"{{ if $.synced }} readonly{{ end }}>
 		</div>
 	</div>
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label for="last" class="form-label">{{ T "common.last_name" }}</label>
-		  	<input id="last" type="text" class="form-control" name="last" autocomplete="family-name" value="{{ .user.Last }}">
+		  	<input id="last" type="text" class="form-control" name="last" autocomplete="family-name" value="{{ .user.Last }}"{{ if $.synced }} readonly{{ end }}>
 		</div>
 	</div>
 	<div class="col-md-6">
@@ -51,7 +52,7 @@
 	<div class="col-md-6">
 		<div class="mb-3">
 		  	<label for="email" class="form-label">{{ T "common.email" }}</label>
-			<input id="email" type="email" class="form-control" name="email" autocomplete="email" value="{{ .user.Email }}">
+			<input id="email" type="email" class="form-control" name="email" autocomplete="email" value="{{ .user.Email }}"{{ if $.synced }} readonly{{ end }}>
 		</div>
 	</div>
 	<div class="col-md-6">

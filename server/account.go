@@ -20,9 +20,18 @@ func (r *Router) AccountSettings(c fiber.Ctx) error {
 		"user": user,
 	}
 	r.accountExpiryVars(c, user, vars)
+	synced := r.syncManaged(user)
+	vars["synced"] = synced
 
 	if c.Method() == fiber.MethodGet {
 		return c.Render("account.html", vars)
+	}
+
+	if synced &&
+		(strings.TrimSpace(c.FormValue("first")) != user.First ||
+			strings.TrimSpace(c.FormValue("last")) != user.Last ||
+			!strings.EqualFold(strings.TrimSpace(c.FormValue("email")), user.Email)) {
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "sync.managed_by_google"))
 	}
 
 	user.First = strings.TrimSpace(c.FormValue("first"))
@@ -190,6 +199,9 @@ func (r *Router) accountCreate(lang string, user *ipa.User, password, passwordCo
 // accountCreateWith with presetUsername skips the email-derived username
 // generation: an admin fixed the name on the invite and it must win.
 func (r *Router) accountCreateWith(lang string, user *ipa.User, password, passwordConfirm string, verified, presetUsername bool) error {
+	if r.syncDomain(user.Email) {
+		return errors.New(TL(lang, "sync.account_from_google"))
+	}
 	if presetUsername {
 		if err := validateEmail(user, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
 			return err

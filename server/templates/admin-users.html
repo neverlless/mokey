@@ -37,6 +37,7 @@
         {{ else }}
         <span class="mokey-pill is-ok">{{ T "admin.active" }}</span>
         {{ end }}
+        {{ if index $.synced $u.Username }}<span class="mokey-pill">{{ T "sync.synced" }}</span>{{ end }}
       </td>
       <td class="text-end text-nowrap">
         {{ if $u.Locked }}
