@@ -797,6 +797,8 @@ day_layout = "02-01-2006"
 
 [forward_auth]
 hop_continue = "Doorgaan"
+hop_continuing = "Doorgaan naar %s…"
+hop_continuing_generic = "Doorgaan…"
 denied_title = "Geen toegang tot %s"
 denied_not_in_group = "%s is open voor leden van deze groepen: %s. Vraag om lid te worden van een ervan."
 denied_hbac = "Een toegangsregel staat je account niet toe %s te openen. Vraag het je beheerder."
