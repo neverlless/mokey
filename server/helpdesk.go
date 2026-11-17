@@ -80,7 +80,7 @@ type ipaConfig struct {
 // config_show fails
 func readIPAConfig(client *ipa.Client) ipaConfig {
 	var config ipaConfig
-	// shortcut: raw config_show until goipa has a typed call (neverlless/goipa#23)
+	// raw config_show: ipa.Config has no ipa_master_server
 	res, err := client.RPC("config_show", nil, ipa.Options{"all": true})
 	if err != nil || res.Result == nil {
 		slog.Warn("Failed to read the FreeIPA configuration", "err", err)
@@ -95,7 +95,7 @@ func readIPAConfig(client *ipa.Client) ipaConfig {
 func (r *Router) buildHelpdeskReport(now time.Time, expiringDays, inactiveDays int, fetchMasters bool) (*helpdeskReport, error) {
 	client := r.adminClient
 	// FindEntries rather than UserFind: it reports FreeIPA's truncated flag
-	// and keeps krbloginfailedcount, which ipa.User does not carry
+	// and keeps no_members, which UserFind turns off
 	entries, err := ipa.FindEntries(context.Background(), client, "user_find", nil, ipa.Options{"all": true, "no_members": true}, helpdeskSizeLimit)
 	truncated := errors.Is(err, ipa.ErrTruncated)
 	if err != nil && !truncated {

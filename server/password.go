@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -271,25 +270,14 @@ func (r *Router) passwordElsewhere(lang string, user *ipa.User) string {
 // defaultAuthTypes is the server-wide ipauserauthtype; nil when FreeIPA
 // does not answer, so mokey then goes by the user's own types
 func (r *Router) defaultAuthTypes() []string {
-	// goipa has no typed config_show yet (neverlless/goipa#23)
-	res, err := r.adminClient.RPC("config_show", nil, nil)
-	if err != nil || res.Result == nil {
+	config, err := r.adminClient.ConfigShow()
+	if err != nil {
 		slog.Warn("Failed to fetch the default user authentication types",
 			"err", err,
 		)
 		return nil
 	}
-
-	var config struct {
-		AuthTypes []string `json:"ipauserauthtype"`
-	}
-	if err := json.Unmarshal(res.Result.Data, &config); err != nil {
-		slog.Warn("Failed to decode the default user authentication types",
-			"err", err,
-		)
-		return nil
-	}
-	return config.AuthTypes
+	return config.UserAuthTypes
 }
 
 // adTrustUsername reports whether username is qualified with a domain other

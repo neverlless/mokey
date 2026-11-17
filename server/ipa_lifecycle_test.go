@@ -66,7 +66,7 @@ func TestSetSponsorAndExpiryWire(t *testing.T) {
 	at := time.Date(2027, 11, 16, 3, 4, 5, 0, time.FixedZone("x", 7200))
 	assert.NoError(t, setUserExpiry(admin, "jesse", at))
 	c = lastMod(t, fake)
-	assert.Equal(t, map[string]any{"__datetime__": "20271116010405Z"}, c.Options["krbprincipalexpiration"])
+	assert.Equal(t, "20271116010405Z", c.Options["krbprincipalexpiration"])
 
 	assert.NoError(t, setUserExpiry(admin, "jesse", time.Time{}))
 	assert.Equal(t, "", lastMod(t, fake).Options["krbprincipalexpiration"])

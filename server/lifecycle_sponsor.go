@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -97,7 +96,7 @@ func (r *Router) SponsoredExtend(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, "groups.sponsored_not_yours"))
 	}
 
-	e, _, err := ipa.Call[ipa.Entry](context.Background(), r.adminClient, "user_show", []string{uid}, ipa.Options{"all": true})
+	account, err := r.adminClient.UserShow(uid)
 	if errors.Is(err, ipa.ErrNotFound) {
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.sponsored_not_yours"))
 	}
@@ -105,16 +104,16 @@ func (r *Router) SponsoredExtend(c fiber.Ctx) error {
 		slog.Error("Failed to read sponsored account", "username", uid, "by", user.Username, "err", err)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
-	if !strings.EqualFold(sponsorUID(e.Str("manager")), user.Username) {
+	if !strings.EqualFold(sponsorUID(account.Manager), user.Username) {
 		return c.Status(fiber.StatusForbidden).SendString(TC(c, "groups.sponsored_not_yours"))
 	}
 
 	now := time.Now()
 	to := extendTarget(now, r.lifecycle.Renewal, user.PrincipalExpire)
-	if reason := extendRefusal(now, user.PrincipalExpire, e.Time("krbprincipalexpiration"), to); reason != "" {
+	if reason := extendRefusal(now, user.PrincipalExpire, account.PrincipalExpire, to); reason != "" {
 		return c.Status(fiber.StatusBadRequest).SendString(TC(c, reason))
 	}
-	uid = e.Str("uid")
+	uid = account.Username
 	if err := r.applyExpiry(uid, to, user.Username, lcAuditExtended); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "groups.sponsored_extend_failed"))
 	}
