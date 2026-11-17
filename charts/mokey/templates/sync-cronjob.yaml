@@ -19,7 +19,10 @@ spec:
       template:
         metadata:
           labels:
-            {{- include "mokey.selectorLabels" . | nindent 12 }}
+            {{- /* not the selector labels: the Service and Deployment must not pick up job pods, and their selectors can't change on upgrade */}}
+            app.kubernetes.io/name: {{ printf "%s-sync" (include "mokey.name" .) | trunc 63 | trimSuffix "-" }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: sync
         spec:
           restartPolicy: Never
           {{- with .Values.imagePullSecrets }}
