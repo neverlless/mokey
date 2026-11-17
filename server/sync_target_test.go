@@ -297,3 +297,24 @@ func TestSyncTargetDisableRevokesAppSessions(t *testing.T) {
 	require.NoError(t, r.syncDisable("walter", time.Now(), "sync"))
 	assert.False(t, faAlive(t, r, s.ID))
 }
+
+func TestSyncTargetLoadMarkerReadFails(t *testing.T) {
+	r, fake, cfg := syncTargetRouter(t)
+	fake.AddUser("jesse", ipatest.User{})
+	fake.AddGroup("google2ipa-managed", ipatest.Group{Members: []string{"jesse"}})
+	r.storage = &failingGetStorage{Storage: r.storage, prefix: syncMarkerPrefix}
+	_, err := r.syncLoadIPA(context.Background(), cfg, nil, time.Now())
+	assert.ErrorContains(t, err, "storage backend down")
+}
+
+func TestSyncTargetGroupsMemberFailure(t *testing.T) {
+	r, fake, _ := syncTargetRouter(t)
+	fake.AddUser("jesse", ipatest.User{})
+	fake.AddUser("hank", ipatest.User{})
+	fake.AddGroup("staff", ipatest.Group{Members: []string{"jesse"}})
+
+	assert.ErrorContains(t, r.syncGroups("ghost", []string{"staff"}, nil), "add ghost to staff")
+
+	r.adminClient = fake.ClientAs("hank")
+	assert.ErrorContains(t, r.syncGroups("jesse", nil, []string{"staff"}), "remove jesse from staff")
+}
