@@ -316,7 +316,7 @@ func (r *Router) AdminSyncStatus(c fiber.Ctx) error {
 func (r *Router) syncBusy(c fiber.Ctx, err error) error {
 	vars := fiber.Map{"sy_alert": TC(c, "sync.admin_busy")}
 	if err != nil {
-		slog.Error("Failed to claim the sync run", "err", err)
+		slog.Error("Directory sync run not started, storage unavailable", "err", err)
 		vars = fiber.Map{"sy_error": TC(c, "account.fatal_system_error")}
 	}
 	return r.renderSyncStatus(c, vars, "")
@@ -349,7 +349,7 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 	// a missing count is 0: nothing to lock or delete was seen
 	disable, _ := strconv.Atoi(c.FormValue("disable"))
 	del, _ := strconv.Atoi(c.FormValue("delete"))
-	release, ok, err := r.lock.claim(syncRunKey, syncRunTTL)
+	release, ok, err := r.lock.claimKept(syncRunKey, syncRunTTL)
 	if !ok {
 		return r.syncBusy(c, err)
 	}
@@ -384,7 +384,7 @@ func (r *Router) AdminSyncImportLegacy(c fiber.Ctx) error {
 	if !r.sync.on() {
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
-	release, ok, err := r.lock.claim(syncRunKey, syncRunTTL)
+	release, ok, err := r.lock.claimKept(syncRunKey, syncRunTTL)
 	if !ok {
 		return r.syncBusy(c, err)
 	}

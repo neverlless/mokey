@@ -119,6 +119,61 @@ func TestStoreLockClaimOneHolder(t *testing.T) {
 	release()
 }
 
+// countingSetStorage counts writes and drops TTLs, which memory storage
+// keeps in whole seconds
+type countingSetStorage struct {
+	fiber.Storage
+	mu   sync.Mutex
+	sets int
+}
+
+func (s *countingSetStorage) Set(key string, val []byte, _ time.Duration) error {
+	s.mu.Lock()
+	s.sets++
+	s.mu.Unlock()
+	return s.Storage.Set(key, val, 0)
+}
+
+func (s *countingSetStorage) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sets
+}
+
+func TestStoreLockClaimKeptRenews(t *testing.T) {
+	st := &countingSetStorage{Storage: memory.New()}
+	r := lockedRouter(st)
+	ttl := 60 * time.Millisecond
+
+	release, ok, err := r.lock.claimKept("run", ttl)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Eventually(t, func() bool { return st.count() >= 4 }, 2*time.Second, 10*time.Millisecond, "renewed while the run is on")
+
+	release()
+	n := st.count()
+	time.Sleep(3 * ttl)
+	assert.Equal(t, n, st.count(), "no renewal after release")
+	held, err := st.Get("run")
+	require.NoError(t, err)
+	assert.Nil(t, held)
+}
+
+func TestStoreLockReleaseKeepsAnotherHolder(t *testing.T) {
+	shared := memory.New()
+	ra, rb := lockedRouter(shared), lockedRouter(shared)
+
+	release, ok, err := ra.lock.claim("run", time.Minute)
+	require.NoError(t, err)
+	require.True(t, ok)
+	// the claim expired and another replica took it
+	require.NoError(t, shared.Set("run", []byte("other"), time.Minute))
+	release()
+	_, ok, err = rb.lock.claim("run", time.Minute)
+	require.NoError(t, err)
+	assert.False(t, ok, "release frees only its own claim")
+}
+
 func TestSweepLeaseRedisReplicas(t *testing.T) {
 	url := os.Getenv("MOKEY_TEST_REDIS_URL")
 	if url == "" {
