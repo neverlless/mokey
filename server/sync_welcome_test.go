@@ -105,3 +105,36 @@ func TestSyncWelcomeMailOffByDefault(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, sink.count())
 }
+
+func TestSyncWelcomeTokenBoundToItsKind(t *testing.T) {
+	app, router, _, sink := welcomeApp(t, 7*24*time.Hour)
+	_, err := router.syncRun(t.Context(), time.Now(), "", false)
+	require.NoError(t, err)
+	token := mailedToken(t, sink.all()[0])
+
+	tc := newTestClient(t, app)
+	for _, path := range []string{"/auth/otprecovery/", "/auth/verify/"} {
+		assert.Equal(t, fiber.StatusNotFound, tc.get(path+token).StatusCode, path)
+	}
+	_, err = ParseToken(token, TokenOTPRecovery, router.storage)
+	assert.Error(t, err)
+}
+
+func TestSyncWelcomeUsedLinkStaysRejected(t *testing.T) {
+	app, router, _, sink := welcomeApp(t, 7*24*time.Hour)
+	viper.Set("email.token_max_age", 1)
+	_, err := router.syncRun(t.Context(), time.Now(), "", false)
+	require.NoError(t, err)
+	token := mailedToken(t, sink.all()[0])
+
+	tc := newTestClient(t, app)
+	tc.getCSRF("/auth/resetpw/" + token)
+	resp := tc.postForm("/auth/resetpw/"+token, url.Values{
+		"password":  {"NewSecret456!"},
+		"password2": {"NewSecret456!"},
+	}, nil)
+	require.Equal(t, fiber.StatusOK, resp.StatusCode)
+
+	time.Sleep(2100 * time.Millisecond)
+	assert.Equal(t, fiber.StatusNotFound, tc.get("/auth/resetpw/"+token).StatusCode)
+}
