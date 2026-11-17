@@ -46,6 +46,7 @@ kinit adminuser
 ipa role-add 'Mokey User Manager' --desc='Mokey User management'
 ipa role-add-privilege 'Mokey User Manager' --privilege='User Administrators'
 ipa role-add-privilege 'Mokey User Manager' --privilege='Password Policy Readers'
+ipa role-add-privilege 'Mokey User Manager' --privilege='RBAC Readers'
 ipa service-add mokey/$(hostname -f)
 ipa service-add-principal mokey/$(hostname -f) mokey/mokey
 ipa role-add-member 'Mokey User Manager' --services=mokey/$(hostname -f)
@@ -67,8 +68,6 @@ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expiry Write'
 # sponsor. Check the list first with ipa selfservice-show "User Self service";
 # this is FreeIPA's default list without manager (bash brace expansion):
 ipa selfservice-mod 'User Self service' --attrs={givenname,sn,cn,displayname,title,initials,loginshell,gecos,homephone,mobile,pager,facsimiletelephonenumber,telephonenumber,street,roomnumber,l,st,postalcode,secretary,description,carlicense,labeleduri,inetuserhttpurl,seealso,employeetype,businesscategory,ou}
-# Optional, read-only: lets mokey check that rule at startup
-ipa role-add-privilege 'Mokey User Manager' --privileges='RBAC Readers'
 ipa-getkeytab -s ipa.example.com -p mokey/mokey -k /etc/mokey/private/mokeyapp.keytab
 chmod 640 /etc/mokey/private/mokeyapp.keytab
 chgrp mokey /etc/mokey/private/mokeyapp.keytab
