@@ -127,9 +127,20 @@ func TestLifecycleAdminApplyPastBrake(t *testing.T) {
 	}
 
 	admin := login(t, "admin", ipaAdminPw)
-	code, body := admin.hx("/admin/lifecycle/apply", nil)
-	if code != http.StatusOK || !strings.Contains(body, "changes applied") {
+	if code, body := admin.hx("/admin/lifecycle/apply", nil); code != http.StatusOK {
 		t.Fatalf("apply: %d %s", code, body)
+	}
+	// Apply runs in the background; the status fragment shows its outcome
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		_, body := admin.do("GET", "/admin/lifecycle/status", nil, true)
+		if strings.Contains(body, "changes applied") {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("apply did not finish: %s", body)
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
 	for _, u := range []*testUser{a, b} {
 		if got := expiry(t, u.uid); got != own {

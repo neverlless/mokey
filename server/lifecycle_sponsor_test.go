@@ -28,6 +28,7 @@ type spDir struct {
 	refuse    bool
 	truncated bool
 	mods      int
+	gate      chan struct{} // when set, each user_mod waits for a value
 	fake      *ipatest.Server
 	shadow    *ipatest.Server
 }
@@ -110,6 +111,9 @@ func newSpDir(t *testing.T, fake *ipatest.Server) *spDir {
 		return map[string]any{"result": out, "count": len(out), "truncated": d.truncated}, nil
 	})
 	fake.Handle("user_mod", func(c ipatest.Call) (any, *ipa.IpaError) {
+		if d.gate != nil {
+			<-d.gate
+		}
 		d.mu.Lock()
 		defer d.mu.Unlock()
 		if d.refuse {

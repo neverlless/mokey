@@ -157,27 +157,35 @@ const leasePrefix = "lease-"
 // run; a lease kept in redis or sqlite3 outlives a restart, so the first run
 // after one may be skipped and the sweep then runs up to an interval late.
 func (l *storeLock) lease(name string, interval time.Duration) bool {
-	key := leasePrefix + name
-	release, err := l.holdStrict(key)
+	_, ok, err := l.claim(leasePrefix+name, interval*9/10)
 	if err != nil {
-		slog.Warn("Skipping this run, storage lock unavailable", "job", name, "err", err)
-		return false
+		slog.Warn("Skipping this run, storage unavailable", "job", name, "err", err)
 	}
-	defer release()
+	return ok
+}
+
+// claim takes key for ttl unless another caller, on any replica, holds it.
+// release frees it before the ttl; the ttl frees the claim of a replica
+// that died holding it.
+func (l *storeLock) claim(key string, ttl time.Duration) (release func(), ok bool, err error) {
+	unlock, err := l.holdStrict(key)
+	if err != nil {
+		return nil, false, err
+	}
+	defer unlock()
 
 	held, err := l.storage.Get(key)
-	if err != nil {
-		slog.Warn("Skipping this run, storage unavailable", "job", name, "err", err)
-		return false
+	if err != nil || held != nil {
+		return nil, false, err
 	}
-	if held != nil {
-		return false
+	if err := l.storage.Set(key, []byte("1"), ttl); err != nil {
+		return nil, false, err
 	}
-	if err := l.storage.Set(key, []byte("1"), interval*9/10); err != nil {
-		slog.Warn("Skipping this run, storage unavailable", "job", name, "err", err)
-		return false
-	}
-	return true
+	return func() {
+		if err := l.storage.Delete(key); err != nil {
+			slog.Warn("Failed to release a run lock, it expires on its own", "key", key, "err", err)
+		}
+	}, true, nil
 }
 
 // get-and-delete in one step; GETDEL needs Redis 6.2

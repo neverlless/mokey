@@ -10,6 +10,13 @@
 {{ with $.lc_error }}
 <div class="alert alert-danger" role="alert">{{ . }}</div>
 {{ end }}
+{{ if $.lc_running }}
+<div class="alert alert-info" role="status" hx-get="/admin/lifecycle/status" hx-trigger="load delay:3s"
+     hx-target="#admin-lifecycle" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "admin.lifecycle_running" }}</div>
+{{ else }}
+{{ with $.lc_last }}<div class="alert alert-success" role="status">{{ . }}</div>{{ end }}
+{{ with $.lc_last_failed }}<div class="alert alert-warning" role="status">{{ . }}</div>{{ end }}
+{{ end }}
 
 <div class="mokey-card mb-4">
   <div class="mokey-row">
@@ -58,7 +65,7 @@
     </table>
   </div>
 </div>
-{{ if not $.lc_truncated }}
+{{ if not (or $.lc_truncated $.lc_running) }}
 <div class="d-flex gap-2 mb-4">
   <button type="button" class="btn btn-primary"
           hx-post="/admin/lifecycle/apply" hx-target="#admin-lifecycle" hx-disabled-elt="this"
