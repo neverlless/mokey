@@ -7,6 +7,7 @@ package main
 import (
 	"github.com/neverlless/mokey/v2/cmd"
 	_ "github.com/neverlless/mokey/v2/cmd/serve"
+	_ "github.com/neverlless/mokey/v2/cmd/sync"
 )
 
 func main() {
