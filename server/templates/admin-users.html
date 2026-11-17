@@ -77,7 +77,7 @@
             </button></li>
             {{ if $.lifecycle_on }}
             <li><hr class="dropdown-divider"></li>
-            <li><form class="px-3 py-2" hx-post="/admin/user/set-expiry" hx-target="#admin-users" hx-target-error="admin-failed"
+            <li><form method="post" class="px-3 py-2" hx-post="/admin/user/set-expiry" hx-target="#admin-users" hx-target-error="admin-failed"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'
                 hx-confirm="{{ T "admin.lifecycle_expiry_confirm" }}">
@@ -87,7 +87,7 @@
                 <button type="submit" class="btn btn-outline-secondary">{{ T "admin.lifecycle_save" }}</button>
               </div>
             </form></li>
-            <li><form class="px-3 py-2" hx-post="/admin/user/set-sponsor" hx-target="#admin-users" hx-target-error="admin-failed"
+            <li><form method="post" class="px-3 py-2" hx-post="/admin/user/set-sponsor" hx-target="#admin-users" hx-target-error="admin-failed"
                 hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
                 hx-vals='{"username": "{{ $u.Username }}", "search": "{{ $.search }}", "page": {{ $.page }}}'>
               <label for="sponsor-{{ $u.Username }}" class="form-label small mb-1">{{ T "admin.lifecycle_set_sponsor" }}</label>

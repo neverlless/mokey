@@ -12,7 +12,7 @@
                 <div class="login-body">
                     <div class="login-body-wrapper mx-auto">
                         {{ if ConfigValueBool "accounts.single_page_login" }}
-                        <form>
+                        <form method="post">
                         <div class="mb-3">
                             <label for="username" class="form-label">{{ T "common.username" }}</label>
                             <input type="text" class="form-control form-control-lg" name="username" id="username" autocomplete="username" autofocus="autofocus" placeholder="">
@@ -30,7 +30,7 @@
                         </div>
                         </form>
                         {{ else }}
-                        <form>
+                        <form method="post">
                         <div class="mb-3">
                             <label for="username" class="form-label">{{ T "common.username" }}</label>
                             <input type="text" class="form-control form-control-lg" name="username" id="username" autocomplete="username" autofocus="autofocus" placeholder="">

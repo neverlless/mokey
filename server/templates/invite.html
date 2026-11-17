@@ -10,7 +10,7 @@
                 <div class="login-body p-4 p-md-5">
                     <div class="login-body-wrapper mx-auto">
                         <p class="text-center text-muted">{{ T "invite.intro" }} <strong>{{ $.claims.Email }}</strong></p>
-                        <form>
+                        <form method="post">
                         {{ if $.presetUsername }}
                         <div class="mb-3">
                             <label for="username" class="form-label">{{ T "common.username" }}</label>

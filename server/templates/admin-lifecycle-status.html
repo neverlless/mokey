@@ -89,7 +89,7 @@
       <span class="mokey-mono">{{ $o.UID }}</span>
       <span class="text-muted small">· {{ printf (T "admin.lifecycle_sponsor_expired_by") $o.Sponsor (Day $o.SponsorExpires) }}</span>
     </div>
-    <form class="d-flex gap-2" hx-post="/admin/user/set-sponsor" hx-target="#admin-lifecycle"
+    <form method="post" class="d-flex gap-2" hx-post="/admin/user/set-sponsor" hx-target="#admin-lifecycle"
           hx-target-error="lifecycle-failed" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
       <input type="hidden" name="username" value="{{ $o.UID }}">
       <input type="hidden" name="from" value="lifecycle">

@@ -10,7 +10,7 @@
                 <div class="login-body p-4 p-md-5">
                     <div class="login-body-wrapper mx-auto">
                         <p class="text-center">{{ T "otprecovery.description" }}</p>
-                        <form>
+                        <form method="post">
                         <div class="mb-3">
                             <label for="username" class="form-label">{{ T "common.username" }}</label>
                             <input id="username" type="text" class="form-control form-control-lg" name="username" autocomplete="username" value="{{ $.user.Username }}" placeholder="">
