@@ -103,12 +103,14 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 
 	in, err := r.syncRead(ctx, cfg, now)
 	if err != nil {
+		res.Errors = []string{err.Error()}
+		if dryRun {
+			slog.Error("Directory sync dry run failed", "by", actor, "err", err)
+			return res, err
+		}
 		// AUDIT, so webhooks see the failed run; "aborted" means no changes made
 		slog.Error(syncAuditRun, "by", actor, "aborted", true, "err", err)
-		res.Errors = []string{err.Error()}
-		if !dryRun {
-			r.syncFinish(res)
-		}
+		r.syncFinish(res)
 		return res, err
 	}
 	plan := in.build(cfg, now)
@@ -132,7 +134,7 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 		res.Errors = append(res.Errors, err.Error())
 	}
 
-	r.syncApply(res, in.ipa, cfg, now, actor)
+	r.syncApply(ctx, res, in.ipa, cfg, now, actor)
 	r.syncFinish(res)
 	return res, nil
 }
@@ -196,7 +198,7 @@ func (r *Router) syncStoreHeld(held *syncRunResult) error {
 
 // syncApply runs the plan step by step as google2ipa did: create, adopt,
 // update, enable, groups, markers, disable, delete.
-func (r *Router) syncApply(res *syncRunResult, cur map[string]syncIPAUser, cfg *syncConfig, now time.Time, by string) {
+func (r *Router) syncApply(ctx context.Context, res *syncRunResult, cur map[string]syncIPAUser, cfg *syncConfig, now time.Time, by string) {
 	p := res.Plan
 	var bulk []any
 	if p.Changes() > cfg.MaxEventsPerRun {
@@ -221,19 +223,19 @@ func (r *Router) syncApply(res *syncRunResult, cur map[string]syncIPAUser, cfg *
 	}
 	n := cfg.Concurrency
 
-	syncEach(n, p.Create, func(u syncUser) {
+	syncEach(ctx, n, p.Create, func(u syncUser) {
 		if !ok("create", u.UID, r.syncCreate(u, cfg), "AUDIT sync user created", "email", u.Email) {
 			return
 		}
 		// the only place a new account is known complete: welcome mail goes here
 	})
-	syncEach(n, p.Adopt, func(uid string) {
+	syncEach(ctx, n, p.Adopt, func(uid string) {
 		ok("adopt", uid, r.syncGroups(uid, []string{cfg.ManagedGroup}, nil), "AUDIT sync user adopted")
 	})
-	syncEach(n, p.Update, func(u syncUpdate) {
+	syncEach(ctx, n, p.Update, func(u syncUpdate) {
 		ok("update", u.UID, r.syncUpdate(u), "AUDIT sync user updated", "from", u.From.Email, "email", u.To.Email)
 	})
-	syncEach(n, p.Enable, func(uid string) {
+	syncEach(ctx, n, p.Enable, func(uid string) {
 		var err error
 		if m := cur[uid].Marker; m != nil {
 			err = r.syncEnable(uid, *m)
@@ -248,7 +250,7 @@ func (r *Router) syncApply(res *syncRunResult, cur map[string]syncIPAUser, cfg *
 			groupUIDs = append(groupUIDs, uid)
 		}
 	}
-	syncEach(n, groupUIDs, func(uid string) {
+	syncEach(ctx, n, groupUIDs, func(uid string) {
 		mu.Lock()
 		skip := failed[uid]
 		mu.Unlock()
@@ -262,19 +264,22 @@ func (r *Router) syncApply(res *syncRunResult, cur map[string]syncIPAUser, cfg *
 			ok("group_remove", uid, r.syncGroups(uid, nil, []string{g}), "AUDIT sync group removed", "group", g)
 		}
 	})
-	syncEach(n, slices.Sorted(maps.Keys(p.NewMarkers)), func(uid string) {
+	syncEach(ctx, n, slices.Sorted(maps.Keys(p.NewMarkers)), func(uid string) {
 		ok("marker", uid, r.syncSetMarker(uid, p.NewMarkers[uid]), "")
 	})
-	syncEach(n, p.ClearMarkers, func(uid string) {
+	syncEach(ctx, n, p.ClearMarkers, func(uid string) {
 		ok("marker_clear", uid, r.syncClearMarker(uid), "")
 	})
-	syncEach(n, p.Disable, func(uid string) {
+	syncEach(ctx, n, p.Disable, func(uid string) {
 		ok("disable", uid, r.syncDisable(uid, now, by), "AUDIT sync user disabled")
 	})
-	syncEach(n, p.Delete, func(uid string) {
+	syncEach(ctx, n, p.Delete, func(uid string) {
 		ok("delete", uid, r.syncDelete(uid, cfg.Preserve), "AUDIT sync user deleted", "preserve", cfg.Preserve)
 	})
 
+	if err := ctx.Err(); err != nil {
+		res.Errors = append(res.Errors, fmt.Sprintf("run stopped, remaining changes skipped: %v", err))
+	}
 	counts := []any{"by", by, "planned", p.Changes(), "held", res.Held, "held_count", res.HeldCount, "errors", len(res.Errors),
 		"conflicts", len(p.Conflicts), "skipped", len(p.Skipped)}
 	for _, k := range slices.Sorted(maps.Keys(res.Applied)) {
@@ -312,11 +317,15 @@ func (r *Router) syncFinish(res *syncRunResult) {
 	}
 }
 
-// syncEach runs fn on every item with at most n at a time.
-func syncEach[T any](n int, items []T, fn func(T)) {
+// syncEach runs fn on every item with at most n at a time, and starts no
+// more once ctx is done.
+func syncEach[T any](ctx context.Context, n int, items []T, fn func(T)) {
 	sem := make(chan struct{}, max(n, 1))
 	var wg sync.WaitGroup
 	for _, it := range items {
+		if ctx.Err() != nil {
+			break
+		}
 		sem <- struct{}{}
 		wg.Go(func() {
 			defer func() { <-sem }()

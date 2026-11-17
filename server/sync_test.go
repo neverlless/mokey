@@ -376,3 +376,36 @@ func TestSyncRunKeepsSkipReasons(t *testing.T) {
 		assert.Equal(t, res.SkipReasons, stored.SkipReasons)
 	}
 }
+
+func TestSyncRunDryRunFailureNoAudit(t *testing.T) {
+	r, _, src, _ := syncRunRouter(t)
+	src.err = errors.New("google down")
+
+	res, err := r.syncRun(context.Background(), time.Now(), "gus", true)
+	require.Error(t, err)
+	assert.NotEmpty(t, res.Errors)
+	assert.Empty(t, auditEvents(r, "sync run"))
+	last, err := r.syncLastRun()
+	require.NoError(t, err)
+	assert.Nil(t, last)
+}
+
+func TestSyncApplyStopsOnCancel(t *testing.T) {
+	r, fake, _, _ := syncRunRouter(t)
+	managed(fake, "walt")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	res := &syncRunResult{Applied: map[string]int{}, Plan: syncPlan{
+		Create:    []syncUser{{UID: "jesse", syncSourceUser: googleUser("jesse")}},
+		AddGroups: map[string][]string{"jesse": {"staff"}},
+		Disable:   []string{"walt"},
+	}}
+
+	r.syncApply(ctx, res, nil, r.sync, time.Now(), "sync")
+	assert.Empty(t, writeCalls(fake))
+	assert.Empty(t, res.Applied)
+	if assert.Len(t, res.Errors, 1) {
+		assert.Contains(t, res.Errors[0], "remaining changes skipped")
+	}
+	assert.False(t, locked(fake, "walt"))
+}
