@@ -85,6 +85,16 @@ func (r *Router) syncCreate(u syncUser, cfg *syncConfig) error {
 	return nil
 }
 
+// syncWelcome runs after a complete create; a failure is a run error for the
+// account, the account stays.
+func (r *Router) syncWelcome(uid string, ttl time.Duration) error {
+	user, err := r.adminClient.UserShow(uid)
+	if err != nil {
+		return err
+	}
+	return r.emailer.SendSyncWelcomeEmail(user, ttl)
+}
+
 // syncSetCN writes cn as google2ipa did; goipa's User has no cn field.
 func (r *Router) syncSetCN(uid, cn string) error {
 	if cn == "" {

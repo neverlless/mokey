@@ -23,6 +23,7 @@ type Token struct {
 	Email     string    `json:"email"`
 	First     string    `json:"first,omitempty"`
 	Last      string    `json:"last,omitempty"`
+	MaxAge    int       `json:"max_age,omitempty"` // seconds; overrides email.token_max_age
 	Timestamp time.Time `json:"-"`
 }
 
@@ -126,14 +127,18 @@ func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
 		return nil, err
 	}
 
-	if brancaToken.IsExpired(viper.GetUint32("email.token_max_age")) {
-		return nil, errors.New("Token expired")
-	}
-
 	var tk Token
 	err = json.Unmarshal([]byte(brancaToken.Payload()), &tk)
 	if err != nil {
 		return nil, err
+	}
+
+	maxAge := viper.GetUint32("email.token_max_age")
+	if tk.MaxAge > 0 {
+		maxAge = uint32(tk.MaxAge)
+	}
+	if brancaToken.IsExpired(maxAge) {
+		return nil, errors.New("Token expired")
 	}
 
 	tk.Timestamp = brancaToken.Timestamp()
@@ -145,7 +150,11 @@ func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
 // failure cannot be rolled back: it is logged, and the token stays valid until
 // it expires
 func MarkTokenUsed(token, prefix string, claims *Token, storage fiber.Storage) {
-	ttl := time.Until(claims.Timestamp.Add(time.Duration(viper.GetInt("email.token_max_age")) * time.Second))
+	maxAge := viper.GetInt("email.token_max_age")
+	if claims.MaxAge > 0 {
+		maxAge = claims.MaxAge
+	}
+	ttl := time.Until(claims.Timestamp.Add(time.Duration(maxAge) * time.Second))
 	if err := storage.Set(prefix+TokenUsedPrefix+token, []byte("true"), ttl); err != nil {
 		slog.Error("Failed to mark token used",
 			"username", claims.Username,
