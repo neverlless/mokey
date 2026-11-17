@@ -43,7 +43,8 @@ func sponsorLoop(accts map[string]string, uid, sponsor string) bool {
 
 func lcPast(t, now time.Time) bool { return !t.IsZero() && !t.After(now) }
 
-// planLifecycle computes the expiry assignments and sponsor caps due now.
+// planLifecycle computes the expiry assignments and sponsor caps due now;
+// both need renewal on.
 // Input UIDs must be unique and Sponsor already a plain uid. Changes are sorted by UID; disabled accounts are never changed.
 func planLifecycle(accts []lcAccount, now time.Time, cfg *lifecycleConfig) (changes []lcChange, sponsorExpired []string) {
 	accts = slices.Clone(accts)
@@ -73,7 +74,8 @@ func planLifecycle(accts []lcAccount, now time.Time, cfg *lifecycleConfig) (chan
 		}
 	}
 
-	for pass := 0; pass < lcMaxPasses; pass++ {
+	// the cap is part of renewal: reminders alone never write to FreeIPA
+	for pass := 0; cfg.Renewal > 0 && pass < lcMaxPasses; pass++ {
 		moved := false
 		for _, a := range accts {
 			sp := cur[a.Sponsor]
