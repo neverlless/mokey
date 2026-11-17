@@ -252,7 +252,7 @@ func (f *fakeHydra) consentSessionsHandler(w http.ResponseWriter, r *http.Reques
 		f.revokedConsents = append(f.revokedConsents, revokedConsent{Subject: subject, Client: client})
 		kept := f.consentSessions[subject][:0]
 		for _, s := range f.consentSessions[subject] {
-			if s.ClientID != client {
+			if s.ClientID != client && r.URL.Query().Get("all") != "true" {
 				kept = append(kept, s)
 			}
 		}
