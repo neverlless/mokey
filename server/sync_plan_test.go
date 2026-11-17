@@ -501,3 +501,39 @@ func TestSyncBuildBrakeNoFoundMarkers(t *testing.T) {
 		t.Fatalf("braked plan writes found markers: %+v", p.NewMarkers)
 	}
 }
+
+func TestSyncBuildExcludedLockedUntouched(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		"svc": {UID: "svc", Email: "svc@example.com", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, 90*syncDay), Groups: []string{"admins"}},
+	}
+	cfg := syncTestConfig(func(c *syncConfig) { c.ExcludeUsers = []string{"svc"} })
+	for _, users := range [][]syncUser{nil, {syncU("svc")}} {
+		p := syncBuild(users, nil, ipa, cfg, syncTestNow)
+		if !p.Empty() {
+			t.Errorf("excluded account planned changes (in Google: %v): %+v", users != nil, p)
+		}
+	}
+}
+
+func TestSyncBuildAdoptLocked(t *testing.T) {
+	ipa := map[string]syncIPAUser{"legacy": {UID: "legacy", Email: "legacy@example.com", Locked: true, Groups: []string{"admins"}}}
+	p := syncBuild([]syncUser{syncU("legacy")}, nil, ipa, syncTestConfig(func(c *syncConfig) { c.AdoptExisting = true }), syncTestNow)
+	syncCheck(t, "Adopt", p.Adopt, []string{"legacy"})
+	syncCheck(t, "Enable", p.Enable, nil)
+	syncCheck(t, "BackInGoogle", p.BackInGoogle, nil)
+	if len(p.AddGroups)+len(p.RemoveGroups)+len(p.Update) != 0 {
+		t.Errorf("a locked account gets no changes beyond adoption: %+v", p)
+	}
+}
+
+func TestSyncBuildSkippedLockedNotEnabled(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		"jane": {UID: "jane", Email: "jane@example.com", Managed: true, Locked: true, Marker: syncMarkerAgo(syncMarkerSync, 90*syncDay)},
+	}
+	p := syncBuild(nil, []string{"jane"}, ipa, syncTestConfig(nil), syncTestNow)
+	syncCheck(t, "Enable", p.Enable, nil)
+	syncCheck(t, "Delete", p.Delete, nil)
+	if p.Changes()+len(p.NewMarkers)+len(p.ClearMarkers) != 0 {
+		t.Errorf("skipped uid planned changes: %+v", p)
+	}
+}
