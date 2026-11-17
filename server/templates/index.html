@@ -61,6 +61,15 @@
 <div id="admin">
 {{ template "admin.html" . }}
 </div>
+{{ else if eq $.path "admin/helpdesk" }}
+<div id="admin">
+<h1 class="mb-1">{{ T "admin.helpdesk_title" }}</h1>
+<p class="text-muted mb-4">{{ T "admin.helpdesk_body" }}</p>
+<div class="mokey-card p-3">
+  <div id="admin-helpdesk" hx-get="/admin/helpdesk/list" hx-trigger="load"
+       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'></div>
+</div>
+</div>
 {{ else if eq $.path "admin/people" }}
 <div id="admin">
 {{ template "admin-people.html" . }}

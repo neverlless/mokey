@@ -13,7 +13,7 @@
   <button type="button" class="btn btn-outline-secondary btn-sm{{ if eq $v $.view }} active{{ end }}"
           aria-pressed="{{ if eq $v $.view }}true{{ else }}false{{ end }}"
           hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'
-          hx-get="/admin/helpdesk?view={{ $v }}" hx-target="#admin-helpdesk">
+          hx-get="/admin/helpdesk/list?view={{ $v }}" hx-target="#admin-helpdesk">
     {{ T (printf "admin.helpdesk_view_%s" $v) }}
     <span class="mokey-pill ms-1">{{ index $.counts $v }}</span>
   </button>

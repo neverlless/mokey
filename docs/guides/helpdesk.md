@@ -3,16 +3,19 @@ title: "Helpdesk view in the admin panel"
 description: "Find accounts that cannot log in from the mokey admin panel."
 ---
 
-"I can't log in" usually has one of four causes. The **Helpdesk** section of
-the admin panel lists the accounts that have one of them, so an admin can
-find and fix the account without opening the FreeIPA UI.
+"I can't log in" usually has one of four causes. The **Helpdesk** page of
+the admin panel (`/admin/helpdesk`, under Administration next to
+**Requests**) lists the accounts that have one of them, so an admin can find
+and fix the account without opening the FreeIPA UI. **Requests** keeps only
+what waits for an admin's decision: sign-up approvals, OTP recovery requests
+and membership removals that failed.
 
 ## The four lists
 
 | List | Who is in it | FreeIPA attributes | Action |
 | --- | --- | --- | --- |
-| Expiring | The password expires within the next N days. N is the larger of `accounts.password_expiry_warning_days` and the largest `email.password_expiry_reminders` value. | `krbPasswordExpiration` | Reset password (emails a reset link) |
-| Expired | The password expiry date has passed. The user has to set a new password at the next login. | `krbPasswordExpiration` | Reset password |
+| Password expiring | The password expires within the next N days. N is the larger of `accounts.password_expiry_warning_days` and the largest `email.password_expiry_reminders` value. | `krbPasswordExpiration` | Reset password (emails a reset link) |
+| Password expired | The password expiry date has passed. The user has to set a new password at the next login. | `krbPasswordExpiration` | Reset password |
 | Locked out | Kerberos refuses the account after too many failed logins: the failed count has reached the password policy's maximum, and the lockout time has not run out yet (a lockout time of 0 lasts until an admin unlocks). The user's effective policy is used, including group policies. | `krbLoginFailedCount`, `krbLastFailedAuth`, `pwpolicy` | Clear lockout (`user_unlock`) |
 | Inactive | No sign of activity for more than `admin.inactive_days` days (default 90), see below. | mokey sign-ins, `krbLastPwdChange`, `krbLastSuccessfulAuth` | Block |
 

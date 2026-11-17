@@ -85,7 +85,7 @@ var helpdeskRowPattern = regexp.MustCompile(`<strong>([^<]+)</strong>`)
 
 func helpdeskList(t *testing.T, tc *testClient, view string) ([]string, string) {
 	t.Helper()
-	resp := tc.get("/admin/helpdesk?view="+view, htmx)
+	resp := tc.get("/admin/helpdesk/list?view="+view, htmx)
 	body := readBody(t, resp)
 	if resp.StatusCode != fiber.StatusOK {
 		t.Fatalf("helpdesk %s: status %d", view, resp.StatusCode)
@@ -299,7 +299,7 @@ func TestAdminHelpdeskRequiresAdmin(t *testing.T) {
 	tc := newTestClient(t, app)
 	tc.login("jesse", "Secret123!")
 
-	resp := tc.get("/admin/helpdesk", htmx)
+	resp := tc.get("/admin/helpdesk/list", htmx)
 	assert.Equal(t, fiber.StatusForbidden, resp.StatusCode)
 	resp = tc.postForm("/admin/user/unlock?helpdesk=locked", url.Values{"username": {"jesse"}}, htmx)
 	assert.Equal(t, fiber.StatusForbidden, resp.StatusCode)
@@ -321,7 +321,7 @@ func TestAdminHelpdeskCacheReadsDoNotWaitForFetch(t *testing.T) {
 	}
 
 	done := make(chan int)
-	go func() { done <- tc.get("/admin/helpdesk?view=inactive", htmx).StatusCode }()
+	go func() { done <- tc.get("/admin/helpdesk/list?view=inactive", htmx).StatusCode }()
 	<-entered
 
 	other := newTestClient(t, app)
@@ -368,4 +368,15 @@ func TestAdminHelpdeskActionKeepsStaleMasterLogins(t *testing.T) {
 	assert.Contains(body, "<strong>saul</strong>")
 	assert.NotContains(body, "<strong>skinny</strong>")
 	assert.Contains(body, fmt.Sprintf(T("admin.helpdesk_masters_unreachable"), "ipa3.example.test"))
+}
+
+func TestAdminHelpdeskHasItsOwnPage(t *testing.T) {
+	assert := assert.New(t)
+	_, _, _, tc := newHelpdeskApp(t)
+
+	page := readBody(t, tc.get("/admin/helpdesk"))
+	assert.Contains(page, `hx-get="/admin/helpdesk/list"`)
+	assert.Regexp(`<a[^>]*href="/admin/helpdesk"[^>]*aria-current="page"`, page)
+
+	assert.NotContains(readBody(t, tc.get("/admin")), `id="admin-helpdesk"`)
 }
