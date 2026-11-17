@@ -262,6 +262,7 @@ func TestAdminSetSponsor(t *testing.T) {
 	assert.Contains(r.body, `hx-post="/admin/user/reset"`)
 	assert.Contains(r.body, esc(fmt.Sprintf(T("admin.lifecycle_sponsor_set"), "jesse", "skinny")))
 	assert.Equal("skinny", d.manager["jesse"])
+	assert.Contains(r.body, esc(fmt.Sprintf(T("admin.lifecycle_now"), "skinny")))
 	set := auditEvents(router, "lifecycle sponsor set")
 	if assert.Len(set, 1) {
 		assert.Equal("gus", set[0].Actor)
@@ -298,6 +299,8 @@ func TestAdminSetExpiry(t *testing.T) {
 	want, _ := time.ParseInLocation("2006-01-02", day, time.Local)
 	assert.True(want.Equal(d.expiry("jesse")), "got %s", d.expiry("jesse"))
 	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_expiry_set"), "jesse", future.Format("Jan 2, 2006"))))
+	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_now"), future.Format("Jan 2, 2006"))))
+	assert.Contains(body, `"expires": ""}'>`+esc(T("admin.lifecycle_clear")))
 	set := auditEvents(router, "lifecycle expiry set")
 	if assert.Len(set, 1) {
 		assert.Equal("gus", set[0].Actor)
@@ -314,6 +317,8 @@ func TestAdminSetExpiry(t *testing.T) {
 	assert.Equal(fiber.StatusOK, code)
 	assert.True(d.expiry("jesse").IsZero())
 	assert.Contains(body, esc(fmt.Sprintf(T("admin.lifecycle_expiry_cleared"), "jesse")))
+	assert.Contains(body, esc(T("admin.lifecycle_not_set")))
+	assert.NotContains(body, esc(T("admin.lifecycle_clear")))
 
 	code, body = post("next week")
 	assert.Equal(fiber.StatusBadRequest, code)
