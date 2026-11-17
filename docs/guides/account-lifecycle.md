@@ -38,6 +38,46 @@ user who is `manager` of at least one account; sponsors need no extra
 FreeIPA right, mokey checks that the account is theirs and writes with its
 own service account.
 
+### Stop users choosing their own sponsor
+
+Required with `renewal_period`. FreeIPA's default self-service rule,
+`User Self service`, lets every user write their own `manager`, in the
+FreeIPA Web UI or with `ipa user-mod`. A user could then drop their sponsor
+(and with it the sponsor's cap and the expiry date mokey would assign), or
+name a friend as sponsor, who then extends them for ever. mokey can't block
+edits made outside mokey, so remove `manager` from the rule once.
+
+Show the rule's current attributes:
+
+```sh
+ipa selfservice-show "User Self service"
+```
+
+Then set the same list without `manager`. `--attrs` replaces the list, and
+takes one attribute per option; this is the default list of FreeIPA 4.9 to
+4.13 without `manager`, written with bash brace expansion:
+
+```bash
+ipa selfservice-mod "User Self service" --attrs={givenname,sn,cn,displayname,title,initials,loginshell,gecos,homephone,mobile,pager,facsimiletelephonenumber,telephonenumber,street,roomnumber,l,st,postalcode,secretary,description,carlicense,labeleduri,inetuserhttpurl,seealso,employeetype,businesscategory,ou}
+```
+
+If your rule lists other attributes, keep them. Users still edit their name,
+phone and the rest; `ipa user-mod <self> --manager=...` then fails with
+"Insufficient access". FreeIPA upgrades don't put `manager` back: they only
+replace the rule while it is unchanged. The
+[Ansible role](https://github.com/neverlless/mokey/tree/main/ansible/roles/mokey)
+does this with `mokey_ipa_selfservice_no_manager: true`.
+
+With `renewal_period` set, mokey checks the self-service rules at startup
+and logs a warning naming each rule that still lets users write `manager`.
+FreeIPA shows the rules only to roles with the read-only `RBAC Readers`
+privilege; without it mokey logs once that it couldn't check. To let it
+check:
+
+```sh
+ipa role-add-privilege 'Mokey User Manager' --privileges='RBAC Readers'
+```
+
 ## Enable it
 
 ```toml
@@ -49,7 +89,8 @@ max_changes_per_run = 50
 ```
 
 Each option works on its own. `assign_missing_expiry` needs
-`renewal_period`.
+`renewal_period`. With only `expiry_reminders`, mokey sends mail and never
+writes to FreeIPA.
 
 > [!IMPORTANT]
 > Writing `krbPrincipalExpiration` needs a FreeIPA permission that no system
@@ -100,7 +141,11 @@ shows what is enabled and:
 
 - **Waiting for you**: the plan held by the brake, with the account, old and
   new date and why (`sponsored by X, no date` or `sponsor X ends earlier`).
-  **Apply** recomputes the plan and applies all of it in that run.
+  **Apply** recomputes the plan and applies all of it in the background,
+  so a long run isn't cut off by a proxy timeout. The page shows that the
+  run is going and then its result: how many changes, how many failed, who
+  applied them and when. One run at a time, across replicas: a second
+  Apply is refused while one runs, and the background run skips its turn.
 - **Sponsor has expired**: accounts whose sponsor's date has passed. They
   keep their dates; set a new sponsor or change the date.
 
@@ -111,10 +156,10 @@ Every 6 hours, on one replica at a time:
 1. **Assign** (with `assign_missing_expiry`): a sponsored, enabled account
    with no date gets now plus `renewal_period`, capped by the sponsor's
    date.
-2. **Cascade**: a sponsored account whose date is later than its sponsor's
-   is moved to the sponsor's date, through sponsor chains. A sponsor's date
-   that is already past moves nothing; the account appears under
-   "Sponsor has expired" instead.
+2. **Cascade** (with `renewal_period`): a sponsored account whose date is
+   later than its sponsor's is moved to the sponsor's date, through sponsor
+   chains. A sponsor's date that is already past moves nothing; the account
+   appears under "Sponsor has expired" instead.
 3. **Reminders**: see above. Reminders keep going while changes are held.
 
 ### The brake

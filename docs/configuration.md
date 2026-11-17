@@ -159,8 +159,8 @@ until you set an option.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `expiry_reminders` | list of days | — | Remind the user and the sponsor this many days before the account expires. Example: `[30, 7, 1]`. |
-| `renewal_period` | string | — | How far a sponsor extends an account, with units `m`, `h`, `d`. Example: `"365d"`. Empty turns renewal off. |
+| `expiry_reminders` | list of days | — | Remind the user and the sponsor this many days before the account expires. Example: `[30, 7, 1]`. Set it in the config file: an environment variable can't set this list, mokey reads it as empty. Reminders alone never write to FreeIPA. |
+| `renewal_period` | string | — | How far a sponsor extends an account, with units `m`, `h`, `d`. Example: `"365d"`. Empty turns renewal off. With it, the background run also caps a sponsored account's date at its sponsor's. It needs users to be unable to change their own sponsor: see [Stop users choosing their own sponsor](guides/account-lifecycle.md#stop-users-choosing-their-own-sponsor). |
 | `assign_missing_expiry` | bool | `false` | Give sponsored accounts without an expiry date one: now plus `renewal_period`. Needs `renewal_period`. |
 | `max_changes_per_run` | int | `50` | A sweep that would change more accounts changes none and waits for an admin to apply it. When an admin applies such a run, [webhooks](#webhooks) get only its summary event (`lifecycle run applied`); every account change is still in the audit log. |
 
@@ -183,7 +183,7 @@ own expiry.
 | `token_secret` | string | auto-generated | 32-byte hex secret for signing email tokens (`openssl rand -hex 32`). Auto-generated at startup when blank, with a warning: links in emails already sent stop working after a restart. Required with `storage.driver = "redis"`, where every replica must use the same value; mokey refuses to start without it. |
 | `notify_new_login` | bool | `false` | Email the user on every fresh sign-in (browser, OS, IP). Sent asynchronously. |
 | `notify_password_change` | bool | `false` | Email the user when their password is changed or reset. |
-| `password_expiry_reminders` | list | *(empty — disabled)* | Days-before-expiry thresholds for password expiry reminder emails, e.g. `[14, 7, 3, 1]`. A background sweep (every 6h) emails each user once per threshold; a password change re-arms all thresholds. Empty disables reminders. |
+| `password_expiry_reminders` | list | *(empty — disabled)* | Days-before-expiry thresholds for password expiry reminder emails, e.g. `[14, 7, 3, 1]`. A background sweep (every 6h) emails each user once per threshold; a password change re-arms all thresholds. Empty disables reminders. Set it in the config file: an environment variable can't set this list, mokey reads it as empty. |
 | `smtp_host` | string | `"localhost"` | SMTP server hostname. |
 | `smtp_port` | int | `25` | SMTP server port. |
 | `smtp_tls` | string | `"off"` | SMTP TLS mode: `off`, `on` (implicit TLS), or `starttls`. Required for SMTP AUTH against anything but localhost — credentials are never sent over a plaintext link. |
