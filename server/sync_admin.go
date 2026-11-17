@@ -187,14 +187,15 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	if last != nil {
 		for _, text := range last.Plan.Conflicts {
 			// the planner starts every conflict with "uid <uid> "
-			uid, _, _ := strings.Cut(strings.TrimPrefix(text, "uid "), " ")
-			decisions = append(decisions, syncDecision{UID: uid, Text: text})
+			uid, rest, _ := strings.Cut(strings.TrimPrefix(text, "uid "), " ")
+			decisions = append(decisions, syncDecision{UID: uid, Text: rest})
 		}
 		// SkipReasons and Plan.Skipped come from syncResolve in the same order
 		for i, text := range last.SkipReasons {
 			d := syncDecision{Text: text}
 			if i < len(last.Plan.Skipped) {
 				d.UID = last.Plan.Skipped[i]
+				d.Text = strings.TrimPrefix(text, fmt.Sprintf("skip uid %q: ", d.UID))
 			}
 			decisions = append(decisions, d)
 		}

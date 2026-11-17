@@ -135,7 +135,11 @@ func TestAdminSyncDefaultTab(t *testing.T) {
 	page = readBody(t, tc.get("/admin/sync"))
 	assert.Equal(t, "decisions", selectedTab(t, page))
 	assert.Contains(t, page, esc(T("sync.admin_tab_decisions"))+" · 3")
-	assert.Contains(t, page, "uid jdoe belongs to")
+	// the row shows the uid already
+	assert.Contains(t, page, "· belongs to a@x in FreeIPA")
+	assert.Contains(t, page, "· derived from several Google users")
+	assert.NotContains(t, page, "uid jdoe")
+	assert.NotContains(t, page, "skip uid")
 	for _, uid := range []string{"jdoe", "obrien", "kwalsh"} {
 		assert.Contains(t, page, `<span class="mokey-mono">`+uid+`</span>`)
 	}
