@@ -146,3 +146,17 @@ func TestSyncGroupRemoveRevokesConsent(t *testing.T) {
 	require.NoError(t, router.syncGroups("walter", nil, []string{"chemists"}))
 	assert.Equal(t, []revokedConsent{{Subject: "walter", Client: "lubelogger"}}, hy.revokedConsents)
 }
+
+func TestSyncGroupRemovePartialFailureRevokesConsent(t *testing.T) {
+	_, router, fake, hy := newConsentRevokeApp(t)
+	router.adminClient = fake.ClientAs("admin")
+	require.Error(t, router.syncGroups("walter", nil, []string{"chemists", "missing"}))
+	assert.Equal(t, []revokedConsent{{Subject: "walter", Client: "lubelogger"}}, hy.revokedConsents)
+}
+
+func TestSyncDeleteRevokesAllConsents(t *testing.T) {
+	_, router, fake, hy := newConsentRevokeApp(t)
+	router.adminClient = fake.ClientAs("admin")
+	require.NoError(t, router.syncDelete("walter", true))
+	assert.Empty(t, consentClients(hy, "walter"))
+}

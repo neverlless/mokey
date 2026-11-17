@@ -167,6 +167,8 @@ func (r *Router) syncDelete(uid string, preserve bool) error {
 	if err := r.adminClient.UserDelete(preserve, true, uid); err != nil {
 		return err
 	}
+	r.faRevokeUser(uid)
+	r.revokeAllConsents(uid)
 	return r.syncClearMarker(uid)
 }
 
@@ -176,13 +178,18 @@ func (r *Router) syncGroups(uid string, add, remove []string) error {
 			return fmt.Errorf("add %s to %s: %w", uid, g, err)
 		}
 	}
+	removed := false
+	// the groups removed before a failure lose their consents too
+	defer func() {
+		if removed {
+			r.revokeConsentsOf(uid)
+		}
+	}()
 	for _, g := range slices.Compact(slices.Sorted(slices.Values(remove))) {
 		if err := groupRemoveMember(r.adminClient, g, uid); err != nil {
 			return fmt.Errorf("remove %s from %s: %w", uid, g, err)
 		}
-	}
-	if len(remove) > 0 {
-		r.revokeConsentsOf(uid)
+		removed = true
 	}
 	return nil
 }

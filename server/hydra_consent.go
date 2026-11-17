@@ -117,6 +117,16 @@ func (r *Router) revokeDisallowedConsents(user *ipa.User) int {
 	return revoked
 }
 
+// revokeAllConsents ends every OAuth consent of an account that is gone.
+func (r *Router) revokeAllConsents(username string) {
+	if r.hydraClient == nil {
+		return
+	}
+	if _, err := r.hydraClient.OAuth2API.RevokeOAuth2ConsentSessions(context.Background()).Subject(username).All(true).Execute(); err != nil {
+		slog.Error("Failed to revoke Hydra consents", "username", username, "err", err)
+	}
+}
+
 // revokeConsentsOf re-reads username after mokey removed them from a group
 // and revokes what their groups no longer admit. Runs in r.goBG.
 func (r *Router) revokeConsentsOf(username string) {

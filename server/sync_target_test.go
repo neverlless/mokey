@@ -358,3 +358,13 @@ func TestSyncTargetCreateCNBeforeManaged(t *testing.T) {
 	}
 	assert.Equal(t, []string{"user_mod", "group_add_member"}, order)
 }
+
+func TestSyncTargetDeleteRevokesAppSessions(t *testing.T) {
+	r, fake, _ := syncTargetRouter(t)
+	r.lock = newStoreLock(r.storage)
+	r.forwardAuth = testFAConfig()
+	fake.AddUser("walter", ipatest.User{Locked: true})
+	s := newFASession(t, r, "walter", "sid1")
+	require.NoError(t, r.syncDelete("walter", false))
+	assert.False(t, faAlive(t, r, s.ID))
+}
