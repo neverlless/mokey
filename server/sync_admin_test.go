@@ -423,11 +423,24 @@ func TestAdminSyncDecisionGroupWithoutMemberWrite(t *testing.T) {
 	assert.Contains(t, body, "Decisions · 1")
 }
 
-func TestAdminSyncHeader(t *testing.T) {
+func TestAdminSyncHeaderAndHeldWithErrors(t *testing.T) {
 	tc, router, _, _ := syncAdminApp(t)
 	router.sync.Google.OrgUnits = []string{"/Staff"}
 
 	page := readBody(t, tc.get("/admin/sync"))
 	assert.Contains(t, page, "Google Workspace · example.org · "+fmt.Sprintf(T("sync.admin_source_ou"), "/Staff")+"<br>")
 	assert.Contains(t, page, `<span class="mokey-mono">google2ipa-managed</span> · <span class="text-nowrap">1 mapped group</span></p>`)
+
+	storeSyncResult(t, router, syncLastKey, syncRunResult{At: time.Now(), Errors: []string{"boom"}})
+	page = readBody(t, tc.get("/admin/sync"))
+	assert.Contains(t, page, `mokey-pill is-danger text-nowrap">`+esc(T("sync.admin_failed")))
+
+	// the brake outranks the errors, which stay one click away
+	storeSyncResult(t, router, syncHeldKey, syncRunResult{At: time.Now(), Held: true, HeldCount: 1, HeldDisable: 1, Plan: syncPlan{Disable: []string{"rmiller"}}})
+	page = readBody(t, tc.get("/admin/sync"))
+	assert.Contains(t, page, `mokey-pill is-warn text-nowrap">`+esc(T("sync.admin_held")))
+	assert.NotContains(t, page, esc(T("sync.admin_failed")))
+	assert.Contains(t, page, `hx-get="/admin/sync/status?tab=last"`)
+	assert.Contains(t, page, ">1 error</a></span>")
+	assert.Equal(t, "held", selectedTab(t, page))
 }

@@ -801,6 +801,8 @@ year_one = "%d year"
 year_other = "%d years"
 mapped_group_one = "%d mapped group"
 mapped_group_other = "%d mapped groups"
+error_one = "%d error"
+error_other = "%d errors"
 
 [date]
 layout = "Jan 2, 2006 15:04 MST"

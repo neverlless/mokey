@@ -800,6 +800,8 @@ year_one = "%d jaar"
 year_other = "%d jaar"
 mapped_group_one = "%d gekoppelde groep"
 mapped_group_other = "%d gekoppelde groepen"
+error_one = "%d fout"
+error_other = "%d fouten"
 
 [date]
 layout = "02-01-2006 15:04 MST"

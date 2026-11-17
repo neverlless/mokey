@@ -149,10 +149,13 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_running"), "is-muted"
 	case last == nil:
 		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_never"), "is-muted"
-	case len(last.Errors) > 0:
-		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_failed"), "is-danger"
 	case held != nil:
 		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_held"), "is-warn"
+		if len(last.Errors) > 0 {
+			vars["sy_state_errors"] = formatUnit(lang, "error", len(last.Errors))
+		}
+	case len(last.Errors) > 0:
+		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_failed"), "is-danger"
 	default:
 		vars["sy_state"], vars["sy_state_class"] = TL(lang, "sync.admin_ok"), "is-ok"
 	}

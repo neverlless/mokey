@@ -11,8 +11,11 @@
      hx-target="#admin-sync" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "sync.admin_running_hint" }}</div>
 {{ end }}
 
-<div class="d-flex align-items-center gap-2 mb-3">
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
   <span class="mokey-pill {{ $.sy_state_class }} text-nowrap">{{ $.sy_state }}</span>
+  {{ with $.sy_state_errors }}<span class="text-muted small text-nowrap">· <a class="link-secondary" href="/admin/sync?tab=last"
+     hx-get="/admin/sync/status?tab=last" hx-target="#admin-sync" hx-push-url="/admin/sync?tab=last"
+     hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ . }}</a></span>{{ end }}
   <span class="text-muted small">{{ $.sy_when }}</span>
   <button type="button" class="btn btn-sm btn-outline-secondary ms-auto text-nowrap"
           hx-post="/admin/sync/dry-run" hx-target="#admin-sync" hx-disabled-elt="this"
