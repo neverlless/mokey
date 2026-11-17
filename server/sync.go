@@ -10,6 +10,8 @@ import (
 	"slices"
 	"sync"
 	"time"
+
+	"google.golang.org/api/option"
 )
 
 const (
@@ -81,7 +83,11 @@ func (r *Router) syncGoogle() (syncSource, error) {
 	defer r.syncMu.Unlock()
 	if r.syncSrc == nil {
 		// Background: the token source keeps the context for later refreshes
-		src, err := newGoogleSource(context.Background(), r.sync.Google, slices.Sorted(maps.Keys(r.sync.GroupMapping)))
+		var opts []option.ClientOption
+		if r.sync.Google.Endpoint != "" {
+			opts = append(opts, option.WithEndpoint(r.sync.Google.Endpoint))
+		}
+		src, err := newGoogleSource(context.Background(), r.sync.Google, slices.Sorted(maps.Keys(r.sync.GroupMapping)), opts...)
 		if err != nil {
 			return nil, err
 		}

@@ -53,7 +53,7 @@ func TestSyncConfigDefaults(t *testing.T) {
 		c.MaxEventsPerRun != 50 || c.ImportLegacyLocks {
 		t.Fatalf("defaults: %+v", c)
 	}
-	if c.Google.Customer != "my_customer" || c.Google.AdminEmail != "admin@example.org" {
+	if c.Google.Customer != "my_customer" || c.Google.AdminEmail != "admin@example.org" || c.Google.Endpoint != "" {
 		t.Fatalf("google: %+v", c.Google)
 	}
 }

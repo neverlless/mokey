@@ -392,6 +392,9 @@ enable_metrics = false
 # query = ""
 # org_units = []
 # domains = []
+# Directory API base URL instead of Google's, for tests and API proxies;
+# credentials are still required.
+# endpoint = ""
 
 # Google group email -> FreeIPA groups. Mapped groups must not have a
 # [[groups.rules]] time limit.

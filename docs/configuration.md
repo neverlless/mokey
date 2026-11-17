@@ -209,6 +209,7 @@ can't set them, mokey reads them as empty.
 | `query` | string | — | Google user search query that limits who is synced. |
 | `org_units` | list | `[]` | Limit to these organizational units. |
 | `domains` | list | `[]` | Limit to these email domains (lowercased). |
+| `endpoint` | string | — | Base URL of the Directory API instead of Google's, for tests and API proxies. Authentication is unchanged: a key file's own `token_uri` is used. |
 
 `[sync.google.group_mapping]` maps a Google group email to FreeIPA groups,
 for example `"devops@example.com" = ["devops-team"]`. Keys are lowercased. A
