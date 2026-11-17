@@ -112,7 +112,8 @@ func (r *Router) appCatalog(c fiber.Ctx) ([]catalogApp, error) {
 					app.State, app.Group = appPending, g.Name
 					break
 				}
-				if app.State == "" {
+				// Google owns a mapped group's membership; a join is refused
+				if app.State == "" && !r.syncMapped(g.Name) {
 					app.State, app.Group = appRequestable, g.Name
 				}
 			}

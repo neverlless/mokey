@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -149,4 +150,15 @@ func TestAppsDisabled(t *testing.T) {
 			assert.Equal(fiber.StatusNotFound, resp.StatusCode)
 		})
 	}
+}
+
+func TestAppsMappedGroupNotRequestable(t *testing.T) {
+	app, router, _ := newAppsTestApp(t, nil)
+	router.sync = &syncConfig{ManagedGroup: "google2ipa-managed", GroupMapping: map[string][]string{"ops@example.org": {"grafana-users"}}}
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	body := readBody(t, tc.get("/apps"))
+	assert.False(t, strings.Contains(body, requestButton+`grafana"}'`), "Google owns the membership")
+	assert.True(t, strings.Contains(body, requestButton+`vault"}'`), "other groups stay requestable")
 }
