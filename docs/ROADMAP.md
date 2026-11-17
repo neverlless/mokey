@@ -47,17 +47,8 @@ release is scoped.
 
 ### Directory sync
 
-[google2ipa](https://github.com/neverlless/google2ipa) becomes a mokey
-module.
+Google Workspace shipped in v2.12; more sources and rules next.
 
-- [ ] Google Workspace as an account source: create, disable and later
-      remove FreeIPA accounts, and map Google groups to FreeIPA groups
-- [ ] Plan, dry run and apply from the admin pages; mass-disable safety
-      brake; every change in the audit log and webhooks
-- [ ] Synced accounts marked as managed: fields owned by the source and
-      mapped groups are read-only in the portal
-- [ ] `mokey sync` as its own role (CronJob or service), apart from the
-      web portal
 - [ ] Microsoft Entra ID and Okta as further sources
 - [ ] Rules from source attributes (department, organizational unit) to
       FreeIPA groups, HBAC and sudo rules
@@ -113,6 +104,7 @@ repository.
 
 | Release | Highlights |
 | --- | --- |
+| v2.12 (Nov 2026) | Directory sync from Google Workspace with dry run, brake, admin page and `mokey sync`; google2ipa merged into mokey; mail links bound to their flow |
 | v2.11 (Nov 2026) | Forward-auth sign-in for web apps behind Traefik, ingress-nginx, Caddy, Envoy and Istio; account expiry with sponsor renewal; several replicas behind a load balancer; Helpdesk on its own page |
 | v2.10 (Nov 2026) | Time-bound group membership with per-group limits, renewals and automatic removal; COPR packages for RHEL, Rocky and AlmaLinux 8, 9 and 10; migration guide from ubccr/mokey; minor-version image tags |
 | v2.9 (Nov 2026) | Redesigned UI: grouped sidebar, security hub, admin split into Requests, People and Audit log; docs on Astro Starlight |

@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.12.0] - 2026-11-17
 
 - Directory sync (`[sync]`, off by default): Google Workspace as an account
   source, ported from google2ipa. Creates, updates, locks, unlocks and
@@ -19,6 +19,30 @@
 - Moving from google2ipa: the first sync run updates `cn` on every managed
   account whose `cn` differs from the Google full name, a one-time burst of
   updates
+- Links in account mails (password reset, verification, email change, OTP
+  recovery, invites) only work for their own flow: a link of one kind is
+  refused by the others
+- Admin People row menu: roomier expiry and sponsor forms that show the
+  current value, with a "Clear expiry" action
+- A panic in a background task is logged with its stack instead of
+  stopping the process
+- goipa v1.2.0: typed FreeIPA calls instead of raw RPC; the trusted-AD
+  username check uses the IPA domain from `default.conf` instead of the
+  lower-cased realm
+
+### Upgrade notes
+
+- Directory sync is off by default. Turning it on needs the FreeIPA
+  permission `Mokey Sync Group Membership` (member write, filtered to the
+  sync's groups) and user add/modify/disable/enable/delete rights on
+  mokey's role, plus sqlite3 or redis storage; `mokey sync` as a separate
+  process needs redis (Directory sync guide, `mokey_ipa_sync_groups` in the
+  Ansible role). Update the permission's filter whenever `group_mapping`,
+  `default_groups` or `managed_group` change; `/admin/sync` lists groups
+  outside it
+- Where `default.conf` names a domain other than the lower-cased Kerberos
+  realm, usernames of trusted AD users are now matched against that domain
+- Mail links sent by v2.11 and earlier still work until they expire
 
 ## [v2.11.0] - 2026-11-17
 
