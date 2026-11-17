@@ -373,6 +373,14 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 	if !ok {
 		return r.syncBusy(c, err)
 	}
+	// release is idempotent; the defer covers a panic before the hand-off.
+	// The paths that render call it first: the page must not show a run.
+	handedOff := false
+	defer func() {
+		if !handedOff {
+			release()
+		}
+	}()
 	fresh, err := r.syncRun(context.Background(), time.Now(), admin, true)
 	if err != nil {
 		release()
@@ -390,6 +398,7 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 			"disable", disable, "now_disable", len(fresh.Plan.Disable), "delete", del, "now_delete", len(fresh.Plan.Delete))
 		return r.renderSyncStatus(c, fiber.Map{"sy_fresh": fresh, "sy_alert": TC(c, "sync.admin_plan_changed")}, "held")
 	}
+	handedOff = true
 	r.goBG(func() {
 		defer release()
 		// a second read: Google may have shrunk since the check

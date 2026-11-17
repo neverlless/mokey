@@ -395,3 +395,21 @@ func TestAdminSyncDecisionCountSameOnEveryTab(t *testing.T) {
 		assert.Contains(t, body, "Decisions · 2<", tab)
 	}
 }
+
+type panicSource struct{}
+
+func (panicSource) Users(context.Context) ([]syncSourceUser, error) { panic("source blew up") }
+
+// A panic in Apply's check run, before the background hand-off, must not
+// leave the run lock claimed and renewed for ever.
+func TestAdminSyncApplyPanicReleasesClaim(t *testing.T) {
+	tc, router, _, _ := syncAdminApp(t)
+	router.syncSrc = panicSource{}
+
+	resp := tc.postForm("/admin/sync/apply", url.Values{"disable": {"0"}, "delete": {"0"}}, htmx)
+	assert.Equal(t, fiber.StatusInternalServerError, resp.StatusCode)
+	release, ok, err := router.lock.claim(syncRunKey, syncRunTTL)
+	require.NoError(t, err)
+	require.True(t, ok, "run lock still held after the panic")
+	release()
+}
