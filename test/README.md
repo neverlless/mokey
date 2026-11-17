@@ -69,12 +69,14 @@ instead (only with `MOKEY_IT_SYNC`): its mokey config,
 serves on the host's port 18867 (port must be free), reached from mokey as
 `host.docker.internal`. The test copies a throwaway service account key into
 the mokey container (`MOKEY_IT_MOKEY_CONTAINER`) whose `token_uri` is the
-same fake, grants mokey's role `Group Administrators` for the run (and takes it
-back: the time-bound membership test needs the role without it), and
-creates the groups `it-sync-managed` and `it-sync-devs`, kept between runs. It
-creates three accounts from Google, checks the managed and mapped groups, no
+same fake, grants mokey's role the scoped `Mokey Directory Sync` privilege
+from the [directory sync guide](../docs/guides/directory-sync.md), and
+creates the groups `it-sync-managed` and `it-sync-devs`, all kept between
+runs. It creates three accounts from Google, checks the managed and mapped groups, no
 password and `cn`, then a leaver is locked, a rename updates `cn`, an
-admin-blocked account stays locked, and the leaver's return unlocks it.
+admin-blocked account stays locked, and the leaver's return unlocks it; with
+the mapped group dropped from the permission filter, a run fails with one
+error and a Decisions row and leaves that group alone.
 
 ```sh
 MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compose.yml \
