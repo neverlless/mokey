@@ -80,6 +80,10 @@ func browserLoginAt(t *testing.T, page playwright.Page, base string, u *testUser
 	must(t, err)
 	must(t, page.Locator("#username").Fill(u.uid))
 	must(t, page.Locator("#username").Press("Enter"))
+	must(t, page.Locator("#password").WaitFor())
+	// htmx binds the swapped-in form only when the swap settles; an Enter
+	// before that submits the bare <form> natively as a GET to /auth/login
+	must(t, page.Locator("#login .htmx-added").WaitFor(playwright.LocatorWaitForOptions{State: playwright.WaitForSelectorStateDetached}))
 	must(t, page.Locator("#password").Fill(u.password))
 	must(t, page.Locator("#password").Press("Enter"))
 	must(t, page.WaitForURL(base+"/"))
