@@ -227,7 +227,15 @@ func (r *Router) syncApply(ctx context.Context, res *syncRunResult, cur map[stri
 		if !ok("create", u.UID, r.syncCreate(u, cfg), "AUDIT sync user created", "email", u.Email) {
 			return
 		}
-		// the only place a new account is known complete: welcome mail goes here
+		if cfg.WelcomeMail {
+			if err := r.syncWelcome(u.UID, cfg.WelcomeLinkTTL); err != nil {
+				// not `failed`: the account exists and still gets its groups
+				mu.Lock()
+				res.Errors = append(res.Errors, fmt.Sprintf("welcome mail %s: %v", u.UID, err))
+				mu.Unlock()
+				slog.Error("Directory sync welcome mail failed", "username", u.UID, "by", by, "err", err)
+			}
+		}
 	})
 	syncEach(ctx, n, p.Adopt, func(uid string) {
 		ok("adopt", uid, r.syncGroups(uid, []string{cfg.ManagedGroup}, nil), "AUDIT sync user adopted")

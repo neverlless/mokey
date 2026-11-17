@@ -337,6 +337,23 @@ func (e *Emailer) SendPasswordExpiryReminderEmail(user *ipa.User, days int) erro
 	return e.sendEmail(user, nil, lang, TL(lang, "email_template.password_expiry_subject"), "password-expiry", vars)
 }
 
+// SendSyncWelcomeEmail mails a new directory-sync account a set-password
+// link valid for ttl. Sent from the background run — no request context.
+func (e *Emailer) SendSyncWelcomeEmail(user *ipa.User, ttl time.Duration) error {
+	lang := userLanguage(user)
+	token, err := issueToken(user.Username, &Token{Username: user.Username, Email: user.Email, MaxAge: int(ttl.Seconds())}, TokenPasswordReset, e.storage)
+	if err != nil {
+		return err
+	}
+
+	vars := map[string]interface{}{
+		"link":         fmt.Sprintf("%s/auth/resetpw/%s", BaseURL(nil), token),
+		"link_expires": formatDuration(lang, ttl),
+	}
+
+	return e.sendTokenEmail(user, user.Username, TokenPasswordReset, nil, lang, TL(lang, "email_template.sync_welcome_subject"), "sync-welcome", vars)
+}
+
 func groupRequestSubject(lang, reqType string) string {
 	switch reqType {
 	case groupRequestLeave:
