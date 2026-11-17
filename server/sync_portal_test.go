@@ -64,6 +64,27 @@ func TestManagedSettingsReadOnly(t *testing.T) {
 	assert.NotEmpty(t, fakeUser(fake, "walter").Mobile)
 }
 
+func TestEmailChangeIntoSyncedDomainRefused(t *testing.T) {
+	tc, _, fake := portalSyncApp(t)
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!", Email: "jesse@elsewhere.test", First: "Jesse", Last: "Pinkman"})
+	jt := newTestClient(t, tc.app)
+	jt.login("jesse", "Secret123!")
+
+	body := readBody(t, jt.postForm("/account/settings", url.Values{"first": {"Jesse"}, "last": {"Pinkman"}, "email": {"Jesse@Example.org"}}, htmx))
+	assert.Contains(t, body, T("sync.account_from_google"))
+	assert.NotContains(t, body, T("account.email_change_sent"))
+}
+
+func TestEmailChangeConfirmRefusedForManaged(t *testing.T) {
+	tc, router, fake := portalSyncApp(t)
+	token, err := NewToken("walter", "walter@elsewhere.test", TokenEmailChange, router.storage)
+	require.NoError(t, err)
+	tc.getCSRF("/auth/email/confirm/" + token)
+	resp := tc.postForm("/auth/email/confirm/"+token, url.Values{}, nil)
+	assert.Equal(t, fiber.StatusForbidden, resp.StatusCode)
+	assert.Equal(t, "walter@example.org", fakeUser(fake, "walter").Email)
+}
+
 func TestUnmanagedSettingsEditable(t *testing.T) {
 	tc, router, fake := portalSyncApp(t)
 	fake.AddUser("jesse", ipatest.User{Password: "Secret123!", Email: "jesse@example.org", First: "Jesse", Last: "Pinkman"})

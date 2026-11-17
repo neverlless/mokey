@@ -93,6 +93,10 @@ func (r *Router) AccountSettings(c fiber.Ctx) error {
 			vars["message"] = TC(c, "account.email_invalid")
 			return c.Render("account.html", vars)
 		}
+		if r.syncDomain(newEmail) {
+			vars["message"] = TC(c, "sync.account_from_google")
+			return c.Render("account.html", vars)
+		}
 	}
 
 	userUpdated, err := r.adminClient.UserMod(user)
@@ -595,6 +599,11 @@ func (r *Router) EmailChangeConfirm(c fiber.Ctx) error {
 			"err", err,
 		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
+	}
+
+	// the token may predate sync managing the account or its domain
+	if r.syncManaged(user) || r.syncDomain(claims.Email) {
+		return c.Status(fiber.StatusForbidden).SendString(TC(c, "sync.managed_by_google"))
 	}
 
 	oldEmail := user.Email
