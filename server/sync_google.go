@@ -65,7 +65,7 @@ func (s *googleSource) keep(u *admin.User) bool {
 	if u.Suspended || u.Archived {
 		return false
 	}
-	email := strings.ToLower(u.PrimaryEmail)
+	email := strings.ToLower(strings.TrimSpace(u.PrimaryEmail))
 	if len(s.cfg.Domains) > 0 {
 		_, domain, _ := strings.Cut(email, "@")
 		if !slices.Contains(s.cfg.Domains, domain) {
@@ -84,13 +84,19 @@ func (s *googleSource) keep(u *admin.User) bool {
 // Users returns active users with their mapped group memberships. Any API
 // error fails the whole call: a partial list must never reach the planner.
 func (s *googleSource) Users(ctx context.Context) ([]syncSourceUser, error) {
-	memberOf := map[string][]string{}
+	var groups []string
 	for _, g := range s.groups {
+		groups = append(groups, strings.ToLower(strings.TrimSpace(g)))
+	}
+	memberOf := map[string][]string{}
+	for _, g := range slices.Compact(slices.Sorted(slices.Values(groups))) {
 		err := s.svc.Members.List(g).IncludeDerivedMembership(true).MaxResults(200).Pages(ctx, func(m *admin.Members) error {
 			for _, mem := range m.Members {
 				if mem.Type == "USER" {
-					e := strings.ToLower(mem.Email)
-					memberOf[e] = append(memberOf[e], strings.ToLower(g))
+					e := strings.ToLower(strings.TrimSpace(mem.Email))
+					if !slices.Contains(memberOf[e], g) {
+						memberOf[e] = append(memberOf[e], g)
+					}
 				}
 			}
 			return nil
@@ -110,7 +116,7 @@ func (s *googleSource) Users(ctx context.Context) ([]syncSourceUser, error) {
 			if !s.keep(u) {
 				continue
 			}
-			email := strings.ToLower(u.PrimaryEmail)
+			email := strings.ToLower(strings.TrimSpace(u.PrimaryEmail))
 			su := syncSourceUser{Email: email, Groups: memberOf[email]}
 			if u.Name != nil {
 				su.GivenName, su.FamilyName, su.FullName = u.Name.GivenName, u.Name.FamilyName, u.Name.FullName

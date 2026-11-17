@@ -155,3 +155,18 @@ func TestGoogleSourceLowercase(t *testing.T) {
 		t.Fatalf("users = %+v", users)
 	}
 }
+
+func TestGoogleSourceDuplicateGroups(t *testing.T) {
+	f := fakeDirectory{
+		pages:   map[string]map[string]any{"": {"users": []map[string]any{{"primaryEmail": " jo@example.com "}}}},
+		members: map[string][]map[string]string{"devops@example.com": {{"email": " Jo@example.com", "type": "USER"}}},
+	}
+	src := testGoogleSource(t, f, googleSourceConfig{Customer: "c"}, []string{"devops@example.com", " DevOps@Example.com"})
+	users, err := src.Users(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(users) != 1 || users[0].Email != "jo@example.com" || !slices.Equal(users[0].Groups, []string{"devops@example.com"}) {
+		t.Fatalf("users = %+v", users)
+	}
+}
