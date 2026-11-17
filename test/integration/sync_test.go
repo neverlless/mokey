@@ -34,6 +34,8 @@ const (
 	syncMapped      = "it-sync-devs"
 	syncGoogleGroup = "devs@sync.test"
 	syncToken       = "it-sync-access-token"
+	syncPerm        = "Mokey Sync Group Membership"
+	syncPriv        = "Mokey Directory Sync"
 )
 
 var mokeyCtr = envOr("MOKEY_IT_MOKEY_CONTAINER", "demo-mokey-1")
@@ -94,20 +96,16 @@ func syncStand(t *testing.T) *fakeGoogle {
 	if os.Getenv("MOKEY_IT_SYNC") == "" {
 		t.Skip("MOKEY_IT_SYNC is not set")
 	}
-	// docs/guides/directory-sync.md: group membership for the sync. Taken
-	// back at the end: with it, mokey's role may change any group, which
-	// TestTimedMembershipExpiresOnRealFreeIPA relies on it not doing.
-	if out, err := ipaCmd("", "role-add-privilege", "Mokey User Manager", "--privileges=Group Administrators"); err != nil && !strings.Contains(out, "already") {
-		t.Fatalf("grant Group Administrators: %s: %s", err, out)
-	} else if err == nil {
-		t.Cleanup(func() {
-			_, _ = ipaCmd("", "role-remove-privilege", "Mokey User Manager", "--privileges=Group Administrators")
-		})
-	}
-	// kept between runs
+	// docs/guides/directory-sync.md: members of the sync's groups only.
+	// Kept between runs, like the stand's other permissions; so are the groups.
 	for _, args := range [][]string{
 		{"group-add", syncManaged, "--desc=mokey sync tests: managed"},
 		{"group-add", syncMapped, "--desc=mokey sync tests: mapped"},
+		{"permission-add", syncPerm, "--type=group", "--right=write", "--attrs=member",
+			"--filter=" + syncFilter},
+		{"privilege-add", syncPriv, "--desc=Directory sync group membership"},
+		{"privilege-add-permission", syncPriv, "--permissions=" + syncPerm},
+		{"role-add-privilege", "Mokey User Manager", "--privileges=" + syncPriv},
 	} {
 		if out, err := ipaCmd("", args...); err != nil && !strings.Contains(out, "already") {
 			t.Fatalf("ipa %v: %s: %s", args, err, out)
@@ -147,9 +145,19 @@ func syncStand(t *testing.T) *fakeGoogle {
 	return fake
 }
 
+const syncFilter = "(|(cn=" + syncManaged + ")(cn=" + syncMapped + "))"
+
 // syncApply posts the admin Apply with the locks and deletes the admin
 // expects, then waits for the background run to end
 func syncApply(t *testing.T, admin *client, disable int) {
+	t.Helper()
+	if body := syncApplyWait(t, admin, disable); !strings.Contains(body, "mokey-pill is-ok") {
+		t.Fatalf("sync run not OK: %s", body)
+	}
+}
+
+// syncApplyWait returns the status fragment after the run
+func syncApplyWait(t *testing.T, admin *client, disable int) string {
 	t.Helper()
 	code, body := admin.hx("/admin/sync/apply", url.Values{"disable": {strconv.Itoa(disable)}, "delete": {"0"}})
 	if code != http.StatusOK || strings.Contains(body, "alert-danger") || strings.Contains(body, "alert-warning") {
@@ -166,9 +174,7 @@ func syncApply(t *testing.T, admin *client, disable int) {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	if !strings.Contains(body, "mokey-pill is-ok") {
-		t.Fatalf("sync run not OK: %s", body)
-	}
+	return body
 }
 
 var (
@@ -261,5 +267,34 @@ func TestSyncGoogleToFreeIPA(t *testing.T) {
 	}
 	if !locked(t, c) {
 		t.Errorf("admin-blocked %s was unlocked", c)
+	}
+}
+
+// A mapped group left out of the permission filter, on the real FreeIPA's
+// effective rights: the run fails with one error and a Decisions row, and
+// the group is not touched.
+func TestSyncStaleFilter(t *testing.T) {
+	fake := syncStand(t)
+	uid := "s" + runID + "f"
+	cleanupUser(t, uid)
+	u := fakeGoogleUser{uid + "@sync.test", "Sync", "F", "Sync Person F"}
+	fake.set([]fakeGoogleUser{u}, u.email)
+
+	mustIPA(t, "permission-mod", syncPerm, "--filter=(cn="+syncManaged+")")
+	t.Cleanup(func() { _, _ = ipaCmd("", "permission-mod", syncPerm, "--filter="+syncFilter) })
+
+	admin := login(t, "admin", ipaAdminPw)
+	if body := syncApplyWait(t, admin, 0); !strings.Contains(body, "mokey-pill is-danger") {
+		t.Fatalf("want a failed run: %s", body)
+	}
+	if !groupHas(t, syncManaged, uid) {
+		t.Errorf("%s not created in %s", uid, syncManaged)
+	}
+	if groupHas(t, syncMapped, uid) {
+		t.Errorf("%s added to %s outside the filter", uid, syncMapped)
+	}
+	_, body := admin.do("GET", "/admin/sync/status?tab=decisions", nil, true)
+	if !strings.Contains(body, "change members of "+syncMapped) {
+		t.Errorf("Decisions do not list %s:\n%s", syncMapped, body)
 	}
 }
