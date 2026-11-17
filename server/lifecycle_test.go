@@ -438,3 +438,56 @@ func TestLifecycleRemindersOnlyNeverWrites(t *testing.T) {
 		assert.NotEqual(t, "user_mod", c.Method)
 	}
 }
+
+func TestWarnSelfServiceManager(t *testing.T) {
+	rules := func(attrs ...string) func(ipatest.Call) (any, *ipa.IpaError) {
+		return func(c ipatest.Call) (any, *ipa.IpaError) {
+			assert.Equal(t, true, c.Options["all"])
+			return map[string]any{"count": 2, "truncated": false, "result": []map[string]any{
+				{"aciname": "Self can write own password", "attrs": []string{"userpassword"}, "permissions": []string{"write"}},
+				{"aciname": "User Self service", "attrs": attrs, "permissions": []string{"write"}},
+			}}, nil
+		}
+	}
+
+	t.Run("manager writable", func(t *testing.T) {
+		router, dir, logs := newLifecycleApp(t, renewalCfg())
+		dir.fake.Handle("selfservice_find", rules("givenname", "manager", "ou"))
+		router.warnSelfServiceManager()
+		assert.Contains(t, logs.String(), "level=WARN")
+		assert.Contains(t, logs.String(), `rule="User Self service"`)
+		assert.Contains(t, logs.String(), "ipa selfservice-mod")
+	})
+	t.Run("manager removed", func(t *testing.T) {
+		router, dir, logs := newLifecycleApp(t, renewalCfg())
+		dir.fake.Handle("selfservice_find", rules("givenname", "ou"))
+		router.warnSelfServiceManager()
+		assert.NotContains(t, logs.String(), "level=WARN")
+	})
+	t.Run("read fails", func(t *testing.T) {
+		router, dir, logs := newLifecycleApp(t, renewalCfg())
+		dir.fake.Handle("selfservice_find", func(ipatest.Call) (any, *ipa.IpaError) {
+			return nil, &ipa.IpaError{Code: 2100, Message: "Insufficient access"}
+		})
+		router.warnSelfServiceManager()
+		assert.Equal(t, 1, strings.Count(logs.String(), "level=WARN"))
+		assert.Contains(t, logs.String(), "could not read")
+	})
+	// FreeIPA hides ACIs from a role without System: Read ACIs: no error, no rules
+	t.Run("rules hidden", func(t *testing.T) {
+		router, dir, logs := newLifecycleApp(t, renewalCfg())
+		dir.fake.Handle("selfservice_find", func(ipatest.Call) (any, *ipa.IpaError) {
+			return map[string]any{"count": 0, "truncated": false, "result": []map[string]any{}}, nil
+		})
+		router.warnSelfServiceManager()
+		assert.Equal(t, 1, strings.Count(logs.String(), "level=WARN"))
+		assert.Contains(t, logs.String(), "RBAC Readers")
+	})
+	t.Run("renewal off", func(t *testing.T) {
+		router, dir, logs := newLifecycleApp(t, &lifecycleConfig{Reminders: []int{7}, MaxChanges: 50})
+		calls := len(dir.fake.Calls())
+		router.warnSelfServiceManager()
+		assert.Len(t, dir.fake.Calls(), calls)
+		assert.Empty(t, logs.String())
+	})
+}

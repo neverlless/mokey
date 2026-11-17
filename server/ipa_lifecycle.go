@@ -3,6 +3,9 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -58,4 +61,36 @@ func setUserExpiry(client *ipa.Client, uid string, at time.Time) error {
 // sponsoredBy lists the accounts whose manager is sponsor.
 func sponsoredBy(client *ipa.Client, sponsor string) ([]*ipa.User, error) {
 	return client.UserFind(ipa.Options{"manager": sponsor, "sizelimit": 0, "timelimit": 0})
+}
+
+// warnSelfServiceManager warns when a FreeIPA self-service rule lets users
+// write their own manager: with renewal on, that is choosing their sponsor.
+// FreeIPA's default "User Self service" rule does.
+func (r *Router) warnSelfServiceManager() {
+	if !r.lifecycle.on() || r.lifecycle.Renewal == 0 {
+		return
+	}
+	// shortcut: raw selfservice_find until goipa has SelfServiceFind
+	rules, err := ipa.FindEntries(context.Background(), r.adminClient, "selfservice_find", nil, ipa.Options{"all": true}, 0)
+	if err != nil {
+		slog.Warn("lifecycle: could not read the FreeIPA self-service rules to check that users can't change their own sponsor", "err", err)
+		return
+	}
+	// FreeIPA always has self-service rules; none means they are hidden
+	if len(rules) == 0 {
+		slog.Warn("lifecycle: could not check that users can't change their own sponsor: mokey's role can't read the FreeIPA self-service rules; add the RBAC Readers privilege or check the rule by hand, see the account lifecycle guide")
+		return
+	}
+	for _, e := range rules {
+		perms := e.Strs("permissions")
+		if len(perms) > 0 && !slices.Contains(perms, "write") {
+			continue
+		}
+		if slices.ContainsFunc(e.Strs("attrs"), func(a string) bool { return strings.EqualFold(a, "manager") }) {
+			name := e.Str("aciname")
+			slog.Warn("lifecycle: a FreeIPA self-service rule lets users change their own sponsor (manager); remove manager from it, see the account lifecycle guide",
+				"rule", name,
+				"fix", fmt.Sprintf(`ipa selfservice-show %q, then ipa selfservice-mod %q --attrs=... with the same attributes except manager`, name, name))
+		}
+	}
 }
