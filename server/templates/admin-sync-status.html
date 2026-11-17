@@ -6,6 +6,10 @@
   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ T "common.close" }}"></button>
 </div>
 {{ end }}
+{{ if $.sy_running }}
+<div class="alert alert-info" role="status" hx-get="/admin/sync/status?tab={{ $.sy_tab }}" hx-trigger="load delay:3s"
+     hx-target="#admin-sync" hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "sync.admin_running_hint" }}</div>
+{{ end }}
 
 <div class="d-flex align-items-center gap-2 mb-3">
   <span class="mokey-pill {{ $.sy_state_class }} text-nowrap">{{ $.sy_state }}</span>
@@ -50,11 +54,14 @@
   {{ if $.sy_held_table }}
   <div class="alert alert-warning" role="status">{{ $.sy_brake }}</div>
   {{ template "admin-sync-rows.html" $.sy_held_table }}
+  {{ if not $.sy_running }}
   <form method="post" class="mb-4" hx-post="/admin/sync/apply" hx-target="#admin-sync" hx-disabled-elt="find button"
         hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
-    <input type="hidden" name="expected" value="{{ $.sy_expected }}">
+    <input type="hidden" name="disable" value="{{ $.sy_expect_disable }}">
+    <input type="hidden" name="delete" value="{{ $.sy_expect_delete }}">
     <button type="submit" class="btn btn-primary">{{ $.sy_apply }}</button>
   </form>
+  {{ end }}
   {{ else }}
   <p class="text-muted">{{ T "sync.admin_nothing_held" }}</p>
   {{ end }}

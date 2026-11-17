@@ -109,7 +109,7 @@ func TestUIPreviewServe(t *testing.T) {
 	for i := 1; i <= 18; i++ {
 		gone = append(gone, fmt.Sprintf("demo%03d", i))
 	}
-	held := syncRunResult{At: now.Add(-12 * time.Minute), Held: true, HeldCount: 23,
+	held := syncRunResult{At: now.Add(-12 * time.Minute), Held: true, HeldCount: 23, HeldDisable: 21, HeldDelete: 2,
 		Plan: syncPlan{Disable: gone, Delete: []string{"demo019", "demo020"}}}
 	last := held
 	last.Applied = map[string]int{"create": 2, "update": 1, "group_add": 4, "group_remove": 1}
