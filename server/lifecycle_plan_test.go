@@ -84,7 +84,7 @@ func TestPlanLifecycleCascade(t *testing.T) {
 }
 
 func TestPlanLifecycleChain(t *testing.T) {
-	cfg := &lifecycleConfig{MaxChanges: 50}
+	cfg := &lifecycleConfig{Renewal: 365 * 24 * time.Hour, MaxChanges: 50}
 	ch, _ := planLifecycle([]lcAccount{
 		{UID: "c", Sponsor: "b", Expires: lcDays(300)},
 		{UID: "b", Sponsor: "a", Expires: lcDays(200)},

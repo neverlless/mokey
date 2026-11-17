@@ -421,3 +421,20 @@ func TestLifecycleFailedSponsorOnlyReminderRetries(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, sink.count())
 }
+
+// reminders alone never write to FreeIPA, not even the sponsor cap
+func TestLifecycleRemindersOnlyNeverWrites(t *testing.T) {
+	router, dir, _ := newLifecycleApp(t, &lifecycleConfig{Reminders: []int{7}, MaxChanges: 50})
+	now := time.Now()
+	dir.add("walter", lcFakeUser{expires: now.Add(24 * time.Hour)})
+	dir.add("jesse", lcFakeUser{sponsor: "walter", expires: now.Add(90 * 24 * time.Hour)})
+	dir.add("skinny", lcFakeUser{sponsor: "walter"})
+
+	applied, held, err := router.lifecycleRun(now, "")
+	require.NoError(t, err)
+	assert.Equal(t, 0, applied)
+	assert.Nil(t, held)
+	for _, c := range dir.fake.Calls() {
+		assert.NotEqual(t, "user_mod", c.Method)
+	}
+}
