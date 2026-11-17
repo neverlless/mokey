@@ -12,9 +12,10 @@
 mokey gives FreeIPA users a self-service portal for their own account, lets
 group sponsors approve access requests, optionally for a limited time, and
 signs people in to web apps: over OpenID Connect as the login and consent app
-for Ory Hydra, or with forward-auth behind a reverse proxy. Admins get a
-helpdesk view and an audit log; other systems get webhooks and a read-only
-JSON API.
+for Ory Hydra, or with forward-auth behind a reverse proxy. It can also keep
+FreeIPA accounts in step with Google Workspace: joiners get an account,
+leavers are locked. Admins get a helpdesk view and an audit log; other
+systems get webhooks and a read-only JSON API.
 
 FreeIPA stays the single store for users, groups and credentials. mokey talks
 to the FreeIPA JSON-RPC API with a least-privilege service account, needs no
@@ -45,6 +46,7 @@ flowchart LR
     M -->|JSON-RPC, keytab| I[FreeIPA / IdM]
     M --> S[(Sessions<br/>memory / SQLite / Redis)]
     M -->|SMTP, Slack, webhooks| N[Notifications &<br/>events]
+    G[Google Workspace] -->|directory sync| M
 ```
 
 ## Features
@@ -88,6 +90,15 @@ flowchart LR
 - SAML-only apps through Keycloak as a broker
   ([guide](docs/keycloak.md)), or mokey next to an existing OIDC provider
   ([guide](docs/companion/oidc-provider.md))
+
+**Directory sync** ([guide](docs/guides/directory-sync.md))
+
+- Google Workspace as an account source: creates, updates, locks and later
+  deletes FreeIPA accounts, and maps Google groups to FreeIPA groups
+- Dry run, a brake on mass locks and an admin page to review and apply;
+  every change in the audit log and webhooks
+- Runs inside the portal or as `mokey sync` from a CronJob or timer;
+  replaces [google2ipa](https://github.com/neverlless/google2ipa)
 
 **Admin and audit** ([helpdesk view](docs/guides/helpdesk.md))
 
