@@ -237,21 +237,33 @@ function closeModal(ele) {
   document.body.addEventListener('htmx:afterSettle', toastAlerts);
 })();
 
-// Copy buttons: data-copy holds the text, data-copied the label shown for 2 s
+// Copy buttons: data-copy holds the text, data-copied the label shown for
+// 2 s, data-copy-failed the hint when the browser refuses (no clipboard API
+// outside https, or permission denied)
 document.addEventListener('click', function (e) {
   var btn = e.target.closest('[data-copy]');
-  if (!btn || !navigator.clipboard) return;
-  navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+  if (!btn) return;
+  var status = document.querySelector('[data-copy-status]');
+  function show(text) {
     btn.dataset.label = btn.dataset.label || btn.textContent;
-    btn.textContent = btn.getAttribute('data-copied');
-    var status = document.querySelector('[data-copy-status]');
-    if (status) status.textContent = btn.getAttribute('data-copied');
+    btn.textContent = text;
+    if (status) status.textContent = text;
     clearTimeout(btn.copyTimer);
     btn.copyTimer = setTimeout(function () {
       btn.textContent = btn.dataset.label;
       if (status) status.textContent = '';
     }, 2000);
-  });
+  }
+  function failed() {
+    show(btn.getAttribute('data-copy-failed'));
+  }
+  if (!navigator.clipboard) {
+    failed();
+    return;
+  }
+  navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+    show(btn.getAttribute('data-copied'));
+  }).catch(failed);
 });
 
 // Group pills on the admin app form. Typed names that never became a pill
