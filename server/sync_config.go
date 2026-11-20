@@ -80,6 +80,11 @@ func loadSyncConfig() (*syncConfig, error) {
 		},
 		GroupMapping: map[string][]string{},
 	}
+	for _, ou := range c.Google.OrgUnits {
+		if !strings.HasPrefix(syncName(ou), "/") {
+			return nil, fmt.Errorf("sync.google.org_units: %q must start with /", syncName(ou))
+		}
+	}
 	for _, d := range viper.GetStringSlice("sync.google.domains") {
 		c.Google.Domains = append(c.Google.Domains, syncName(d))
 	}
