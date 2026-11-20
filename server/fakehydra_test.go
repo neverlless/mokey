@@ -34,6 +34,7 @@ type fakeHydra struct {
 	loginRequests  map[string]map[string]interface{} // login_challenge -> response object
 	consentSubject map[string]string                 // consent_challenge -> subject
 	consentClient  map[string]string                 // consent_challenge -> client_id
+	consentScope   map[string][]string               // consent_challenge -> requested_scope
 	logoutSubject  map[string]string                 // logout_challenge -> subject
 	// consent sessions ("connected apps"), keyed by subject
 	consentSessions map[string][]fakeConsentSession
@@ -55,6 +56,7 @@ func newFakeHydra() *fakeHydra {
 		loginRequests:   make(map[string]map[string]interface{}),
 		consentSubject:  make(map[string]string),
 		consentClient:   make(map[string]string),
+		consentScope:    make(map[string][]string),
 		logoutSubject:   make(map[string]string),
 		consentSessions: make(map[string][]fakeConsentSession),
 	}
@@ -101,6 +103,13 @@ func (f *fakeHydra) seedConsentForClient(challenge, subject, clientID string) {
 	defer f.mu.Unlock()
 	f.consentSubject[challenge] = subject
 	f.consentClient[challenge] = clientID
+}
+
+func (f *fakeHydra) seedConsentWithScope(challenge, subject string, scope []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.consentSubject[challenge] = subject
+	f.consentScope[challenge] = scope
 }
 
 func (f *fakeHydra) seedLogout(challenge, subject string) {
@@ -158,10 +167,14 @@ func (f *fakeHydra) getConsent(w http.ResponseWriter, r *http.Request) {
 	if clientID == "" {
 		clientID = "test-client"
 	}
+	scope := f.consentScope[challenge]
+	if scope == nil {
+		scope = []string{"openid", "profile"}
+	}
 	writeJSON(w, map[string]interface{}{
 		"challenge":       challenge,
 		"subject":         subject,
-		"requested_scope": []string{"openid", "profile"},
+		"requested_scope": scope,
 		"client":          map[string]interface{}{"client_id": clientID},
 	})
 }

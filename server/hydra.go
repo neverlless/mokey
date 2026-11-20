@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -104,6 +106,29 @@ func (ftt *FakeTLSTransport) RoundTrip(req *http.Request) (*http.Response, error
 	return ftt.T.RoundTrip(req)
 }
 
+// sshScope is the OAuth2 scope that adds the user's SSH public keys to the
+// ID token as the ssh_public_keys claim.
+const sshScope = "ssh"
+
+// sshPublicKeyClaim returns the user's SSH public keys as authorized_keys
+// lines ("type base64 comment") without key options, which only mean
+// something to sshd. The list is never nil, so a user without keys gets an
+// empty list and a client that syncs keys (Gitea) removes the old ones.
+func sshPublicKeyClaim(user *ipa.User) []string {
+	keys := make([]string, 0, len(user.SSHAuthKeys))
+	for _, k := range user.SSHAuthKeys {
+		if k == nil || k.PublicKey == nil {
+			continue
+		}
+		line := k.PublicKey.Type() + " " + base64.StdEncoding.EncodeToString(k.PublicKey.Marshal())
+		if k.Comment != "" {
+			line += " " + k.Comment
+		}
+		keys = append(keys, line)
+	}
+	return keys
+}
+
 func (r *Router) ConsentGet(c fiber.Ctx) error {
 	// Get the challenge from the query.
 	challenge := c.Query("consent_challenge")
@@ -175,7 +200,7 @@ func (r *Router) ConsentGet(c fiber.Ctx) error {
 	acceptBody := hydra.NewAcceptOAuth2ConsentRequest()
 	acceptBody.SetGrantScope(consent.GetRequestedScope())
 	session := hydra.NewAcceptOAuth2ConsentRequestSession()
-	session.SetIdToken(map[string]interface{}{
+	idToken := map[string]interface{}{
 		"uid":                user.Username,
 		"preferred_username": user.Username,
 		"name":               user.DisplayName,
@@ -185,7 +210,11 @@ func (r *Router) ConsentGet(c fiber.Ctx) error {
 		"family_name":        user.Last,
 		"groups":             user.Groups,
 		"email":              user.Email,
-	})
+	}
+	if slices.Contains(consent.GetRequestedScope(), sshScope) {
+		idToken["ssh_public_keys"] = sshPublicKeyClaim(user)
+	}
+	session.SetIdToken(idToken)
 	acceptBody.SetSession(*session)
 
 	redirect, _, err := r.hydraClient.OAuth2API.AcceptOAuth2ConsentRequest(context.Background()).

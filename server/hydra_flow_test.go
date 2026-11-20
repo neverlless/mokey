@@ -106,6 +106,47 @@ func TestOIDCConsentFlow(t *testing.T) {
 	assert.Equal([]interface{}{"admins"}, idToken["groups"])
 }
 
+func TestOIDCConsentSSHKeys(t *testing.T) {
+	const key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZBXfg8Pv9rGC+x4XanPgYX5l2uzIM6GJowIkgKOFcG"
+
+	tests := []struct {
+		name    string
+		keys    []string
+		scope   []string
+		present bool
+		want    []interface{}
+	}{
+		{"ssh scope, options dropped", []string{`from="10.0.0.0/8" ` + key + " walter@laptop"},
+			[]string{"openid", "ssh"}, true, []interface{}{key + " walter@laptop"}},
+		{"ssh scope, no keys", nil, []string{"openid", "ssh"}, true, []interface{}{}},
+		{"no ssh scope", []string{key + " walter@laptop"}, []string{"openid", "profile"}, false, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			app, fake, hy := newHydraTestApp(t)
+			fake.AddUser("walter", ipatest.User{Password: "Secret123!", SSHPubKeys: tt.keys})
+			hy.seedConsentWithScope("consent-ssh", "walter", tt.scope)
+
+			tc := newTestClient(t, app)
+			resp := tc.get("/oauth/consent?consent_challenge=consent-ssh")
+			assert.Equal(fiber.StatusFound, resp.StatusCode)
+
+			if !assert.NotNil(hy.acceptedConsent) {
+				return
+			}
+			session, _ := hy.acceptedConsent["session"].(map[string]interface{})
+			idToken, _ := session["id_token"].(map[string]interface{})
+			got, present := idToken["ssh_public_keys"]
+			assert.Equal(tt.present, present)
+			if tt.present {
+				assert.Equal(tt.want, got)
+			}
+		})
+	}
+}
+
 func TestOIDCConsentRequiresMFA(t *testing.T) {
 	assert := assert.New(t)
 	app, fake, hy := newHydraTestApp(t)

@@ -82,6 +82,13 @@ On consent mokey puts these claims into the ID token: `uid`,
 `preferred_username`, `name`, `given_name` / `first`, `family_name` / `last`,
 `email`, and `groups` (the user's FreeIPA groups).
 
+A client that requests the `ssh` scope also gets `ssh_public_keys`: the
+user's FreeIPA SSH public keys as `type base64 comment` lines, without
+authorized_keys options, and an empty list for a user with no keys. Add
+`ssh` to the client's allowed scopes in Hydra. Gitea can sync keys from it
+(`gitea admin auth update-oauth --scopes ssh --ssh-public-key-claim-name
+ssh_public_keys`); it updates them when the user signs in.
+
 ### Group rules
 
 - A user must be a member of at least one group listed for the client. Names
