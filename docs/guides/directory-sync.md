@@ -25,8 +25,9 @@ FreeIPA user, plans the difference, and applies it:
   that came back
 - **delete** accounts locked for longer than `delete_after`, into FreeIPA's
   preserved users unless `preserve = false`
-- **add and remove** the FreeIPA groups in `[sync.google.group_mapping]`, and
-  add `default_groups` on create (never removed)
+- **add and remove** the FreeIPA groups in `[sync.google.group_mapping]` and
+  those of [attribute rules](#rules-from-user-attributes), and add
+  `default_groups` on create (never removed)
 
 An account is *managed* when it is a member of `sync.managed_group` (default
 `google2ipa-managed`, which must exist). The sync touches only managed
@@ -74,14 +75,14 @@ too. List options and `group_mapping` are config-file only.
 The sync acts as mokey's service account, which already holds
 `User Administrators` for the portal: that covers adding, modifying,
 locking, unlocking and deleting users, and `preserve` moves them to the
-preserved users. What it adds is changing the members of the managed, default
-and mapped groups, through a permission limited to those groups, and the
+preserved users. What it adds is changing the members of the managed,
+default, mapped and rule groups, through a permission limited to those groups, and the
 expiry permission for the one-time google2ipa import. Create the groups first.
 
 ```sh
 kinit adminuser
 ipa group-add google-managed --desc='Accounts owned by the Google sync'
-# Members of the managed, default and mapped groups, and of no other group:
+# Members of the managed, default, mapped and rule groups, and of no other group:
 ipa permission-add 'Mokey Sync Group Membership' --type=group --right=write \
   --attrs=member --filter='(|(cn=google-managed)(cn=devops-team))'
 ipa privilege-add 'Mokey Directory Sync' --desc='Directory sync group membership'
@@ -93,8 +94,8 @@ ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Directory Sync'
 ipa role-add-privilege 'Mokey User Manager' --privileges='Mokey Expiry Write'
 ```
 
-When you change `managed_group`, `default_groups` or `group_mapping`, update
-the filter to list every group again, for example:
+When you change `managed_group`, `default_groups`, `group_mapping` or the
+groups of `[[sync.google.rules]]`, update the filter to list every group again, for example:
 
 ```sh
 ipa permission-mod 'Mokey Sync Group Membership' \
@@ -117,9 +118,81 @@ import).
 > [!NOTE]
 > Group changes run as the service account, not in a sponsor's session. This
 > is deliberate: the source owns those groups, so there is no sponsor decision
-> for FreeIPA to enforce. The portal shows mapped groups as "Synced from
-> Google", read-only, and a mapped group can't have a time limit in
+> for FreeIPA to enforce. The portal shows mapped and rule groups as "Synced
+> from Google", read-only, and such a group can't have a time limit in
 > `[[groups.rules]]` (mokey refuses to start if it does).
+
+## Rules from user attributes
+
+Where Google has a tidy organization (organizational units, department, job
+title) but no Google group per role, rules put people into FreeIPA groups
+from their attributes:
+
+```toml
+[[sync.google.rules]]
+name = "research-cluster"
+org_unit = ["/Research"]           # sub-OUs included
+groups = ["hpc-users"]
+
+[[sync.google.rules]]
+name = "engineering-sudo"
+department = ["Engineering", "Platform"]
+title = ["SRE"]
+groups = ["eng-sudo"]
+```
+
+| Condition | Matches |
+| --- | --- |
+| `org_unit` | the user's organizational unit or one below it; must start with `/` |
+| `department`, `title`, `cost_center` | the primary entry of the user's work information in Google (the first entry when none is primary) |
+| `email_domain` | the part of the primary email after `@` |
+
+Values are compared without regard to case. A rule matches when every
+condition it lists matches, and a condition matches when any of its values
+does: the second rule above takes SREs in Engineering or Platform. A user
+with no value for a condition never matches it, so an empty department is
+never "every department".
+
+`name` is required and unique, a rule needs at least one condition and at
+least one group, and it can't target `managed_group`. An unknown condition
+name, an empty value or an `org_unit` without the leading `/` stops mokey
+at startup.
+
+A rule group is owned by the sync like a mapped group: users that match get
+it, and managed users that no rule (and no mapped Google group) wants for it
+lose it. One group can be named by several rules and by `group_mapping`;
+membership is the union. Rule groups go into the
+[permission filter](#freeipa-privileges), and need to exist before the first
+run.
+
+A **Dry run** and the Held tab list each group removal with the rules or the
+Google group that no longer want it; additions appear only in the counts.
+
+### HBAC and sudo
+
+mokey never creates or changes HBAC or sudo rules. Point them at the rule
+groups once, and the sync keeps the people in them:
+
+```sh
+ipa hbacrule-add research-cluster-login
+ipa hbacrule-add-user research-cluster-login --groups=hpc-users
+ipa hbacrule-add-host research-cluster-login --hostgroups=hpc-nodes
+ipa hbacrule-add-service research-cluster-login --hbacsvcs=sshd
+
+ipa sudorule-add eng-sudo-all --cmdcat=all
+ipa sudorule-add-user eng-sudo-all --groups=eng-sudo
+ipa sudorule-add-host eng-sudo-all --hostgroups=dev-hosts
+```
+
+The **Settings** tab of `/admin/sync` lists each rule, its conditions, how
+many synced users it matched in the last run, and for each target group the
+HBAC and sudo rules that reach it: rules that name the group, a group it is
+nested in, or all users. Disabled rules are marked. This is read from
+FreeIPA on each view and changes nothing.
+
+Run a **Dry run** after adding or changing a rule: a typo in an OU or
+department removes the group from everyone who had it, and that only stops
+at the [brake](#the-safety-brake).
 
 ## Storage
 
@@ -155,25 +228,39 @@ locks held, and items that need a decision. Tabs:
   import candidates.
 - **Last run**: counts, errors, and the result of **Dry run**, which changes
   nothing.
-- **Settings**: the options in effect.
+- **Settings**: the options in effect, and the
+  [attribute rules](#rules-from-user-attributes) with the HBAC and sudo rules
+  they reach.
 
 ## The safety brake
 
-`max_disable_percent` (default 20): when a run would lock more than that
-percent of active managed accounts, it locks none and starts no delete
-clocks. Creates, updates, unlocks and group changes still go ahead. The held
-plan waits on `/admin/sync`.
+`max_disable_percent` (default 20) is checked twice per run, against the
+active managed accounts:
 
-The brake counts locks only. Deletes of accounts that are already locked
-don't count towards it: they are held only when the locks of the same run
-trip the brake. A run whose leavers are all locked already deletes every
+- locks: more than that percent of them would be locked
+- group removals: more than that percent of them would lose at least one
+  mapped or rule group
+
+Either trips the brake when it is at least two accounts. A braked run holds
+all its locks, deletes and group removals, and starts no delete clocks if
+the locks tripped it. Creates, adoptions, updates, unlocks and group
+additions still go ahead. The held plan waits on `/admin/sync`.
+
+The group count protects access-gating groups from a rule typo, an empty
+Google attribute, or a Google API answering with empty group member lists.
+Removals from groups the run can't write (see
+[FreeIPA privileges](#freeipa-privileges)) are skipped before the count.
+
+Deletes of accounts that are already locked don't count towards the brake:
+they are held only when the same run trips it. A run whose leavers are all locked already deletes every
 account whose `delete_after` is up, however many. Keep `delete_after`
 generous, and run a **Dry run** after every change to `query` or
 `org_units`, before the next scheduled run applies it.
 
 **Apply** recomputes the plan and applies it past the brake in your name,
-in the background. If the plan now locks or deletes more per kind than it did
-when you opened the page, Apply refuses and shows the new plan to check again.
+in the background. If the plan now locks, deletes or takes groups from more
+accounts than it did when you opened the page, Apply refuses and shows the new
+plan to check again.
 
 ## Lock markers and what losing storage means
 
@@ -228,7 +315,7 @@ resolve such cases by hand.
 
 ## Ansible and Helm
 
-Ansible: set `mokey_ipa_sync_groups` to the managed, default and mapped
+Ansible: set `mokey_ipa_sync_groups` to the managed, default, mapped and rule
 groups to create the scoped permission and grant it to the role; add the
 `sync` keys through `mokey_config_extra`. See the
 [role README](https://github.com/neverlless/mokey/tree/main/ansible/roles/mokey).

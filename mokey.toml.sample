@@ -370,8 +370,9 @@ enable_metrics = false
 # username = "local_part"
 # Take over existing FreeIPA accounts with a matching uid and email.
 # adopt_existing = false
-# A run that would lock more than this percent of managed accounts locks
-# none. 0 = off.
+# A run that would lock more than this percent of active managed accounts,
+# or take a mapped or rule group from more than this percent, is held for
+# an admin. 0 = off.
 # max_disable_percent = 20
 # max_username_length = 32
 # concurrency = 4
@@ -397,6 +398,7 @@ enable_metrics = false
 # admin_email = ""
 # customer = "my_customer"
 # query = ""
+# Each starts with "/"; sub-units included.
 # org_units = []
 # domains = []
 # Directory API base URL instead of Google's, for tests and API proxies;
@@ -407,6 +409,14 @@ enable_metrics = false
 # [[groups.rules]] time limit.
 [sync.google.group_mapping]
 # "devops@example.com" = ["devops-team"]
+
+# Attribute rules: users matching every condition (any listed value) join
+# the groups; sync removes them when no rule or mapped group wants them.
+# Conditions: org_unit, department, title, cost_center, email_domain.
+# [[sync.google.rules]]
+# name = "research-cluster"
+# org_unit = ["/Research"]
+# groups = ["hpc-users"]
 
 #------------------------------------------------------------------------------
 # Storage

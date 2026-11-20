@@ -21,6 +21,14 @@
 - Narrowing a client's access on the Apps page revokes the consents of users
   who lose it, in the background
 - Stricter OAuth client checks on the Apps page: client IDs and redirect URIs
+- Directory sync attribute rules (`[[sync.google.rules]]`, none by default):
+  put Google users into FreeIPA groups by organizational unit, department,
+  title, cost center or email domain, and take the groups away when they no
+  longer match. The admin Settings tab lists each rule with the users it
+  matched and the HBAC and sudo rules that reach its groups. mokey doesn't
+  create or change HBAC or sudo rules
+- Directory sync: `sync.google.org_units` entries must start with `/`; one
+  without it never matched anyone and now stops mokey at startup
 
 ### Upgrade notes
 
@@ -30,6 +38,13 @@
   `consent_sweep_interval = "0"` to turn it off
 - A client whose `metadata.mokey` is an empty object is treated as having no
   access rule (`default_deny` applies)
+- Directory sync brake: `max_disable_percent` now also counts the accounts
+  that would lose a mapped (or rule) group in a run, and holds those
+  removals when more than that percent would. When the brake trips on locks,
+  it now also holds that run's group removals; group additions still apply.
+  Apply on `/admin/sync` approves them together
+- Directory sync: rule groups go into the `Mokey Sync Group Membership`
+  permission filter like mapped groups
 - Nothing else changes unless `hydra.manage_clients` is turned on. For PKCE on
   public clients created on the Apps page, enable
   `oauth2.pkce.enforced_for_public_clients` in Hydra

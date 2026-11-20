@@ -175,7 +175,7 @@ Directory sync: Google Workspace as an account source. Off until
 `enabled = true`. It needs `sqlite3` or `redis` storage, and
 `[sync.google] admin_email` must be set. Secrets can come from the
 environment, for example `MOKEY_SYNC_GOOGLE_CREDENTIALS_FILE`. List options and
-`[sync.google.group_mapping]` are config-file only: an environment variable
+`[sync.google.group_mapping]` and `[[sync.google.rules]]` are config-file only: an environment variable
 can't set them, mokey reads them as empty.
 
 | Option | Type | Default | Description |
@@ -187,7 +187,7 @@ can't set them, mokey reads them as empty.
 | `exclude_users` | list | `["admin"]` | Accounts the sync never touches. |
 | `username` | string | `"local_part"` | Derive the uid from the part of the email before `@` (`"local_part"`) or the whole address (`"email"`). |
 | `adopt_existing` | bool | `false` | Take over existing FreeIPA accounts whose uid and email match. |
-| `max_disable_percent` | int | `20` | A run that would lock more than this percent of managed accounts locks none. `0` turns the brake off. |
+| `max_disable_percent` | int | `20` | A run that would lock more than this percent of active managed accounts, or take a mapped or rule group from more than this percent, is held: it locks, deletes and removes from groups nothing until an admin applies it. `0` turns the brake off. |
 | `max_username_length` | int | `32` | Longest uid the sync creates. |
 | `concurrency` | int | `4` | Parallel FreeIPA calls. |
 | `disable` | bool | `true` | Lock accounts that left Google. |
@@ -207,7 +207,7 @@ can't set them, mokey reads them as empty.
 | `admin_email` | string | — | Workspace admin the service account acts as. Required when sync is enabled. |
 | `customer` | string | `"my_customer"` | Workspace customer id. |
 | `query` | string | — | Google user search query that limits who is synced. |
-| `org_units` | list | `[]` | Limit to these organizational units. |
+| `org_units` | list | `[]` | Limit to these organizational units and those below them. Each starts with `/`. |
 | `domains` | list | `[]` | Limit to these email domains (lowercased). |
 | `endpoint` | string | — | Base URL of the Directory API instead of Google's, for tests and API proxies; use `https://`. Only the Directory API calls move: with a key file the token comes from the key's own `token_uri`, and with `service_account_email` (impersonation) the IAM token exchange still goes to Google. |
 
@@ -215,6 +215,27 @@ can't set them, mokey reads them as empty.
 for example `"devops@example.com" = ["devops-team"]`. Keys are lowercased. A
 mapped group can't have a time limit in `[[groups.rules]]`: mokey refuses
 to start.
+
+### `[[sync.google.rules]]`
+
+Each rule puts the synced users whose Google attributes match into FreeIPA
+groups, and takes those groups from users that no rule or mapped Google
+group wants in them. See
+[Rules from user attributes](guides/directory-sync.md#rules-from-user-attributes).
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | string | — | Required, unique. Shown on `/admin/sync` and as the reason of a removal. |
+| `org_unit` | list | — | Organizational units, sub-units included. Each starts with `/`. |
+| `department` | list | — | Department of the user's primary organization in Google. |
+| `title` | list | — | Job title of the primary organization. |
+| `cost_center` | list | — | Cost center of the primary organization. |
+| `email_domain` | list | — | Domain of the primary email. |
+| `groups` | list | — | Required. FreeIPA groups for matching users; not `managed_group`, and no `[[groups.rules]]` time limit. |
+
+A rule needs at least one condition. All its conditions must match, any
+value of a condition may; values are compared without regard to case. An
+unknown key stops mokey at startup.
 
 ## `[email]`
 
