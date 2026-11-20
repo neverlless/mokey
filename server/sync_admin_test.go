@@ -616,11 +616,46 @@ func TestSyncHeldTableCountsHiddenRows(t *testing.T) {
 	}
 	more := func(n int) string { return fmt.Sprintf(T("admin.lifecycle_more"), n) }
 
-	tb := syncHeldTable("en", full, 0, 0)
+	tb := syncHeldTable("en", full, 0, 0, false)
 	require.Len(t, tb.Rows, syncSampleN)
 	assert.Equal(t, more(60-syncSampleN), tb.More)
 
 	held := syncHeldOf(time.Now(), full, nil)
-	tb = syncHeldTable("en", held.Plan, held.HeldDisable+held.HeldDelete+held.HeldGroupRemovals, 0)
+	tb = syncHeldTable("en", held.Plan, held.HeldDisable+held.HeldDelete+held.HeldGroupRemovals, 0, false)
 	assert.Equal(t, more(60-syncSampleN), tb.More)
+}
+
+func TestSyncHeldTableDryRunAdds(t *testing.T) {
+	p := syncPlan{
+		AddGroups: map[string][]string{"jesse": {"eng", "eng-sudo"}},
+		GroupWhy:  map[string]map[string][]string{"jesse": {"eng": {syncWhyGoogle}, "eng-sudo": {"everyone", "eng-ou"}}},
+	}
+	assert.Nil(t, syncHeldTable("en", p, 0, 0, false))
+	tb := syncHeldTable("en", p, 0, 0, true)
+	assert.Equal(t, []syncRow{
+		{"jesse", fmt.Sprintf(T("sync.admin_change_add"), "eng"), fmt.Sprintf(T("sync.admin_why_wanted"), T("sync.admin_why_google_group"))},
+		{"jesse", fmt.Sprintf(T("sync.admin_change_add"), "eng-sudo"), fmt.Sprintf(T("sync.admin_why_wanted"), "everyone, eng-ou")},
+	}, tb.Rows)
+}
+
+// TestAdminSyncDryRunListsAdds: a rule that matches everyone shows up in
+// the dry run by name, not only as a count.
+func TestAdminSyncDryRunListsAdds(t *testing.T) {
+	tc, router, fake, src := syncAdminApp(t)
+	fake.GrantPrivilege(keytabUser, "Modify Group membership")
+	fake.AddGroup("eng-sudo", ipatest.Group{})
+	router.sync.Rules = []syncRule{{Name: "everyone", Conds: map[string][]string{"org_unit": {"/"}}, Groups: []string{"eng-sudo"}}}
+	managed(fake, "jesse")
+	u := googleUser("jesse")
+	u.Attrs = map[string]string{"org_unit": "/"}
+	src.users = []syncSourceUser{u}
+
+	body := readBody(t, tc.postForm("/admin/sync/dry-run", nil, htmx))
+	assert.Contains(t, body, esc(fmt.Sprintf(T("sync.admin_change_add"), "eng-sudo")))
+	assert.Contains(t, body, esc(fmt.Sprintf(T("sync.admin_why_wanted"), "everyone")))
+
+	// adds are never held: the Held tab doesn't list them
+	syncBrakeHeld(t, router, fake, src)
+	body = readBody(t, tc.get("/admin/sync/status?tab=held", htmx))
+	assert.NotContains(t, body, esc(fmt.Sprintf(T("sync.admin_change_add"), "eng-sudo")))
 }

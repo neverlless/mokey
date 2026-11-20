@@ -165,8 +165,9 @@ membership is the union. Rule groups go into the
 [permission filter](#freeipa-privileges), and need to exist before the first
 run.
 
-A **Dry run** and the Held tab list each group removal with the rules or the
-Google group that no longer want it; additions appear only in the counts.
+A **Dry run** lists each group addition with the rules or the Google group
+that want it, and each removal with those that no longer want it. The Held
+tab lists the removals only: additions are never held.
 
 ### HBAC and sudo
 

@@ -181,8 +181,20 @@ func syncPlanCounts(p syncPlan) map[string]int {
 }
 
 // syncHeldTable lists the disables, deletes and owned-group removals of a
-// plan, at most syncSampleN of total; nil when there are none.
-func syncHeldTable(lang string, p syncPlan, total int, deleteAfter time.Duration) *syncTable {
+// plan, and its group additions when adds is set, at most syncSampleN rows;
+// nil when there are none. total is the row count of the full plan when p
+// is a stored sample.
+func syncHeldTable(lang string, p syncPlan, total int, deleteAfter time.Duration, adds bool) *syncTable {
+	why := func(uid, g string) string {
+		var out []string
+		for _, w := range p.GroupWhy[uid][g] {
+			if w == syncWhyGoogle {
+				w = TL(lang, "sync.admin_why_google_group")
+			}
+			out = append(out, w)
+		}
+		return strings.Join(out, ", ")
+	}
 	var rows []syncRow
 	for _, uid := range p.Disable {
 		rows = append(rows, syncRow{uid, TL(lang, "sync.admin_change_lock"), TL(lang, "sync.admin_why_gone")})
@@ -193,15 +205,16 @@ func syncHeldTable(lang string, p syncPlan, total int, deleteAfter time.Duration
 	}
 	for _, uid := range slices.Sorted(maps.Keys(p.RemoveGroups)) {
 		for _, g := range p.RemoveGroups[uid] {
-			var why []string
-			for _, w := range p.GroupWhy[uid][g] {
-				if w == syncWhyGoogle {
-					w = TL(lang, "sync.admin_why_google_group")
-				}
-				why = append(why, w)
-			}
 			rows = append(rows, syncRow{uid, fmt.Sprintf(TL(lang, "sync.admin_change_remove"), g),
-				fmt.Sprintf(TL(lang, "sync.admin_why_no_match"), strings.Join(why, ", "))})
+				fmt.Sprintf(TL(lang, "sync.admin_why_no_match"), why(uid, g))})
+		}
+	}
+	if adds {
+		for _, uid := range slices.Sorted(maps.Keys(p.AddGroups)) {
+			for _, g := range p.AddGroups[uid] {
+				rows = append(rows, syncRow{uid, fmt.Sprintf(TL(lang, "sync.admin_change_add"), g),
+					fmt.Sprintf(TL(lang, "sync.admin_why_wanted"), why(uid, g))})
+			}
 		}
 	}
 	if len(rows) == 0 && total == 0 {
@@ -319,7 +332,7 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	}
 	heldCount := heldDisable + heldDelete + heldRemove
 	if heldCount > 0 {
-		vars["sy_held_table"] = syncHeldTable(lang, heldPlan, heldDisable+heldDelete+heldPairs, cfg.DeleteAfter)
+		vars["sy_held_table"] = syncHeldTable(lang, heldPlan, heldDisable+heldDelete+heldPairs, cfg.DeleteAfter, false)
 		vars["sy_brake"] = fmt.Sprintf(TL(lang, "sync.admin_brake"), formatUnit(lang, "account", heldCount), cfg.MaxDisablePercent)
 		vars["sy_apply"] = fmt.Sprintf(TL(lang, "sync.admin_apply"), formatUnit(lang, "change", heldCount))
 		vars["sy_expect_disable"], vars["sy_expect_delete"], vars["sy_expect_groups"] = heldDisable, heldDelete, heldRemove
@@ -403,7 +416,7 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		if run.DryRun {
 			counts = syncPlanCounts(run.Plan)
 			vars["sy_dry"] = true
-			if t := syncHeldTable(lang, run.Plan, len(run.Plan.Disable)+len(run.Plan.Delete)+len(run.Plan.RemoveGroups), cfg.DeleteAfter); t != nil {
+			if t := syncHeldTable(lang, run.Plan, 0, cfg.DeleteAfter, true); t != nil {
 				vars["sy_dry_table"] = t
 			}
 		}
