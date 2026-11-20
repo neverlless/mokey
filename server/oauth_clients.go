@@ -245,10 +245,17 @@ func applyClientInput(cl *hydra.OAuth2Client, in clientInput) {
 	}
 }
 
-// setClientCatalog changes only metadata.mokey.catalog, for clients whose
-// access is set in mokey.toml.
-func setClientCatalog(cl *hydra.OAuth2Client, catalog bool) {
-	mergeClientMeta(cl, func(m map[string]interface{}) { m["catalog"] = catalog })
+// setConfigClientMeta, for clients whose access is set in mokey.toml, sets
+// catalog and mirrors the entry's groups so access stays the same once the
+// entry is removed.
+func setConfigClientMeta(cl *hydra.OAuth2Client, mirror bool, groups []string, catalog bool) {
+	mergeClientMeta(cl, func(m map[string]interface{}) {
+		m["catalog"] = catalog
+		if mirror {
+			m["access"] = "groups"
+			m["groups"] = groups
+		}
+	})
 }
 
 func accessSummary(cl *hydra.OAuth2Client) string {
@@ -355,7 +362,7 @@ func (r *Router) updateOAuthClient(id string, in clientInput, by string) error {
 	}
 	in.Kind = clientKindOf(cl)
 	in.ID = "" // only checked on create: clients made elsewhere use other IDs
-	_, inConfig := configClientPolicy(id)
+	cfg, inConfig := configClientPolicy(id)
 	if inConfig && (in.Access != "" || len(in.Groups) > 0) {
 		return errClientAccessInConfig
 	} else if !inConfig && in.Access == "" {
@@ -367,7 +374,9 @@ func (r *Router) updateOAuthClient(id string, in clientInput, by string) error {
 
 	applyClientInput(cl, in)
 	if inConfig {
-		setClientCatalog(cl, in.Catalog)
+		// an invalid config denies every client; that's not worth keeping
+		_, cfgErr := configPolicies()
+		setConfigClientMeta(cl, cfgErr == nil, cfg.Groups, in.Catalog)
 	}
 	cl.ClientSecret = nil
 	if err := r.putClient(cl); err != nil {

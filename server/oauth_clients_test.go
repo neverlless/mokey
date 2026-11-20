@@ -224,7 +224,7 @@ func TestUpdateKeepsUnknownFields(t *testing.T) {
 func TestUpdateConfigClientAccess(t *testing.T) {
 	assert := assert.New(t)
 	r, hy := newClientsTestApp(t, func() {
-		viper.Set("hydra.clients", []map[string]interface{}{{"client_id": "grafana", "groups": []string{"ops"}}})
+		viper.Set("hydra.clients", []map[string]interface{}{{"client_id": "grafana", "groups": []string{"Ops"}}})
 	})
 	hy.seedClient(map[string]interface{}{"client_id": "grafana", "client_name": "Grafana", "redirect_uris": []interface{}{"https://g.example.com/cb"}})
 
@@ -238,7 +238,13 @@ func TestUpdateConfigClientAccess(t *testing.T) {
 	require.NoError(t, r.updateOAuthClient("grafana", in, "admin"))
 	cl := hy.storedClient("grafana")
 	assert.Equal("Grafana 2", cl["client_name"])
-	assert.Equal(map[string]interface{}{"mokey": map[string]interface{}{"catalog": true}}, cl["metadata"])
+	assert.Equal(map[string]interface{}{"mokey": map[string]interface{}{"access": "groups", "groups": []interface{}{"Ops"}, "catalog": true}}, cl["metadata"])
+
+	// the move path: once the entry is gone, the mirrored groups apply
+	viper.Set("hydra.clients", nil)
+	fetched, err := r.getManagedClient("grafana")
+	require.NoError(t, err)
+	assert.Equal(clientPolicy{Source: "metadata", Groups: []string{"Ops"}}, resolveClientPolicy(fetched))
 }
 
 func TestUpdateConfigClientCatalog(t *testing.T) {
@@ -251,12 +257,16 @@ func TestUpdateConfigClientCatalog(t *testing.T) {
 		"metadata": map[string]interface{}{"owner": "team-a", "mokey": map[string]interface{}{"access": "groups", "groups": []interface{}{"devs"}}},
 	})
 
+	before, err := r.getManagedClient("grafana")
+	require.NoError(t, err)
+	assert.Equal(clientPolicy{Source: "config", Groups: []string{"ops"}}, resolveClientPolicy(before))
+
 	in := webInput()
 	in.Access, in.Groups, in.Catalog = "", nil, false
 	require.NoError(t, r.updateOAuthClient("grafana", in, "admin"))
 	assert.Equal(map[string]interface{}{
 		"owner": "team-a",
-		"mokey": map[string]interface{}{"access": "groups", "groups": []interface{}{"devs"}, "catalog": false},
+		"mokey": map[string]interface{}{"access": "groups", "groups": []interface{}{"ops"}, "catalog": false},
 	}, hy.storedClient("grafana")["metadata"])
 
 	in.Catalog = true
@@ -264,6 +274,20 @@ func TestUpdateConfigClientCatalog(t *testing.T) {
 	md := hy.storedClient("grafana")["metadata"].(map[string]interface{})
 	assert.Equal(true, md["mokey"].(map[string]interface{})["catalog"])
 	assert.Equal("groups", md["mokey"].(map[string]interface{})["access"])
+}
+
+func TestUpdateInvalidConfigKeepsAccess(t *testing.T) {
+	r, hy := newClientsTestApp(t, func() {
+		viper.Set("hydra.clients", []map[string]interface{}{{"groups": []string{"ops"}}})
+	})
+	hy.seedClient(map[string]interface{}{
+		"client_id": "wiki", "redirect_uris": []interface{}{"https://w.example.com/cb"},
+		"metadata": map[string]interface{}{"mokey": map[string]interface{}{"access": "all"}},
+	})
+	in := webInput()
+	in.Access, in.Groups = "", nil
+	require.NoError(t, r.updateOAuthClient("wiki", in, "admin"))
+	assert.Equal(t, map[string]interface{}{"access": "all", "catalog": true}, hy.storedClient("wiki")["metadata"].(map[string]interface{})["mokey"])
 }
 
 func TestCatalogOnlyMetadata(t *testing.T) {

@@ -308,9 +308,8 @@ func TestAdminAppsConfigClientAccessReadOnly(t *testing.T) {
 		"access", "all", "groups", "devs"), htmx)
 	require.Equal(t, "/admin/apps", resp.Header.Get("HX-Redirect"), readBody(t, resp))
 	mk := hy.storedClient("wiki")["metadata"].(map[string]interface{})["mokey"].(map[string]interface{})
-	assert.NotContains(mk, "access")
-	assert.NotContains(mk, "groups")
-	assert.Equal(false, mk["catalog"])
+	// the form's access is ignored; the config entry's groups are mirrored
+	assert.Equal(map[string]interface{}{"access": "groups", "groups": []interface{}{"staff"}, "catalog": false}, mk)
 }
 
 // Review Focus 1
