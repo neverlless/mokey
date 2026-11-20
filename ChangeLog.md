@@ -27,6 +27,8 @@
   longer match. The admin Settings tab lists each rule with the users it
   matched and the HBAC and sudo rules that reach its groups. mokey doesn't
   create or change HBAC or sudo rules
+- `mokey sync` prints group additions and removals, and `--dry-run` says
+  when the brake would hold a real run
 - Directory sync: `sync.google.org_units` entries must start with `/`; one
   without it never matched anyone and now stops mokey at startup
 

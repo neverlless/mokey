@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
 
+	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,4 +95,27 @@ func TestRunSyncFlushesWebhooks(t *testing.T) {
 	defer got.mu.Unlock()
 	require.NotEmpty(t, got.body)
 	assert.True(t, strings.Contains(string(got.body[len(got.body)-1]), "sync run"))
+}
+
+// TestRunSyncDryRunPrintsGroupsAndBrake: a dry run that the brake would
+// hold says so and counts the group changes; it still exits 0.
+func TestRunSyncDryRunPrintsGroupsAndBrake(t *testing.T) {
+	r, fake, src, _ := syncRunRouter(t)
+	var uids []string
+	for i := range 10 {
+		uids = append(uids, fmt.Sprintf("user%d", i))
+	}
+	managed(fake, uids...)
+	fake.AddGroup("staff", ipatest.Group{Members: uids})
+	for _, uid := range uids[:5] {
+		u := googleUser(uid)
+		u.Groups = []string{"eng@example.org"}
+		src.users = append(src.users, u)
+	}
+	var out bytes.Buffer
+	code, err := r.runSync(context.Background(), true, &out)
+	require.NoError(t, err)
+	assert.Equal(t, 0, code)
+	assert.Contains(t, out.String(), "group add 5, group remove 0")
+	assert.Contains(t, out.String(), "would be held by the brake")
 }

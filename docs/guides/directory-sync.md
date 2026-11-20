@@ -211,7 +211,9 @@ storage, so `storage.driver = "memory"` is refused at startup.
   interval. An empty `interval` leaves only the manual routes.
 - **`mokey sync [--dry-run]`**: one pass and exit, for a CronJob or systemd
   timer. It needs Redis. Exit code 0 is ok, 1 errors or another run in
-  progress, 2 held by the brake.
+  progress, 2 held by the brake. It prints the counts per kind, group
+  additions and removals included; with `--dry-run` it also says when the
+  brake would hold a real run, and still exits 0.
 - **Admin page**: `/admin/sync`, under Administration, when sync is on.
 
 All three take the same run lock, so they never overlap.
