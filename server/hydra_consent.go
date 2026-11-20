@@ -2,11 +2,12 @@ package server
 
 // Revokes Hydra consent sessions for OAuth clients a user's groups no longer
 // admit them to. mokey never sets remember on consent, so new authorizations
-// always pass the [[hydra.clients]] check; this closes the refresh tokens
+// always pass the client access check; this closes the refresh tokens
 // issued before the user lost the group.
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -15,23 +16,46 @@ import (
 	"time"
 
 	ipa "github.com/neverlless/goipa"
+	hydra "github.com/ory/hydra-client-go/v26"
 	"github.com/spf13/viper"
 )
 
-// clientGroupsEnforced reports whether [[hydra.clients]] or default_deny
-// restrict clients and the config parses. An invalid config already denies
-// every consent; it must not also revoke every user's sessions.
-func clientGroupsEnforced() bool {
-	var policies []hydraClientPolicy
-	if err := viper.UnmarshalKey("hydra.clients", &policies); err != nil {
-		return false
+// clientPolicies resolves every Hydra client once. An invalid
+// [[hydra.clients]] is an error: it already denies every consent and must
+// not also revoke every user's sessions.
+func (r *Router) clientPolicies() (map[string]clientPolicy, error) {
+	config, err := configPolicies()
+	if err != nil {
+		return nil, fmt.Errorf("invalid hydra.clients config: %w", err)
 	}
-	for _, p := range policies {
-		if p.ClientID == "" {
-			return false
+	clients, err := r.listOAuthClients()
+	if err != nil {
+		return nil, err
+	}
+	policies := make(map[string]clientPolicy, len(clients)+len(config))
+	for _, p := range config {
+		if _, ok := policies[p.ClientID]; !ok {
+			policies[p.ClientID] = clientPolicy{Source: "config", Groups: p.Groups}
 		}
 	}
-	return len(policies) > 0 || viper.GetBool("hydra.default_deny")
+	for i := range clients {
+		if _, ok := policies[clients[i].GetClientId()]; !ok {
+			policies[clients[i].GetClientId()] = resolveClientPolicy(&clients[i])
+		}
+	}
+	return policies, nil
+}
+
+func anyRestricted(policies map[string]clientPolicy) bool {
+	if viper.GetBool("hydra.default_deny") {
+		return true
+	}
+	for _, p := range policies {
+		if !p.All {
+			return true
+		}
+	}
+	return false
 }
 
 // nextPageToken returns the page_token of the rel="next" Link Hydra sends
@@ -84,8 +108,23 @@ func (r *Router) consentClientIDs(username string) ([]string, error) {
 }
 
 // revokeDisallowedConsents revokes the user's consent sessions for every
-// client clientAllowed no longer admits them to; returns how many clients
+// client whose policy no longer admits them; returns how many clients
 func (r *Router) revokeDisallowedConsents(user *ipa.User) int {
+	policies, err := r.clientPolicies()
+	if err != nil {
+		slog.Error("Failed to resolve OAuth client access, not revoking consents",
+			"username", user.Username,
+			"err", err,
+		)
+		return 0
+	}
+	if !anyRestricted(policies) {
+		return 0
+	}
+	return r.revokeDisallowed(user, policies)
+}
+
+func (r *Router) revokeDisallowed(user *ipa.User, policies map[string]clientPolicy) int {
 	ids, err := r.consentClientIDs(user.Username)
 	if err != nil {
 		slog.Error("Failed to list Hydra consent sessions",
@@ -97,7 +136,11 @@ func (r *Router) revokeDisallowedConsents(user *ipa.User) int {
 
 	revoked := 0
 	for _, id := range ids {
-		if clientAllowed(id, user) {
+		p, ok := policies[id]
+		if !ok {
+			p = resolveClientPolicy(&hydra.OAuth2Client{ClientId: &id})
+		}
+		if policyAllows(p, user) {
 			continue
 		}
 		if err := r.revokeConnectedApp(user.Username, id); err != nil {
@@ -130,7 +173,7 @@ func (r *Router) revokeAllConsents(username string) {
 // revokeConsentsOf re-reads username after mokey removed them from a group
 // and revokes what their groups no longer admit. Runs in r.goBG.
 func (r *Router) revokeConsentsOf(username string) {
-	if r.hydraClient == nil || !clientGroupsEnforced() {
+	if r.hydraClient == nil {
 		return
 	}
 	user, err := r.adminClient.UserShow(username)
@@ -144,10 +187,10 @@ func (r *Router) revokeConsentsOf(username string) {
 	r.revokeDisallowedConsents(user)
 }
 
-// consentSweepInterval is 0 when the sweep is off: no Hydra, no client
-// restrictions, or hydra.consent_sweep_interval = "0"
+// consentSweepInterval is 0 when the sweep is off: no Hydra, or
+// hydra.consent_sweep_interval = "0"
 func (r *Router) consentSweepInterval() time.Duration {
-	if r.hydraClient == nil || !clientGroupsEnforced() {
+	if r.hydraClient == nil {
 		return 0
 	}
 	return viper.GetDuration("hydra.consent_sweep_interval")
@@ -178,6 +221,17 @@ func (r *Router) StartConsentSweep() {
 // consentSweep checks every FreeIPA user, since Hydra cannot list subjects.
 // user_find folds nested groups into Groups, so memberOf still sees them.
 func (r *Router) consentSweep() {
+	policies, err := r.clientPolicies()
+	if err != nil {
+		slog.Error("Hydra consent sweep failed to resolve OAuth client access",
+			"err", err,
+		)
+		return
+	}
+	if !anyRestricted(policies) {
+		return
+	}
+
 	users, err := r.adminClient.UserFind(ipa.Options{
 		"sizelimit": 0,
 		"timelimit": 0,
@@ -191,7 +245,7 @@ func (r *Router) consentSweep() {
 
 	revoked := 0
 	for _, user := range users {
-		revoked += r.revokeDisallowedConsents(user)
+		revoked += r.revokeDisallowed(user, policies)
 	}
 
 	slog.Info("Hydra consent sweep complete",

@@ -162,3 +162,24 @@ func TestAppsMappedGroupNotRequestable(t *testing.T) {
 	assert.False(t, strings.Contains(body, requestButton+`grafana"}'`), "Google owns the membership")
 	assert.True(t, strings.Contains(body, requestButton+`vault"}'`), "other groups stay requestable")
 }
+
+func TestAppsCatalogMetadata(t *testing.T) {
+	assert := assert.New(t)
+	app, _, hy := newAppsTestApp(t, nil)
+	meta := func(m map[string]interface{}) map[string]interface{} {
+		return map[string]interface{}{"mokey": m}
+	}
+	hy.seedClient(map[string]interface{}{"client_id": "notes", "client_name": "Chem Notes", "metadata": meta(map[string]interface{}{"access": "groups", "groups": []string{"Chemists"}})})
+	hy.seedClient(map[string]interface{}{"client_id": "dash", "client_name": "Dashboards", "metadata": meta(map[string]interface{}{"access": "groups", "groups": []string{"grafana-users"}})})
+	hy.seedClient(map[string]interface{}{"client_id": "people", "client_name": "People Admin", "metadata": meta(map[string]interface{}{"access": "groups", "groups": []string{"hr"}})})
+	hy.seedClient(map[string]interface{}{"client_id": "hidden", "client_name": "Hidden Tool", "metadata": meta(map[string]interface{}{"access": "all", "catalog": false})})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	body := readBody(t, tc.get("/apps"))
+
+	assert.Contains(body, "Chem Notes")
+	assert.Contains(body, requestButton+`dash"}'`)
+	assert.NotContains(body, "People Admin")
+	assert.NotContains(body, "Hidden Tool")
+}

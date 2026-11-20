@@ -328,7 +328,15 @@ OAuth2/OIDC. All options unset = disabled.
 | `admin_url` | string | — | Hydra admin API URL, e.g. `http://127.0.0.1:4445`. Setting this enables the Hydra integration. |
 | `login_timeout` | int | `0` | How long (seconds) Hydra remembers the login session (`remember_for`). |
 | `fake_tls_termination` | bool | `false` | Send `X-Forwarded-Proto: https` to Hydra when TLS is terminated elsewhere. |
-| `consent_sweep_interval` | duration | `"1h"` | How often to revoke Hydra consent sessions of users who lost the group that admits them to a client, for removals made directly in FreeIPA. Runs only when `[[hydra.clients]]` or `default_deny` is set; `"0"` disables it. |
+| `default_deny` | bool | `false` | Deny clients that have neither a `[[hydra.clients]]` entry nor access set on the admin Apps page. |
+| `consent_sweep_interval` | duration | `"1h"` | How often to revoke Hydra consent sessions of users who lost the group that admits them to a client, for removals made directly in FreeIPA. Each run stops early when no client is limited by `[[hydra.clients]]`, Apps page access or `default_deny`; `"0"` disables it. |
+| `manage_clients` | bool | `false` | Admin page for OAuth clients: create, edit, rotate secrets and set who may sign in. Needs `admin_url` and `admin.enabled`. |
+| `public_url` | string | — | Hydra's public URL as apps reach it, e.g. `https://auth.example.com`. Shown with new client secrets as the issuer and endpoint URLs. `https`, or `http` only for `localhost`, `127.0.0.1` and `[::1]`. |
+
+Who may sign in to a client is decided in this order: a `[[hydra.clients]]`
+entry for its client ID, then the access set on the admin Apps page (stored
+in the Hydra client's `metadata.mokey`), then `default_deny`. "Everyone" on
+the Apps page admits every user even with `default_deny = true`.
 
 ## `[admin]`
 

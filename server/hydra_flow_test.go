@@ -282,3 +282,42 @@ func TestLogoutRevokesHydraSessions(t *testing.T) {
 	assert.Equal(fiber.StatusFound, resp.StatusCode)
 	assert.Equal([]string{"walter"}, hy.revokedSubjects)
 }
+
+func TestOIDCConsentClientMetadata(t *testing.T) {
+	tests := []struct {
+		name        string
+		user        string
+		client      string
+		defaultDeny bool
+		allowed     bool
+	}{
+		{"member of a metadata group", "walter", "wiki", false, true},
+		{"not a member", "jesse", "wiki", false, false},
+		{"metadata all with default_deny", "jesse", "open", true, true},
+		{"no metadata with default_deny", "walter", "plain", true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			app, fake, hy := newHydraTestApp(t)
+			viper.Set("hydra.default_deny", tt.defaultDeny)
+			fake.AddGroup("staff", ipatest.Group{})
+			fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"Staff"}})
+			fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+			hy.seedClient(map[string]interface{}{"client_id": "wiki", "metadata": map[string]interface{}{"mokey": map[string]interface{}{"access": "groups", "groups": []string{"staff"}}}})
+			hy.seedClient(map[string]interface{}{"client_id": "open", "metadata": map[string]interface{}{"mokey": map[string]interface{}{"access": "all"}}})
+			hy.seedClient(map[string]interface{}{"client_id": "plain"})
+			hy.seedConsentForClient("consent-m", tt.user, tt.client)
+
+			resp := newTestClient(t, app).get("/oauth/consent?consent_challenge=consent-m")
+			if tt.allowed {
+				assert.Equal(fiber.StatusFound, resp.StatusCode)
+				assert.NotNil(hy.acceptedConsent)
+				return
+			}
+			assert.Equal(fiber.StatusForbidden, resp.StatusCode)
+			assert.Nil(hy.acceptedConsent)
+			assert.NotNil(hy.rejectedConsent)
+		})
+	}
+}

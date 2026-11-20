@@ -435,9 +435,18 @@ driver = "memory"
 # Default: false.
 # fake_tls_termination = true
 
-# Deny clients that have no [[hydra.clients]] entry below. Default: false,
-# every FreeIPA user may sign in to every client.
+# Deny clients that have no [[hydra.clients]] entry below and no access set
+# on the admin Apps page. Default: false, every FreeIPA user may sign in to
+# every client.
 # default_deny = false
+
+# Admin page for OAuth clients (create, edit, rotate secrets, who may sign
+# in). Needs admin_url and [admin] enabled. Default: false.
+# manage_clients = false
+
+# Hydra's public URL as apps reach it, shown with new client secrets as the
+# issuer and endpoint URLs. https, or http only for localhost. Optional.
+# public_url = "https://auth.example.com"
 
 # How often to revoke consent sessions of users removed from a client's
 # groups directly in FreeIPA. Removals made in mokey revoke at once.
@@ -445,7 +454,8 @@ driver = "memory"
 # consent_sweep_interval = "1h"
 
 # Limit an OAuth client to members of FreeIPA groups (nested groups count,
-# names compared case-insensitively). Repeat the block per client.
+# names compared case-insensitively). Repeat the block per client. An entry
+# here wins over the access set on the admin Apps page.
 # [[hydra.clients]]
 # client_id = "lubelogger"
 # groups = ["lubelogger-users"]

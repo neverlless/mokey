@@ -49,6 +49,8 @@ type fakeHydra struct {
 	// OAuth2 clients served by /admin/clients, clientsPage per page
 	clients     []map[string]interface{}
 	clientsPage int
+	// GET sessions/consent calls, to see the sweep stop early
+	consentLists int
 }
 
 func newFakeHydra() *fakeHydra {
@@ -171,11 +173,18 @@ func (f *fakeHydra) getConsent(w http.ResponseWriter, r *http.Request) {
 	if scope == nil {
 		scope = []string{"openid", "profile"}
 	}
+	// Hydra embeds the full client, metadata included
+	client := map[string]interface{}{"client_id": clientID}
+	for _, cl := range f.clients {
+		if cl["client_id"] == clientID {
+			client = cl
+		}
+	}
 	writeJSON(w, map[string]interface{}{
 		"challenge":       challenge,
 		"subject":         subject,
 		"requested_scope": scope,
-		"client":          map[string]interface{}{"client_id": clientID},
+		"client":          client,
 	})
 }
 
@@ -241,6 +250,7 @@ func (f *fakeHydra) consentSessionsHandler(w http.ResponseWriter, r *http.Reques
 
 	switch r.Method {
 	case http.MethodGet:
+		f.consentLists++
 		sessions := []map[string]interface{}{}
 		for _, s := range f.consentSessions[subject] {
 			session := map[string]interface{}{

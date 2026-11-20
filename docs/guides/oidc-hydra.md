@@ -41,7 +41,7 @@ In `mokey.toml`:
 | `hydra.fake_tls_termination` | `false` | Send `X-Forwarded-Proto: https` to Hydra when TLS ends elsewhere. |
 | `hydra.default_deny` | `false` | Deny clients that have no `[[hydra.clients]]` entry. |
 | `[[hydra.clients]]` `client_id`, `groups` | — | Limit one client to members of FreeIPA groups. Repeat per client. |
-| `hydra.consent_sweep_interval` | `1h` | How often to revoke consents of users removed from a client's groups directly in FreeIPA. `"0"` disables it. Runs only when `[[hydra.clients]]` or `default_deny` is set. |
+| `hydra.consent_sweep_interval` | `1h` | How often to revoke consents of users removed from a client's groups directly in FreeIPA. `"0"` disables it. Each run stops early when no client is limited. |
 | `accounts.require_mfa` | `false` | Users without two-factor authentication are refused at login and consent. |
 
 ```toml

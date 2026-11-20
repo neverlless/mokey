@@ -116,19 +116,52 @@ func TestConsentSweepInterval(t *testing.T) {
 	viper.Set("hydra.consent_sweep_interval", "0")
 	assert.Zero(router.consentSweepInterval())
 
+	// metadata restrictions are only known per run, so the sweep starts anyway
 	viper.Set("hydra.consent_sweep_interval", "1h")
 	viper.Set("hydra.clients", []map[string]any{})
-	assert.Zero(router.consentSweepInterval(), "no hydra.clients")
-
-	viper.Set("hydra.default_deny", true)
-	assert.Equal(time.Hour, router.consentSweepInterval(), "default_deny restricts every client")
-
-	viper.Set("hydra.clients", "lubelogger")
-	assert.Zero(router.consentSweepInterval(), "invalid hydra.clients must not revoke")
+	assert.Equal(time.Hour, router.consentSweepInterval(), "no hydra.clients")
 
 	_, plain, _ := newTestApp(t)
 	viper.Set("hydra.default_deny", true)
 	assert.Zero(plain.consentSweepInterval(), "hydra not configured")
+}
+
+func TestConsentSweepUnrestrictedStopsEarly(t *testing.T) {
+	assert := assert.New(t)
+	_, router, _, hy := newConsentRevokeApp(t)
+	viper.Set("hydra.clients", []map[string]any{})
+	hy.seedClient(map[string]interface{}{"client_id": "wiki", "metadata": map[string]interface{}{"mokey": map[string]interface{}{"access": "all"}}})
+
+	router.consentSweep()
+	assert.Zero(hy.consentLists)
+	assert.Empty(hy.revokedConsents)
+}
+
+func TestConsentSweepInvalidConfigDoesNotRevoke(t *testing.T) {
+	assert := assert.New(t)
+	_, router, _, hy := newConsentRevokeApp(t)
+	viper.Set("hydra.clients", "lubelogger")
+	viper.Set("hydra.default_deny", true)
+
+	router.consentSweep()
+	assert.Empty(hy.revokedConsents)
+	assert.Equal([]string{"lubelogger", "wiki"}, consentClients(hy, "walter"))
+}
+
+func TestConsentSweepMetadata(t *testing.T) {
+	assert := assert.New(t)
+	_, router, fake, hy := newConsentRevokeApp(t)
+	viper.Set("hydra.clients", []map[string]any{})
+	hy.seedClient(map[string]interface{}{"client_id": "wiki", "metadata": map[string]interface{}{"mokey": map[string]interface{}{"access": "groups", "groups": []string{"chemists"}}}})
+	fake.AddUser("jesse", ipatest.User{Password: "Secret123!"})
+	hy.seedConsentSession("jesse", fakeConsentSession{ClientID: "wiki"})
+	hy.seedConsentSession("jesse", fakeConsentSession{ClientID: "lubelogger"})
+
+	router.consentSweep()
+
+	assert.Equal([]revokedConsent{{Subject: "jesse", Client: "wiki"}}, hy.revokedConsents)
+	assert.Equal([]string{"lubelogger", "wiki"}, consentClients(hy, "walter"))
+	assert.Equal([]string{"lubelogger"}, consentClients(hy, "jesse"))
 }
 
 func TestNextPageToken(t *testing.T) {
