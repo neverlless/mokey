@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	ipa "github.com/neverlless/goipa"
 )
 
 const (
@@ -41,6 +43,113 @@ type syncDecision struct {
 type syncSetting struct {
 	Label, Value string
 	On           bool
+}
+
+// syncGrant is an HBAC or sudo rule that reaches a rule's target group.
+type syncGrant struct {
+	Label   string
+	Enabled bool
+}
+
+type syncRuleTarget struct {
+	Group      string
+	HBAC, Sudo []syncGrant
+}
+
+type syncRuleRow struct {
+	Name, Conds, Matches string
+	Targets              []syncRuleTarget
+}
+
+// syncGrantOf reports whether an HBAC or sudo rule reaches target: it names
+// the group or one of its parents, or covers all users.
+func syncGrantOf(lang, name string, enabled bool, userCategory string, groups []string, target string, parents []string) (syncGrant, bool) {
+	var note []string
+	switch {
+	case slices.Contains(groups, target):
+	case userCategory == "all":
+		note = append(note, TL(lang, "sync.admin_rule_all_users"))
+	default:
+		i := slices.IndexFunc(parents, func(p string) bool { return slices.Contains(groups, p) })
+		if i < 0 {
+			return syncGrant{}, false
+		}
+		note = append(note, fmt.Sprintf(TL(lang, "sync.admin_rule_via"), parents[i]))
+	}
+	if !enabled {
+		note = append(note, TL(lang, "sync.admin_rule_disabled"))
+	}
+	return syncGrant{strings.Join(append([]string{name}, note...), " · "), enabled}, true
+}
+
+// syncGroupParents lists the direct and nested parents of group. goipa's
+// Group has no memberofindirect_group, hence the raw call.
+func syncGroupParents(client *ipa.Client, group string) ([]string, error) {
+	res, err := client.RPC("group_show", []string{group}, ipa.Options{"all": true})
+	if err != nil {
+		return nil, err
+	}
+	var g struct {
+		Direct   []string `json:"memberof_group"`
+		Indirect []string `json:"memberofindirect_group"`
+	}
+	if err := json.Unmarshal(res.Result.Data, &g); err != nil {
+		return nil, err
+	}
+	return append(g.Direct, g.Indirect...), nil
+}
+
+// syncRuleRows describes each attribute rule and the HBAC and sudo rules
+// that reach its target groups. On a FreeIPA error the rows come back
+// without grants.
+func (r *Router) syncRuleRows(lang string, last *syncRunResult) ([]syncRuleRow, error) {
+	rows := make([]syncRuleRow, len(r.sync.Rules))
+	for i, rule := range r.sync.Rules {
+		var conds []string
+		for _, attr := range slices.Sorted(maps.Keys(rule.Conds)) {
+			conds = append(conds, attr+": "+strings.Join(rule.Conds[attr], ", "))
+		}
+		rows[i] = syncRuleRow{Name: rule.Name, Conds: strings.Join(conds, " · ")}
+		if last != nil {
+			if n, ok := last.Plan.RuleMatches[rule.Name]; ok {
+				rows[i].Matches = fmt.Sprintf(TL(lang, "sync.admin_rule_matches"), n)
+			}
+		}
+		for _, g := range rule.Groups {
+			rows[i].Targets = append(rows[i].Targets, syncRuleTarget{Group: g})
+		}
+	}
+
+	hbac, _, err := hbacRuleFind(r.adminClient)
+	if err != nil {
+		return rows, err
+	}
+	sudo, _, err := sudoRuleFind(r.adminClient)
+	if err != nil {
+		return rows, err
+	}
+	parents := map[string][]string{}
+	for i := range rows {
+		for j := range rows[i].Targets {
+			t := &rows[i].Targets[j]
+			if _, ok := parents[t.Group]; !ok {
+				if parents[t.Group], err = syncGroupParents(r.adminClient, t.Group); err != nil {
+					return rows, err
+				}
+			}
+			for _, h := range hbac {
+				if gr, ok := syncGrantOf(lang, h.Name, h.Enabled, h.UserCategory, h.MemberGroups, t.Group, parents[t.Group]); ok {
+					t.HBAC = append(t.HBAC, gr)
+				}
+			}
+			for _, s := range sudo {
+				if gr, ok := syncGrantOf(lang, s.Name, s.Enabled, s.UserCategory, s.MemberGroups, t.Group, parents[t.Group]); ok {
+					t.Sudo = append(t.Sudo, gr)
+				}
+			}
+		}
+	}
+	return rows, nil
 }
 
 // syncKinds orders the per-kind counts of the Last run tab; marker writes
@@ -342,6 +451,15 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		setting("sync.admin_set_adopt", cfg.AdoptExisting, ""),
 		setting("sync.admin_set_welcome", cfg.WelcomeMail, ""),
 		setting("sync.admin_set_legacy", pending, ""),
+	}
+
+	if tab == "settings" && len(cfg.Rules) > 0 {
+		rows, err := r.syncRuleRows(lang, last)
+		if err != nil {
+			slog.Error("Failed to read the HBAC and sudo rules for the sync rules", "err", err)
+			vars["sy_rules_error"] = TL(lang, "sync.admin_rules_failed")
+		}
+		vars["sy_rules"] = rows
 	}
 }
 

@@ -8,11 +8,13 @@ import (
 	"log/slog"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	ipa "github.com/neverlless/goipa"
 	"github.com/neverlless/goipa/ipatest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -487,4 +489,94 @@ func TestAdminSyncApplyGroupRemovalCap(t *testing.T) {
 	router.bg.Wait()
 	g, _ = fake.Group("eng")
 	assert.Len(t, g.Members, 5)
+}
+
+func rpcCount(fake *ipatest.Server, method string) int {
+	n := 0
+	for _, c := range fake.Calls() {
+		if c.Method == method {
+			n++
+		}
+	}
+	return n
+}
+
+// syncRulesApp: rule eng targets eng directly, rule ops targets ops-team,
+// a member of staff; allow_all is seeded by the fake.
+func syncRulesApp(t *testing.T) (*testClient, *Router, *ipatest.Server) {
+	t.Helper()
+	tc, router, fake, _ := syncAdminApp(t)
+	router.sync.Rules = []syncRule{
+		{Name: "eng", Conds: map[string][]string{"org_unit": {"/Eng"}}, Groups: []string{"eng"}},
+		{Name: "ops", Conds: map[string][]string{"department": {"ops", "sre"}, "title": {"engineer"}}, Groups: []string{"ops-team"}},
+	}
+	fake.AddGroup("ops-team", ipatest.Group{})
+	fake.AddGroup("staff", ipatest.Group{MemberGroups: []string{"ops-team"}})
+	fake.AddHBACRule("eng-ssh", ipatest.HBACRule{Groups: []string{"eng"}})
+	fake.AddHBACRule("old-db", ipatest.HBACRule{Groups: []string{"eng"}, Disabled: true})
+	fake.AddHBACRule("staff-web", ipatest.HBACRule{Groups: []string{"staff"}})
+	fake.AddSudoRule("eng-sudo", ipatest.SudoRule{Groups: []string{"eng"}})
+	fake.AddSudoRule("finance-sudo", ipatest.SudoRule{Groups: []string{"finance"}})
+	return tc, router, fake
+}
+
+func TestAdminSyncSettingsRules(t *testing.T) {
+	tc, router, fake := syncRulesApp(t)
+	storeSyncResult(t, router, syncLastKey, syncRunResult{At: time.Now(), Plan: syncPlan{RuleMatches: map[string]int{"eng": 3}}})
+
+	body := readBody(t, tc.get("/admin/sync/status?tab=settings", htmx))
+	assert.Contains(t, body, `<span class="fw-semibold">eng</span>`)
+	assert.Contains(t, body, "org_unit: /Eng")
+	assert.Contains(t, body, "department: ops, sre · title: engineer")
+	assert.Contains(t, body, `<span class="mokey-pill">ops-team</span>`)
+	assert.Contains(t, body, fmt.Sprintf(T("sync.admin_rule_matches"), 3))
+	// the ops rule is newer than the last run
+	assert.Equal(t, 1, strings.Count(body, esc(strings.TrimSuffix(T("sync.admin_rule_matches"), "%d"))))
+
+	assert.Contains(t, body, `<span class="mokey-pill is-ok">eng-ssh</span>`)
+	assert.Contains(t, body, `<span class="mokey-pill is-ok">eng-sudo</span>`)
+	assert.Contains(t, body, `<span class="mokey-pill is-ok">staff-web · `+esc(fmt.Sprintf(T("sync.admin_rule_via"), "staff"))+`</span>`)
+	assert.Contains(t, body, `<span class="mokey-pill is-ok">allow_all · `+esc(T("sync.admin_rule_all_users"))+`</span>`)
+	assert.Contains(t, body, `<span class="mokey-pill is-muted">old-db · `+esc(T("sync.admin_rule_disabled"))+`</span>`)
+	assert.NotContains(t, body, "finance-sudo")
+	assert.NotContains(t, body, esc(T("sync.admin_rules_failed")))
+	assert.Contains(t, body, T("sync.admin_set_brake"))
+
+	assert.Equal(t, 1, rpcCount(fake, "hbacrule_find"))
+	assert.Equal(t, 1, rpcCount(fake, "sudorule_find"))
+	assert.Equal(t, 2, rpcCount(fake, "group_show"))
+	for _, c := range fake.Calls() {
+		if c.Method == "group_show" || strings.HasSuffix(c.Method, "rule_find") {
+			assert.Equal(t, true, c.Options["all"], c.Method)
+		}
+	}
+	assert.Empty(t, writeCalls(fake))
+
+	// other tabs don't read the rules
+	readBody(t, tc.get("/admin/sync/status?tab=last", htmx))
+	assert.Equal(t, 1, rpcCount(fake, "hbacrule_find"))
+}
+
+func TestAdminSyncSettingsNoRulesNoLookups(t *testing.T) {
+	tc, _, fake, _ := syncAdminApp(t)
+	body := readBody(t, tc.get("/admin/sync/status?tab=settings", htmx))
+	assert.Contains(t, body, T("sync.admin_set_brake"))
+	assert.NotContains(t, body, T("sync.admin_rules_title"))
+	for _, m := range []string{"hbacrule_find", "sudorule_find", "group_show"} {
+		assert.Zero(t, rpcCount(fake, m), m)
+	}
+}
+
+func TestAdminSyncSettingsRulesLookupFails(t *testing.T) {
+	tc, _, fake := syncRulesApp(t)
+	fake.Handle("sudorule_find", func(ipatest.Call) (any, *ipa.IpaError) {
+		return nil, &ipa.IpaError{Code: 4301, Message: "boom"}
+	})
+
+	body := readBody(t, tc.get("/admin/sync/status?tab=settings", htmx))
+	assert.Contains(t, body, esc(T("sync.admin_rules_failed")))
+	assert.Contains(t, body, `<span class="fw-semibold">eng</span>`)
+	assert.Contains(t, body, T("sync.admin_set_brake"))
+	assert.NotContains(t, body, "eng-ssh")
+	assert.Empty(t, writeCalls(fake))
 }
