@@ -36,7 +36,6 @@ release is scoped.
 
 - [ ] Sign in with Google, Microsoft Entra ID, GitHub or an institutional
       IdP (CILogon) and link that identity to the FreeIPA account
-- [x] Admin pages for OAuth clients, instead of editing Hydra by hand
 - [ ] SAML 2.0 identity provider for apps that only speak SAML
 
 ### Account lifecycle
@@ -47,12 +46,10 @@ release is scoped.
 
 ### Directory sync
 
-Google Workspace shipped in v2.12; more sources and rules next.
+Google Workspace shipped in v2.12, attribute rules in v2.13; more sources
+next.
 
 - [ ] Microsoft Entra ID and Okta as further sources
-- [x] Rules from source attributes (organizational unit, department, title,
-      cost center, email domain) to FreeIPA groups, with the HBAC and sudo
-      rules each group reaches shown on the admin page
 
 ### Access reviews and evidence
 
@@ -105,6 +102,7 @@ repository.
 
 | Release | Highlights |
 | --- | --- |
+| v2.13 (Nov 2026) | Admin pages for OAuth clients instead of the Hydra CLI; directory sync rules from Google attributes to FreeIPA groups with an HBAC and sudo preview; SSH keys in OIDC claims; extra CSP sources |
 | v2.12 (Nov 2026) | Directory sync from Google Workspace with dry run, brake, admin page and `mokey sync`; google2ipa merged into mokey; mail links bound to their flow |
 | v2.11 (Nov 2026) | Forward-auth sign-in for web apps behind Traefik, ingress-nginx, Caddy, Envoy and Istio; account expiry with sponsor renewal; several replicas behind a load balancer; Helpdesk on its own page |
 | v2.10 (Nov 2026) | Time-bound group membership with per-group limits, renewals and automatic removal; COPR packages for RHEL, Rocky and AlmaLinux 8, 9 and 10; migration guide from ubccr/mokey; minor-version image tags |
