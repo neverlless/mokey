@@ -97,6 +97,10 @@ func TestSyncConfigErrors(t *testing.T) {
 			map[string]any{"name": "eng", "department": []string{"eng"}, "groups": []string{"ops", ""}}}}},
 		{"rule unknown attribute", "departmnet", map[string]any{"sync.google.rules": []any{
 			map[string]any{"name": "eng", "departmnet": []string{"eng"}, "groups": []string{"ops"}}}}},
+		{"rule relative org unit", `rule "eng": org_unit "research" must start with /`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "org_unit": []string{"research"}, "groups": []string{"ops"}}}}},
+		{"rule first empty value in fixed order", `rule "eng": org_unit lists an empty value`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "org_unit": []string{""}, "department": []string{""}, "title": []string{""}, "cost_center": []string{""}, "email_domain": []string{""}, "groups": []string{"ops"}}}}},
 		{"rule on managed group", `rule "eng": targets the managed group`, map[string]any{"sync.google.rules": []any{
 			map[string]any{"name": "eng", "department": []string{"eng"}, "groups": []string{"Google2IPA-Managed"}}}}},
 		{"rule time-limited group", `"ops"`, map[string]any{

@@ -170,13 +170,22 @@ func loadSyncRules(managed string) ([]syncRule, error) {
 		if slices.ContainsFunc(rules, func(o syncRule) bool { return o.Name == r.Name }) {
 			return nil, fmt.Errorf("sync.google.rules: duplicate rule name %q", r.Name)
 		}
-		for attr, values := range map[string][]string{"org_unit": rr.OrgUnit, "department": rr.Department, "title": rr.Title, "cost_center": rr.CostCenter, "email_domain": rr.EmailDomain} {
+		byAttr := map[string][]string{"org_unit": rr.OrgUnit, "department": rr.Department, "title": rr.Title, "cost_center": rr.CostCenter, "email_domain": rr.EmailDomain}
+		for _, attr := range syncRuleAttrs {
+			values := byAttr[attr]
 			if len(values) == 0 {
 				continue
 			}
 			values = syncNames(values)
 			if slices.Contains(values, "") {
 				return nil, fmt.Errorf("sync.google.rules: rule %q: %s lists an empty value", r.Name, attr)
+			}
+			if attr == "org_unit" {
+				for _, ou := range values {
+					if !strings.HasPrefix(ou, "/") {
+						return nil, fmt.Errorf("sync.google.rules: rule %q: org_unit %q must start with /", r.Name, ou)
+					}
+				}
 			}
 			r.Conds[attr] = values
 		}
