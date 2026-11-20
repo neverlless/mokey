@@ -183,3 +183,16 @@ func TestAppsCatalogMetadata(t *testing.T) {
 	assert.NotContains(body, "People Admin")
 	assert.NotContains(body, "Hidden Tool")
 }
+
+func TestAppsInvalidMetadataLogsOnce(t *testing.T) {
+	app, _, hy := newAppsTestApp(t, nil)
+	hy.seedClient(map[string]interface{}{"client_id": "broken", "client_name": "Broken", "metadata": map[string]interface{}{"mokey": map[string]interface{}{"access": "everyone"}}})
+
+	tc := newTestClient(t, app)
+	tc.login("walter", "Secret123!")
+	logs := captureSlog(t)
+	body := readBody(t, tc.get("/apps"))
+
+	assert.NotContains(t, body, "Broken")
+	assert.Equal(t, 1, strings.Count(logs.String(), "Invalid mokey metadata"))
+}
