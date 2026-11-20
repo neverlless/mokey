@@ -1,6 +1,6 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.13.0] - 2026-11-20
 
 - New `[server.csp]`: extra Content-Security-Policy sources per fetch
   directive, for fonts or images that custom CSS loads from another host
