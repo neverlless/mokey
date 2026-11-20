@@ -204,11 +204,11 @@ func syncHeldTable(lang string, p syncPlan, total int, deleteAfter time.Duration
 				fmt.Sprintf(TL(lang, "sync.admin_why_no_match"), strings.Join(why, ", "))})
 		}
 	}
-	if total == 0 {
+	if len(rows) == 0 && total == 0 {
 		return nil
 	}
 	t := &syncTable{Rows: rows[:min(len(rows), syncSampleN)]}
-	if more := total - len(t.Rows); more > 0 {
+	if more := max(total, len(rows)) - len(t.Rows); more > 0 {
 		t.More = fmt.Sprintf(TL(lang, "admin.lifecycle_more"), more)
 	}
 	return t
@@ -308,17 +308,18 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	vars["sy_when"] = strings.Join(when, " · ")
 
 	// held: the stored plan, or the fresh one an Apply refused
-	var heldDisable, heldDelete, heldRemove int
+	var heldDisable, heldDelete, heldRemove, heldPairs int
 	var heldPlan syncPlan
 	if held != nil {
-		heldDisable, heldDelete, heldRemove, heldPlan = held.HeldDisable, held.HeldDelete, held.HeldRemove, held.Plan
+		heldDisable, heldDelete, heldRemove, heldPairs, heldPlan = held.HeldDisable, held.HeldDelete, held.HeldRemove, held.HeldGroupRemovals, held.Plan
 	}
 	if fresh, ok := vars["sy_fresh"].(*syncRunResult); ok {
 		heldDisable, heldDelete, heldRemove, heldPlan = len(fresh.Plan.Disable), len(fresh.Plan.Delete), len(fresh.Plan.RemoveGroups), fresh.Plan
+		heldPairs = syncPlanCounts(fresh.Plan)["group_remove"]
 	}
 	heldCount := heldDisable + heldDelete + heldRemove
 	if heldCount > 0 {
-		vars["sy_held_table"] = syncHeldTable(lang, heldPlan, heldCount, cfg.DeleteAfter)
+		vars["sy_held_table"] = syncHeldTable(lang, heldPlan, heldDisable+heldDelete+heldPairs, cfg.DeleteAfter)
 		vars["sy_brake"] = fmt.Sprintf(TL(lang, "sync.admin_brake"), formatUnit(lang, "account", heldCount), cfg.MaxDisablePercent)
 		vars["sy_apply"] = fmt.Sprintf(TL(lang, "sync.admin_apply"), formatUnit(lang, "change", heldCount))
 		vars["sy_expect_disable"], vars["sy_expect_delete"], vars["sy_expect_groups"] = heldDisable, heldDelete, heldRemove
