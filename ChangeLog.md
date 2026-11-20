@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- New `[server.csp]`: extra Content-Security-Policy sources per fetch
+  directive, for fonts or images that custom CSS loads from another host
+  (#85, thanks @jameslawfer)
 - OIDC: a client that requests the `ssh` scope gets the user's FreeIPA SSH
   public keys in the `ssh_public_keys` claim, so Gitea and similar apps can
   sync keys from FreeIPA (#83, thanks @leonitousconforti)

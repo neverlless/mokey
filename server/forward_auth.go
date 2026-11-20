@@ -50,7 +50,7 @@ func (r *Router) faOnAppHost(c fiber.Ctx) {
 	origin := (&url.URL{Scheme: r.forwardAuth.URL.Scheme, Host: r.forwardAuth.URL.Host}).String()
 	c.Locals("asset_base", origin)
 	nonce, _ := c.Locals("cspNonce").(string)
-	c.Set(fiber.HeaderContentSecurityPolicy, contentSecurityPolicy(nonce, origin))
+	c.Set(fiber.HeaderContentSecurityPolicy, contentSecurityPolicy(nonce, origin, r.csp))
 }
 
 // faParentValid applies isLoggedIn's session checks, without the FreeIPA

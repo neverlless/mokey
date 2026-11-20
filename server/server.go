@@ -273,7 +273,11 @@ func newFiber() (*fiber.App, *Router, error) {
 	})
 
 	app.Use(frecover.New())
-	app.Use(SecureHeaders)
+	csp, err := loadCSPExtra()
+	if err != nil {
+		return nil, nil, err
+	}
+	app.Use(secureHeaders(csp))
 	app.Use(SetLanguage)
 
 	app.Use(limiter.New(limiter.Config{
@@ -319,6 +323,7 @@ func newFiber() (*fiber.App, *Router, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	router.csp = csp
 
 	router.SetupRoutes(app)
 	router.StartExpiryReminders()
