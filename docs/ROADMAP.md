@@ -36,7 +36,7 @@ release is scoped.
 
 - [ ] Sign in with Google, Microsoft Entra ID, GitHub or an institutional
       IdP (CILogon) and link that identity to the FreeIPA account
-- [ ] Admin pages for OAuth clients, instead of editing Hydra by hand
+- [x] Admin pages for OAuth clients, instead of editing Hydra by hand
 - [ ] SAML 2.0 identity provider for apps that only speak SAML
 
 ### Account lifecycle
@@ -50,8 +50,9 @@ release is scoped.
 Google Workspace shipped in v2.12; more sources and rules next.
 
 - [ ] Microsoft Entra ID and Okta as further sources
-- [ ] Rules from source attributes (department, organizational unit) to
-      FreeIPA groups, HBAC and sudo rules
+- [x] Rules from source attributes (organizational unit, department, title,
+      cost center, email domain) to FreeIPA groups, with the HBAC and sudo
+      rules each group reaches shown on the admin page
 
 ### Access reviews and evidence
 
