@@ -61,8 +61,8 @@ func syncPlanCounts(p syncPlan) map[string]int {
 	return n
 }
 
-// syncHeldTable lists the disables and deletes of a plan, at most
-// syncSampleN of total; nil when there are none.
+// syncHeldTable lists the disables, deletes and owned-group removals of a
+// plan, at most syncSampleN of total; nil when there are none.
 func syncHeldTable(lang string, p syncPlan, total int, deleteAfter time.Duration) *syncTable {
 	var rows []syncRow
 	for _, uid := range p.Disable {
@@ -71,6 +71,19 @@ func syncHeldTable(lang string, p syncPlan, total int, deleteAfter time.Duration
 	for _, uid := range p.Delete {
 		rows = append(rows, syncRow{uid, TL(lang, "sync.admin_change_delete"),
 			fmt.Sprintf(TL(lang, "sync.admin_why_locked_for"), formatDuration(lang, deleteAfter))})
+	}
+	for _, uid := range slices.Sorted(maps.Keys(p.RemoveGroups)) {
+		for _, g := range p.RemoveGroups[uid] {
+			var why []string
+			for _, w := range p.GroupWhy[uid][g] {
+				if w == syncWhyGoogle {
+					w = TL(lang, "sync.admin_why_google_group")
+				}
+				why = append(why, w)
+			}
+			rows = append(rows, syncRow{uid, fmt.Sprintf(TL(lang, "sync.admin_change_remove"), g),
+				fmt.Sprintf(TL(lang, "sync.admin_why_no_match"), strings.Join(why, ", "))})
+		}
 	}
 	if total == 0 {
 		return nil
@@ -176,20 +189,20 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	vars["sy_when"] = strings.Join(when, " · ")
 
 	// held: the stored plan, or the fresh one an Apply refused
-	var heldDisable, heldDelete int
+	var heldDisable, heldDelete, heldRemove int
 	var heldPlan syncPlan
 	if held != nil {
-		heldDisable, heldDelete, heldPlan = held.HeldDisable, held.HeldDelete, held.Plan
+		heldDisable, heldDelete, heldRemove, heldPlan = held.HeldDisable, held.HeldDelete, held.HeldRemove, held.Plan
 	}
 	if fresh, ok := vars["sy_fresh"].(*syncRunResult); ok {
-		heldDisable, heldDelete, heldPlan = len(fresh.Plan.Disable), len(fresh.Plan.Delete), fresh.Plan
+		heldDisable, heldDelete, heldRemove, heldPlan = len(fresh.Plan.Disable), len(fresh.Plan.Delete), len(fresh.Plan.RemoveGroups), fresh.Plan
 	}
-	heldCount := heldDisable + heldDelete
+	heldCount := heldDisable + heldDelete + heldRemove
 	if heldCount > 0 {
 		vars["sy_held_table"] = syncHeldTable(lang, heldPlan, heldCount, cfg.DeleteAfter)
 		vars["sy_brake"] = fmt.Sprintf(TL(lang, "sync.admin_brake"), formatUnit(lang, "account", heldCount), cfg.MaxDisablePercent)
 		vars["sy_apply"] = fmt.Sprintf(TL(lang, "sync.admin_apply"), formatUnit(lang, "change", heldCount))
-		vars["sy_expect_disable"], vars["sy_expect_delete"] = heldDisable, heldDelete
+		vars["sy_expect_disable"], vars["sy_expect_delete"], vars["sy_expect_groups"] = heldDisable, heldDelete, heldRemove
 	}
 
 	var decisions []syncDecision
@@ -270,7 +283,7 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 		if run.DryRun {
 			counts = syncPlanCounts(run.Plan)
 			vars["sy_dry"] = true
-			if t := syncHeldTable(lang, run.Plan, len(run.Plan.Disable)+len(run.Plan.Delete), cfg.DeleteAfter); t != nil {
+			if t := syncHeldTable(lang, run.Plan, len(run.Plan.Disable)+len(run.Plan.Delete)+len(run.Plan.RemoveGroups), cfg.DeleteAfter); t != nil {
 				vars["sy_dry_table"] = t
 			}
 		}
@@ -381,6 +394,8 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 	// a missing count is 0: nothing to lock or delete was seen
 	disable, _ := strconv.Atoi(c.FormValue("disable"))
 	del, _ := strconv.Atoi(c.FormValue("delete"))
+	groups, _ := strconv.Atoi(c.FormValue("groups"))
+	caps := syncCaps{Disable: disable, Delete: del, Groups: groups}
 	release, ok, err := r.lock.claimKept(syncRunKey, syncRunTTL)
 	if !ok {
 		return r.syncBusy(c, err)
@@ -398,7 +413,7 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 		release()
 		return r.renderSyncStatus(c, fiber.Map{"sy_error": TC(c, "sync.admin_run_failed")}, "")
 	}
-	if len(fresh.Plan.Disable) > disable || len(fresh.Plan.Delete) > del {
+	if caps.exceeded(fresh.Plan) {
 		// a reload shows the plan the admin now has to check
 		held := syncHeldOf(time.Now(), fresh.Plan, fresh.SkipReasons)
 		held.By = admin
@@ -407,14 +422,15 @@ func (r *Router) AdminSyncApply(c fiber.Ctx) error {
 		}
 		release()
 		slog.Warn("Admin sync apply refused, the plan grew", "admin", admin,
-			"disable", disable, "now_disable", len(fresh.Plan.Disable), "delete", del, "now_delete", len(fresh.Plan.Delete))
+			"disable", disable, "now_disable", len(fresh.Plan.Disable), "delete", del, "now_delete", len(fresh.Plan.Delete),
+			"group_remove_users", groups, "now_group_remove_users", len(fresh.Plan.RemoveGroups))
 		return r.renderSyncStatus(c, fiber.Map{"sy_fresh": fresh, "sy_alert": TC(c, "sync.admin_plan_changed")}, "held")
 	}
 	handedOff = true
 	r.goBG(func() {
 		defer release()
 		// a second read: Google may have shrunk since the check
-		if _, err := r.syncRunCapped(context.Background(), time.Now(), admin, false, &syncCaps{Disable: disable, Delete: del}); err != nil {
+		if _, err := r.syncRunCapped(context.Background(), time.Now(), admin, false, &caps); err != nil {
 			slog.Error("Admin sync apply failed", "admin", admin, "err", err)
 		}
 	})

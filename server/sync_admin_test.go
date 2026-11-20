@@ -444,3 +444,47 @@ func TestAdminSyncHeaderAndHeldWithErrors(t *testing.T) {
 	assert.Contains(t, page, ">1 error</a></span>")
 	assert.Equal(t, "held", selectedTab(t, page))
 }
+
+// TestAdminSyncApplyGroupRemovalCap: the held removals are posted with the
+// form and a fresh plan with more users losing groups is refused.
+func TestAdminSyncApplyGroupRemovalCap(t *testing.T) {
+	tc, router, fake, src := syncAdminApp(t)
+	allowServiceAccountRemovals(t)
+	fake.GrantPrivilege(keytabUser, "Modify Group membership")
+	var uids []string
+	for i := range 10 {
+		uids = append(uids, fmt.Sprintf("user%d", i))
+	}
+	managed(fake, uids...)
+	fake.AddGroup("eng", ipatest.Group{Members: uids})
+	src.users = nil
+	for _, uid := range uids {
+		u := googleUser(uid)
+		if uid != "user9" && uid != "user8" {
+			u.Groups = []string{"eng@example.org"}
+		}
+		src.users = append(src.users, u)
+	}
+	src.users[0].Groups, src.users[1].Groups = nil, nil
+	res, _, err := router.syncRunLocked(t.Context(), time.Now(), "", false)
+	require.NoError(t, err)
+	require.True(t, res.Held)
+
+	body := readBody(t, tc.get("/admin/sync"))
+	assert.Contains(t, body, `name="groups" value="4"`)
+	assert.Contains(t, body, esc(fmt.Sprintf(T("sync.admin_change_remove"), "eng")))
+	assert.Contains(t, body, esc(fmt.Sprintf(T("sync.admin_why_no_match"), T("sync.admin_why_google_group"))))
+
+	src.users[2].Groups = nil
+	body = readBody(t, tc.postForm("/admin/sync/apply", url.Values{"disable": {"0"}, "delete": {"0"}, "groups": {"4"}}, htmx))
+	router.bg.Wait()
+	assert.Contains(t, body, esc(T("sync.admin_plan_changed")))
+	assert.Contains(t, body, `name="groups" value="5"`)
+	g, _ := fake.Group("eng")
+	assert.Len(t, g.Members, 10)
+
+	readBody(t, tc.postForm("/admin/sync/apply", url.Values{"disable": {"0"}, "delete": {"0"}, "groups": {"5"}}, htmx))
+	router.bg.Wait()
+	g, _ = fake.Group("eng")
+	assert.Len(t, g.Members, 5)
+}

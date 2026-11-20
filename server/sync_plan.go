@@ -45,6 +45,9 @@ type syncIPAUser struct {
 	Marker                                      *syncMarker // from storage, nil if none
 }
 
+// syncWhyGoogle in GroupWhy stands for group_mapping; rule names are never empty.
+const syncWhyGoogle = ""
+
 type syncUpdate struct {
 	UID      string
 	From, To syncSourceUser
@@ -56,13 +59,19 @@ type syncPlan struct {
 	Update                  []syncUpdate
 	Enable, Disable, Delete []string
 	AddGroups, RemoveGroups map[string][]string
-	NewMarkers              map[string]syncMarker // "found" markers to write
-	ClearMarkers            []string              // unlocked accounts that still carry a marker, and found markers of BackInGoogle
-	BackInGoogle            []string              // locked without a re-enable marker, present in Google
-	Braked                  bool                  // disable/delete suppressed by the safety brake
-	Conflicts               []string
-	Skipped                 []string
-	NoMemberWrite           []string // groups whose members the service account can't change
+	// GroupWhy names, per uid and changed group, the rules (and
+	// syncWhyGoogle for group_mapping) that want an added group or owned a
+	// removed one.
+	GroupWhy map[string]map[string][]string
+	// RuleMatches counts the Google users each rule matches, by rule name.
+	RuleMatches   map[string]int
+	NewMarkers    map[string]syncMarker // "found" markers to write
+	ClearMarkers  []string              // unlocked accounts that still carry a marker, and found markers of BackInGoogle
+	BackInGoogle  []string              // locked without a re-enable marker, present in Google
+	Braked        bool                  // disable/delete and owned-group removals suppressed by the safety brake
+	Conflicts     []string
+	Skipped       []string
+	NoMemberWrite []string // groups whose members the service account can't change
 }
 
 // withoutGroups drops the changes to groups the service account can't
@@ -168,10 +177,24 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 		AddGroups:    map[string][]string{},
 		RemoveGroups: map[string][]string{},
 		NewMarkers:   map[string]syncMarker{},
+		GroupWhy:     map[string]map[string][]string{},
+		RuleMatches:  map[string]int{},
 		Skipped:      skipped,
 	}
 	excluded := cfg.ExcludeUsers
 	mapped := cfg.mappedGroups()
+	owned := cfg.ownedGroups()
+	// owners: who owns each owned group, for the reason of a removal
+	owners := map[string][]string{}
+	for _, r := range cfg.Rules {
+		p.RuleMatches[r.Name] = 0
+		for _, g := range r.Groups {
+			owners[g] = append(owners[g], r.Name)
+		}
+	}
+	for _, g := range mapped {
+		owners[g] = append(owners[g], syncWhyGoogle)
+	}
 
 	inGoogle := map[string]bool{}
 	for _, uid := range skipped {
@@ -181,6 +204,11 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 		inGoogle[u.UID] = true
 		if slices.Contains(excluded, u.UID) {
 			continue
+		}
+		for _, r := range cfg.Rules {
+			if r.matches(u.Attrs) {
+				p.RuleMatches[r.Name]++
+			}
 		}
 		cur, exists := ipa[u.UID]
 		switch {
@@ -237,9 +265,15 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 			continue
 		}
 
-		want := slices.Clone(cfg.DefaultGroups)
+		ruled, why := ruleGroups(cfg.Rules, u.Attrs)
+		want := append(slices.Clone(cfg.DefaultGroups), ruled...)
 		for _, g := range u.Groups {
-			want = append(want, cfg.GroupMapping[g]...)
+			for _, mg := range cfg.GroupMapping[g] {
+				want = append(want, mg)
+				if !slices.Contains(why[mg], syncWhyGoogle) {
+					why[mg] = append(why[mg], syncWhyGoogle)
+				}
+			}
 		}
 		var add, remove []string
 		for _, g := range want {
@@ -248,7 +282,7 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 			}
 		}
 		for _, g := range cur.Groups {
-			if slices.Contains(mapped, g) && !slices.Contains(want, g) && !slices.Contains(remove, g) {
+			if slices.Contains(owned, g) && !slices.Contains(want, g) && !slices.Contains(remove, g) {
 				remove = append(remove, g)
 			}
 		}
@@ -256,6 +290,18 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 		slices.Sort(remove)
 		if len(add) > 0 {
 			p.AddGroups[u.UID] = add
+		}
+		gw := map[string][]string{}
+		for _, g := range add {
+			if len(why[g]) > 0 {
+				gw[g] = why[g]
+			}
+		}
+		for _, g := range remove {
+			gw[g] = owners[g]
+		}
+		if len(gw) > 0 {
+			p.GroupWhy[u.UID] = gw
 		}
 		if len(remove) > 0 {
 			p.RemoveGroups[u.UID] = remove
@@ -288,9 +334,19 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 		}
 	}
 
-	if pct := cfg.MaxDisablePercent; pct > 0 && len(p.Disable) > 1 && len(p.Disable)*100 > pct*active {
+	// more than pct of active accounts, and never a single one
+	trips := func(n int) bool { pct := cfg.MaxDisablePercent; return pct > 0 && n > 1 && n*100 > pct*active }
+	if trips(len(p.Disable)) {
 		// a suspect source starts no delete clocks either
-		p.Braked, p.Disable, p.Delete, p.NewMarkers = true, nil, nil, map[string]syncMarker{}
+		p.NewMarkers = map[string]syncMarker{}
+		p.Braked = true
+	}
+	// counted in users who would lose an owned group, not in removals
+	if trips(len(p.RemoveGroups)) {
+		p.Braked = true
+	}
+	if p.Braked {
+		p.Disable, p.Delete, p.RemoveGroups = nil, nil, map[string][]string{}
 	}
 	for _, uid := range slices.Sorted(maps.Keys(ipa)) {
 		// A disable rewrites the marker itself; clearing it too would race.

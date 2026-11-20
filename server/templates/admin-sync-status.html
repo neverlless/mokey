@@ -62,6 +62,7 @@
         hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
     <input type="hidden" name="disable" value="{{ $.sy_expect_disable }}">
     <input type="hidden" name="delete" value="{{ $.sy_expect_delete }}">
+    <input type="hidden" name="groups" value="{{ $.sy_expect_groups }}">
     <button type="submit" class="btn btn-primary">{{ $.sy_apply }}</button>
   </form>
   {{ end }}
