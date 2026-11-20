@@ -125,7 +125,7 @@ func (r *Router) syncStatusVars(c fiber.Ctx, vars fiber.Map, tab string) {
 	}
 	vars["sy_source"] = strings.Join(source, " · ")
 	vars["sy_managed"] = cfg.ManagedGroup
-	vars["sy_mapped"] = formatUnit(lang, "mapped_group", len(cfg.mappedGroups()))
+	vars["sy_mapped"] = formatUnit(lang, "mapped_group", len(cfg.ownedGroups()))
 
 	last, err := r.syncLastRun()
 	if err != nil {

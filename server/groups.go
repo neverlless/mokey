@@ -120,7 +120,7 @@ func (r *Router) groupsVars(c fiber.Ctx, vars fiber.Map) {
 	offered := map[string][]durationOption{}
 
 	synced := map[string]bool{}
-	for _, g := range r.sync.mappedGroups() {
+	for _, g := range r.sync.ownedGroups() {
 		synced[g] = true
 	}
 	vars["synced"] = synced

@@ -82,6 +82,28 @@ func TestSyncConfigErrors(t *testing.T) {
 		{"percent", "sync.max_disable_percent", map[string]any{"sync.max_disable_percent": 101}},
 		{"concurrency", "sync.concurrency", map[string]any{"sync.concurrency": 0}},
 		{"empty group", "devs@example.org", map[string]any{"sync.google.group_mapping": map[string]any{"devs@example.org": []string{"ops", ""}}}},
+		{"rule without name", "sync.google.rules: rule 1: name is required", map[string]any{"sync.google.rules": []any{
+			map[string]any{"department": []string{"eng"}, "groups": []string{"ops"}}}}},
+		{"duplicate rule name", `duplicate rule name "eng"`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "department": []string{"eng"}, "groups": []string{"ops"}},
+			map[string]any{"name": " Eng", "title": []string{"sre"}, "groups": []string{"ops"}}}}},
+		{"rule without condition", `rule "eng": needs at least one of`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "groups": []string{"ops"}}}}},
+		{"rule empty value", `rule "eng": department lists an empty value`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "department": []string{"eng", " "}, "groups": []string{"ops"}}}}},
+		{"rule without groups", `rule "eng": groups is required`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "department": []string{"eng"}}}}},
+		{"rule empty group", `rule "eng": groups lists an empty group name`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "department": []string{"eng"}, "groups": []string{"ops", ""}}}}},
+		{"rule unknown attribute", "departmnet", map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "departmnet": []string{"eng"}, "groups": []string{"ops"}}}}},
+		{"rule on managed group", `rule "eng": targets the managed group`, map[string]any{"sync.google.rules": []any{
+			map[string]any{"name": "eng", "department": []string{"eng"}, "groups": []string{"Google2IPA-Managed"}}}}},
+		{"rule time-limited group", `"ops"`, map[string]any{
+			"groups.durations":  []string{"1d"},
+			"groups.rules":      []any{map[string]any{"group": "ops", "max": "1d"}},
+			"sync.google.rules": []any{map[string]any{"name": "eng", "department": []string{"eng"}, "groups": []string{"ops"}}},
+		}},
 		{"time-limited group", `"ops"`, map[string]any{
 			"groups.durations":          []string{"1d"},
 			"groups.rules":              []any{map[string]any{"group": "ops", "max": "1d"}},
@@ -150,5 +172,59 @@ func TestSyncConfigNormalizesNames(t *testing.T) {
 	}
 	if _, err := loadSync(syncOn(map[string]any{"sync.google.group_mapping": map[string]any{"a@example.org": []string{" "}}})); err == nil {
 		t.Fatal("a blank group name must be rejected")
+	}
+}
+
+func TestSyncConfigRulesFromTOML(t *testing.T) {
+	viper.Reset()
+	SetDefaults()
+	viper.SetConfigType("toml")
+	toml := `[sync]
+enabled = true
+[sync.google]
+admin_email = "a@example.com"
+[sync.google.group_mapping]
+"devops@example.com" = ["admins", "hpc-users"]
+[[sync.google.rules]]
+name = " Research-Cluster "
+org_unit = ["/Research/"]
+groups = ["HPC-Users"]
+[[sync.google.rules]]
+name = "engineering-sudo"
+department = ["Engineering", " Platform"]
+title = ["SRE"]
+cost_center = ["CC-1"]
+email_domain = ["Example.com"]
+groups = ["eng-sudo"]
+`
+	if err := viper.ReadConfig(strings.NewReader(toml)); err != nil {
+		t.Fatal(err)
+	}
+	viper.Set("storage.driver", "sqlite3")
+	c, err := loadSyncConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Rules) != 2 {
+		t.Fatalf("rules = %+v", c.Rules)
+	}
+	r0, r1 := c.Rules[0], c.Rules[1]
+	if r0.Name != "research-cluster" || !slices.Equal(r0.Groups, []string{"hpc-users"}) || len(r0.Conds) != 1 ||
+		!slices.Equal(r0.Conds["org_unit"], []string{"/research/"}) {
+		t.Fatalf("rule 0 = %+v", r0)
+	}
+	if r1.Name != "engineering-sudo" || !slices.Equal(r1.Conds["department"], []string{"engineering", "platform"}) ||
+		!slices.Equal(r1.Conds["title"], []string{"sre"}) || !slices.Equal(r1.Conds["cost_center"], []string{"cc-1"}) ||
+		!slices.Equal(r1.Conds["email_domain"], []string{"example.com"}) || len(r1.Conds) != 4 {
+		t.Fatalf("rule 1 = %+v", r1)
+	}
+	if got := c.ownedGroups(); !slices.Equal(got, []string{"admins", "eng-sudo", "hpc-users"}) {
+		t.Fatalf("ownedGroups = %v", got)
+	}
+	if got := c.mappedGroups(); !slices.Equal(got, []string{"admins", "hpc-users"}) {
+		t.Fatalf("mappedGroups = %v", got)
+	}
+	if got := c.groups(); !slices.Equal(got, []string{"admins", "eng-sudo", "google2ipa-managed", "hpc-users"}) {
+		t.Fatalf("groups = %v", got)
 	}
 }

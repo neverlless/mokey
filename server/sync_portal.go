@@ -14,7 +14,7 @@ func (r *Router) syncManaged(u *ipa.User) bool {
 
 // syncMapped is true for groups whose membership the source owns.
 func (r *Router) syncMapped(group string) bool {
-	return slices.Contains(r.sync.mappedGroups(), group)
+	return slices.Contains(r.sync.ownedGroups(), group)
 }
 
 // syncDomain is true when the address belongs to a Google Workspace domain.

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
 
@@ -33,6 +34,7 @@ type syncConfig struct {
 	ImportLegacyLocks bool
 	Google            googleSourceConfig
 	GroupMapping      map[string][]string // keys are lowercased Google group emails
+	Rules             []syncRule
 }
 
 // syncDuration reads an optional duration; with zeroOK "0" means 0.
@@ -129,18 +131,70 @@ func loadSyncConfig() (*syncConfig, error) {
 		}
 		c.GroupMapping[k] = append(c.GroupMapping[k], groups...)
 	}
+	if c.Rules, err = loadSyncRules(c.ManagedGroup); err != nil {
+		return nil, err
+	}
 	ge, err := loadGroupExpiryConfig()
 	if err != nil {
 		return nil, err
 	}
 	if ge != nil {
-		for _, g := range c.mappedGroups() {
+		for _, g := range c.ownedGroups() {
 			if _, limited := ge.Rules[g]; limited {
-				return nil, fmt.Errorf("sync.google.group_mapping: group %q has a time limit in groups.rules; sync-managed membership can't be time-bound", g)
+				return nil, fmt.Errorf("sync: group %q (sync.google.group_mapping or sync.google.rules) has a time limit in groups.rules; sync-managed membership can't be time-bound", g)
 			}
 		}
 	}
 	return c, nil
+}
+
+func loadSyncRules(managed string) ([]syncRule, error) {
+	var raw []struct {
+		Name              string
+		OrgUnit           []string `mapstructure:"org_unit"`
+		Department, Title []string
+		CostCenter        []string `mapstructure:"cost_center"`
+		EmailDomain       []string `mapstructure:"email_domain"`
+		Groups            []string
+	}
+	// a misspelled attribute must fail, not leave a rule with fewer conditions
+	if err := viper.UnmarshalKey("sync.google.rules", &raw, func(dc *mapstructure.DecoderConfig) { dc.ErrorUnused = true }); err != nil {
+		return nil, fmt.Errorf("sync.google.rules: %w", err)
+	}
+	var rules []syncRule
+	for i, rr := range raw {
+		r := syncRule{Name: syncName(rr.Name), Conds: map[string][]string{}, Groups: syncNames(rr.Groups)}
+		if r.Name == "" {
+			return nil, fmt.Errorf("sync.google.rules: rule %d: name is required", i+1)
+		}
+		if slices.ContainsFunc(rules, func(o syncRule) bool { return o.Name == r.Name }) {
+			return nil, fmt.Errorf("sync.google.rules: duplicate rule name %q", r.Name)
+		}
+		for attr, values := range map[string][]string{"org_unit": rr.OrgUnit, "department": rr.Department, "title": rr.Title, "cost_center": rr.CostCenter, "email_domain": rr.EmailDomain} {
+			if len(values) == 0 {
+				continue
+			}
+			values = syncNames(values)
+			if slices.Contains(values, "") {
+				return nil, fmt.Errorf("sync.google.rules: rule %q: %s lists an empty value", r.Name, attr)
+			}
+			r.Conds[attr] = values
+		}
+		if len(r.Conds) == 0 {
+			return nil, fmt.Errorf("sync.google.rules: rule %q: needs at least one of %s", r.Name, strings.Join(syncRuleAttrs, ", "))
+		}
+		if len(r.Groups) == 0 {
+			return nil, fmt.Errorf("sync.google.rules: rule %q: groups is required", r.Name)
+		}
+		if slices.Contains(r.Groups, "") {
+			return nil, fmt.Errorf("sync.google.rules: rule %q: groups lists an empty group name", r.Name)
+		}
+		if slices.Contains(r.Groups, managed) {
+			return nil, fmt.Errorf("sync.google.rules: rule %q: targets the managed group %q", r.Name, managed)
+		}
+		rules = append(rules, r)
+	}
+	return rules, nil
 }
 
 // FreeIPA uids and group names are lowercase; the config may not be.
@@ -157,9 +211,23 @@ func syncNames(s []string) []string {
 // on is nil-safe: a nil config is the disabled feature.
 func (c *syncConfig) on() bool { return c != nil }
 
-// groups returns the sorted, unique managed, default and mapped groups.
+// groups returns the sorted, unique managed, default and owned groups.
 func (c *syncConfig) groups() []string {
-	return slices.Compact(slices.Sorted(slices.Values(append(append([]string{c.ManagedGroup}, c.DefaultGroups...), c.mappedGroups()...))))
+	return slices.Compact(slices.Sorted(slices.Values(append(append([]string{c.ManagedGroup}, c.DefaultGroups...), c.ownedGroups()...))))
+}
+
+// ownedGroups returns the sorted, unique groups whose membership sync owns:
+// mapped from Google groups or targeted by a rule.
+func (c *syncConfig) ownedGroups() []string {
+	if c == nil {
+		return nil
+	}
+	out := c.mappedGroups()
+	for _, r := range c.Rules {
+		out = append(out, r.Groups...)
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 // mappedGroups returns the sorted, unique FreeIPA groups named in GroupMapping.

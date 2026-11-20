@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -73,8 +74,7 @@ func (s *googleSource) keep(u *admin.User) bool {
 		}
 	}
 	if len(s.cfg.OrgUnits) > 0 && !slices.ContainsFunc(s.cfg.OrgUnits, func(ou string) bool {
-		path, ou := strings.ToLower(u.OrgUnitPath), strings.ToLower(ou)
-		return path == ou || strings.HasPrefix(path, strings.TrimSuffix(ou, "/")+"/")
+		return syncOUWithin(u.OrgUnitPath, ou)
 	}) {
 		return false
 	}
@@ -117,7 +117,11 @@ func (s *googleSource) Users(ctx context.Context) ([]syncSourceUser, error) {
 				continue
 			}
 			email := strings.ToLower(strings.TrimSpace(u.PrimaryEmail))
-			su := syncSourceUser{Email: email, Groups: memberOf[email]}
+			attrs, err := googleAttrs(u, email)
+			if err != nil {
+				return fmt.Errorf("user %s: %w", email, err)
+			}
+			su := syncSourceUser{Email: email, Groups: memberOf[email], Attrs: attrs}
 			if u.Name != nil {
 				su.GivenName, su.FamilyName, su.FullName = u.Name.GivenName, u.Name.FamilyName, u.Name.FullName
 			}
@@ -129,4 +133,36 @@ func (s *googleSource) Users(ctx context.Context) ([]syncSourceUser, error) {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
 	return out, nil
+}
+
+// googleAttrs reads the rule attributes, lowercased; empty ones are left out.
+// Department, title and cost center come from the primary organization, or
+// the first one when none is marked primary.
+func googleAttrs(u *admin.User, email string) (map[string]string, error) {
+	_, domain, _ := strings.Cut(email, "@")
+	raw := map[string]string{"org_unit": u.OrgUnitPath, "email_domain": domain}
+	if u.Organizations != nil {
+		b, err := json.Marshal(u.Organizations)
+		if err != nil {
+			return nil, err
+		}
+		var orgs []admin.UserOrganization
+		if err := json.Unmarshal(b, &orgs); err != nil {
+			return nil, fmt.Errorf("organizations: %w", err)
+		}
+		if len(orgs) > 0 {
+			org := orgs[0]
+			if i := slices.IndexFunc(orgs, func(o admin.UserOrganization) bool { return o.Primary }); i >= 0 {
+				org = orgs[i]
+			}
+			raw["department"], raw["title"], raw["cost_center"] = org.Department, org.Title, org.CostCenter
+		}
+	}
+	attrs := map[string]string{}
+	for k, v := range raw {
+		if v = syncName(v); v != "" {
+			attrs[k] = v
+		}
+	}
+	return attrs, nil
 }
