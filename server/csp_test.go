@@ -63,6 +63,22 @@ func TestCSPExtraRejected(t *testing.T) {
 		"script any host":   {"script-src": []string{"https://*"}},
 		"default inline":    {"default-src": []string{"'unsafe-inline'"}},
 		"default data":      {"default-src": []string{"data:"}},
+		"strict-dynamic":    {"script-src": []string{"'strict-dynamic'"}},
+		"default strict":    {"default-src": []string{"'Strict-Dynamic'"}},
+		"wasm eval":         {"script-src": []string{"'wasm-unsafe-eval'"}},
+		"allow redirects":   {"script-src": []string{"'unsafe-allow-redirects'"}},
+		"speculation":       {"default-src": []string{"'inline-speculation-rules'"}},
+		"any host port":     {"script-src": []string{"https://*:443"}},
+		"any host any port": {"script-src": []string{"https://*:*"}},
+		"bare any port":     {"script-src": []string{"*:443"}},
+		"any host slash":    {"script-src": []string{"https://*/"}},
+		"tld wildcard":      {"script-src": []string{"https://*.com"}},
+		"bare tld wildcard": {"default-src": []string{"*.org"}},
+		"none":              {"img-src": []string{"'none'"}},
+		"control char":      {"img-src": []string{"https://x.example.org\x00"}},
+		"del char":          {"img-src": []string{"https://x.example.org\x7f"}},
+		"value not list":    {"img-src": 42},
+		"item not string":   {"img-src": []any{"https://x.example.org", 7}},
 	} {
 		viper.Reset()
 		viper.Set("server.csp", cfg)
@@ -76,9 +92,33 @@ func TestCSPExtraRejected(t *testing.T) {
 	assert.ErrorContains(t, err, "frame-ancestors")
 
 	viper.Reset()
-	viper.Set("server.csp", map[string]any{"img-src": []string{"data:", "blob:", "https:"}})
+	viper.Set("server.csp", "font-src=https://x.example.org")
+	_, err = loadCSPExtra()
+	assert.ErrorContains(t, err, "server.csp", "not a table")
+
+	viper.Reset()
+	viper.Set("server.csp", map[string]any{"img-src": []any{"data:", "blob:", "https:"}})
 	_, err = loadCSPExtra()
 	assert.NoError(t, err, "scheme sources are fine outside script-src")
+
+	viper.Reset()
+	viper.Set("server.csp", map[string]any{"script-src": []string{"https://*.cdn.example.org", "https://js.example.org:8443/lib/"}})
+	_, err = loadCSPExtra()
+	assert.NoError(t, err, "subdomain wildcards and ports are fine")
+}
+
+func TestCSPDefaultSrcExtras(t *testing.T) {
+	viper.Reset()
+	viper.Set("server.csp", map[string]any{
+		"default-src": []string{"https://all.example.org"},
+		"font-src":    []string{"https://fonts.example.org"},
+	})
+	x, err := loadCSPExtra()
+	require.NoError(t, err)
+	assert.Equal(t, "default-src 'self' https://all.example.org; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' https://all.example.org https://fonts.example.org; script-src 'self' 'nonce-N'",
+		contentSecurityPolicy("N", "", x))
+	assert.Equal(t, "default-src 'self' https://all.example.org; img-src 'self' data: https://o; style-src 'self' 'unsafe-inline' https://o; font-src 'self' https://all.example.org https://o https://fonts.example.org; script-src 'self' 'nonce-N'",
+		contentSecurityPolicy("N", "https://o", x))
 }
 
 func TestCSPExtraOnForwardAuthPage(t *testing.T) {
