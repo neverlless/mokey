@@ -1,0 +1,45 @@
+<div class="d-flex flex-wrap align-items-start gap-3 mb-4">
+  <div class="flex-grow-1">
+    <h1 class="mb-1">{{ T "admin_apps.title" }}</h1>
+    <p class="text-muted mb-0">{{ T "admin_apps.intro" }}</p>
+  </div>
+  <a class="btn btn-primary text-nowrap" href="/admin/apps/new">{{ T "admin_apps.new" }}</a>
+</div>
+{{ with $.ap_error }}<div class="alert alert-danger" role="alert">{{ . }}</div>{{ end }}
+{{ if $.ap_rows }}
+<div class="mokey-card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col">{{ T "admin_apps.col_app" }}</th>
+          <th scope="col" class="d-none d-sm-table-cell">{{ T "admin_apps.col_type" }}</th>
+          <th scope="col">{{ T "admin_apps.access" }}</th>
+          <th scope="col"><span class="visually-hidden">{{ T "admin_apps.edit" }}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $a := $.ap_rows }}
+        <tr{{ if $a.Missing }} class="text-muted"{{ end }}>
+          <td><strong>{{ $a.Name }}</strong>{{ if not $a.Missing }}<div class="small"><span class="mokey-mono">{{ $a.ID }}</span></div>{{ end }}</td>
+          <td class="d-none d-sm-table-cell">{{ if $a.Missing }}<span class="small">{{ T "admin_apps.missing" }}</span>{{ else }}<span class="mokey-pill{{ if ne $a.Kind "machine" }} is-ok{{ end }} text-nowrap">{{ T (printf "admin_apps.kind_%s" $a.Kind) }}</span>{{ end }}</td>
+          <td>
+            {{ if eq $a.Kind "machine" }}<span class="text-muted small">{{ T "admin_apps.machine_read_only" }}</span>
+            {{ else if $a.Everyone }}<span class="text-muted small">{{ T "admin_apps.everyone" }}</span>
+            {{ else }}{{ range $a.Groups }}<span class="mokey-pill">{{ . }}</span> {{ else }}<span class="text-muted small">{{ T "admin_apps.nobody" }}</span>{{ end }}{{ end }}
+            {{ if and $a.Config (ne $a.Kind "machine") }}<span class="text-muted small text-nowrap">· {{ T "admin_apps.in_config" }}</span>{{ end }}
+            {{ if $a.Missing }}<div class="small d-sm-none">{{ T "admin_apps.missing" }}</div>{{ end }}
+          </td>
+          <td class="text-end">{{ if not (or $a.Missing (eq $a.Kind "machine")) }}<a class="btn btn-sm btn-outline-secondary" href="/admin/apps/{{ $a.ID }}" aria-label="{{ T "admin_apps.edit" }} {{ $a.Name }}">{{ T "admin_apps.edit" }}</a>{{ end }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{ else if not $.ap_error }}
+<div class="mokey-card p-4">
+  <p class="mb-3">{{ T "admin_apps.empty" }}</p>
+  <a class="btn btn-primary" href="/admin/apps/new">{{ T "admin_apps.new" }}</a>
+</div>
+{{ end }}

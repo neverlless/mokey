@@ -34,7 +34,13 @@ func TestUIPreviewServe(t *testing.T) {
 	startLoop = func(func()) {}
 	t.Cleanup(func() { startLoop = orig })
 
+	hy := newFakeHydra()
+	t.Cleanup(hy.Close)
 	app, router, fake := newTestAppWith(t, func() {
+		viper.Set("hydra.admin_url", hy.srv.URL)
+		viper.Set("hydra.manage_clients", true)
+		viper.Set("hydra.public_url", "https://login.example.org")
+		viper.Set("hydra.clients", []map[string]any{{"client_id": "wiki", "groups": []string{"staff"}}})
 		viper.Set("accounts.enable_subid", true)
 		viper.Set("admin.enabled", true)
 		viper.Set("storage.driver", "sqlite3")
@@ -78,6 +84,29 @@ func TestUIPreviewServe(t *testing.T) {
 		Groups:       []string{"chemists"},
 		HostCategory: "all", AllowCommands: []string{"/usr/bin/systemctl"},
 	})
+	for _, g := range []string{"devs", "ops", "staff", "hpc-users"} {
+		fake.AddGroup(g, ipatest.Group{})
+	}
+	mokeyMeta := func(access string, groups ...string) map[string]any {
+		m := map[string]any{"access": access}
+		if len(groups) > 0 {
+			m["groups"] = groups
+		}
+		return map[string]any{"mokey": m}
+	}
+	for _, cl := range []map[string]any{
+		{"client_id": "gitea", "client_name": "Gitea", "client_uri": "https://git.example.org", "scope": "openid profile email ssh",
+			"redirect_uris": []string{"https://git.example.org/user/oauth2/mokey/callback"}, "metadata": mokeyMeta("groups", "devs", "ops")},
+		{"client_id": "grafana", "client_name": "Grafana", "client_uri": "https://grafana.example.org", "scope": "openid profile email",
+			"redirect_uris": []string{"https://grafana.example.org/login/generic_oauth"}, "metadata": mokeyMeta("all")},
+		{"client_id": "wiki", "client_name": "Wiki", "client_uri": "https://wiki.example.org", "scope": "openid profile",
+			"redirect_uris": []string{"https://wiki.example.org/oauth/callback"}},
+		{"client_id": "labcli", "client_name": "Lab CLI", "scope": "openid offline_access", "token_endpoint_auth_method": "none",
+			"redirect_uris": []string{"http://127.0.0.1/callback"}, "metadata": mokeyMeta("groups", "hpc-users")},
+		{"client_id": "backup-agent", "client_name": "Backup agent", "grant_types": []string{"client_credentials"}},
+	} {
+		hy.seedClient(cl)
+	}
 	router.addGroupRequest("chemists", "jesse", groupRequestJoin, "7d")
 	router.addGroupRequest("chemists", "skinny", groupRequestRenew, "30d")
 	for _, m := range []TimedMembership{

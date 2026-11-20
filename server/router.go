@@ -340,6 +340,16 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 	app.Post("/admin/sync/dry-run", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminSyncDryRun)
 	app.Post("/admin/sync/apply", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminSyncApply)
 	app.Post("/admin/sync/import-legacy", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminSyncImportLegacy)
+	if r.appsAdminOn() {
+		get(app, "/admin/apps", r.RequireLogin, r.RequireAdmin, r.AdminApps)
+		get(app, "/admin/apps/new", r.RequireLogin, r.RequireAdmin, r.AdminAppNew)
+		app.Post("/admin/apps", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAppCreate)
+		get(app, "/admin/apps/:id/secret", r.RequireLogin, r.RequireAdmin, r.AdminAppSecret)
+		get(app, "/admin/apps/:id", r.RequireLogin, r.RequireAdmin, r.AdminAppEdit)
+		app.Post("/admin/apps/:id", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAppUpdate)
+		app.Post("/admin/apps/:id/rotate", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAppRotate)
+		app.Post("/admin/apps/:id/delete", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAppDelete)
+	}
 	app.Post("/admin/invite", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.InviteSend)
 	get(app, "/admin/users", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminUserList)
 	get(app, "/admin/pending", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminPendingList)
@@ -415,6 +425,8 @@ func navSection(path string) string {
 		return "lifecycle"
 	case "admin/sync":
 		return "sync"
+	case "admin/apps":
+		return "admin-apps"
 	case "password", "otp", "passkey", "security":
 		return "security"
 	}
@@ -451,6 +463,25 @@ func initials(u *ipa.User) string {
 	return strings.ToUpper(s)
 }
 
+// shellVars are the variables every page inside the sidebar layout needs.
+func (r *Router) shellVars(c fiber.Ctx, path string) fiber.Map {
+	user := r.user(c)
+	vars := fiber.Map{
+		"user":          user,
+		"path":          path,
+		"is_admin":      isAdmin(user),
+		"shell":         true,
+		"section":       navSection(path),
+		"initials":      initials(user),
+		"display_name":  displayName(user),
+		"lifecycle_on":  r.lifecycle.on(),
+		"sync_on":       r.sync.on(),
+		"apps_admin_on": r.appsAdminOn(),
+	}
+	expiryWarningVars(user, vars)
+	return vars
+}
+
 func (r *Router) Index(c fiber.Ctx) error {
 	user := r.user(c)
 
@@ -459,18 +490,7 @@ func (r *Router) Index(c fiber.Ctx) error {
 		path = "account"
 	}
 
-	vars := fiber.Map{
-		"user":         user,
-		"path":         path,
-		"is_admin":     isAdmin(user),
-		"shell":        true,
-		"section":      navSection(path),
-		"initials":     initials(user),
-		"display_name": displayName(user),
-		"lifecycle_on": r.lifecycle.on(),
-		"sync_on":      r.sync.on(),
-	}
-	expiryWarningVars(user, vars)
+	vars := r.shellVars(c, path)
 
 	if strings.HasPrefix(path, "admin") && !isAdmin(user) {
 		return c.Status(fiber.StatusForbidden).SendString("")

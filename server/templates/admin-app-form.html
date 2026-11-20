@@ -1,0 +1,152 @@
+{{ $f := $.ap_form }}
+<a class="mokey-back" href="/admin/apps"><i class="fa fa-arrow-left" aria-hidden="true"></i> {{ T "admin_apps.back" }}</a>
+<h1 class="mb-4 mt-2">{{ if not $f }}{{ T "admin_apps.title" }}{{ else if $f.New }}{{ T "admin_apps.new" }}{{ else }}{{ $f.Title }}{{ end }}</h1>
+{{ with $.ap_error }}<div class="alert alert-danger" role="alert">{{ . }}</div>{{ end }}
+{{ if $f }}
+<form method="post" hx-post="/admin/apps{{ if not $f.New }}/{{ $f.ID }}{{ end }}" hx-target="#admin" hx-disabled-elt="find button[type=submit]"
+      hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
+  <div class="mokey-card p-4 mb-4">
+    <h2 class="mokey-section-title mb-3">{{ T "admin_apps.basics" }}</h2>
+    <div class="mb-3">
+      <label class="form-label" for="app-name">{{ T "admin_apps.name" }}</label>
+      <input class="form-control" id="app-name" name="name" value="{{ $f.Name }}" required maxlength="200" aria-describedby="app-name-help">
+      <div class="form-text" id="app-name-help">{{ T "admin_apps.name_help" }}</div>
+    </div>
+    {{ if $f.New }}
+    <div class="mb-3">
+      <label class="form-label" for="app-id">{{ T "admin_apps.client_id" }}</label>
+      <input class="form-control mokey-mono{{ if $f.Errors.id }} is-invalid{{ end }}" id="app-id" name="id" value="{{ $f.ID }}" maxlength="64" autocomplete="off" spellcheck="false" aria-describedby="app-id-help">
+      {{ template "app-field-error.html" $f.Errors.id }}
+      <div class="form-text" id="app-id-help">{{ T "admin_apps.client_id_help" }}</div>
+    </div>
+    {{ end }}
+    <div class="mb-3">
+      <label class="form-label" for="app-uri">{{ T "admin_apps.uri" }}</label>
+      <input class="form-control{{ if $f.Errors.uri }} is-invalid{{ end }}" id="app-uri" name="uri" type="url" value="{{ $f.URI }}" placeholder="https://app.example.org">
+      {{ template "app-field-error.html" $f.Errors.uri }}
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="app-catalog" name="catalog" value="1"{{ if $f.Catalog }} checked{{ end }}>
+      <label class="form-check-label" for="app-catalog">{{ T "admin_apps.catalog" }}</label>
+    </div>
+  </div>
+
+  <div class="mokey-card p-4 mb-4">
+    <h2 class="mokey-section-title mb-3">{{ T "admin_apps.signin" }}</h2>
+    {{ if $f.New }}
+    <fieldset class="mb-3">
+      <legend class="form-label fs-6">{{ T "admin_apps.type" }}</legend>
+      <div class="d-flex flex-column flex-sm-row gap-2">
+        <label class="mokey-card mokey-choice p-3 flex-grow-1" for="app-kind-web">
+          <input type="radio" class="form-check-input me-2" id="app-kind-web" name="kind" value="web"{{ if ne $f.Kind "public" }} checked{{ end }}>
+          <strong>{{ T "admin_apps.kind_web" }}</strong>
+          <span class="d-block text-muted small">{{ T "admin_apps.kind_web_help" }}</span>
+        </label>
+        <label class="mokey-card mokey-choice p-3 flex-grow-1" for="app-kind-public">
+          <input type="radio" class="form-check-input me-2" id="app-kind-public" name="kind" value="public"{{ if eq $f.Kind "public" }} checked{{ end }}>
+          <strong>{{ T "admin_apps.kind_public" }}</strong>
+          <span class="d-block text-muted small">{{ T "admin_apps.kind_public_help" }}</span>
+        </label>
+      </div>
+      {{ template "app-field-error.html" $f.Errors.kind }}
+      <div class="form-text">{{ T "admin_apps.pkce_hint" }}</div>
+    </fieldset>
+    {{ else }}
+    <div class="mb-3">
+      <div class="form-label">{{ T "admin_apps.type" }}</div>
+      <span class="mokey-pill{{ if ne $f.Kind "machine" }} is-ok{{ end }}">{{ T (printf "admin_apps.kind_%s" $f.Kind) }}</span>
+      <span class="text-muted small ms-2">{{ T "admin_apps.client_id" }}: <span class="mokey-mono">{{ $f.ID }}</span></span>
+    </div>
+    {{ end }}
+    <div class="mb-3">
+      <label class="form-label" for="app-redirect">{{ T "admin_apps.redirect_uris" }}</label>
+      <textarea class="form-control mokey-mono{{ if $f.Errors.redirect_uris }} is-invalid{{ end }}" id="app-redirect" name="redirect_uris" rows="2" spellcheck="false" required aria-describedby="app-redirect-help">{{ $f.RedirectURIs }}</textarea>
+      {{ template "app-field-error.html" $f.Errors.redirect_uris }}
+      <div class="form-text" id="app-redirect-help">{{ T "admin_apps.redirect_help" }}</div>
+    </div>
+    <details class="mb-3"{{ if or $f.PostLogoutURIs $f.Errors.post_logout_redirect_uris }} open{{ end }}>
+      <summary class="small">{{ T "admin_apps.more" }}</summary>
+      <div class="mt-2">
+        <label class="form-label" for="app-post-logout">{{ T "admin_apps.post_logout" }}</label>
+        <textarea class="form-control mokey-mono{{ if $f.Errors.post_logout_redirect_uris }} is-invalid{{ end }}" id="app-post-logout" name="post_logout_redirect_uris" rows="2" spellcheck="false">{{ $f.PostLogoutURIs }}</textarea>
+        {{ template "app-field-error.html" $f.Errors.post_logout_redirect_uris }}
+      </div>
+    </details>
+    <fieldset class="mb-0">
+      <legend class="form-label fs-6">{{ T "admin_apps.scopes" }}</legend>
+      <div class="d-flex flex-wrap gap-3 mb-2">
+        {{ range $s := $.ap_scopes }}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="app-scope-{{ $s }}" name="scopes" value="{{ $s }}"{{ if index $f.Scopes $s }} checked{{ end }}{{ if eq $s "openid" }} disabled{{ end }}>
+          <label class="form-check-label mokey-mono" for="app-scope-{{ $s }}">{{ $s }}</label>
+        </div>
+        {{ end }}
+      </div>
+      <label class="form-label small" for="app-other-scopes">{{ T "admin_apps.other_scopes" }}</label>
+      <input class="form-control mokey-mono{{ if $f.Errors.scopes }} is-invalid{{ end }}" id="app-other-scopes" name="other_scopes" value="{{ $f.OtherScopes }}" spellcheck="false" aria-describedby="app-other-scopes-help">
+      {{ template "app-field-error.html" $f.Errors.scopes }}
+      <div class="form-text" id="app-other-scopes-help">{{ T "admin_apps.other_scopes_help" }}</div>
+    </fieldset>
+  </div>
+
+  <div class="mokey-card p-4 mb-4">
+    <h2 class="mokey-section-title mb-3">{{ T "admin_apps.access" }}</h2>
+    {{ if $f.Config }}
+    <div class="mokey-config-box p-3">
+      <div class="fw-semibold mb-2">{{ T "admin_apps.config_access" }}</div>
+      <div class="mb-2">{{ range $f.ConfigGroups }}<span class="mokey-pill">{{ . }}</span> {{ else }}<span class="text-muted small">{{ T "admin_apps.nobody" }}</span>{{ end }}</div>
+      <div class="text-muted small">{{ T "admin_apps.config_hint" }}</div>
+    </div>
+    {{ else }}
+    <fieldset>
+      <legend class="visually-hidden">{{ T "admin_apps.access" }}</legend>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" id="app-access-all" name="access" value="all"{{ if eq $f.Access "all" }} checked{{ end }}>
+        <label class="form-check-label" for="app-access-all">{{ T "admin_apps.access_all" }}</label>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="radio" id="app-access-groups" name="access" value="groups"{{ if ne $f.Access "all" }} checked{{ end }}>
+        <label class="form-check-label" for="app-access-groups">{{ T "admin_apps.access_groups" }}</label>
+      </div>
+      {{ template "app-field-error.html" $f.Errors.access }}
+    </fieldset>
+    <div>
+      <label class="form-label" for="app-groups">{{ T "admin_apps.groups_label" }}</label>
+      <div class="d-flex flex-wrap gap-2 mb-2" data-pills>{{ range $f.Groups }}{{ template "app-group-pill.html" . }}{{ end }}</div>
+      <input class="form-control{{ if $f.Errors.groups }} is-invalid{{ end }}" id="app-groups" name="groups_add" list="app-groups-list" autocomplete="off" spellcheck="false" data-pill-input aria-describedby="app-groups-help">
+      <datalist id="app-groups-list">{{ range $.ap_groups }}<option value="{{ . }}"></option>{{ end }}</datalist>
+      <template data-pill-template>{{ template "app-group-pill.html" "" }}</template>
+      {{ template "app-field-error.html" $f.Errors.groups }}
+      <div class="form-text" id="app-groups-help">{{ T "admin_apps.groups_help" }}</div>
+    </div>
+    {{ end }}
+  </div>
+
+  {{ if $f.Narrow }}
+  <div class="alert alert-warning" role="alert">{{ printf (T "admin_apps.narrow_warn") $f.Title }}</div>
+  <input type="hidden" name="confirm" value="1">
+  {{ end }}
+  <button type="submit" class="btn btn-primary">{{ if $f.Narrow }}{{ T "admin_apps.narrow_confirm" }}{{ else if $f.New }}{{ T "admin_apps.create" }}{{ else }}{{ T "admin_apps.save" }}{{ end }}</button>
+</form>
+
+{{ if not $f.New }}
+<div class="mokey-card p-4 mt-5">
+  <h2 class="mokey-section-title mb-3">{{ T "admin_apps.danger" }}</h2>
+  <div id="app-danger-alert"></div>
+  {{ if $f.CanRotate }}
+  <div class="mokey-row px-0">
+    <div class="flex-grow-1"><div class="fw-semibold">{{ T "admin_apps.rotate" }}</div><div class="text-muted small">{{ T "admin_apps.rotate_help" }}</div></div>
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" hx-post="/admin/apps/{{ $f.ID }}/rotate" hx-target="#app-danger-alert"
+            hx-confirm="{{ printf (T "admin_apps.rotate_confirm") $f.Title }}" hx-disabled-elt="this"
+            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "admin_apps.rotate" }}</button>
+  </div>
+  {{ end }}
+  <div class="mokey-row px-0">
+    <div class="flex-grow-1"><div class="fw-semibold">{{ T "admin_apps.delete" }}</div><div class="text-muted small">{{ T "admin_apps.delete_help" }}</div></div>
+    <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" hx-post="/admin/apps/{{ $f.ID }}/delete" hx-target="#app-danger-alert"
+            hx-confirm="{{ printf (T "admin_apps.delete_confirm") $f.Title }}" hx-disabled-elt="this"
+            hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "admin_apps.delete" }}</button>
+  </div>
+</div>
+{{ end }}
+{{ end }}
