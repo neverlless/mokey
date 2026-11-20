@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -230,6 +231,24 @@ func applyClientInput(cl *hydra.OAuth2Client, in clientInput) {
 	}
 }
 
+// setClientCatalog changes only metadata.mokey.catalog, for clients whose
+// access is set in mokey.toml.
+func setClientCatalog(cl *hydra.OAuth2Client, catalog bool) {
+	md := map[string]interface{}{}
+	if b, err := json.Marshal(cl.Metadata); err == nil {
+		if json.Unmarshal(b, &md) != nil || md == nil {
+			md = map[string]interface{}{}
+		}
+	}
+	mokey, _ := md["mokey"].(map[string]interface{})
+	if mokey == nil {
+		mokey = map[string]interface{}{}
+	}
+	mokey["catalog"] = catalog
+	md["mokey"] = mokey
+	cl.Metadata = md
+}
+
 func accessSummary(cl *hydra.OAuth2Client) string {
 	p := resolveClientPolicy(cl)
 	switch {
@@ -333,9 +352,10 @@ func (r *Router) updateOAuthClient(id string, in clientInput, by string) error {
 		return err
 	}
 	in.Kind = clientKindOf(cl)
-	if _, ok := configClientPolicy(id); ok && (in.Access != "" || len(in.Groups) > 0) {
+	_, inConfig := configClientPolicy(id)
+	if inConfig && (in.Access != "" || len(in.Groups) > 0) {
 		return errClientAccessInConfig
-	} else if !ok && in.Access == "" {
+	} else if !inConfig && in.Access == "" {
 		return clientInputError{"access": "admin_apps.err_access"}
 	}
 	if err := r.prepareClientInput(&in); err != nil {
@@ -343,6 +363,9 @@ func (r *Router) updateOAuthClient(id string, in clientInput, by string) error {
 	}
 
 	applyClientInput(cl, in)
+	if inConfig {
+		setClientCatalog(cl, in.Catalog)
+	}
 	cl.ClientSecret = nil
 	if err := r.putClient(cl); err != nil {
 		return err

@@ -228,7 +228,48 @@ func TestUpdateConfigClientAccess(t *testing.T) {
 	require.NoError(t, r.updateOAuthClient("grafana", in, "admin"))
 	cl := hy.storedClient("grafana")
 	assert.Equal("Grafana 2", cl["client_name"])
-	assert.NotContains(cl, "metadata")
+	assert.Equal(map[string]interface{}{"mokey": map[string]interface{}{"catalog": true}}, cl["metadata"])
+}
+
+func TestUpdateConfigClientCatalog(t *testing.T) {
+	assert := assert.New(t)
+	r, hy := newClientsTestApp(t, func() {
+		viper.Set("hydra.clients", []map[string]interface{}{{"client_id": "grafana", "groups": []string{"ops"}}})
+	})
+	hy.seedClient(map[string]interface{}{
+		"client_id": "grafana", "redirect_uris": []interface{}{"https://g.example.com/cb"},
+		"metadata": map[string]interface{}{"owner": "team-a", "mokey": map[string]interface{}{"access": "groups", "groups": []interface{}{"devs"}}},
+	})
+
+	in := webInput()
+	in.Access, in.Groups, in.Catalog = "", nil, false
+	require.NoError(t, r.updateOAuthClient("grafana", in, "admin"))
+	assert.Equal(map[string]interface{}{
+		"owner": "team-a",
+		"mokey": map[string]interface{}{"access": "groups", "groups": []interface{}{"devs"}, "catalog": false},
+	}, hy.storedClient("grafana")["metadata"])
+
+	in.Catalog = true
+	require.NoError(t, r.updateOAuthClient("grafana", in, "admin"))
+	md := hy.storedClient("grafana")["metadata"].(map[string]interface{})
+	assert.Equal(true, md["mokey"].(map[string]interface{})["catalog"])
+	assert.Equal("groups", md["mokey"].(map[string]interface{})["access"])
+}
+
+func TestCatalogOnlyMetadata(t *testing.T) {
+	assert := assert.New(t)
+	newClientsTestApp(t, nil)
+	cl := &hydra.OAuth2Client{Metadata: map[string]interface{}{"mokey": map[string]interface{}{"catalog": false}}}
+	cl.SetClientId("wiki")
+
+	m, err := readClientMeta(cl)
+	require.NoError(t, err)
+	require.NotNil(t, m)
+	assert.False(*m.Catalog)
+	assert.Equal(clientPolicy{Source: "default", All: true}, resolveClientPolicy(cl))
+
+	viper.Set("hydra.default_deny", true)
+	assert.Equal(clientPolicy{Source: "default", All: false}, resolveClientPolicy(cl))
 }
 
 func TestUpdateRequiresAccess(t *testing.T) {
