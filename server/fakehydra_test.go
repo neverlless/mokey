@@ -51,6 +51,8 @@ type fakeHydra struct {
 	clientsPage int
 	// GET sessions/consent calls, to see the sweep stop early
 	consentLists int
+	// POST/PUT/DELETE calls on clients
+	clientWrites int
 }
 
 func newFakeHydra() *fakeHydra {
@@ -73,7 +75,8 @@ func newFakeHydra() *fakeHydra {
 	mux.HandleFunc("/admin/oauth2/auth/requests/logout/accept", f.acceptLogout)
 	mux.HandleFunc("/admin/oauth2/auth/sessions/login", f.revokeSessions)
 	mux.HandleFunc("/admin/oauth2/auth/sessions/consent", f.consentSessionsHandler)
-	mux.HandleFunc("/admin/clients", f.listClients)
+	mux.HandleFunc("/admin/clients", f.clientsHandler)
+	mux.HandleFunc("/admin/clients/{id}", f.clientHandler)
 
 	f.srv = httptest.NewServer(mux)
 	return f
@@ -291,6 +294,132 @@ func (f *fakeHydra) seedClient(client map[string]interface{}) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.clients = append(f.clients, client)
+}
+
+func (f *fakeHydra) clientsHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		f.listClients(w, r)
+	case http.MethodPost:
+		f.createClient(w, r)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+// client returns the stored client and its index, or -1.
+func (f *fakeHydra) client(id string) (map[string]interface{}, int) {
+	for i, cl := range f.clients {
+		if cl["client_id"] == id {
+			return cl, i
+		}
+	}
+	return nil, -1
+}
+
+// storedClient is a copy of the stored client, secret included
+func (f *fakeHydra) storedClient(id string) map[string]interface{} {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	cl, _ := f.client(id)
+	if cl == nil {
+		return nil
+	}
+	b, _ := json.Marshal(cl)
+	var out map[string]interface{}
+	json.Unmarshal(b, &out)
+	return out
+}
+
+// withoutSecret is what Hydra returns on GET: never the secret
+func withoutSecret(cl map[string]interface{}) map[string]interface{} {
+	out := map[string]interface{}{}
+	for k, v := range cl {
+		if k != "client_secret" {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func (f *fakeHydra) createClient(w http.ResponseWriter, r *http.Request) {
+	var body map[string]interface{}
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.clientWrites++
+	id, _ := body["client_id"].(string)
+	if id == "" {
+		id = fmt.Sprintf("generated-%d", len(f.clients)+1)
+		body["client_id"] = id
+	}
+	if cl, _ := f.client(id); cl != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		writeJSON(w, map[string]string{"error": "resource_conflict"})
+		return
+	}
+	if _, ok := body["client_secret"]; !ok && body["token_endpoint_auth_method"] != "none" {
+		body["client_secret"] = "hydra-generated-placeholder"
+	}
+	f.clients = append(f.clients, body)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, body)
+}
+
+// clientHandler: GET without the secret; PUT replaces the client and keeps
+// the stored secret when the body has none, as Hydra v2 does; DELETE also
+// drops the client's consent sessions (Hydra cascades them).
+func (f *fakeHydra) clientHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	cl, i := f.client(id)
+	if r.Method != http.MethodGet {
+		f.clientWrites++
+	}
+	if cl == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		writeJSON(w, map[string]string{"error": "Unable to locate the resource"})
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, withoutSecret(cl))
+	case http.MethodPut:
+		var body map[string]interface{}
+		if json.NewDecoder(r.Body).Decode(&body) != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		body["client_id"] = id
+		if _, ok := body["client_secret"]; !ok {
+			if s, ok := cl["client_secret"]; ok {
+				body["client_secret"] = s
+			}
+		}
+		f.clients[i] = body
+		writeJSON(w, body)
+	case http.MethodDelete:
+		f.clients = append(f.clients[:i], f.clients[i+1:]...)
+		for subject, sessions := range f.consentSessions {
+			kept := sessions[:0]
+			for _, s := range sessions {
+				if s.ClientID != id {
+					kept = append(kept, s)
+				}
+			}
+			f.consentSessions[subject] = kept
+		}
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
 }
 
 // listClients pages like Hydra: page_token is an offset here, the next
