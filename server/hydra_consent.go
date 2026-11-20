@@ -176,6 +176,17 @@ func (r *Router) revokeConsentsOf(username string) {
 	if r.hydraClient == nil {
 		return
 	}
+	policies, err := r.clientPolicies()
+	if err != nil {
+		slog.Error("Failed to resolve OAuth client access, not revoking consents",
+			"username", username,
+			"err", err,
+		)
+		return
+	}
+	if !anyRestricted(policies) {
+		return
+	}
 	user, err := r.adminClient.UserShow(username)
 	if err != nil {
 		slog.Error("Failed to fetch user for Hydra consent revocation",
@@ -184,7 +195,7 @@ func (r *Router) revokeConsentsOf(username string) {
 		)
 		return
 	}
-	r.revokeDisallowedConsents(user)
+	r.revokeDisallowed(user, policies)
 }
 
 // consentSweepInterval is 0 when the sweep is off: no Hydra, or

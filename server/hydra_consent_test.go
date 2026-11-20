@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -192,4 +194,26 @@ func TestSyncDeleteRevokesAllConsents(t *testing.T) {
 	router.adminClient = fake.ClientAs("admin")
 	require.NoError(t, router.syncDelete("walter", true))
 	assert.Empty(t, consentClients(hy, "walter"))
+}
+
+func captureSlog(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var logs bytes.Buffer
+	saved := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(saved) })
+	return &logs
+}
+
+func TestRevokeConsentsOfSkipsUserLookupWhenUnrestricted(t *testing.T) {
+	_, router, _, _ := newConsentRevokeApp(t)
+	logs := captureSlog(t)
+
+	viper.Set("hydra.clients", []map[string]any{})
+	router.revokeConsentsOf("nobody")
+	assert.NotContains(t, logs.String(), "Failed to fetch user")
+
+	viper.Set("hydra.default_deny", true)
+	router.revokeConsentsOf("nobody")
+	assert.Contains(t, logs.String(), "Failed to fetch user")
 }
