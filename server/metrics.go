@@ -105,7 +105,7 @@ func newMetrics() *Metrics {
 		}, []string{"kind"}),
 		syncHeld: promauto.NewGauge(prometheus.GaugeOpts{
 			Name: "mokey_sync_held",
-			Help: "1 when the safety brake held the disables and deletes of the last directory sync run",
+			Help: "1 when the safety brake held the locks, deletes and group removals of the last directory sync run",
 		}),
 	}
 
