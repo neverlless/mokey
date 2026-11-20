@@ -42,6 +42,8 @@ type syncRunResult struct {
 	HeldCount int
 	// HeldDisable, HeldDelete and HeldRemove split HeldCount by kind
 	HeldDisable, HeldDelete, HeldRemove int
+	// HeldGroupRemovals counts the (user, group) removals behind HeldRemove
+	HeldGroupRemovals int
 }
 
 // StartSync runs the directory sync every sync.interval for the lifetime of
@@ -190,7 +192,8 @@ func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dr
 func syncHeldOf(now time.Time, full syncPlan, reasons []string) *syncRunResult {
 	return &syncRunResult{At: now, Held: true, HeldCount: len(full.Disable) + len(full.Delete) + len(full.RemoveGroups),
 		HeldDisable: len(full.Disable), HeldDelete: len(full.Delete), HeldRemove: len(full.RemoveGroups),
-		Plan: full.sample(syncSampleN), SkipReasons: reasons}
+		HeldGroupRemovals: syncPlanCounts(full)["group_remove"],
+		Plan:              full.sample(syncSampleN), SkipReasons: reasons}
 }
 
 type syncInputs struct {

@@ -606,3 +606,21 @@ func TestAdminSyncSettingsRuleGroupLookupFails(t *testing.T) {
 	assert.NotContains(t, body, "eng-ssh")
 	assert.NotContains(t, body, esc(T("sync.admin_rule_group_missing")))
 }
+
+// TestSyncHeldTableCountsHiddenRows: "more" counts hidden (user, group)
+// rows, also for a stored plan that kept only the first users.
+func TestSyncHeldTableCountsHiddenRows(t *testing.T) {
+	full := syncPlan{RemoveGroups: map[string][]string{}, GroupWhy: map[string]map[string][]string{}}
+	for i := range 30 {
+		full.RemoveGroups[fmt.Sprintf("user%02d", i)] = []string{"eng", "ops"}
+	}
+	more := func(n int) string { return fmt.Sprintf(T("admin.lifecycle_more"), n) }
+
+	tb := syncHeldTable("en", full, 0, 0)
+	require.Len(t, tb.Rows, syncSampleN)
+	assert.Equal(t, more(60-syncSampleN), tb.More)
+
+	held := syncHeldOf(time.Now(), full, nil)
+	tb = syncHeldTable("en", held.Plan, held.HeldDisable+held.HeldDelete+held.HeldGroupRemovals, 0)
+	assert.Equal(t, more(60-syncSampleN), tb.More)
+}
