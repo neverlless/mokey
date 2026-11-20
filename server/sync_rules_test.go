@@ -73,3 +73,23 @@ func TestSyncRuleGroups(t *testing.T) {
 		t.Fatalf("no attrs: %v %v", g, r)
 	}
 }
+
+func TestSyncOUWithin(t *testing.T) {
+	for _, tc := range []struct {
+		path, ou string
+		want     bool
+	}{
+		{"/research", "/research/", true},
+		{"/research/", "/research", true},
+		{"/research/lab", "/research/", true},
+		{"/x", "/", true},
+		{"/", "/", true},
+		{"/researchops", "/research/", false},
+		{"/", "/research", false},
+		{"", "/", false},
+	} {
+		if got := syncOUWithin(tc.path, tc.ou); got != tc.want {
+			t.Errorf("syncOUWithin(%q, %q) = %v, want %v", tc.path, tc.ou, got, tc.want)
+		}
+	}
+}

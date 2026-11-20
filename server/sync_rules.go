@@ -17,10 +17,14 @@ type syncRule struct {
 	Groups []string
 }
 
-// syncOUWithin is true when path is ou or one of its sub-OUs.
+// syncOUWithin is true when path is ou or one of its sub-OUs; the root
+// "/" holds every non-empty path.
 func syncOUWithin(path, ou string) bool {
-	path, ou = syncName(path), syncName(ou)
-	return path == ou || strings.HasPrefix(path, strings.TrimSuffix(ou, "/")+"/")
+	if syncName(path) == "" {
+		return false
+	}
+	path, ou = strings.TrimRight(syncName(path), "/"), strings.TrimRight(syncName(ou), "/")
+	return path == ou || strings.HasPrefix(path, ou+"/")
 }
 
 func (r syncRule) matches(attrs map[string]string) bool {
