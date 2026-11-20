@@ -82,6 +82,7 @@ func TestSyncConfigErrors(t *testing.T) {
 		{"percent", "sync.max_disable_percent", map[string]any{"sync.max_disable_percent": 101}},
 		{"concurrency", "sync.concurrency", map[string]any{"sync.concurrency": 0}},
 		{"empty group", "devs@example.org", map[string]any{"sync.google.group_mapping": map[string]any{"devs@example.org": []string{"ops", ""}}}},
+		{"relative org unit", `sync.google.org_units: "research" must start with /`, map[string]any{"sync.google.org_units": []string{"/Staff", " research"}}},
 		{"rule without name", "sync.google.rules: rule 1: name is required", map[string]any{"sync.google.rules": []any{
 			map[string]any{"department": []string{"eng"}, "groups": []string{"ops"}}}}},
 		{"duplicate rule name", `duplicate rule name "eng"`, map[string]any{"sync.google.rules": []any{
