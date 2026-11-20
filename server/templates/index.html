@@ -84,7 +84,7 @@
 </div>
 {{ else if eq $.path "admin/apps" }}
 <div id="admin">
-{{ if eq $.ap_page "form" }}{{ template "admin-app-form.html" . }}{{ else if eq $.ap_page "secret" }}{{ template "admin-app-secret.html" . }}{{ else }}{{ template "admin-apps.html" . }}{{ end }}
+{{ if eq $.ap_page "form" }}{{ template "admin-app-form.html" . }}{{ else }}{{ template "admin-apps.html" . }}{{ end }}
 </div>
 {{ else if eq $.path "admin/sync" }}
 <div id="admin">

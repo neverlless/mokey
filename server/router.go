@@ -344,7 +344,6 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 		get(app, "/admin/apps", r.RequireLogin, r.RequireAdmin, r.AdminApps)
 		get(app, "/admin/apps/new", r.RequireLogin, r.RequireAdmin, r.AdminAppNew)
 		app.Post("/admin/apps", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAppCreate)
-		get(app, "/admin/apps/:id/secret", r.RequireLogin, r.RequireAdmin, r.AdminAppSecret)
 		get(app, "/admin/apps/:id", r.RequireLogin, r.RequireAdmin, r.AdminAppEdit)
 		app.Post("/admin/apps/:id", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAppUpdate)
 		app.Post("/admin/apps/:id/rotate", r.RequireLogin, r.RequireAdmin, r.RequireHTMX, r.AdminAppRotate)

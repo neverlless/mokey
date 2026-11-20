@@ -30,7 +30,7 @@
             {{ if and $a.Config (ne $a.Kind "machine") }}<span class="text-muted small text-nowrap">· {{ T "admin_apps.in_config" }}</span>{{ end }}
             {{ if $a.Missing }}<div class="small d-sm-none">{{ T "admin_apps.missing" }}</div>{{ end }}
           </td>
-          <td class="text-end">{{ if not (or $a.Missing (eq $a.Kind "machine")) }}<a class="btn btn-sm btn-outline-secondary" href="/admin/apps/{{ $a.ID }}" aria-label="{{ T "admin_apps.edit" }} {{ $a.Name }}">{{ T "admin_apps.edit" }}</a>{{ end }}</td>
+          <td class="text-end">{{ if not (or $a.Missing (eq $a.Kind "machine")) }}<a class="btn btn-sm btn-outline-secondary" href="/admin/apps/{{ $a.Path }}" aria-label="{{ T "admin_apps.edit" }} {{ $a.Name }}">{{ T "admin_apps.edit" }}</a>{{ end }}</td>
         </tr>
         {{ end }}
       </tbody>
