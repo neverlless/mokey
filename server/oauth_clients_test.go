@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/neverlless/goipa/ipatest"
@@ -88,6 +89,15 @@ func TestClientInputValidate(t *testing.T) {
 		{"post logout http remote", func(in *clientInput) { in.PostLogoutURIs = []string{"http://wiki.example.com/bye"} }, "post_logout_redirect_uris"},
 		{"id charset", func(in *clientInput) { in.ID = "Wiki App" }, "id"},
 		{"id ok", func(in *clientInput) { in.ID = "wiki-2.app_x" }, ""},
+		{"id dots", func(in *clientInput) { in.ID = ".." }, "id"},
+		{"id dot", func(in *clientInput) { in.ID = "." }, "id"},
+		{"id leading dash", func(in *clientInput) { in.ID = "-x" }, "id"},
+		{"id 64", func(in *clientInput) { in.ID = strings.Repeat("a", 64) }, ""},
+		{"id 65", func(in *clientInput) { in.ID = strings.Repeat("a", 65) }, "id"},
+		{"userinfo", func(in *clientInput) { in.RedirectURIs = []string{"https://user@wiki.example.com/cb"} }, "redirect_uris"},
+		{"empty host", func(in *clientInput) { in.RedirectURIs = []string{"https://:443/cb"} }, "redirect_uris"},
+		{"app link userinfo", func(in *clientInput) { in.URI = "https://u:p@wiki.example.com" }, "uri"},
+		{"app link empty host", func(in *clientInput) { in.URI = "https://:443" }, "uri"},
 		{"app link javascript", func(in *clientInput) { in.URI = "javascript:alert(1)" }, "uri"},
 		{"scope with space", func(in *clientInput) { in.Scopes = []string{"openid", "a b"} }, "scopes"},
 		{"bad access", func(in *clientInput) { in.Access = "some" }, "access"},
@@ -397,4 +407,73 @@ func TestUnknownGroupRejected(t *testing.T) {
 	hy.seedClient(map[string]interface{}{"client_id": "wiki", "redirect_uris": []interface{}{"https://w.example.com/cb"}})
 	require.ErrorAs(t, r.updateOAuthClient("wiki", in, "admin"), &verr)
 	assert.Zero(t, hy.clientWrites)
+}
+
+func TestCreateTrimsURIs(t *testing.T) {
+	r, hy := newClientsTestApp(t, nil)
+	in := webInput()
+	in.RedirectURIs = []string{" https://wiki.example.com/cb ", "", "  "}
+	in.PostLogoutURIs = []string{"", " https://wiki.example.com/bye"}
+	id, _, err := r.createOAuthClient(in, "admin")
+	require.NoError(t, err)
+	cl := hy.storedClient(id)
+	assert.Equal(t, []interface{}{"https://wiki.example.com/cb"}, cl["redirect_uris"])
+	assert.Equal(t, []interface{}{"https://wiki.example.com/bye"}, cl["post_logout_redirect_uris"])
+
+	in.RedirectURIs = []string{"", " "}
+	var verr clientInputError
+	_, _, err = r.createOAuthClient(in, "admin")
+	require.ErrorAs(t, err, &verr)
+	assert.Contains(t, verr, "redirect_uris")
+}
+
+func TestUpdateForeignClientIDs(t *testing.T) {
+	r, hy := newClientsTestApp(t, nil)
+	for _, id := range []string{"3f2504e0-4f89-11d3-9a0c-0305e82c3301", "Legacy-App"} {
+		hy.seedClient(map[string]interface{}{"client_id": id, "redirect_uris": []interface{}{"https://w.example.com/cb"}})
+		in := webInput()
+		in.ID = id
+		require.NoError(t, r.updateOAuthClient(id, in, "admin"), id)
+		assert.Equal(t, "Wiki", hy.storedClient(id)["client_name"], id)
+	}
+}
+
+func TestUnreadableClient(t *testing.T) {
+	r, hy := newClientsTestApp(t, nil)
+	hy.seedClient(map[string]interface{}{
+		"client_id": "jwt", "redirect_uris": []interface{}{"https://w.example.com/cb"},
+		"jwks": map[string]interface{}{"keys": []interface{}{map[string]interface{}{"kty": "RSA", "kid": "k1"}}},
+	})
+	err := r.updateOAuthClient("jwt", webInput(), "admin")
+	assert.ErrorIs(t, err, errClientUnreadable)
+	_, err = r.rotateOAuthClientSecret("jwt", "admin")
+	assert.ErrorIs(t, err, errClientUnreadable)
+	assert.ErrorIs(t, r.deleteOAuthClient("jwt", "admin"), errClientUnreadable)
+	assert.Zero(t, hy.clientWrites)
+}
+
+func TestRotateOnlySecretMethods(t *testing.T) {
+	r, hy := newClientsTestApp(t, nil)
+	for method, ok := range map[string]bool{"client_secret_basic": true, "client_secret_post": true, "private_key_jwt": false, "none": false} {
+		hy.seedClient(map[string]interface{}{"client_id": method, "token_endpoint_auth_method": method})
+		_, err := r.rotateOAuthClientSecret(method, "admin")
+		if ok {
+			assert.NoError(t, err, method)
+		} else {
+			assert.ErrorIs(t, err, errClientNoSecret, method)
+		}
+	}
+}
+
+func TestUpdateKeepsMokeySubKeys(t *testing.T) {
+	r, hy := newClientsTestApp(t, nil)
+	hy.seedClient(map[string]interface{}{
+		"client_id": "wiki", "redirect_uris": []interface{}{"https://w.example.com/cb"},
+		"metadata": map[string]interface{}{"mokey": map[string]interface{}{"access": "groups", "groups": []interface{}{"ops"}, "future": "x"}},
+	})
+	in := webInput()
+	in.Access, in.Groups = "all", nil
+	require.NoError(t, r.updateOAuthClient("wiki", in, "admin"))
+	assert.Equal(t, map[string]interface{}{"access": "all", "catalog": true, "future": "x"},
+		hy.storedClient("wiki")["metadata"].(map[string]interface{})["mokey"])
 }

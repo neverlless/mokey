@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -33,6 +32,7 @@ var (
 	errClientReadOnly       = errors.New("machine clients are read-only")
 	errClientNoSecret       = errors.New("public clients have no secret")
 	errClientAccessInConfig = errors.New("access of this client is set in mokey.toml")
+	errClientUnreadable     = errors.New("Hydra returned a client mokey can't read; manage it with the Hydra CLI")
 )
 
 // clientInputError maps form fields to translation keys.
@@ -60,7 +60,7 @@ type clientInput struct {
 }
 
 var (
-	clientIDPattern   = regexp.MustCompile(`^[a-z0-9._-]+$`)
+	clientIDPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 	scopeTokenPattern = regexp.MustCompile(`^[\x21\x23-\x5b\x5d-\x7e]+$`)
 )
 
@@ -92,12 +92,12 @@ func clientKindOf(cl *hydra.OAuth2Client) clientKind {
 
 func validRedirectURI(s string, public bool) bool {
 	u, err := url.Parse(s)
-	if err != nil || strings.Contains(s, "#") || u.Scheme == "" {
+	if err != nil || strings.Contains(s, "#") || u.Scheme == "" || u.User != nil {
 		return false
 	}
 	switch u.Scheme {
 	case "https":
-		return u.Host != ""
+		return u.Hostname() != ""
 	case "http":
 		h := u.Hostname()
 		return h == "localhost" || h == "127.0.0.1" || h == "::1"
@@ -116,7 +116,7 @@ func (in *clientInput) validate() map[string]string {
 		errs["kind"] = "admin_apps.err_kind"
 	}
 	if in.URI != "" {
-		if u, err := url.Parse(in.URI); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		if u, err := url.Parse(in.URI); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil {
 			errs["uri"] = "admin_apps.err_uri"
 		}
 	}
@@ -169,6 +169,8 @@ func hydraError(resp *http.Response, err error) error {
 		return fmt.Errorf("%w: %v", errHydraUnavailable, err)
 	}
 	switch {
+	case resp.StatusCode < 300:
+		return errClientUnreadable
 	case resp.StatusCode == http.StatusNotFound:
 		return errClientNotFound
 	case resp.StatusCode == http.StatusConflict:
@@ -196,7 +198,19 @@ func (r *Router) checkClientGroups(in *clientInput, errs map[string]string) erro
 	return nil
 }
 
+func trimLines(lines []string) []string {
+	var out []string
+	for _, l := range lines {
+		if l = strings.TrimSpace(l); l != "" {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
 func normalizeClientInput(in *clientInput) {
+	in.RedirectURIs = trimLines(in.RedirectURIs)
+	in.PostLogoutURIs = trimLines(in.PostLogoutURIs)
 	scopes := []string{"openid"}
 	for _, s := range in.Scopes {
 		if s = strings.TrimSpace(s); s != "" && !slices.Contains(scopes, s) {
@@ -234,19 +248,7 @@ func applyClientInput(cl *hydra.OAuth2Client, in clientInput) {
 // setClientCatalog changes only metadata.mokey.catalog, for clients whose
 // access is set in mokey.toml.
 func setClientCatalog(cl *hydra.OAuth2Client, catalog bool) {
-	md := map[string]interface{}{}
-	if b, err := json.Marshal(cl.Metadata); err == nil {
-		if json.Unmarshal(b, &md) != nil || md == nil {
-			md = map[string]interface{}{}
-		}
-	}
-	mokey, _ := md["mokey"].(map[string]interface{})
-	if mokey == nil {
-		mokey = map[string]interface{}{}
-	}
-	mokey["catalog"] = catalog
-	md["mokey"] = mokey
-	cl.Metadata = md
+	mergeClientMeta(cl, func(m map[string]interface{}) { m["catalog"] = catalog })
 }
 
 func accessSummary(cl *hydra.OAuth2Client) string {
@@ -352,6 +354,7 @@ func (r *Router) updateOAuthClient(id string, in clientInput, by string) error {
 		return err
 	}
 	in.Kind = clientKindOf(cl)
+	in.ID = "" // only checked on create: clients made elsewhere use other IDs
 	_, inConfig := configClientPolicy(id)
 	if inConfig && (in.Access != "" || len(in.Groups) > 0) {
 		return errClientAccessInConfig
@@ -379,7 +382,7 @@ func (r *Router) rotateOAuthClientSecret(id, by string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if cl.GetTokenEndpointAuthMethod() == "none" {
+	if m := cl.GetTokenEndpointAuthMethod(); m != "" && m != "client_secret_basic" && m != "client_secret_post" {
 		return "", errClientNoSecret
 	}
 	secret, err := newClientSecret()
