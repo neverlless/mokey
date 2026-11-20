@@ -27,11 +27,16 @@ import (
 // into the container, and its token_uri is the fake too.
 
 const (
-	syncFakeAddr    = "0.0.0.0:18867"
-	syncFakeURL     = "http://host.docker.internal:18867"
-	syncKeyPath     = "/tmp/google-sa.json"
-	syncManaged     = "it-sync-managed"
-	syncMapped      = "it-sync-devs"
+	syncFakeAddr = "0.0.0.0:18867"
+	syncFakeURL  = "http://host.docker.internal:18867"
+	syncKeyPath  = "/tmp/google-sa.json"
+	syncManaged  = "it-sync-managed"
+	syncMapped   = "it-sync-devs"
+	syncRuled    = "it-sync-research"
+	// syncRuled is nested in syncParent, which is nested in syncGrand
+	syncParent      = "it-sync-parent"
+	syncGrand       = "it-sync-grand"
+	syncHBAC        = "it-sync-grand-login"
 	syncGoogleGroup = "devs@sync.test"
 	syncToken       = "it-sync-access-token"
 	syncPerm        = "Mokey Sync Group Membership"
@@ -40,7 +45,7 @@ const (
 
 var mokeyCtr = envOr("MOKEY_IT_MOKEY_CONTAINER", "demo-mokey-1")
 
-type fakeGoogleUser struct{ email, given, family, full string }
+type fakeGoogleUser struct{ email, given, family, full, ou, dept string }
 
 type fakeGoogle struct {
 	mu      sync.Mutex
@@ -73,10 +78,15 @@ func (f *fakeGoogle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/admin/directory/v1/users":
 		var users []map[string]any
 		for _, u := range f.users {
-			users = append(users, map[string]any{
+			gu := map[string]any{
 				"primaryEmail": u.email,
 				"name":         map[string]string{"givenName": u.given, "familyName": u.family, "fullName": u.full},
-			})
+				"orgUnitPath":  u.ou,
+			}
+			if u.dept != "" {
+				gu["organizations"] = []map[string]any{{"department": u.dept, "primary": true}}
+			}
+			users = append(users, gu)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"users": users})
 	case "/admin/directory/v1/groups/" + syncGoogleGroup + "/members":
@@ -101,13 +111,22 @@ func syncStand(t *testing.T) *fakeGoogle {
 	for _, args := range [][]string{
 		{"group-add", syncManaged, "--desc=mokey sync tests: managed"},
 		{"group-add", syncMapped, "--desc=mokey sync tests: mapped"},
+		{"group-add", syncRuled, "--desc=mokey sync tests: rule target"},
+		{"group-add", syncParent, "--desc=mokey sync tests: parent of the rule target"},
+		{"group-add", syncGrand, "--desc=mokey sync tests: grandparent of the rule target"},
+		{"group-add-member", syncParent, "--groups=" + syncRuled},
+		{"group-add-member", syncGrand, "--groups=" + syncParent},
+		{"hbacrule-add", syncHBAC},
+		{"hbacrule-add-user", syncHBAC, "--groups=" + syncGrand},
 		{"permission-add", syncPerm, "--type=group", "--right=write", "--attrs=member",
 			"--filter=" + syncFilter},
+		// a stand from before the rule group got the old filter
+		{"permission-mod", syncPerm, "--filter=" + syncFilter},
 		{"privilege-add", syncPriv, "--desc=Directory sync group membership"},
 		{"privilege-add-permission", syncPriv, "--permissions=" + syncPerm},
 		{"role-add-privilege", "Mokey User Manager", "--privileges=" + syncPriv},
 	} {
-		if out, err := ipaCmd("", args...); err != nil && !strings.Contains(out, "already") {
+		if out, err := ipaCmd("", args...); err != nil && !strings.Contains(out, "already") && !strings.Contains(out, "no modifications") {
 			t.Fatalf("ipa %v: %s: %s", args, err, out)
 		}
 	}
@@ -145,21 +164,21 @@ func syncStand(t *testing.T) *fakeGoogle {
 	return fake
 }
 
-const syncFilter = "(|(cn=" + syncManaged + ")(cn=" + syncMapped + "))"
+const syncFilter = "(|(cn=" + syncManaged + ")(cn=" + syncMapped + ")(cn=" + syncRuled + "))"
 
-// syncApply posts the admin Apply with the locks and deletes the admin
-// expects, then waits for the background run to end
-func syncApply(t *testing.T, admin *client, disable int) {
+// syncApply posts the admin Apply with the locks, deletes and users losing
+// groups the admin expects, then waits for the background run to end
+func syncApply(t *testing.T, admin *client, disable, groups int) {
 	t.Helper()
-	if body := syncApplyWait(t, admin, disable); !strings.Contains(body, "mokey-pill is-ok") {
+	if body := syncApplyWait(t, admin, disable, groups); !strings.Contains(body, "mokey-pill is-ok") {
 		t.Fatalf("sync run not OK: %s", body)
 	}
 }
 
 // syncApplyWait returns the status fragment after the run
-func syncApplyWait(t *testing.T, admin *client, disable int) string {
+func syncApplyWait(t *testing.T, admin *client, disable, groups int) string {
 	t.Helper()
-	code, body := admin.hx("/admin/sync/apply", url.Values{"disable": {strconv.Itoa(disable)}, "delete": {"0"}})
+	code, body := admin.hx("/admin/sync/apply", url.Values{"disable": {strconv.Itoa(disable)}, "delete": {"0"}, "groups": {strconv.Itoa(groups)}})
 	if code != http.StatusOK || strings.Contains(body, "alert-danger") || strings.Contains(body, "alert-warning") {
 		t.Fatalf("apply: %d %s", code, body)
 	}
@@ -212,13 +231,13 @@ func TestSyncGoogleToFreeIPA(t *testing.T) {
 		uid := "s" + runID + s
 		uids = append(uids, uid)
 		cleanupUser(t, uid)
-		users = append(users, fakeGoogleUser{uid + "@sync.test", "Sync", strings.ToUpper(s), "Sync Person " + strings.ToUpper(s)})
+		users = append(users, fakeGoogleUser{email: uid + "@sync.test", given: "Sync", family: strings.ToUpper(s), full: "Sync Person " + strings.ToUpper(s)})
 	}
 	a, b, c := uids[0], uids[1], uids[2]
 	fake.set(users, users[0].email, users[1].email)
 
 	admin := login(t, "admin", ipaAdminPw)
-	syncApply(t, admin, 0)
+	syncApply(t, admin, 0, 0)
 	for i, uid := range uids {
 		if out := mustIPA(t, "user-show", uid, "--all"); !regexp.MustCompile(`(?m)^\s*Password: False$`).MatchString(out) {
 			t.Errorf("%s: want no password:\n%s", uid, out)
@@ -240,7 +259,8 @@ func TestSyncGoogleToFreeIPA(t *testing.T) {
 	mustIPA(t, "user-disable", c)
 	users[0].full = "Sync Renamed A"
 	fake.set([]fakeGoogleUser{users[0], users[2]})
-	syncApply(t, admin, 1)
+	// a loses the mapped group
+	syncApply(t, admin, 1, 1)
 	if !locked(t, b) {
 		t.Errorf("%s left Google but is not locked", b)
 	}
@@ -258,7 +278,7 @@ func TestSyncGoogleToFreeIPA(t *testing.T) {
 	}
 
 	fake.set(users, users[0].email, users[1].email)
-	syncApply(t, admin, 0)
+	syncApply(t, admin, 0, 0)
 	if locked(t, b) {
 		t.Errorf("%s came back to Google but stays locked", b)
 	}
@@ -277,14 +297,14 @@ func TestSyncStaleFilter(t *testing.T) {
 	fake := syncStand(t)
 	uid := "s" + runID + "f"
 	cleanupUser(t, uid)
-	u := fakeGoogleUser{uid + "@sync.test", "Sync", "F", "Sync Person F"}
+	u := fakeGoogleUser{email: uid + "@sync.test", given: "Sync", family: "F", full: "Sync Person F"}
 	fake.set([]fakeGoogleUser{u}, u.email)
 
 	mustIPA(t, "permission-mod", syncPerm, "--filter=(cn="+syncManaged+")")
 	t.Cleanup(func() { _, _ = ipaCmd("", "permission-mod", syncPerm, "--filter="+syncFilter) })
 
 	admin := login(t, "admin", ipaAdminPw)
-	if body := syncApplyWait(t, admin, 0); !strings.Contains(body, "mokey-pill is-danger") {
+	if body := syncApplyWait(t, admin, 0, 0); !strings.Contains(body, "mokey-pill is-danger") {
 		t.Fatalf("want a failed run: %s", body)
 	}
 	if !groupHas(t, syncManaged, uid) {
@@ -296,5 +316,47 @@ func TestSyncStaleFilter(t *testing.T) {
 	_, body := admin.do("GET", "/admin/sync/status?tab=decisions", nil, true)
 	if !strings.Contains(body, "change members of "+syncMapped) {
 		t.Errorf("Decisions do not list %s:\n%s", syncMapped, body)
+	}
+}
+
+// Attribute rules on the real FreeIPA (test/sync/mokey.toml): a user in a
+// sub-OU of /Research and one in department Engineering join the rule
+// group, one in neither does not; moving out of the OU removes the group.
+// Settings shows the HBAC rule that reaches the rule group two nesting
+// levels up, through FreeIPA's memberofindirect_group.
+func TestSyncRules(t *testing.T) {
+	fake := syncStand(t)
+	var users []fakeGoogleUser
+	var uids []string
+	for _, s := range []struct{ id, ou, dept string }{{"r", "/Research/Lab", ""}, {"e", "/Sales", "Engineering"}, {"o", "/Sales", "Sales"}} {
+		uid := "s" + runID + s.id
+		uids = append(uids, uid)
+		cleanupUser(t, uid)
+		users = append(users, fakeGoogleUser{email: uid + "@sync.test", given: "Sync", family: strings.ToUpper(s.id), full: "Sync Rule " + strings.ToUpper(s.id), ou: s.ou, dept: s.dept})
+	}
+	r, e, o := uids[0], uids[1], uids[2]
+	fake.set(users)
+
+	admin := login(t, "admin", ipaAdminPw)
+	syncApply(t, admin, 0, 0)
+	if !groupHas(t, syncRuled, r) || !groupHas(t, syncRuled, e) || groupHas(t, syncRuled, o) {
+		t.Errorf("%s members: want %s (OU) and %s (department) only", syncRuled, r, e)
+	}
+
+	_, body := admin.do("GET", "/admin/sync/status?tab=settings", nil, true)
+	for _, want := range []string{"it-research", "org_unit: /research", "it-eng", "department: engineering", syncHBAC + " · via " + syncGrand} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Settings tab: no %q:\n%s", want, body)
+		}
+	}
+
+	users[0].ou = "/Sales"
+	fake.set(users)
+	syncApply(t, admin, 0, 1)
+	if groupHas(t, syncRuled, r) {
+		t.Errorf("%s left /Research but is still in %s", r, syncRuled)
+	}
+	if !groupHas(t, syncRuled, e) {
+		t.Errorf("%s lost %s though department Engineering still matches", e, syncRuled)
 	}
 }
