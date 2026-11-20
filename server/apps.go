@@ -62,16 +62,19 @@ func (r *Router) appCatalog(c fiber.Ctx) ([]catalogApp, error) {
 	if err != nil {
 		return nil, err
 	}
-	var policies []hydraClientPolicy
-	if err := viper.UnmarshalKey("hydra.clients", &policies); err != nil {
+	if _, err := configPolicies(); err != nil {
 		return nil, err
 	}
 
 	var managed map[string]*ipaGroup
 	apps := []catalogApp{}
-	for _, cl := range clients {
+	for i := range clients {
+		cl := &clients[i]
 		grants := cl.GetGrantTypes()
 		if len(grants) > 0 && !slices.Contains(grants, "authorization_code") {
+			continue
+		}
+		if m, _ := readClientMeta(cl); m != nil && m.Catalog != nil && !*m.Catalog {
 			continue
 		}
 
@@ -80,7 +83,8 @@ func (r *Router) appCatalog(c fiber.Ctx) ([]catalogApp, error) {
 			app.Name = app.ClientID
 		}
 
-		if clientAllowed(app.ClientID, user) {
+		policy := resolveClientPolicy(cl)
+		if policyAllows(policy, user) {
 			app.State = appAvailable
 			apps = append(apps, app)
 			continue
@@ -100,22 +104,20 @@ func (r *Router) appCatalog(c fiber.Ctx) ([]catalogApp, error) {
 			}
 		}
 
-		// first matching policy only, as clientAllowed does; the first
-		// requestable group in config order wins unless one is pending
-		if i := slices.IndexFunc(policies, func(p hydraClientPolicy) bool { return p.ClientID == app.ClientID }); i >= 0 {
-			for _, want := range policies[i].Groups {
-				g := managed[strings.ToLower(want)]
-				if g == nil {
-					continue
-				}
-				if r.hasJoinRequest(g.Name, user.Username) {
-					app.State, app.Group = appPending, g.Name
-					break
-				}
-				// Google owns a mapped group's membership; a join is refused
-				if app.State == "" && !r.syncMapped(g.Name) {
-					app.State, app.Group = appRequestable, g.Name
-				}
+		// the first requestable group in policy order wins unless one is
+		// pending
+		for _, want := range policy.Groups {
+			g := managed[strings.ToLower(want)]
+			if g == nil {
+				continue
+			}
+			if r.hasJoinRequest(g.Name, user.Username) {
+				app.State, app.Group = appPending, g.Name
+				break
+			}
+			// Google owns a mapped group's membership; a join is refused
+			if app.State == "" && !r.syncMapped(g.Name) {
+				app.State, app.Group = appRequestable, g.Name
 			}
 		}
 		if app.State != "" {

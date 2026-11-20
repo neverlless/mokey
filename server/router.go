@@ -47,6 +47,9 @@ type Router struct {
 	bg sync.WaitGroup
 
 	hooks *webhooks
+
+	// hydra.public_url without a trailing slash, "" when unset
+	hydraPublicURL string
 }
 
 // goBG runs fn in a tracked goroutine (see bg above). A panic is logged
@@ -133,6 +136,11 @@ func NewRouter(storage fiber.Storage) (*Router, error) {
 	})
 
 	r.emailer, err = NewEmailer(storage)
+	if err != nil {
+		return nil, err
+	}
+
+	r.hydraPublicURL, err = loadHydraPublicURL()
 	if err != nil {
 		return nil, err
 	}

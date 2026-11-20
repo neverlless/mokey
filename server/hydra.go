@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -59,46 +58,6 @@ func (r *Router) revokeConnectedApp(username, clientID string) error {
 	_, err := r.hydraClient.OAuth2API.RevokeOAuth2ConsentSessions(context.Background()).
 		Subject(username).Client(clientID).Execute()
 	return err
-}
-
-// hydraClientPolicy limits one OAuth client to members of FreeIPA groups,
-// configured as [[hydra.clients]] entries.
-type hydraClientPolicy struct {
-	ClientID string   `mapstructure:"client_id"`
-	Groups   []string `mapstructure:"groups"`
-}
-
-// clientAllowed reports whether user may sign in to the OAuth client.
-// Clients without a [[hydra.clients]] entry are open to every user unless
-// hydra.default_deny is set. Nested groups count (memberOf).
-func clientAllowed(clientID string, user *ipa.User) bool {
-	var policies []hydraClientPolicy
-	if err := viper.UnmarshalKey("hydra.clients", &policies); err != nil {
-		slog.Error("Invalid hydra.clients config, denying OAuth client access",
-			"err", err,
-		)
-		return false
-	}
-
-	for _, p := range policies {
-		if p.ClientID == "" {
-			slog.Error("Invalid hydra.clients config: entry without client_id, denying OAuth client access")
-			return false
-		}
-		if p.ClientID != clientID {
-			continue
-		}
-		for _, want := range p.Groups {
-			for _, have := range memberOf(user) {
-				if strings.EqualFold(want, have) {
-					return true
-				}
-			}
-		}
-		return false
-	}
-
-	return !viper.GetBool("hydra.default_deny")
 }
 
 func (ftt *FakeTLSTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -169,7 +128,7 @@ func (r *Router) ConsentGet(c fiber.Ctx) error {
 
 	client := consent.GetClient()
 	clientID := client.GetClientId()
-	if !clientAllowed(clientID, user) {
+	if !policyAllows(resolveClientPolicy(&client), user) {
 		// Reject so Hydra closes the flow, but don't follow redirect_to:
 		// clients that restart login on access_denied would loop back here.
 		rejectBody := hydra.NewRejectOAuth2Request()
@@ -184,9 +143,7 @@ func (r *Router) ConsentGet(c fiber.Ctx) error {
 				"username", subject,
 			)
 		}
-		if clientGroupsEnforced() {
-			r.revokeDisallowedConsents(user)
-		}
+		r.revokeDisallowedConsents(user)
 
 		slog.Warn("AUDIT OAuth2 client denied, user not in an allowed group",
 			"username", subject,
