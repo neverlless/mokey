@@ -23,7 +23,7 @@ type hydraClientPolicy struct {
 // clientMeta is who may sign in to a client, kept in its Hydra metadata
 // under "mokey".
 type clientMeta struct {
-	Access  string   `json:"access"` // "all" | "groups"
+	Access  string   `json:"access,omitempty"` // "all" | "groups" | "" = not set
 	Groups  []string `json:"groups,omitempty"`
 	Catalog *bool    `json:"catalog,omitempty"` // nil = true
 }
@@ -89,7 +89,8 @@ func readClientMeta(cl *hydra.OAuth2Client) (*clientMeta, error) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, err
 	}
-	if m.Access != "all" && m.Access != "groups" {
+	// no access (catalog only) leaves access to config or default_deny
+	if m.Access != "" && m.Access != "all" && m.Access != "groups" {
 		return nil, fmt.Errorf("metadata.mokey.access: %q is neither \"all\" nor \"groups\"", m.Access)
 	}
 	return &m, nil
@@ -121,7 +122,7 @@ func resolveClientPolicy(cl *hydra.OAuth2Client) clientPolicy {
 		)
 		return clientPolicy{Source: "metadata"}
 	}
-	if m != nil {
+	if m != nil && m.Access != "" {
 		return clientPolicy{Source: "metadata", All: m.Access == "all", Groups: m.Groups}
 	}
 	return clientPolicy{Source: "default", All: !viper.GetBool("hydra.default_deny")}
