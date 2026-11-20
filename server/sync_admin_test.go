@@ -580,3 +580,29 @@ func TestAdminSyncSettingsRulesLookupFails(t *testing.T) {
 	assert.NotContains(t, body, "eng-ssh")
 	assert.Empty(t, writeCalls(fake))
 }
+
+// TestAdminSyncSettingsRuleGroupMissing: a rule group missing in FreeIPA is
+// marked, and the other targets keep their HBAC and sudo rules.
+func TestAdminSyncSettingsRuleGroupMissing(t *testing.T) {
+	tc, router, fake := syncRulesApp(t)
+	router.sync.Rules[1].Groups = []string{"ghost-team"}
+
+	body := readBody(t, tc.get("/admin/sync/status?tab=settings", htmx))
+	assert.NotContains(t, body, esc(T("sync.admin_rules_failed")))
+	assert.Contains(t, body, `<span class="mokey-pill">ghost-team</span>`)
+	assert.Contains(t, body, esc(T("sync.admin_rule_group_missing")))
+	assert.Contains(t, body, `<span class="mokey-pill is-ok">eng-ssh</span>`)
+	assert.Empty(t, writeCalls(fake))
+}
+
+func TestAdminSyncSettingsRuleGroupLookupFails(t *testing.T) {
+	tc, _, fake := syncRulesApp(t)
+	fake.Handle("group_show", func(ipatest.Call) (any, *ipa.IpaError) {
+		return nil, &ipa.IpaError{Code: 4301, Message: "boom"}
+	})
+
+	body := readBody(t, tc.get("/admin/sync/status?tab=settings", htmx))
+	assert.Contains(t, body, esc(T("sync.admin_rules_failed")))
+	assert.NotContains(t, body, "eng-ssh")
+	assert.NotContains(t, body, esc(T("sync.admin_rule_group_missing")))
+}

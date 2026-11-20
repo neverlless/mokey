@@ -911,6 +911,7 @@ admin_rule_hbac = "HBAC"
 admin_rule_sudo = "Sudo"
 admin_rule_none = "none"
 admin_rule_via = "via %s"
+admin_rule_group_missing = "group not found in FreeIPA"
 admin_rule_all_users = "all users"
 admin_rule_disabled = "disabled"
 

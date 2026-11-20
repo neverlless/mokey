@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -53,6 +54,7 @@ type syncGrant struct {
 
 type syncRuleTarget struct {
 	Group      string
+	Missing    bool // not in FreeIPA
 	HBAC, Sudo []syncGrant
 }
 
@@ -128,14 +130,22 @@ func (r *Router) syncRuleRows(lang string, last *syncRunResult) ([]syncRuleRow, 
 	if err != nil {
 		return rows, err
 	}
-	parents := map[string][]string{}
+	parents, missing := map[string][]string{}, map[string]bool{}
 	for i := range rows {
 		for j := range rows[i].Targets {
 			t := &rows[i].Targets[j]
 			if _, ok := parents[t.Group]; !ok {
-				if parents[t.Group], err = syncGroupParents(r.adminClient, t.Group); err != nil {
+				p, err := syncGroupParents(r.adminClient, t.Group)
+				switch {
+				case errors.Is(err, ipa.ErrNotFound):
+					missing[t.Group] = true
+				case err != nil:
 					return rows, err
 				}
+				parents[t.Group] = p
+			}
+			if t.Missing = missing[t.Group]; t.Missing {
+				continue
 			}
 			for _, h := range hbac {
 				if gr, ok := syncGrantOf(lang, h.Name, h.Enabled, h.UserCategory, h.MemberGroups, t.Group, parents[t.Group]); ok {
