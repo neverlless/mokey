@@ -188,7 +188,8 @@ The **Settings** tab of `/admin/sync` lists each rule, its conditions, how
 many synced users it matched in the last run, and for each target group the
 HBAC and sudo rules that reach it: rules that name the group, a group it is
 nested in, or all users. Disabled rules are marked. This is read from
-FreeIPA on each view and changes nothing.
+FreeIPA on each view and changes nothing. A target group that doesn't exist
+in FreeIPA is marked as not found.
 
 Run a **Dry run** after adding or changing a rule: a typo in an OU or
 department removes the group from everyone who had it, and that only stops

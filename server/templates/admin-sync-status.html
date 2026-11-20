@@ -136,7 +136,9 @@
         {{ range $g := $r.Targets }}
         <div class="mokey-chips mt-2">
           <span class="mokey-pill">{{ $g.Group }}</span>
-          {{ if not $.sy_rules_error }}
+          {{ if $g.Missing }}
+          <span class="mokey-pill is-warn">{{ T "sync.admin_rule_group_missing" }}</span>
+          {{ else if not $.sy_rules_error }}
           <span class="text-muted small">{{ T "sync.admin_rule_hbac" }}</span>
           {{ range $x := $g.HBAC }}<span class="mokey-pill {{ if $x.Enabled }}is-ok{{ else }}is-muted{{ end }}">{{ $x.Label }}</span>{{ else }}<span class="text-muted small">{{ T "sync.admin_rule_none" }}</span>{{ end }}
           <span class="text-muted small">{{ T "sync.admin_rule_sudo" }}</span>
