@@ -84,6 +84,23 @@ MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compos
 export MOKEY_IT_SYNC=1
 ```
 
+For the OAuth client tests add the [Hydra overlay](hydra.compose.yml)
+(only with `MOKEY_IT_HYDRA`): Ory Hydra with an in-memory database on
+`127.0.0.1:4444` (public) and `127.0.0.1:4445` (admin), configured in
+[hydra/hydra.yml](hydra/hydra.yml) with mokey as its login and consent app
+and PKCE required for public clients, and mokey's Apps page turned on
+(`hydra.manage_clients`). An admin creates, edits, rotates and deletes clients
+on the Apps page; the test checks each change in Hydra's admin API and at its
+token endpoint, runs authorization code flows through mokey for a group member
+and an outsider, and checks that a public client's flow without PKCE is
+refused. Clients and Hydra's data are gone when the container restarts.
+
+```sh
+MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compose.yml \
+  -f test/hydra.compose.yml up -d --wait mokey
+export MOKEY_IT_HYDRA=1
+```
+
 Then, from `test/integration`:
 
 ```sh
@@ -102,6 +119,8 @@ passkeys need a secure context.
 | `MOKEY_IT_URL` | unset: skip |
 | `MOKEY_IT_PROXY` | unset: skip the forward-auth tests |
 | `MOKEY_IT_SYNC` | unset: skip the directory sync test |
+| `MOKEY_IT_HYDRA` | unset: skip the OAuth client tests |
+| `MOKEY_IT_HYDRA_ADMIN`, `MOKEY_IT_HYDRA_PUBLIC` | `http://localhost:4445`, `http://localhost:4444` |
 | `MOKEY_IT_MOKEY_CONTAINER` | `demo-mokey-1` |
 | `MOKEY_IT_MAILPIT_URL` | `http://localhost:8025` |
 | `MOKEY_IT_IPA_CONTAINER` | `demo-ipa-1` |

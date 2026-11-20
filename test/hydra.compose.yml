@@ -1,0 +1,25 @@
+# Overlay for the OAuth client tests, on top of test/compose.yml: Ory Hydra
+# with mokey as its login and consent app, and mokey's Apps admin page on.
+# Paths are relative to examples/demo, the first compose file.
+#
+#   docker compose -f examples/demo/compose.yml -f test/compose.yml \
+#     -f test/hydra.compose.yml up -d --wait mokey
+
+services:
+  hydra:
+    image: oryd/hydra:v26.2.0
+    command: ["serve", "all", "--dev", "--config", "/etc/hydra/hydra.yml"]
+    volumes:
+      - ../../test/hydra/hydra.yml:/etc/hydra/hydra.yml:ro
+    ports:
+      - "127.0.0.1:4444:4444"
+      - "127.0.0.1:4445:4445"
+
+  mokey:
+    environment:
+      MOKEY_HYDRA_ADMIN_URL: http://hydra:4445
+      MOKEY_HYDRA_PUBLIC_URL: http://localhost:4444
+      MOKEY_HYDRA_MANAGE_CLIENTS: "true"
+    depends_on:
+      hydra:
+        condition: service_started
