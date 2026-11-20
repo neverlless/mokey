@@ -3,7 +3,7 @@
 <h1 class="mb-4 mt-2">{{ if not $f }}{{ T "admin_apps.title" }}{{ else if $f.New }}{{ T "admin_apps.new" }}{{ else }}{{ $f.Title }}{{ end }}</h1>
 {{ with $.ap_error }}<div class="alert alert-danger" role="alert">{{ . }}</div>{{ end }}
 {{ if $f }}
-<form method="post" hx-post="/admin/apps{{ if not $f.New }}/{{ $f.ID }}{{ end }}" hx-target="#admin" hx-disabled-elt="find button[type=submit]"
+<form method="post" hx-post="/admin/apps{{ if not $f.New }}/{{ $f.Path }}{{ end }}" hx-target="#admin" hx-disabled-elt="find button[type=submit]"
       hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
   <div class="mokey-card p-4 mb-4">
     <h2 class="mokey-section-title mb-3">{{ T "admin_apps.basics" }}</h2>
@@ -34,8 +34,8 @@
   <div class="mokey-card p-4 mb-4">
     <h2 class="mokey-section-title mb-3">{{ T "admin_apps.signin" }}</h2>
     {{ if $f.New }}
-    <fieldset class="mb-3">
-      <legend class="form-label fs-6">{{ T "admin_apps.type" }}</legend>
+    <fieldset class="mb-3" aria-labelledby="app-type-label">
+      <div class="form-label" id="app-type-label">{{ T "admin_apps.type" }}</div>
       <div class="d-flex flex-column flex-sm-row gap-2">
         <label class="mokey-card mokey-choice p-3 flex-grow-1" for="app-kind-web">
           <input type="radio" class="form-check-input me-2" id="app-kind-web" name="kind" value="web"{{ if ne $f.Kind "public" }} checked{{ end }}>
@@ -72,8 +72,8 @@
         {{ template "app-field-error.html" $f.Errors.post_logout_redirect_uris }}
       </div>
     </details>
-    <fieldset class="mb-0">
-      <legend class="form-label fs-6">{{ T "admin_apps.scopes" }}</legend>
+    <fieldset class="mb-0" aria-labelledby="app-scopes-label">
+      <div class="form-label" id="app-scopes-label">{{ T "admin_apps.scopes" }}</div>
       <div class="d-flex flex-wrap gap-3 mb-2">
         {{ range $s := $.ap_scopes }}
         <div class="form-check">
@@ -136,14 +136,14 @@
   {{ if $f.CanRotate }}
   <div class="mokey-row px-0">
     <div class="flex-grow-1"><div class="fw-semibold">{{ T "admin_apps.rotate" }}</div><div class="text-muted small">{{ T "admin_apps.rotate_help" }}</div></div>
-    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" hx-post="/admin/apps/{{ $f.ID }}/rotate" hx-target="#app-danger-alert"
+    <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" hx-post="/admin/apps/{{ $f.Path }}/rotate" hx-target="#app-danger-alert"
             hx-confirm="{{ printf (T "admin_apps.rotate_confirm") $f.Title }}" hx-disabled-elt="this"
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "admin_apps.rotate" }}</button>
   </div>
   {{ end }}
   <div class="mokey-row px-0">
     <div class="flex-grow-1"><div class="fw-semibold">{{ T "admin_apps.delete" }}</div><div class="text-muted small">{{ T "admin_apps.delete_help" }}</div></div>
-    <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" hx-post="/admin/apps/{{ $f.ID }}/delete" hx-target="#app-danger-alert"
+    <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" hx-post="/admin/apps/{{ $f.Path }}/delete" hx-target="#app-danger-alert"
             hx-confirm="{{ printf (T "admin_apps.delete_confirm") $f.Title }}" hx-disabled-elt="this"
             hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>{{ T "admin_apps.delete" }}</button>
   </div>

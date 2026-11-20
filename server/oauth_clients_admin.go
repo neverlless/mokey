@@ -1,13 +1,11 @@
 package server
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"html"
 	"log/slog"
-	"regexp"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -19,12 +17,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-const appSecretTTL = 10 * time.Minute
+var appScopes = []string{"openid", "profile", "email", "offline_access", "ssh"}
 
-var (
-	appScopes        = []string{"openid", "profile", "email", "offline_access", "ssh"}
-	appSecretPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
-)
+// appNarrowSweepKey keeps narrowing saves from running sweeps side by side.
+const appNarrowSweepKey = "consent-sweep-narrow"
 
 // appsAdminOn gates the /admin/apps pages, routes and nav item.
 func (r *Router) appsAdminOn() bool {
@@ -58,6 +54,10 @@ type appForm struct {
 	Narrow                       bool
 }
 
+func (a appRow) Path() string     { return url.PathEscape(a.ID) }
+func (f *appForm) Path() string   { return url.PathEscape(f.ID) }
+func (s *appSecret) Path() string { return url.PathEscape(s.ID) }
+
 func (f *appForm) CanRotate() bool { return !f.New && f.Kind == kindWeb }
 
 func (f *appForm) input() clientInput {
@@ -81,7 +81,8 @@ func (f *appForm) input() clientInput {
 
 type appCopyRow struct{ Label, Value string }
 
-// appSecret is the one-time secret page, kept for appSecretTTL.
+// appSecret is the secret page, rendered once in the POST response and
+// never stored.
 type appSecret struct {
 	ID, Name, Secret string
 	Kind             string // "create" | "rotate"
@@ -238,15 +239,9 @@ func (r *Router) renderAppForm(c fiber.Ctx, f *appForm, alert string) error {
 	vars["ap_scopes"] = appScopes
 	vars["ap_error"] = alert
 	if f != nil && !f.Config {
-		// shortcut: every group name in one find per render; switch to a
-		// search endpoint if directories with many thousands of groups need it
-		groups, err := r.adminClient.GroupFind(ipa.Options{"sizelimit": 0})
+		names, err := r.groupNames()
 		if err != nil {
 			slog.Error("Failed to list FreeIPA groups for the app form", "err", err)
-		}
-		names := make([]string, 0, len(groups))
-		for _, g := range groups {
-			names = append(names, g.Name)
 		}
 		vars["ap_groups"] = names
 	}
@@ -254,6 +249,61 @@ func (r *Router) renderAppForm(c fiber.Ctx, f *appForm, alert string) error {
 		return c.Render("admin-app-form.html", vars)
 	}
 	return c.Render("index.html", vars)
+}
+
+// groupNames lists every FreeIPA group name.
+// shortcut: raw group_find because goipa's GroupFind forces all=true and
+// members; switch back once goipa honours no_members/pkey_only.
+func (r *Router) groupNames() ([]string, error) {
+	res, err := r.adminClient.RPC("group_find", []string{""}, ipa.Options{"pkey_only": true, "sizelimit": 0})
+	if err != nil || res.Result == nil {
+		return nil, err
+	}
+	var entries []struct {
+		CN []string `json:"cn"`
+	}
+	if err := json.Unmarshal(res.Result.Data, &entries); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if len(e.CN) > 0 {
+			names = append(names, e.CN[0])
+		}
+	}
+	return names, nil
+}
+
+// appID is the client ID from the path; templates PathEscape it.
+func appID(c fiber.Ctx) string {
+	id, err := url.PathUnescape(c.Params("id"))
+	if err != nil {
+		return c.Params("id")
+	}
+	return id
+}
+
+// renderAppSecret answers create and rotate with the secret page itself,
+// so the secret is never stored and no URL can show it again.
+func (r *Router) renderAppSecret(c fiber.Ctx, s appSecret) error {
+	c.Set("Cache-Control", "no-store")
+	vars := r.appsPageVars(c, "secret")
+	vars["ap_secret"] = &s
+	rows := []appCopyRow{{TC(c, "admin_apps.client_id"), s.ID}}
+	if s.Secret != "" {
+		rows = append(rows, appCopyRow{TC(c, "admin_apps.client_secret"), s.Secret})
+	}
+	if u := r.hydraPublicURL; u != "" {
+		vars["ap_public_url"] = true
+		rows = append(rows,
+			appCopyRow{TC(c, "admin_apps.issuer"), u + "/"},
+			appCopyRow{TC(c, "admin_apps.discovery"), u + "/.well-known/openid-configuration"},
+			appCopyRow{TC(c, "admin_apps.authorize"), u + "/oauth2/auth"},
+			appCopyRow{TC(c, "admin_apps.token"), u + "/oauth2/token"},
+		)
+	}
+	vars["ap_copy"] = rows
+	return c.Render("admin-app-secret.html", vars)
 }
 
 // appFormError shows err as field errors or as an alert above the form.
@@ -277,37 +327,16 @@ func (r *Router) AdminAppNew(c fiber.Ctx) error {
 }
 
 func (r *Router) AdminAppEdit(c fiber.Ctx) error {
-	cl, err := r.getManagedClient(c.Params("id"))
+	cl, err := r.getManagedClient(appID(c))
 	if errors.Is(err, errClientNotFound) || errors.Is(err, errClientReadOnly) {
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 	if err != nil {
-		slog.Error("Failed to read OAuth client", "client", c.Params("id"), "err", err)
+		slog.Error("Failed to read OAuth client", "client", appID(c), "err", err)
 		return r.renderAppForm(c, nil, TC(c, appErrorKey(err)))
 	}
 	return r.renderAppForm(c, formFromClient(cl), "")
 }
-
-// stashAppSecret keeps s for one view by this admin and returns the
-// secret page URL. The key carries the username, so another admin's view
-// finds nothing and can't use it up.
-func (r *Router) stashAppSecret(c fiber.Ctx, s appSecret) (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	k := hex.EncodeToString(b)
-	raw, err := json.Marshal(s) // #nosec G117 -- held for one view, taken atomically, TTL appSecretTTL
-	if err != nil {
-		return "", err
-	}
-	if err := r.storage.Set(appSecretKey(r.username(c), k), raw, appSecretTTL); err != nil {
-		return "", err
-	}
-	return "/admin/apps/" + s.ID + "/secret?k=" + k, nil
-}
-
-func appSecretKey(username, k string) string { return "app-secret-" + username + "-" + k }
 
 func hxRedirect(c fiber.Ctx, to string) error {
 	c.Set("HX-Redirect", to)
@@ -326,21 +355,17 @@ func (r *Router) AdminAppCreate(c fiber.Ctx) error {
 	if err != nil {
 		return r.appFormError(c, f, err)
 	}
-	to, err := r.stashAppSecret(c, appSecret{ID: id, Name: f.Name, Secret: secret, Kind: "create"})
-	if err != nil {
-		slog.Error("Failed to keep the new OAuth client secret for its page", "client", id, "err", err)
-		return hxRedirect(c, "/admin/apps/"+id)
-	}
-	return hxRedirect(c, to)
+	return r.renderAppSecret(c, appSecret{ID: id, Name: f.Name, Secret: secret, Kind: "create"})
 }
 
 func (r *Router) AdminAppUpdate(c fiber.Ctx) error {
-	id := c.Params("id")
+	id := appID(c)
 	f := formFromRequest(c)
 	f.ID = id
 	old, err := r.getManagedClient(id)
 	if err != nil {
-		return r.appFormError(c, f, err)
+		slog.Error("Failed to read OAuth client", "client", id, "err", err)
+		return r.renderAppForm(c, nil, TC(c, appErrorKey(err)))
 	}
 	cur := formFromClient(old)
 	f.Kind, f.Title, f.Config, f.ConfigGroups = cur.Kind, cur.Title, cur.Config, cur.ConfigGroups
@@ -355,19 +380,28 @@ func (r *Router) AdminAppUpdate(c fiber.Ctx) error {
 	}
 	if narrow {
 		// Hydra lists consent sessions per subject only, so the sweep
-		// checks every user once
-		r.goBG(r.consentSweep)
+		// checks every user once. The periodic lease is held 9/10 of each
+		// interval, so this takes its own claim.
+		release, ok, err := r.lock.claim(appNarrowSweepKey, time.Hour)
+		if ok {
+			r.goBG(func() {
+				defer release()
+				r.consentSweep()
+			})
+		} else {
+			slog.Warn("Consent sweep after narrowing skipped, another one is running; the periodic sweep catches up", "client", id, "err", err)
+		}
 	}
 	return hxRedirect(c, "/admin/apps")
 }
 
 func (r *Router) appDangerError(c fiber.Ctx, err error) error {
-	slog.Error("OAuth client change failed", "client", c.Params("id"), "by", r.username(c), "err", err)
+	slog.Error("OAuth client change failed", "client", appID(c), "by", r.username(c), "err", err)
 	return c.SendString(`<div class="alert alert-danger" role="alert">` + html.EscapeString(TC(c, appErrorKey(err))) + `</div>`)
 }
 
 func (r *Router) AdminAppRotate(c fiber.Ctx) error {
-	id := c.Params("id")
+	id := appID(c)
 	cl, err := r.getManagedClient(id)
 	if err != nil {
 		return r.appDangerError(c, err)
@@ -380,50 +414,15 @@ func (r *Router) AdminAppRotate(c fiber.Ctx) error {
 	if name == "" {
 		name = id
 	}
-	to, err := r.stashAppSecret(c, appSecret{ID: id, Name: name, Secret: secret, Kind: "rotate"})
-	if err != nil {
-		slog.Error("Failed to keep the rotated OAuth client secret for its page", "client", id, "err", err)
-		return r.appDangerError(c, err)
-	}
-	return hxRedirect(c, to)
+	// the button targets its alert slot; the secret page replaces the page
+	c.Set("HX-Retarget", "#admin")
+	c.Set("HX-Reswap", "innerHTML")
+	return r.renderAppSecret(c, appSecret{ID: id, Name: name, Secret: secret, Kind: "rotate"})
 }
 
 func (r *Router) AdminAppDelete(c fiber.Ctx) error {
-	if err := r.deleteOAuthClient(c.Params("id"), r.username(c)); err != nil {
+	if err := r.deleteOAuthClient(appID(c), r.username(c)); err != nil {
 		return r.appDangerError(c, err)
 	}
 	return hxRedirect(c, "/admin/apps")
-}
-
-func (r *Router) AdminAppSecret(c fiber.Ctx) error {
-	c.Set("Cache-Control", "no-store")
-	id := c.Params("id")
-	vars := r.appsPageVars(c, "secret")
-	vars["ap_id"] = id
-	if k := c.Query("k"); appSecretPattern.MatchString(k) {
-		raw, err := r.lock.take(appSecretKey(r.username(c), k))
-		if err != nil {
-			slog.Error("Failed to read the one-time OAuth client secret", "client", id, "err", err)
-			vars["ap_error"] = TC(c, "account.fatal_system_error")
-		}
-		var s appSecret
-		if raw != nil && json.Unmarshal(raw, &s) == nil && s.ID == id {
-			vars["ap_secret"] = &s
-			rows := []appCopyRow{{TC(c, "admin_apps.client_id"), s.ID}}
-			if s.Secret != "" {
-				rows = append(rows, appCopyRow{TC(c, "admin_apps.client_secret"), s.Secret})
-			}
-			if u := r.hydraPublicURL; u != "" {
-				vars["ap_public_url"] = true
-				rows = append(rows,
-					appCopyRow{TC(c, "admin_apps.issuer"), u + "/"},
-					appCopyRow{TC(c, "admin_apps.discovery"), u + "/.well-known/openid-configuration"},
-					appCopyRow{TC(c, "admin_apps.authorize"), u + "/oauth2/auth"},
-					appCopyRow{TC(c, "admin_apps.token"), u + "/oauth2/token"},
-				)
-			}
-			vars["ap_copy"] = rows
-		}
-	}
-	return c.Render("index.html", vars)
 }
