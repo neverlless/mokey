@@ -266,6 +266,16 @@ document.addEventListener('click', function (e) {
   }).catch(failed);
 });
 
+// Secret rows wipe themselves before the page goes into the back/forward
+// cache, so Back doesn't show the secret again
+window.addEventListener('pagehide', function () {
+  document.querySelectorAll('[data-secret-once]').forEach(function (row) {
+    var gone = row.getAttribute('data-secret-once');
+    row.querySelector('.mokey-mono').textContent = gone;
+    row.querySelector('[data-copy]').setAttribute('data-copy', gone);
+  });
+});
+
 // Group pills on the admin app form. Typed names that never became a pill
 // still reach the server through the input (groups_add).
 (function () {
