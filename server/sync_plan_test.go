@@ -657,3 +657,32 @@ func TestSyncBuildBrakeGroupRemovals(t *testing.T) {
 		t.Fatalf("locks: braked %v, disable %v, remove %v", p.Braked, p.Disable, p.RemoveGroups)
 	}
 }
+
+// TestSyncBuildBrakeSkipsNoWriteGroups: removals the service account can't
+// write are dropped, so they must not trip the brake.
+func TestSyncBuildBrakeSkipsNoWriteGroups(t *testing.T) {
+	ipa := map[string]syncIPAUser{}
+	var users []syncUser
+	for i, id := range []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"} {
+		ipa[id] = syncIPAUser{UID: id, Email: id + "@example.com", Managed: true, Groups: []string{"staff", "vpn"}}
+		ou := "/eng"
+		if i < 3 {
+			ou = "/sales"
+		}
+		users = append(users, syncRU(id, map[string]string{"org_unit": ou}))
+	}
+	brake := syncRuleConfig(func(c *syncConfig) { c.MaxDisablePercent = 20 })
+
+	p := syncBuild(users, nil, ipa, brake, syncTestNow, "vpn")
+	if p.Braked || len(p.RemoveGroups) != 0 {
+		t.Fatalf("no-write vpn: braked %v, remove %v", p.Braked, p.RemoveGroups)
+	}
+	p = syncBuild(users, nil, ipa, brake, syncTestNow, "developers")
+	if !p.Braked || len(p.RemoveGroups) != 0 {
+		t.Fatalf("writable vpn: braked %v, remove %v", p.Braked, p.RemoveGroups)
+	}
+	held := syncBuild(users, nil, ipa, syncRuleConfig(nil), syncTestNow, "developers")
+	if len(held.RemoveGroups) != 3 {
+		t.Errorf("held remove %v", held.RemoveGroups)
+	}
+}
