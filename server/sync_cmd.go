@@ -76,7 +76,7 @@ func printSyncResult(w io.Writer, res *syncRunResult) {
 	fmt.Fprintf(w, "sync %s: create %d, update %d, enable %d, disable %d, delete %d, adopt %d\n",
 		mode, len(p.Create), len(p.Update), len(p.Enable), len(p.Disable), len(p.Delete), len(p.Adopt))
 	if res.Held {
-		fmt.Fprintf(w, "held by the brake: %d disables and deletes, apply them from the admin Sync page\n", res.HeldCount)
+		fmt.Fprintf(w, "held by the brake: %d locks, deletes and accounts losing groups, apply them from the admin Sync page\n", res.HeldCount)
 	}
 	for _, k := range slices.Sorted(maps.Keys(res.Applied)) {
 		fmt.Fprintf(w, "applied %s: %d\n", k, res.Applied[k])

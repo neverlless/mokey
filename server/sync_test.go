@@ -473,3 +473,45 @@ func TestSyncRunManagedGroupWithoutMemberWrite(t *testing.T) {
 	assert.Len(t, res.Errors, 1)
 	assert.Empty(t, writeCalls(fake))
 }
+
+// TestSyncRunBrakeHoldsGroupRemovals: Google returns the mapped group
+// empty; the run adds default groups but holds the mass removal until an
+// admin applies exactly what they saw.
+func TestSyncRunBrakeHoldsGroupRemovals(t *testing.T) {
+	r, fake, src, _ := syncRunRouter(t)
+	var uids []string
+	for i := range 10 {
+		uids = append(uids, fmt.Sprintf("user%d", i))
+	}
+	managed(fake, uids...)
+	fake.AddGroup("eng", ipatest.Group{Members: uids})
+	for _, uid := range uids {
+		src.users = append(src.users, googleUser(uid))
+	}
+
+	res, err := r.syncRun(context.Background(), time.Now(), "", false)
+	require.NoError(t, err)
+	assert.True(t, res.Held)
+	assert.Equal(t, 10, res.HeldRemove)
+	assert.Equal(t, 10, res.Applied["group_add"], "adds apply while the brake holds")
+	assert.Zero(t, res.Applied["group_remove"])
+	g, _ := fake.Group("eng")
+	assert.Len(t, g.Members, 10)
+	held, err := r.syncHeld()
+	require.NoError(t, err)
+	require.NotNil(t, held)
+	assert.Equal(t, 10, held.HeldCount)
+	assert.Equal(t, []string{"eng"}, held.Plan.RemoveGroups["user0"])
+	assert.Equal(t, []string{syncWhyGoogle}, held.Plan.GroupWhy["user0"]["eng"])
+
+	_, err = r.syncRunCapped(context.Background(), time.Now(), "gus", false, &syncCaps{Groups: 9})
+	require.ErrorIs(t, err, errSyncPlanGrew)
+	g, _ = fake.Group("eng")
+	assert.Len(t, g.Members, 10)
+
+	res, err = r.syncRunCapped(context.Background(), time.Now(), "gus", false, &syncCaps{Groups: 10})
+	require.NoError(t, err)
+	assert.Equal(t, 10, res.Applied["group_remove"])
+	g, _ = fake.Group("eng")
+	assert.Empty(t, g.Members)
+}

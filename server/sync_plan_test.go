@@ -555,3 +555,105 @@ func TestSyncBuildCNDrift(t *testing.T) {
 		t.Fatalf("Update = %+v", p.Update)
 	}
 }
+
+func syncRuleConfig(mut func(*syncConfig)) *syncConfig {
+	return syncTestConfig(func(c *syncConfig) {
+		c.Rules = []syncRule{
+			{Name: "eng", Conds: map[string][]string{"org_unit": {"/eng"}}, Groups: []string{"developers", "vpn"}},
+			{Name: "ops-dept", Conds: map[string][]string{"department": {"ops"}}, Groups: []string{"vpn"}},
+		}
+		if mut != nil {
+			mut(c)
+		}
+	})
+}
+
+func syncRU(uid string, attrs map[string]string, groups ...string) syncUser {
+	u := syncU(uid, groups...)
+	u.Attrs = attrs
+	return u
+}
+
+func TestSyncBuildRulesUnion(t *testing.T) {
+	ipa := map[string]syncIPAUser{
+		"both":  {UID: "both", Email: "both@example.com", Managed: true, Groups: []string{"staff"}},
+		"left":  {UID: "left", Email: "left@example.com", Managed: true, Groups: []string{"staff", "vpn", "developers", "manual-group"}},
+		"keeps": {UID: "keeps", Email: "keeps@example.com", Managed: true, Groups: []string{"staff", "developers"}},
+	}
+	users := []syncUser{
+		syncRU("both", map[string]string{"org_unit": "/eng/backend", "department": "ops"}, "dev@example.com"),
+		// moved out of /eng: rule groups go, manual-group stays
+		syncRU("left", map[string]string{"org_unit": "/sales"}),
+		// the rule no longer matches, but the Google group still wants developers
+		syncRU("keeps", map[string]string{"org_unit": "/sales"}, "dev@example.com"),
+		syncRU("new", map[string]string{"department": "ops"}),
+	}
+	p := syncBuild(users, nil, ipa, syncRuleConfig(nil), syncTestNow)
+	syncCheck(t, "add both", p.AddGroups["both"], []string{"developers", "vpn"})
+	syncCheck(t, "why both developers", p.GroupWhy["both"]["developers"], []string{"eng", syncWhyGoogle})
+	syncCheck(t, "why both vpn", p.GroupWhy["both"]["vpn"], []string{"eng", "ops-dept"})
+	syncCheck(t, "remove left", p.RemoveGroups["left"], []string{"developers", "vpn"})
+	syncCheck(t, "why left vpn", p.GroupWhy["left"]["vpn"], []string{"eng", "ops-dept"})
+	syncCheck(t, "why left developers", p.GroupWhy["left"]["developers"], []string{"eng", syncWhyGoogle})
+	if gs, ok := p.RemoveGroups["keeps"]; ok {
+		t.Errorf("keeps loses %v: a group the mapping wants stays", gs)
+	}
+	syncCheck(t, "add new", p.AddGroups["new"], []string{"staff", "vpn"})
+	if p.RuleMatches["eng"] != 1 || p.RuleMatches["ops-dept"] != 2 {
+		t.Errorf("RuleMatches = %v", p.RuleMatches)
+	}
+
+	// a rule that matches nobody still has a count
+	p = syncBuild(nil, nil, nil, syncRuleConfig(nil), syncTestNow)
+	if n, ok := p.RuleMatches["eng"]; !ok || n != 0 {
+		t.Errorf("RuleMatches = %v", p.RuleMatches)
+	}
+}
+
+// TestSyncBuildBrakeGroupRemovals: a rule that suddenly matches fewer
+// people holds the removals; adds still go through.
+func TestSyncBuildBrakeGroupRemovals(t *testing.T) {
+	ipa := map[string]syncIPAUser{"x": {UID: "x", Managed: true, Locked: true}}
+	ids := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}
+	for _, id := range ids {
+		ipa[id] = syncIPAUser{UID: id, Email: id + "@example.com", Managed: true, Groups: []string{"staff", "vpn"}}
+	}
+	users := func(outside int) []syncUser {
+		var us []syncUser
+		for i, id := range ids {
+			ou := "/eng"
+			if i < outside {
+				ou = "/sales"
+			}
+			us = append(us, syncRU(id, map[string]string{"org_unit": ou}))
+		}
+		return us
+	}
+	brake := syncRuleConfig(func(c *syncConfig) { c.MaxDisablePercent = 20 })
+
+	// 2 of 10 lose a group = 20% -> allowed
+	p := syncBuild(users(2), nil, ipa, brake, syncTestNow)
+	if p.Braked || len(p.RemoveGroups) != 2 {
+		t.Fatalf("20%%: braked %v, remove %v", p.Braked, p.RemoveGroups)
+	}
+	// 3 of 10 = 30% -> removals held, adds, creates and found markers stay
+	p = syncBuild(append(users(3), syncU("new")), nil, ipa, brake, syncTestNow)
+	if !p.Braked || len(p.RemoveGroups) != 0 {
+		t.Fatalf("30%%: braked %v, remove %v", p.Braked, p.RemoveGroups)
+	}
+	syncCheck(t, "add d", p.AddGroups["d"], []string{"developers"})
+	if len(p.Create) != 1 || len(p.NewMarkers) != 1 {
+		t.Errorf("Create %v, NewMarkers %v", p.Create, p.NewMarkers)
+	}
+	// one user losing groups never trips it
+	small := map[string]syncIPAUser{"a": ipa["a"], "b": ipa["b"]}
+	p = syncBuild(users(1)[:2], nil, small, brake, syncTestNow)
+	if p.Braked || len(p.RemoveGroups) != 1 {
+		t.Fatalf("single: braked %v, remove %v", p.Braked, p.RemoveGroups)
+	}
+	// a lock brake holds removals too: one held plan
+	p = syncBuild(users(4)[3:], nil, ipa, brake, syncTestNow)
+	if !p.Braked || len(p.Disable) != 0 || len(p.RemoveGroups) != 0 {
+		t.Fatalf("locks: braked %v, disable %v, remove %v", p.Braked, p.Disable, p.RemoveGroups)
+	}
+}

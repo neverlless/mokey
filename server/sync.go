@@ -36,11 +36,12 @@ type syncRunResult struct {
 	Held    bool
 	// SkipReasons are the fix texts of Plan.Skipped
 	SkipReasons []string
-	// HeldCount is the number of disables and deletes the brake held; a
-	// stored result keeps only the first rows of its plan.
+	// HeldCount is the number of disables, deletes and users losing owned
+	// groups the brake held; a stored result keeps only the first rows of
+	// its plan.
 	HeldCount int
-	// HeldDisable and HeldDelete split HeldCount by kind
-	HeldDisable, HeldDelete int
+	// HeldDisable, HeldDelete and HeldRemove split HeldCount by kind
+	HeldDisable, HeldDelete, HeldRemove int
 }
 
 // StartSync runs the directory sync every sync.interval for the lifetime of
@@ -97,10 +98,15 @@ func (r *Router) syncGoogle() (syncSource, error) {
 	return r.syncSrc, nil
 }
 
-// syncCaps bound an admin Apply to the disables and deletes the admin saw.
-type syncCaps struct{ Disable, Delete int }
+// syncCaps bound an admin Apply to the disables, deletes and users losing
+// groups the admin saw.
+type syncCaps struct{ Disable, Delete, Groups int }
 
-var errSyncPlanGrew = errors.New("the plan changed since the admin opened it: more locks or deletes than approved, nothing applied")
+func (c syncCaps) exceeded(p syncPlan) bool {
+	return len(p.Disable) > c.Disable || len(p.Delete) > c.Delete || len(p.RemoveGroups) > c.Groups
+}
+
+var errSyncPlanGrew = errors.New("the plan changed since the admin opened it: more locks, deletes or group removals than approved, nothing applied")
 
 // syncRun plans and applies one pass; the caller holds syncRunKey. by "" is
 // the schedule or `mokey sync`: the brake holds disables and deletes. An
@@ -111,7 +117,7 @@ func (r *Router) syncRun(ctx context.Context, now time.Time, by string, dryRun b
 }
 
 // syncRunCapped is syncRun that, with caps, applies nothing when the plan
-// disables or deletes more than caps allow.
+// disables, deletes or removes groups from more accounts than caps allow.
 func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dryRun bool, caps *syncCaps) (*syncRunResult, error) {
 	res := &syncRunResult{At: now, By: by, DryRun: dryRun, Applied: map[string]int{}}
 	actor := by
@@ -146,10 +152,11 @@ func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dr
 	if dryRun {
 		return res, nil
 	}
-	if caps != nil && (len(plan.Disable) > caps.Disable || len(plan.Delete) > caps.Delete) {
+	if caps != nil && caps.exceeded(plan) {
 		res.Errors = []string{errSyncPlanGrew.Error()}
 		slog.Error(syncAuditRun, "by", actor, "aborted", true, "err", errSyncPlanGrew,
-			"disable", len(plan.Disable), "approved_disable", caps.Disable, "delete", len(plan.Delete), "approved_delete", caps.Delete)
+			"disable", len(plan.Disable), "approved_disable", caps.Disable, "delete", len(plan.Delete), "approved_delete", caps.Delete,
+			"group_remove_users", len(plan.RemoveGroups), "approved_group_remove_users", caps.Groups)
 		held := syncHeldOf(now, plan, in.reasons)
 		held.By = by
 		if err := r.syncStoreHeld(held); err != nil {
@@ -166,8 +173,8 @@ func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dr
 		held = syncHeldOf(now, in.build(&noBrake, now), in.reasons)
 		held.By = by
 		res.Held = true
-		res.HeldDisable, res.HeldDelete, res.HeldCount = held.HeldDisable, held.HeldDelete, held.HeldCount
-		slog.Warn("Directory sync disables and deletes held: more than sync.max_disable_percent of managed accounts, apply them from the admin Sync page",
+		res.HeldDisable, res.HeldDelete, res.HeldRemove, res.HeldCount = held.HeldDisable, held.HeldDelete, held.HeldRemove, held.HeldCount
+		slog.Warn("Directory sync disables, deletes and group removals held: more than sync.max_disable_percent of managed accounts, apply them from the admin Sync page",
 			"held", res.HeldCount, "max_disable_percent", cfg.MaxDisablePercent)
 	}
 	if err := r.syncStoreHeld(held); err != nil {
@@ -181,8 +188,9 @@ func (r *Router) syncRunCapped(ctx context.Context, now time.Time, by string, dr
 
 // syncHeldOf is the stored held result for full, a plan without the brake.
 func syncHeldOf(now time.Time, full syncPlan, reasons []string) *syncRunResult {
-	return &syncRunResult{At: now, Held: true, HeldCount: len(full.Disable) + len(full.Delete),
-		HeldDisable: len(full.Disable), HeldDelete: len(full.Delete), Plan: full.sample(syncSampleN), SkipReasons: reasons}
+	return &syncRunResult{At: now, Held: true, HeldCount: len(full.Disable) + len(full.Delete) + len(full.RemoveGroups),
+		HeldDisable: len(full.Disable), HeldDelete: len(full.Delete), HeldRemove: len(full.RemoveGroups),
+		Plan: full.sample(syncSampleN), SkipReasons: reasons}
 }
 
 type syncInputs struct {
@@ -417,6 +425,14 @@ func (p syncPlan) sample(n int) syncPlan {
 	out.ClearMarkers, out.BackInGoogle = cut(p.ClearMarkers), cut(p.BackInGoogle)
 	out.Conflicts, out.Skipped = cut(p.Conflicts), cut(p.Skipped)
 	out.AddGroups, out.RemoveGroups = cutMap(p.AddGroups), cutMap(p.RemoveGroups)
+	out.GroupWhy = map[string]map[string][]string{}
+	for _, m := range []map[string][]string{out.AddGroups, out.RemoveGroups} {
+		for uid := range m {
+			if w, ok := p.GroupWhy[uid]; ok {
+				out.GroupWhy[uid] = w
+			}
+		}
+	}
 	out.NewMarkers = map[string]syncMarker{}
 	for _, k := range cut(slices.Sorted(maps.Keys(p.NewMarkers))) {
 		out.NewMarkers[k] = p.NewMarkers[k]
