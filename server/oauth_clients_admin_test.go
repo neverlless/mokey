@@ -214,6 +214,9 @@ func TestAdminAppsRotateShowsSecret(t *testing.T) {
 	require.NotEmpty(t, secret)
 	assert.Contains(body, fmt.Sprintf(T("admin_apps.secret_new"), "Gitea"))
 	assert.Contains(body, `data-copy="`+secret+`"`)
+	// site.js wipes this row on pagehide so Back from bfcache can't show it
+	assert.Equal(1, strings.Count(body, "data-secret-once="))
+	assert.Contains(body, `data-secret-once="`+T("admin_apps.secret_gone")+`"`)
 	assertSecretGone(t, tc, router, spy, secret, "/admin/apps", "/admin/apps/gitea")
 }
 
@@ -227,6 +230,7 @@ func TestAdminAppsPublicClient(t *testing.T) {
 	assert.Contains(body, fmt.Sprintf(T("admin_apps.secret_ready"), "Lab CLI"))
 	assert.Contains(body, `data-copy="labcli"`)
 	assert.NotContains(body, T("admin_apps.client_secret"))
+	assert.NotContains(body, "data-secret-once")
 	assert.Contains(body, T("admin_apps.public_url_hint"))
 }
 

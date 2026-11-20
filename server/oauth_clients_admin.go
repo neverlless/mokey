@@ -79,7 +79,10 @@ func (f *appForm) input() clientInput {
 	return in
 }
 
-type appCopyRow struct{ Label, Value string }
+type appCopyRow struct {
+	Label, Value string
+	Secret       bool
+}
 
 // appSecret is the secret page, rendered once in the POST response and
 // never stored.
@@ -289,17 +292,17 @@ func (r *Router) renderAppSecret(c fiber.Ctx, s appSecret) error {
 	c.Set("Cache-Control", "no-store")
 	vars := r.appsPageVars(c, "secret")
 	vars["ap_secret"] = &s
-	rows := []appCopyRow{{TC(c, "admin_apps.client_id"), s.ID}}
+	rows := []appCopyRow{{Label: TC(c, "admin_apps.client_id"), Value: s.ID}}
 	if s.Secret != "" {
-		rows = append(rows, appCopyRow{TC(c, "admin_apps.client_secret"), s.Secret})
+		rows = append(rows, appCopyRow{Label: TC(c, "admin_apps.client_secret"), Value: s.Secret, Secret: true})
 	}
 	if u := r.hydraPublicURL; u != "" {
 		vars["ap_public_url"] = true
 		rows = append(rows,
-			appCopyRow{TC(c, "admin_apps.issuer"), u + "/"},
-			appCopyRow{TC(c, "admin_apps.discovery"), u + "/.well-known/openid-configuration"},
-			appCopyRow{TC(c, "admin_apps.authorize"), u + "/oauth2/auth"},
-			appCopyRow{TC(c, "admin_apps.token"), u + "/oauth2/token"},
+			appCopyRow{Label: TC(c, "admin_apps.issuer"), Value: u + "/"},
+			appCopyRow{Label: TC(c, "admin_apps.discovery"), Value: u + "/.well-known/openid-configuration"},
+			appCopyRow{Label: TC(c, "admin_apps.authorize"), Value: u + "/oauth2/auth"},
+			appCopyRow{Label: TC(c, "admin_apps.token"), Value: u + "/oauth2/token"},
 		)
 	}
 	vars["ap_copy"] = rows
