@@ -101,7 +101,9 @@ it an admin can:
   - **Public**: a single-page, mobile or command-line app with no secret
     (`token_endpoint_auth_method=none`). Turn on `oauth2.pkce.enforced_for_public_clients`
     in Hydra's config so Hydra requires PKCE for them; mokey can't set it per
-    client and doesn't check it.
+    client and doesn't check it. Hydra checks it when it issues the code,
+    after sign-in, and sends a flow without `code_challenge` back to the
+    redirect URI with `invalid_request`.
 
   Both types get the `authorization_code` and `refresh_token` grants and the
   `code` response type. The type can't be changed later: create a new client
