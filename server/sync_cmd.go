@@ -73,8 +73,12 @@ func printSyncResult(w io.Writer, res *syncRunResult) {
 	if res.DryRun {
 		mode = "dry run"
 	}
-	fmt.Fprintf(w, "sync %s: create %d, update %d, enable %d, disable %d, delete %d, adopt %d\n",
-		mode, len(p.Create), len(p.Update), len(p.Enable), len(p.Disable), len(p.Delete), len(p.Adopt))
+	n := syncPlanCounts(p)
+	fmt.Fprintf(w, "sync %s: create %d, update %d, enable %d, disable %d, delete %d, adopt %d, group add %d, group remove %d\n",
+		mode, n["create"], n["update"], n["enable"], n["disable"], n["delete"], n["adopt"], n["group_add"], n["group_remove"])
+	if res.DryRun && p.Braked {
+		fmt.Fprintln(w, "would be held by the brake: a real run applies none of its locks, deletes and group removals")
+	}
 	if res.Held {
 		fmt.Fprintf(w, "held by the brake: %d locks, deletes and accounts losing groups, apply them from the admin Sync page\n", res.HeldCount)
 	}
