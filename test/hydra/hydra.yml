@@ -1,0 +1,23 @@
+# Ory Hydra for test/hydra.compose.yml. TEST ONLY: in-memory database,
+# plain HTTP (--dev) and a public system secret.
+dsn: memory
+
+serve:
+  cookies:
+    same_site_mode: Lax
+
+urls:
+  self:
+    issuer: http://localhost:4444
+  login: http://localhost:8866/oauth/login
+  consent: http://localhost:8866/oauth/consent
+  logout: http://localhost:8866/auth/logout
+  error: http://localhost:8866/oauth/error
+
+secrets:
+  system:
+    - mokey-test-hydra-system-secret-not-secret
+
+oauth2:
+  pkce:
+    enforced_for_public_clients: true
