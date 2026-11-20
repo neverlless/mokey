@@ -202,9 +202,7 @@ type syncInputs struct {
 }
 
 func (in syncInputs) build(cfg *syncConfig, now time.Time) syncPlan {
-	p := syncBuild(in.users, in.skipped, in.ipa, cfg, now)
-	p.withoutGroups(in.noWrite, cfg.ManagedGroup)
-	return p
+	return syncBuild(in.users, in.skipped, in.ipa, cfg, now, in.noWrite...)
 }
 
 func syncNoWriteError(groups []string) string {

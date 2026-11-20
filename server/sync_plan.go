@@ -172,7 +172,7 @@ func syncResolve(users []syncSourceUser, mode string, exclude []string, maxLen i
 }
 
 // syncBuild is pure: same inputs, same plan. It never performs I/O.
-func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, cfg *syncConfig, now time.Time) syncPlan {
+func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, cfg *syncConfig, now time.Time, noWrite ...string) syncPlan {
 	p := syncPlan{
 		AddGroups:    map[string][]string{},
 		RemoveGroups: map[string][]string{},
@@ -334,6 +334,8 @@ func syncBuild(users []syncUser, skipped []string, ipa map[string]syncIPAUser, c
 		}
 	}
 
+	// the brake counts only the removals that will be applied
+	p.withoutGroups(noWrite, cfg.ManagedGroup)
 	// more than pct of active accounts, and never a single one
 	trips := func(n int) bool { pct := cfg.MaxDisablePercent; return pct > 0 && n > 1 && n*100 > pct*active }
 	if trips(len(p.Disable)) {
