@@ -71,12 +71,17 @@ serves on the host's port 18867 (port must be free), reached from mokey as
 the mokey container (`MOKEY_IT_MOKEY_CONTAINER`) whose `token_uri` is the
 same fake, grants mokey's role the scoped `Mokey Directory Sync` privilege
 from the [directory sync guide](../docs/guides/directory-sync.md), and
-creates the groups `it-sync-managed` and `it-sync-devs`, all kept between
-runs. It creates three accounts from Google, checks the managed and mapped groups, no
+creates the groups `it-sync-managed`, `it-sync-devs` and `it-sync-research`
+(the target of two attribute rules, nested in `it-sync-parent`, nested in
+`it-sync-grand`, which the HBAC rule `it-sync-grand-login` names), all kept
+between runs. It creates three accounts from Google, checks the managed and mapped groups, no
 password and `cn`, then a leaver is locked, a rename updates `cn`, an
 admin-blocked account stays locked, and the leaver's return unlocks it; with
 the mapped group dropped from the permission filter, a run fails with one
-error and a Decisions row and leaves that group alone.
+error and a Decisions row and leaves that group alone. The rules put users
+into the rule group by OU and by department, the Settings tab shows the HBAC
+rule through two levels of nesting, and moving a user out of the OU removes
+the group.
 
 ```sh
 MOKEY_IMAGE=mokey:dev docker compose -f examples/demo/compose.yml -f test/compose.yml \

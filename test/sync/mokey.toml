@@ -57,3 +57,14 @@ endpoint = "http://host.docker.internal:18867/"
 
 [sync.google.group_mapping]
 "devs@sync.test" = ["it-sync-devs"]
+
+# test/integration/sync_test.go TestSyncRules: both rules share one group
+[[sync.google.rules]]
+name = "it-research"
+org_unit = ["/Research"]
+groups = ["it-sync-research"]
+
+[[sync.google.rules]]
+name = "it-eng"
+department = ["Engineering"]
+groups = ["it-sync-research"]
