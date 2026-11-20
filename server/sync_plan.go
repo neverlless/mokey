@@ -12,7 +12,8 @@ import (
 // syncSourceUser is an active Google Workspace user after source-side filtering.
 type syncSourceUser struct {
 	Email, GivenName, FamilyName, FullName string
-	Groups                                 []string // lowercased emails of mapped Google groups
+	Groups                                 []string          // lowercased emails of mapped Google groups
+	Attrs                                  map[string]string // rule attributes (syncRuleAttrs), lowercased
 }
 
 // syncUser is a source user with its derived FreeIPA uid.

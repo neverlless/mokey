@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -168,5 +169,34 @@ func TestGoogleSourceDuplicateGroups(t *testing.T) {
 	}
 	if len(users) != 1 || users[0].Email != "jo@example.com" || !slices.Equal(users[0].Groups, []string{"devops@example.com"}) {
 		t.Fatalf("users = %+v", users)
+	}
+}
+
+func TestGoogleSourceAttributes(t *testing.T) {
+	f := fakeDirectory{pages: map[string]map[string]any{"": {"users": []map[string]any{
+		{"primaryEmail": "Ann@Example.com", "orgUnitPath": " /Research/Lab ", "organizations": []map[string]any{
+			{"department": "Sales", "title": "Rep"},
+			{"primary": true, "department": " Engineering ", "title": "SRE", "costCenter": "CC-1"},
+		}},
+		{"primaryEmail": "bo@example.com", "orgUnitPath": "/", "organizations": []map[string]any{{"department": "Ops"}}},
+		{"primaryEmail": "cy@example.com"},
+	}}}}
+	src := testGoogleSource(t, f, googleSourceConfig{Customer: "c"}, nil)
+	users, err := src.Users(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(users) != 3 {
+		t.Fatalf("users = %+v", users)
+	}
+	want := []map[string]string{
+		{"org_unit": "/research/lab", "department": "engineering", "title": "sre", "cost_center": "cc-1", "email_domain": "example.com"},
+		{"org_unit": "/", "department": "ops", "email_domain": "example.com"},
+		{"email_domain": "example.com"},
+	}
+	for i, u := range users {
+		if !maps.Equal(u.Attrs, want[i]) {
+			t.Errorf("%s attrs = %v, want %v", u.Email, u.Attrs, want[i])
+		}
 	}
 }
