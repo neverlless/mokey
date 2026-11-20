@@ -54,7 +54,7 @@ permission (write on `krbprincipalexpiration`) in a privilege on the role.
 It is off by default.
 
 Set `mokey_ipa_sync_groups` with `[sync]` (directory sync) to the managed,
-default and mapped FreeIPA groups: the role creates the
+default, mapped and rule FreeIPA groups: the role creates the
 `Mokey Sync Group Membership` permission, which writes `member` of those
 groups only, and grants it to the role in the `Mokey Directory Sync`
 privilege. Create the groups first and keep the list in step with `[sync]`;
