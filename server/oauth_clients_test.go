@@ -290,6 +290,19 @@ func TestUpdateInvalidConfigKeepsAccess(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"access": "all", "catalog": true}, hy.storedClient("wiki")["metadata"].(map[string]interface{})["mokey"])
 }
 
+func TestUpdateOtherPublicClientCustomScheme(t *testing.T) {
+	r, hy := newClientsTestApp(t, nil)
+	hy.seedClient(map[string]interface{}{
+		"client_id": "mobile", "token_endpoint_auth_method": "none",
+		"grant_types":   []interface{}{"authorization_code", "urn:ietf:params:oauth:grant-type:device_code"},
+		"redirect_uris": []interface{}{"com.example.app:/callback"},
+	})
+	in := webInput()
+	in.RedirectURIs = []string{"com.example.app:/callback2"}
+	require.NoError(t, r.updateOAuthClient("mobile", in, "admin"))
+	assert.Equal(t, []interface{}{"com.example.app:/callback2"}, hy.storedClient("mobile")["redirect_uris"])
+}
+
 func TestCatalogOnlyMetadata(t *testing.T) {
 	assert := assert.New(t)
 	newClientsTestApp(t, nil)
