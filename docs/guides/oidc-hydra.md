@@ -170,10 +170,11 @@ who are no longer allowed, in the background; their tokens stop refreshing.
 
 A client with a `[[hydra.clients]]` entry keeps its access in the file: the
 page shows it read-only as "Set in mokey.toml". Everything else about it
-(name, URIs, scopes, secret, delete) is editable. To manage its access on the
-page instead, remove the entry from `mokey.toml` and restart mokey; the form
-then opens with the same groups filled in, and one save moves them into the
-client's metadata. An entry for a client that doesn't exist in Hydra is
+(name, URIs, scopes, secret, delete) is editable. Each save also copies the
+entry's groups into the client's metadata; the entry still wins while it
+exists. To manage its access on the page instead, save once on this page,
+then remove the entry from `mokey.toml` and restart mokey; access stays the
+same. An entry for a client that doesn't exist in Hydra is
 listed last, marked as not in Hydra.
 
 ### Claims
