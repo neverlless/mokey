@@ -25,6 +25,7 @@ type Router struct {
 	sessionStore *session.Store
 	emailer      *Emailer
 	storage      fiber.Storage
+	csp          cspExtra
 	lock         *storeLock
 	groupExpiry  *groupExpiryConfig
 	forwardAuth  *forwardAuthConfig

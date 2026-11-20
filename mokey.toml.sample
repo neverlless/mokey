@@ -305,6 +305,13 @@ rate_limit_max = 25
 # something like nginx and enable appropriate access controls.
 enable_metrics = false
 
+# Extra Content-Security-Policy sources per fetch directive, e.g. for fonts
+# that custom CSS loads from a CDN. Added to mokey's own policy; a directive
+# mokey doesn't set starts from 'self'. Unsafe script sources are refused.
+# [server.csp]
+# font-src = ["https://fonts.example.org"]
+# img-src = ["https://cdn.example.org"]
+
 #------------------------------------------------------------------------------
 # Time-bound group membership
 #------------------------------------------------------------------------------
