@@ -132,6 +132,15 @@ func TestUIPreviewServe(t *testing.T) {
 		Google:       googleSourceConfig{Domains: []string{"acme.local"}, OrgUnits: []string{"/Staff"}},
 		GroupMapping: map[string][]string{"lab@acme.local": {"chemists"}, "choir@acme.local": {"glee-club"}},
 	}
+	router.sync.Rules = []syncRule{
+		{Name: "lab", Conds: map[string][]string{"org_unit": {"/Staff/Lab"}}, Groups: []string{"chemists"}},
+		{Name: "ops", Conds: map[string][]string{"department": {"ops", "sre"}, "title": {"engineer"}}, Groups: []string{"ops"}},
+	}
+	// rule targets reached directly, through the parent staff and by allow_all
+	fake.AddGroup("staff", ipatest.Group{MemberGroups: []string{"ops"}})
+	fake.AddHBACRule("staff-web", ipatest.HBACRule{Groups: []string{"staff"}, Services: []string{"httpd"}})
+	fake.AddHBACRule("old-bastion", ipatest.HBACRule{Groups: []string{"ops"}, Disabled: true})
+	fake.AddSudoRule("ops-sudo", ipatest.SudoRule{Groups: []string{"ops"}, HostCategory: "all"})
 	router.syncSrc = &fakeSyncSource{}
 	fake.AddGroup("google2ipa-managed", ipatest.Group{})
 	var gone []string
@@ -146,6 +155,7 @@ func TestUIPreviewServe(t *testing.T) {
 		Conflicts:    []string{"uid tuco belongs to tuco@old.acme.local in FreeIPA but to tuco@acme.local in Google; left alone"},
 		BackInGoogle: []string{"lydia"},
 		Skipped:      []string{"o.brien"},
+		RuleMatches:  map[string]int{"lab": 4, "ops": 7},
 	}
 	last.Errors = []string{"group_add o.brien glee-club: FreeIPA refused the change"}
 	last.SkipReasons = []string{`skip uid "o.brien": derived from several Google users (o.brien@acme.local, o.brien@labs.acme.local)`}

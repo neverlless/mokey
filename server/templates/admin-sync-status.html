@@ -125,5 +125,30 @@
     </div>
     {{ end }}
   </div>
+  {{ if $.sy_rules }}
+  <h2 class="mokey-section-title mt-4 mb-2">{{ T "sync.admin_rules_title" }}</h2>
+  {{ with $.sy_rules_error }}<div class="alert alert-danger" role="alert">{{ . }}</div>{{ end }}
+  <div class="mokey-card">
+    {{ range $r := $.sy_rules }}
+    <div class="mokey-row flex-wrap">
+      <div class="flex-grow-1">
+        <div><span class="fw-semibold">{{ $r.Name }}</span> <span class="text-muted small mokey-mono">· {{ $r.Conds }}</span></div>
+        {{ range $g := $r.Targets }}
+        <div class="mokey-chips mt-2">
+          <span class="mokey-pill">{{ $g.Group }}</span>
+          {{ if not $.sy_rules_error }}
+          <span class="text-muted small">{{ T "sync.admin_rule_hbac" }}</span>
+          {{ range $x := $g.HBAC }}<span class="mokey-pill {{ if $x.Enabled }}is-ok{{ else }}is-muted{{ end }}">{{ $x.Label }}</span>{{ else }}<span class="text-muted small">{{ T "sync.admin_rule_none" }}</span>{{ end }}
+          <span class="text-muted small">{{ T "sync.admin_rule_sudo" }}</span>
+          {{ range $x := $g.Sudo }}<span class="mokey-pill {{ if $x.Enabled }}is-ok{{ else }}is-muted{{ end }}">{{ $x.Label }}</span>{{ else }}<span class="text-muted small">{{ T "sync.admin_rule_none" }}</span>{{ end }}
+          {{ end }}
+        </div>
+        {{ end }}
+      </div>
+      {{ with $r.Matches }}<span class="text-muted small text-nowrap">{{ . }}</span>{{ end }}
+    </div>
+    {{ end }}
+  </div>
+  {{ end }}
 {{ end }}
 </div>
