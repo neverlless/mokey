@@ -96,15 +96,36 @@ func readClientMeta(cl *hydra.OAuth2Client) (*clientMeta, error) {
 	return &m, nil
 }
 
-// writeClientMeta sets metadata.mokey and keeps the other metadata keys.
+// writeClientMeta sets metadata.mokey and keeps the other metadata keys
+// and unknown keys inside "mokey".
 func writeClientMeta(cl *hydra.OAuth2Client, m clientMeta) {
+	mergeClientMeta(cl, func(mk map[string]interface{}) {
+		mk["access"] = m.Access
+		delete(mk, "groups")
+		if len(m.Groups) > 0 {
+			mk["groups"] = m.Groups
+		}
+		delete(mk, "catalog")
+		if m.Catalog != nil {
+			mk["catalog"] = *m.Catalog
+		}
+	})
+}
+
+// mergeClientMeta lets set change the metadata.mokey object in place.
+func mergeClientMeta(cl *hydra.OAuth2Client, set func(map[string]interface{})) {
 	md := map[string]interface{}{}
 	if b, err := json.Marshal(cl.Metadata); err == nil {
 		if json.Unmarshal(b, &md) != nil || md == nil {
 			md = map[string]interface{}{}
 		}
 	}
-	md["mokey"] = m
+	mokey, _ := md["mokey"].(map[string]interface{})
+	if mokey == nil {
+		mokey = map[string]interface{}{}
+	}
+	set(mokey)
+	md["mokey"] = mokey
 	cl.Metadata = md
 }
 
