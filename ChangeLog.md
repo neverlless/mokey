@@ -5,6 +5,31 @@
 - OIDC: a client that requests the `ssh` scope gets the user's FreeIPA SSH
   public keys in the `ssh_public_keys` claim, so Gitea and similar apps can
   sync keys from FreeIPA (#83, thanks @leonitousconforti)
+- Admin Apps page (`hydra.manage_clients`, off by default): create, edit,
+  rotate the secret of and delete OAuth clients, and choose who may sign in,
+  without the Hydra CLI. The secret is shown once and never stored
+- Who may sign in to a client can be kept in the client itself (Hydra
+  `metadata.mokey`); a `[[hydra.clients]]` entry still wins, then the Apps
+  page setting, then `hydra.default_deny`. "Everyone" overrides
+  `default_deny`
+- Apps catalog: an admin can hide a client from it (`metadata.mokey.catalog`)
+- New `hydra.public_url`: shows the issuer and endpoint URLs next to a new
+  client secret
+- Narrowing a client's access on the Apps page revokes the consents of users
+  who lose it, in the background
+- Stricter OAuth client checks on the Apps page: client IDs and redirect URIs
+
+### Upgrade notes
+
+- The Hydra consent sweep now starts whenever `hydra.admin_url` is set,
+  not only when `[[hydra.clients]]` or `default_deny` limit a client. Each run
+  ends after one client-list call when nothing is limited; set
+  `consent_sweep_interval = "0"` to turn it off
+- A client whose `metadata.mokey` is an empty object is treated as having no
+  access rule (`default_deny` applies)
+- Nothing else changes unless `hydra.manage_clients` is turned on. For PKCE on
+  public clients created on the Apps page, enable
+  `oauth2.pkce.enforced_for_public_clients` in Hydra
 
 ## [v2.12.0] - 2026-11-17
 
