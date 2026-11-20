@@ -1,5 +1,11 @@
 # Mokey ChangeLog
 
+## Unreleased
+
+- OIDC: a client that requests the `ssh` scope gets the user's FreeIPA SSH
+  public keys in the `ssh_public_keys` claim, so Gitea and similar apps can
+  sync keys from FreeIPA (#83, thanks @leonitousconforti)
+
 ## [v2.12.0] - 2026-11-17
 
 - Directory sync (`[sync]`, off by default): Google Workspace as an account
