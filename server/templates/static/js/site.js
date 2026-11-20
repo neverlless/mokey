@@ -236,3 +236,59 @@ function closeModal(ele) {
   document.body.addEventListener('htmx:afterSwap', toastAlerts);
   document.body.addEventListener('htmx:afterSettle', toastAlerts);
 })();
+
+// Copy buttons: data-copy holds the text, data-copied the label shown for 2 s
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('[data-copy]');
+  if (!btn || !navigator.clipboard) return;
+  navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+    btn.dataset.label = btn.dataset.label || btn.textContent;
+    btn.textContent = btn.getAttribute('data-copied');
+    var status = document.querySelector('[data-copy-status]');
+    if (status) status.textContent = btn.getAttribute('data-copied');
+    clearTimeout(btn.copyTimer);
+    btn.copyTimer = setTimeout(function () {
+      btn.textContent = btn.dataset.label;
+      if (status) status.textContent = '';
+    }, 2000);
+  });
+});
+
+// Group pills on the admin app form. Typed names that never became a pill
+// still reach the server through the input (groups_add).
+(function () {
+  function addPills(input) {
+    var wrap = input.parentElement;
+    var list = wrap.querySelector('[data-pills]');
+    var tpl = wrap.querySelector('[data-pill-template]');
+    input.value.split(/[\s,]+/).forEach(function (name) {
+      if (!name) return;
+      var have = Array.prototype.some.call(list.querySelectorAll('input[name=groups]'), function (h) {
+        return h.value.toLowerCase() === name.toLowerCase();
+      });
+      if (have) return;
+      var pill = tpl.content.firstElementChild.cloneNode(true);
+      pill.querySelector('[data-pill-text]').textContent = name;
+      pill.querySelector('input').value = name;
+      list.appendChild(pill);
+    });
+    input.value = '';
+  }
+  document.addEventListener('keydown', function (e) {
+    var input = e.target.closest && e.target.closest('[data-pill-input]');
+    if (!input || (e.key !== 'Enter' && e.key !== ',') || !input.value.trim()) return;
+    e.preventDefault();
+    addPills(input);
+  });
+  document.addEventListener('change', function (e) {
+    var input = e.target.closest && e.target.closest('[data-pill-input]');
+    if (input && input.value.trim()) addPills(input);
+  });
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-pill-remove]');
+    if (!btn) return;
+    var wrap = btn.closest('[data-pills]').parentElement;
+    btn.closest('[data-pill]').remove();
+    wrap.querySelector('[data-pill-input]').focus();
+  });
+})();

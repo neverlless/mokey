@@ -43,6 +43,9 @@
 			{{ if $.sync_on }}
 			<a class="mokey-nav-link" href="/admin/sync"{{ if eq $.section "sync" }} aria-current="page"{{ end }}><i class="fa fa-rotate" aria-hidden="true"></i> {{ T "nav.sync" }}</a>
 			{{ end }}
+			{{ if $.apps_admin_on }}
+			<a class="mokey-nav-link" href="/admin/apps"{{ if eq $.section "admin-apps" }} aria-current="page"{{ end }}><i class="fa fa-plug" aria-hidden="true"></i> {{ T "nav.admin_apps" }}</a>
+			{{ end }}
 			<a class="mokey-nav-link" href="/admin/log"{{ if eq $.section "log" }} aria-current="page"{{ end }}><i class="fa fa-clock-rotate-left" aria-hidden="true"></i> {{ T "nav.audit" }}</a>
 			{{ end }}
 		</nav>

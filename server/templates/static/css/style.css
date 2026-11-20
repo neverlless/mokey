@@ -671,6 +671,29 @@ html {
 	color: var(--mokey-ink);
 }
 
+/* admin app form: type cards are labels around real radios */
+.mokey-choice {
+	cursor: pointer;
+}
+.mokey-choice:has(input:checked) {
+	box-shadow: inset 0 0 0 2px var(--mokey-accent);
+}
+.mokey-choice:has(input:focus-visible) {
+	outline: 2px solid var(--mokey-accent);
+	outline-offset: 2px;
+}
+.mokey-pill-close {
+	width: 0.5rem;
+	height: 0.5rem;
+	padding: 0.25rem;
+	background-size: 0.5rem;
+}
+.mokey-config-box {
+	border-radius: 8px;
+	background: var(--mokey-surface-raised);
+	box-shadow: inset 0 0 0 1px var(--mokey-border);
+}
+
 /* headings: tighter console scale */
 .mokey-main h3,
 .login-head h3 {
