@@ -57,6 +57,7 @@ type clientInput struct {
 	Access                       string
 	Groups                       []string
 	Catalog                      bool
+	authNone                     bool // update of a client with no secret: custom-scheme redirects allowed
 }
 
 var (
@@ -120,7 +121,7 @@ func (in *clientInput) validate() map[string]string {
 			errs["uri"] = "admin_apps.err_uri"
 		}
 	}
-	public := in.Kind == kindPublic
+	public := in.Kind == kindPublic || in.authNone
 	if len(in.RedirectURIs) == 0 {
 		errs["redirect_uris"] = "admin_apps.err_redirect_required"
 	}
@@ -361,6 +362,7 @@ func (r *Router) updateOAuthClient(id string, in clientInput, by string) error {
 		return err
 	}
 	in.Kind = clientKindOf(cl)
+	in.authNone = cl.GetTokenEndpointAuthMethod() == "none"
 	in.ID = "" // only checked on create: clients made elsewhere use other IDs
 	cfg, inConfig := configClientPolicy(id)
 	if inConfig && (in.Access != "" || len(in.Groups) > 0) {
