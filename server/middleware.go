@@ -66,16 +66,31 @@ var cspFetchDirectives = []string{"default-src", "img-src", "style-src", "font-s
 
 func loadCSPExtra() (cspExtra, error) {
 	x := cspExtra{}
-	for name, sources := range viper.GetStringMapStringSlice("server.csp") {
+	raw := viper.Get("server.csp")
+	if raw == nil {
+		return x, nil
+	}
+	table, ok := raw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("server.csp: must be a table of directive = [sources]")
+	}
+	for name, v := range table {
 		if !slices.Contains(cspFetchDirectives, name) {
 			return nil, fmt.Errorf("server.csp: %q is not a fetch directive; use one of %s", name, strings.Join(cspFetchDirectives, ", "))
 		}
+		sources, ok := cspStrings(v)
+		if !ok {
+			return nil, fmt.Errorf("server.csp: %s: must be a list of strings", name)
+		}
 		for _, src := range sources {
-			if src == "" || strings.ContainsAny(src, ";,") || strings.IndexFunc(src, unicode.IsSpace) >= 0 {
+			if src == "" || strings.ContainsAny(src, ";,") || strings.IndexFunc(src, cspBadRune) >= 0 {
 				return nil, fmt.Errorf("server.csp: %s: %q must be a single non-empty source", name, src)
 			}
+			if strings.EqualFold(src, "'none'") {
+				return nil, fmt.Errorf("server.csp: %s: 'none' can't be added to other sources", name)
+			}
 			if (name == "script-src" || name == "default-src") && cspUnsafeScriptSource(src) {
-				return nil, fmt.Errorf("server.csp: %s: %q would let any or inline script run", name, src)
+				return nil, fmt.Errorf("server.csp: %s: %q would let scripts run that the nonce policy blocks", name, src)
 			}
 			x[name] += " " + src
 		}
@@ -83,20 +98,55 @@ func loadCSPExtra() (cspExtra, error) {
 	return x, nil
 }
 
-var cspSchemeOnly = regexp.MustCompile(`^[a-z][a-z0-9+.-]*:(//\*)?$`)
+func cspStrings(v any) ([]string, bool) {
+	switch v := v.(type) {
+	case []string:
+		return v, true
+	case []any:
+		out := make([]string, 0, len(v))
+		for _, e := range v {
+			s, ok := e.(string)
+			if !ok {
+				return nil, false
+			}
+			out = append(out, s)
+		}
+		return out, true
+	}
+	return nil, false
+}
 
+func cspBadRune(r rune) bool {
+	return r < 0x20 || r == 0x7f || unicode.IsSpace(r)
+}
+
+var cspSchemeOnly = regexp.MustCompile(`^[a-z][a-z0-9+.-]*:$`)
+
+// 'strict-dynamic' makes browsers ignore 'self', which mokey's un-nonced
+// /static scripts rely on
 func cspUnsafeScriptSource(src string) bool {
 	src = strings.ToLower(src)
 	switch src {
-	case "*", "'unsafe-inline'", "'unsafe-eval'", "'unsafe-hashes'":
+	case "*", "'unsafe-inline'", "'unsafe-eval'", "'unsafe-hashes'", "'strict-dynamic'",
+		"'wasm-unsafe-eval'", "'unsafe-allow-redirects'", "'inline-speculation-rules'":
 		return true
 	}
-	return cspSchemeOnly.MatchString(src)
+	if cspSchemeOnly.MatchString(src) {
+		return true
+	}
+	if _, rest, ok := strings.Cut(src, "://"); ok {
+		src = rest
+	}
+	host, _, _ := strings.Cut(src, "/")
+	if i := strings.LastIndexByte(host, ':'); i >= 0 {
+		host = host[:i]
+	}
+	return host == "*" || (strings.HasPrefix(host, "*.") && !strings.Contains(host[2:], "."))
 }
 
 // contentSecurityPolicy also lets assets load from assetOrigin, for mokey
 // pages served on another host. A directive the base policy lacks starts
-// from default-src's 'self', so adding one doesn't drop 'self'.
+// from default-src ('self' plus its extras), so adding one drops nothing.
 func contentSecurityPolicy(nonce, assetOrigin string, extra cspExtra) string {
 	base := map[string]string{
 		"default-src": "'self'",
@@ -104,22 +154,18 @@ func contentSecurityPolicy(nonce, assetOrigin string, extra cspExtra) string {
 		"style-src":   "'self' 'unsafe-inline'",
 		"script-src":  "'self' 'nonce-" + nonce + "'",
 	}
-	if assetOrigin != "" {
-		base["img-src"] += " " + assetOrigin
-		base["style-src"] += " " + assetOrigin
-		base["font-src"] = "'self' " + assetOrigin
-	}
 	parts := make([]string, 0, len(cspFetchDirectives))
 	for _, name := range cspFetchDirectives {
 		v, ok := base[name]
-		x, hasExtra := extra[name]
-		if !ok && !hasExtra {
+		if !ok {
+			v = "'self'" + extra["default-src"]
+		}
+		if assetOrigin != "" && (name == "img-src" || name == "style-src" || name == "font-src") {
+			v += " " + assetOrigin
+		} else if _, set := extra[name]; !ok && !set {
 			continue
 		}
-		if !ok {
-			v = "'self'"
-		}
-		parts = append(parts, name+" "+v+x)
+		parts = append(parts, name+" "+v+extra[name])
 	}
 	return strings.Join(parts, "; ")
 }

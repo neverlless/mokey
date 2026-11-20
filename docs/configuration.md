@@ -282,20 +282,29 @@ img-src = ["https://cdn.example.org"]
 
 The sources are added to mokey's own policy, on every page including the
 [forward-auth](guides/forward-auth.md) pages shown on app hosts. A
-directive mokey doesn't set itself starts from `'self'`, so the example
-gives `font-src 'self' https://fonts.example.org`. The per-request script
-nonce stays in place.
+directive mokey doesn't set itself starts from what `default-src` allows:
+`'self'` plus any `default-src` sources you add here. The example gives
+`font-src 'self' https://fonts.example.org`. The per-request script nonce
+stays in place.
 
 Allowed keys are the CSP3 fetch directives `default-src`, `script-src`,
 `style-src`, `img-src`, `font-src`, `connect-src`, `media-src`,
 `object-src`, `frame-src`, `child-src`, `worker-src` and `manifest-src`.
 Other directives (`form-action`, `frame-ancestors`, `script-src-elem` and so
-on) stop mokey at startup with an error naming the key, as does a source
-that is empty or contains `;`, `,` or whitespace. `script-src` and
-`default-src` also refuse `'unsafe-inline'`, `'unsafe-eval'`,
-`'unsafe-hashes'`, `*`, a scheme on its own such as `https:`, `data:` or
-`blob:`, and a wildcard host such as `https://*`. Other directives accept
-scheme sources, for example `img-src = ["data:"]`.
+on) stop mokey at startup with an error naming the key. So do a
+`[server.csp]` that isn't a table, a value that isn't a list of strings,
+`'none'`, and a source that is empty or contains `;`, `,`, whitespace or
+control characters.
+
+`script-src` and `default-src` also refuse `'unsafe-inline'`,
+`'unsafe-eval'`, `'unsafe-hashes'`, `'wasm-unsafe-eval'`,
+`'unsafe-allow-redirects'`, `'inline-speculation-rules'` and
+`'strict-dynamic'` (with it browsers ignore `'self'`, and mokey's own
+scripts would stop loading). They refuse `*`, a scheme on its own such as
+`https:`, `data:` or `blob:`, and any host or top-level-domain wildcard
+such as `https://*`, `*:443` or `https://*.com`; `https://*.example.org`
+is allowed. Other directives accept scheme sources, for example
+`img-src = ["data:"]`.
 
 ## `[storage]`
 
