@@ -216,3 +216,13 @@ func TestAdminPeopleInviteGroupList(t *testing.T) {
 	tc, _, _, _ = inviteGroupsApp(t, false, false)
 	assert.NotContains(t, readBody(t, tc.get("/admin/people", htmx)), `name="groups"`)
 }
+
+func TestInviteSendSuccessClearsGroups(t *testing.T) {
+	tc, _, _, sink := inviteGroupsApp(t, true, true)
+	resp := tc.postForm("/admin/invite", url.Values{"email": {"kim@example.com"}, "groups": {"chemists"}, "duration_chemists": {"720h0m0s"}}, htmx)
+	body := readBody(t, resp)
+	require.Equal(t, 1, sink.count())
+	assert.Contains(t, body, `name="groups" value="chemists"`)
+	assert.NotRegexp(t, `name="groups" value="chemists"[^>]* checked`, body)
+	assert.NotContains(t, body, " selected>")
+}

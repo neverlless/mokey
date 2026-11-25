@@ -509,7 +509,7 @@ func (r *Router) Index(c fiber.Ctx) error {
 
 	if path == "admin/people" {
 		vars["search"] = c.Query("search")
-		r.inviteGroupVars(c, vars)
+		r.inviteGroupVars(c, vars, false)
 	}
 
 	if path == "account" && viper.GetBool("accounts.enable_subid") {
