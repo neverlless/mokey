@@ -21,24 +21,21 @@
   <form method="post" hx-post="/admin/invite" hx-target="#admin" hx-target-error="admin-failed"
         hx-headers='{"X-CSRF-Token": "{{ $.csrf }}"}'>
     <div class="row g-2 align-items-end">
-      <div class="col-12 col-lg-4">
+      <div class="col-12 col-lg-3">
         <label for="invite-email" class="form-label">{{ T "common.email" }}</label>
         <input id="invite-email" type="email" class="form-control" name="email" placeholder="user@example.com" required>
       </div>
-      <div class="col-6 col-lg-2">
+      <div class="col-6 col-lg-3">
         <label for="invite-first" class="form-label">{{ T "common.first_name" }}</label>
         <input id="invite-first" type="text" class="form-control" name="first" autocomplete="off">
       </div>
-      <div class="col-6 col-lg-2">
+      <div class="col-6 col-lg-3">
         <label for="invite-last" class="form-label">{{ T "common.last_name" }}</label>
         <input id="invite-last" type="text" class="form-control" name="last" autocomplete="off">
       </div>
-      <div class="col-12 col-lg-2">
+      <div class="col-12 col-lg-3">
         <label for="invite-username" class="form-label">{{ T "common.username" }}</label>
         <input id="invite-username" type="text" class="form-control" name="username" autocomplete="off" autocapitalize="off" spellcheck="false">
-      </div>
-      <div class="col-12 col-lg-2">
-        <button class="btn btn-primary w-100 text-nowrap" type="submit">{{ T "admin.invite_button" }}</button>
       </div>
     </div>
     {{ with $.invite_groups }}
@@ -48,13 +45,13 @@
       {{ range $g := . }}
       <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
         <div class="form-check mb-0">
-          <input class="form-check-input" type="checkbox" name="groups" value="{{ $g.Name }}" id="invite-group-{{ $g.Name }}"{{ if $g.Checked }} checked{{ end }}{{ with $g.Description }} aria-describedby="invite-group-desc-{{ $g.Name }}"{{ end }}>
-          <label class="form-check-label" id="invite-group-label-{{ $g.Name }}" for="invite-group-{{ $g.Name }}">{{ $g.Name }}</label>
-          {{ with $g.Description }}<span class="text-muted small" id="invite-group-desc-{{ $g.Name }}">{{ . }}</span>{{ end }}
+          <input class="form-check-input" type="checkbox" name="groups" value="{{ $g.Name }}" id="invite-gcheck-{{ $g.Name }}"{{ if $g.Checked }} checked{{ end }}{{ with $g.Description }} aria-describedby="invite-gdesc-{{ $g.Name }}"{{ end }}>
+          <label class="form-check-label" id="invite-glabel-{{ $g.Name }}" for="invite-gcheck-{{ $g.Name }}">{{ $g.Name }}</label>
+          {{ with $g.Description }}<span class="text-muted small" id="invite-gdesc-{{ $g.Name }}">{{ . }}</span>{{ end }}
         </div>
         {{ with $g.Durations }}
-        <label for="invite-duration-{{ $g.Name }}" id="invite-duration-label-{{ $g.Name }}" class="visually-hidden">{{ T "groups.duration_label" }}</label>
-        <select class="form-select form-select-sm w-auto" name="duration_{{ $g.Name }}" id="invite-duration-{{ $g.Name }}" aria-labelledby="invite-duration-label-{{ $g.Name }} invite-group-label-{{ $g.Name }}">
+        <label for="invite-gdur-{{ $g.Name }}" id="invite-gdurlabel-{{ $g.Name }}" class="visually-hidden">{{ T "groups.duration_label" }}</label>
+        <select class="form-select form-select-sm w-auto" name="duration_{{ $g.Name }}" id="invite-gdur-{{ $g.Name }}" aria-labelledby="invite-gdurlabel-{{ $g.Name }} invite-glabel-{{ $g.Name }}">
           {{ range . }}<option value="{{ .Value }}"{{ if .Selected }} selected{{ end }}>{{ .Label }}</option>{{ end }}
         </select>
         {{ end }}
@@ -62,6 +59,7 @@
       {{ end }}
     </fieldset>
     {{ end }}
+    <button class="btn btn-primary text-nowrap mt-3" type="submit">{{ T "admin.invite_button" }}</button>
     <p class="text-muted small mt-2 mb-0">{{ T "admin.invite_hint" }}</p>
   </form>
 </div>
