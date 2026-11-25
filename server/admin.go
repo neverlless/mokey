@@ -96,7 +96,14 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 		return c.Render("admin-people.html", vars)
 	}
 
-	if err := r.emailer.SendInviteEmail(email, username, first, last, inviterName(r.user(c)), c); err != nil {
+	groups, err := r.inviteGroupsFromForm(c)
+	if err != nil {
+		vars["message"] = err.Error()
+		return c.Render("admin-people.html", vars)
+	}
+
+	invite := &Token{Username: username, Email: email, First: first, Last: last, Groups: groups, InvitedBy: r.username(c)}
+	if err := r.emailer.SendInviteEmail(invite, inviterName(r.user(c)), c); err != nil {
 		slog.Error("Failed to send invite email",
 			"email", email,
 			"err", err,
@@ -108,6 +115,13 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 	attrs := []any{"email", email, "invited_by", r.username(c), "ip", RemoteIP(c)}
 	if username != "" {
 		attrs = append(attrs, "username", username)
+	}
+	if len(groups) > 0 {
+		names := make([]string, len(groups))
+		for i, g := range groups {
+			names[i] = g.Name
+		}
+		attrs = append(attrs, "groups", strings.Join(names, ","))
 	}
 	slog.Info("AUDIT user invite sent", attrs...)
 
@@ -171,6 +185,7 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 		"email", user.Email,
 		"ip", RemoteIP(c),
 	)
+	r.applyInviteGroups(user.Username, claims)
 	r.metrics.totalSignups.Inc()
 
 	if err := r.emailer.SendWelcomeEmail(user, c); err != nil {

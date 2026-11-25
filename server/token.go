@@ -20,13 +20,15 @@ import (
 )
 
 type Token struct {
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	First     string    `json:"first,omitempty"`
-	Last      string    `json:"last,omitempty"`
-	Kind      string    `json:"kind,omitempty"`    // the issuing prefix; empty on tokens issued before it existed
-	MaxAge    int64     `json:"max_age,omitempty"` // seconds; overrides email.token_max_age, only with a matching Kind
-	Timestamp time.Time `json:"-"`
+	Username  string        `json:"username"`
+	Email     string        `json:"email"`
+	First     string        `json:"first,omitempty"`
+	Last      string        `json:"last,omitempty"`
+	Kind      string        `json:"kind,omitempty"`    // the issuing prefix; empty on tokens issued before it existed
+	MaxAge    int64         `json:"max_age,omitempty"` // seconds; overrides email.token_max_age, only with a matching Kind
+	Groups    []InviteGroup `json:"groups,omitempty"`
+	InvitedBy string        `json:"invited_by,omitempty"`
+	Timestamp time.Time     `json:"-"`
 }
 
 func GenerateSecret(n int) (string, error) {

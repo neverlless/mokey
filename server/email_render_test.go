@@ -72,7 +72,7 @@ func assertCommonMailFixes(t *testing.T, txt, html string) {
 
 func TestInviteEmailRender(t *testing.T) {
 	txt, html := renderTestMail(t, func(r *Router) error {
-		return r.emailer.SendInviteEmail("kim@example.com", "", "", "", "Walter White", nil)
+		return r.emailer.SendInviteEmail(&Token{Email: "kim@example.com"}, "Walter White", nil)
 	})
 	assertCommonMailFixes(t, txt, html)
 	assert.Contains(t, txt, "Hi,")
@@ -84,7 +84,7 @@ func TestInviteEmailRender(t *testing.T) {
 	}
 
 	txt, html = renderTestMail(t, func(r *Router) error {
-		return r.emailer.SendInviteEmail("kim@example.com", "kim.w", "Kim", "Wexler", "Walter White", nil)
+		return r.emailer.SendInviteEmail(&Token{Username: "kim.w", Email: "kim@example.com", First: "Kim", Last: "Wexler"}, "Walter White", nil)
 	})
 	assert.Contains(t, txt, "Hi Kim,")
 	assert.Contains(t, html, "Hi Kim,")

@@ -87,13 +87,14 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 	// mokey's design: group membership only changes under the sponsor's own
 	// session, never through the service account
 	serviceAccountRemovalsAllowed = false
+	serviceAccountAddsAllowed = false
 	t.Cleanup(func() {
 		for _, c := range fake.Calls() {
 			if c.User != keytabUser {
 				continue
 			}
 			switch {
-			case strings.HasPrefix(c.Method, "group_add_member"),
+			case strings.HasPrefix(c.Method, "group_add_member") && !serviceAccountAddsAllowed,
 				strings.HasPrefix(c.Method, "group_") && strings.HasSuffix(c.Method, "member_manager"),
 				c.Method == "group_remove_member" && !serviceAccountRemovalsAllowed:
 				t.Errorf("%s ran as the service account", c.Method)
@@ -120,7 +121,14 @@ func newTestAppWith(t *testing.T, configure func()) (*fiber.App, *Router, *ipate
 
 const keytabUser = "mokey"
 
-var serviceAccountRemovalsAllowed bool
+var serviceAccountRemovalsAllowed, serviceAccountAddsAllowed bool
+
+// allowServiceAccountAdds lets the service account run group_add_member in
+// this test, as invite acceptance with admin.invite_groups does
+func allowServiceAccountAdds(t *testing.T) {
+	t.Helper()
+	serviceAccountAddsAllowed = true
+}
 
 // allowServiceAccountRemovals lets the service account run group_remove_member
 // in this test, as the membership expiry sweep does
