@@ -201,8 +201,12 @@ func TestAdminPeopleInviteGroupList(t *testing.T) {
 	assert.Regexp(t, `name="duration_chemists"[^>]*>\s*<option value="">`+T("groups.no_end_date"), body)
 
 	// the form errors re-render keeps the list
-	resp := tc.postForm("/admin/invite", url.Values{"email": {"bad"}}, htmx)
-	assert.Contains(t, readBody(t, resp), `name="groups" value="chemists"`)
+	resp := tc.postForm("/admin/invite", url.Values{"email": {"bad"}, "groups": {"chemists"}, "duration_chemists": {"168h0m0s"}}, htmx)
+	body = readBody(t, resp)
+	assert.Regexp(t, `name="groups" value="chemists"[^>]* checked`, body)
+	assert.Regexp(t, `<option value="168h0m0s" selected>`, body)
+	assert.NotRegexp(t, `<option value="720h0m0s" selected>`, body)
+	assert.Contains(t, body, `aria-labelledby="invite-duration-label-chemists invite-group-label-chemists"`)
 
 	tc, _, _, _ = inviteGroupsApp(t, true, false)
 	body = readBody(t, tc.get("/admin/people", htmx))

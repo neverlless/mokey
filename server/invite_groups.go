@@ -23,6 +23,7 @@ type InviteGroup struct {
 
 type inviteGroupChoice struct {
 	Name, Description string
+	Checked           bool
 	Durations         []durationOption
 }
 
@@ -64,6 +65,19 @@ func (r *Router) inviteGroupVars(c fiber.Ctx, vars fiber.Map) {
 	if err != nil {
 		slog.Error("Failed to list groups for the invite form", "username", r.username(c), "err", err)
 		return
+	}
+	// after a rejected submit, keep what was ticked and picked
+	posted := c.Request().PostArgs()
+	for i := range choices {
+		ch := &choices[i]
+		for _, v := range posted.PeekMulti("groups") {
+			ch.Checked = ch.Checked || string(v) == ch.Name
+		}
+		if want := string(posted.Peek("duration_" + ch.Name)); want != "" {
+			for j := range ch.Durations {
+				ch.Durations[j].Selected = ch.Durations[j].Value == want
+			}
+		}
 	}
 	vars["invite_groups"] = choices
 }
