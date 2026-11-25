@@ -405,6 +405,7 @@ the Apps page admits every user even with `default_deny = true`.
 | `group` | string | `"admins"` | FreeIPA group whose members get admin access. |
 | `users` | list | — | Additional usernames granted admin access regardless of group membership. |
 | `inactive_days` | int | `90` | Helpdesk view: an account with no successful login for more than this many days is listed as inactive. See [Helpdesk view](guides/helpdesk.md). |
+| `invite_groups` | bool | `false` | The admin invite form lists the groups the inviting admin is a member manager of, with an end date per group when `groups.durations` is set. When the invite is accepted, mokey's service account adds the user, which needs the FreeIPA permission from [Groups](guides/groups.md#freeipa-privilege). See [Groups chosen at invite](guides/signup.md#groups-chosen-at-invite). |
 
 The People search is answered by FreeIPA. Partial email matches need `mail`
 in FreeIPA's user search fields; without it only a full address matches:

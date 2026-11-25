@@ -105,12 +105,13 @@ max = "8h"
 
 ### FreeIPA privilege
 
-Granting still runs with the sponsor's own session. Removal at the end date
-runs as mokey's service account, which needs write access to group
-membership. FreeIPA's stock `Modify Group membership` privilege covers every
-group, `admins` included, so create a narrower permission that applies only
-to groups that have member managers. Only needed when `groups.durations` is
-set:
+Granting still runs with the sponsor's own session. Removal at the end date,
+and adding invited users to the groups chosen in the invite form
+([`admin.invite_groups`](signup.md#groups-chosen-at-invite)), run as mokey's
+service account, which needs write access to group membership. FreeIPA's
+stock `Modify Group membership` privilege covers every group, `admins` included, so create a narrower permission that applies only
+to groups that have member managers. Only needed when `groups.durations` or
+`admin.invite_groups` is set:
 
 ```sh
 kinit adminuser
@@ -125,7 +126,8 @@ kdestroy
 
 > [!WARNING]
 > The permission allows adding as well as removing members of sponsored
-> groups; FreeIPA cannot grant "remove only". That mokey only removes is
+> groups; FreeIPA cannot grant "remove only". That mokey only removes expired
+> members, and adds only invited users to the groups an inviter manages, is
 > enforced by its code. A compromised mokey could therefore add users to
 > sponsored groups, but not to groups without member managers, such as
 > `admins`, and not to any other group.
