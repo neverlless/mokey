@@ -147,9 +147,14 @@ func (r *Router) applyInviteGroups(username string, invite *Token) {
 	}
 
 	inviter, err := r.adminClient.UserShow(invite.InvitedBy)
-	if err != nil {
+	if err != nil || inviter.Locked {
+		reason := "failed"
+		if err == nil {
+			// a disabled account keeps its member-manager rights in FreeIPA
+			reason = "inviter disabled"
+		}
 		for _, g := range invite.Groups {
-			skip(g.Name, "failed", err)
+			skip(g.Name, reason, err)
 		}
 		return
 	}
