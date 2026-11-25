@@ -102,6 +102,7 @@ repository.
 
 | Release | Highlights |
 | --- | --- |
+| v2.14 (Nov 2026) | Groups chosen when inviting a user, re-checked when the invite is accepted |
 | v2.13 (Nov 2026) | Admin pages for OAuth clients instead of the Hydra CLI; directory sync rules from Google attributes to FreeIPA groups with an HBAC and sudo preview; SSH keys in OIDC claims; extra CSP sources |
 | v2.12 (Nov 2026) | Directory sync from Google Workspace with dry run, brake, admin page and `mokey sync`; google2ipa merged into mokey; mail links bound to their flow |
 | v2.11 (Nov 2026) | Forward-auth sign-in for web apps behind Traefik, ingress-nginx, Caddy, Envoy and Istio; account expiry with sponsor renewal; several replicas behind a load balancer; Helpdesk on its own page |
