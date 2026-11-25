@@ -1,7 +1,8 @@
 # Overlay on the demo stand for the integration and e2e tests: signup and
 # forgot-password cannot be driven through a CAPTCHA, time-bound group
 # membership needs persistent storage (the demo uses memory), and the
-# lifecycle test needs sponsor renewal and a brake it can go past.
+# lifecycle test needs sponsor renewal and a brake it can go past; the
+# invite test picks groups on the invite form.
 #
 #   docker compose -f examples/demo/compose.yml -f test/compose.yml up -d
 
@@ -14,3 +15,4 @@ services:
       MOKEY_GROUPS_DURATIONS: "1m 1h"
       MOKEY_LIFECYCLE_RENEWAL_PERIOD: 365d
       MOKEY_LIFECYCLE_MAX_CHANGES_PER_RUN: "1"
+      MOKEY_ADMIN_INVITE_GROUPS: "true"
