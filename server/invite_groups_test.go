@@ -272,3 +272,23 @@ func TestInviteAcceptMarkFailSkipsGroups(t *testing.T) {
 	}
 	assert.Equal(t, map[string]string{"chemists": "failed", "physics": "failed"}, skipped)
 }
+
+func TestInviteGroupsExcludeAdminGroup(t *testing.T) {
+	tc, router, fake, sink := inviteGroupsApp(t, true, false)
+	allowServiceAccountAdds(t)
+	fake.AddGroup("admins", ipatest.Group{ManagerUsers: []string{"walter"}})
+
+	assert.NotContains(t, readBody(t, tc.get("/admin/people", htmx)), `value="admins"`)
+	resp := tc.postForm("/admin/invite", url.Values{"email": {"kim@example.com"}, "groups": {"admins"}}, htmx)
+	assert.Contains(t, readBody(t, resp), T("admin.invite_group_not_allowed"))
+	assert.Equal(t, 0, sink.count())
+
+	token := groupInviteToken(t, router, InviteGroup{Name: "admins"})
+	resp, _ = acceptPresetInvite(t, tc.app, token, "kim")
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	assert.NotContains(t, groupMembers(t, fake, "admins"), "kim")
+	e := auditEvent(router, "invite group skipped")
+	if assert.NotNil(t, e) {
+		assert.Equal(t, "admin group", e.Attrs["reason"])
+	}
+}

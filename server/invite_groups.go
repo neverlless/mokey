@@ -32,7 +32,7 @@ func (r *Router) inviteGroupsOn() bool {
 }
 
 // inviteGroupChoices lists the groups the current user may put an invitee
-// in: managed by them and not owned by sync.
+// in: managed by them, not owned by sync and not mokey's admin group.
 func (r *Router) inviteGroupChoices(c fiber.Ctx) ([]inviteGroupChoice, error) {
 	user := r.user(c)
 	groups, err := groupFindManaged(r.userClient(c))
@@ -42,7 +42,7 @@ func (r *Router) inviteGroupChoices(c fiber.Ctx) ([]inviteGroupChoice, error) {
 	lang := requestLanguage(c)
 	choices := []inviteGroupChoice{}
 	for _, g := range groups {
-		if !isManagerOf(user.Username, user.Groups, g) || r.syncMapped(g.Name) {
+		if !isManagerOf(user.Username, user.Groups, g) || r.syncMapped(g.Name) || g.Name == viper.GetString("admin.group") {
 			continue
 		}
 		choice := inviteGroupChoice{Name: g.Name, Description: g.Description}
@@ -167,6 +167,10 @@ func (r *Router) applyInviteGroups(username string, invite *Token) {
 	for _, ig := range invite.Groups {
 		if r.syncMapped(ig.Name) {
 			skip(ig.Name, "sync", nil)
+			continue
+		}
+		if ig.Name == viper.GetString("admin.group") {
+			skip(ig.Name, "admin group", nil)
 			continue
 		}
 		g, err := groupShow(r.adminClient, ig.Name)
