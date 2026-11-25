@@ -157,21 +157,23 @@ func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
 }
 
 // MarkTokenUsed runs after the token's action has taken effect, so a storage
-// failure cannot be rolled back: it is logged, and the token stays valid until
-// it expires
-func MarkTokenUsed(token, prefix string, claims *Token, storage fiber.Storage) {
+// failure cannot be rolled back: the caller logs it, and the token stays valid
+// until it expires
+func MarkTokenUsed(token, prefix string, claims *Token, storage fiber.Storage) error {
 	maxAge := int64(viper.GetInt("email.token_max_age"))
 	if claims.MaxAge > 0 {
 		maxAge = claims.MaxAge
 	}
 	ttl := time.Until(claims.Timestamp.Add(time.Duration(maxAge) * time.Second))
-	if err := storage.Set(prefix+TokenUsedPrefix+token, []byte("true"), ttl); err != nil {
-		slog.Error("Failed to mark token used",
-			"username", claims.Username,
-			"token_type", prefix,
-			"err", err,
-		)
-	}
+	return storage.Set(prefix+TokenUsedPrefix+token, []byte("true"), ttl)
+}
+
+func logMarkFailed(claims *Token, prefix string, err error) {
+	slog.Error("Failed to mark token used",
+		"username", claims.Username,
+		"token_type", prefix,
+		"err", err,
+	)
 }
 
 // EnsureSecrets generates server.csrf_secret and email.token_secret when they

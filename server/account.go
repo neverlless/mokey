@@ -462,7 +462,9 @@ func (r *Router) verifyLegacyUser(c fiber.Ctx, claims *Token, token string) erro
 // finishAccountVerify marks the verify token used, sends the welcome email
 // and renders the success page — shared by the staged and legacy paths
 func (r *Router) finishAccountVerify(c fiber.Ctx, claims *Token, user *ipa.User, token string) error {
-	MarkTokenUsed(token, TokenAccountVerify, claims, r.storage)
+	if err := MarkTokenUsed(token, TokenAccountVerify, claims, r.storage); err != nil {
+		logMarkFailed(claims, TokenAccountVerify, err)
+	}
 
 	err := r.emailer.SendWelcomeEmail(user, c)
 	if err != nil {
@@ -622,7 +624,9 @@ func (r *Router) EmailChangeConfirm(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
 	}
 
-	MarkTokenUsed(token, TokenEmailChange, claims, r.storage)
+	if err := MarkTokenUsed(token, TokenEmailChange, claims, r.storage); err != nil {
+		logMarkFailed(claims, TokenEmailChange, err)
+	}
 
 	if oldEmail != "" {
 		if err := r.emailer.SendEmailChangedNotification(oldEmail, user, c); err != nil {

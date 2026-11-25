@@ -125,6 +125,21 @@ func (r *Router) inviteGroupsFromForm(c fiber.Ctx) ([]InviteGroup, error) {
 	return groups, nil
 }
 
+func inviteGroupSkipped(username string, invite *Token, group, reason string, err error) {
+	attrs := []any{"group", group, "username", username, "invited_by", invite.InvitedBy, "reason", reason}
+	if err != nil {
+		attrs = append(attrs, "err", err)
+	}
+	slog.Warn("AUDIT invite group skipped", attrs...)
+}
+
+// skipInviteGroups audits every group in the invite as skipped
+func skipInviteGroups(username string, invite *Token, reason string, err error) {
+	for _, g := range invite.Groups {
+		inviteGroupSkipped(username, invite, g.Name, reason, err)
+	}
+}
+
 // applyInviteGroups adds a just-created invited account to the groups in
 // its invite. Rights are checked again: they may have changed since the
 // invite was sent. Failures are audited, never returned.
@@ -132,17 +147,9 @@ func (r *Router) applyInviteGroups(username string, invite *Token) {
 	if len(invite.Groups) == 0 {
 		return
 	}
-	skip := func(group, reason string, err error) {
-		attrs := []any{"group", group, "username", username, "invited_by", invite.InvitedBy, "reason", reason}
-		if err != nil {
-			attrs = append(attrs, "err", err)
-		}
-		slog.Warn("AUDIT invite group skipped", attrs...)
-	}
+	skip := func(group, reason string, err error) { inviteGroupSkipped(username, invite, group, reason, err) }
 	if !r.inviteGroupsOn() {
-		for _, g := range invite.Groups {
-			skip(g.Name, "disabled", nil)
-		}
+		skipInviteGroups(username, invite, "disabled", nil)
 		return
 	}
 
@@ -153,9 +160,7 @@ func (r *Router) applyInviteGroups(username string, invite *Token) {
 			// a disabled account keeps its member-manager rights in FreeIPA
 			reason = "inviter disabled"
 		}
-		for _, g := range invite.Groups {
-			skip(g.Name, reason, err)
-		}
+		skipInviteGroups(username, invite, reason, err)
 		return
 	}
 

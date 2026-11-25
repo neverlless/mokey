@@ -137,7 +137,9 @@ func (r *Router) OTPRecoveryConfirm(c fiber.Ctx) error {
 		return c.Render("otprecovery-confirm.html", fiber.Map{"claims": claims})
 	}
 
-	MarkTokenUsed(token, TokenOTPRecovery, claims, r.storage)
+	if err := MarkTokenUsed(token, TokenOTPRecovery, claims, r.storage); err != nil {
+		logMarkFailed(claims, TokenOTPRecovery, err)
+	}
 	// release the issued-token lock now that this request is confirmed and
 	// queued, so a future recovery attempt isn't blocked until TTL expiry
 	if err := r.storage.Delete(TokenOTPRecovery + TokenIssuedPrefix + claims.Username); err != nil {
