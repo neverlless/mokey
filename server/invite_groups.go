@@ -55,9 +55,10 @@ func (r *Router) inviteGroupChoices(c fiber.Ctx) ([]inviteGroupChoice, error) {
 	return choices, nil
 }
 
-// inviteGroupVars puts the picker's groups into the people page vars; a
-// listing failure leaves the form without the picker
-func (r *Router) inviteGroupVars(c fiber.Ctx, vars fiber.Map) {
+// inviteGroupVars puts the picker's groups into the people page vars, with
+// the posted ticks and durations when keep is set; a listing failure leaves
+// the form without the picker
+func (r *Router) inviteGroupVars(c fiber.Ctx, vars fiber.Map, keep bool) {
 	if !r.inviteGroupsOn() {
 		return
 	}
@@ -66,16 +67,17 @@ func (r *Router) inviteGroupVars(c fiber.Ctx, vars fiber.Map) {
 		slog.Error("Failed to list groups for the invite form", "username", r.username(c), "err", err)
 		return
 	}
-	// after a rejected submit, keep what was ticked and picked
-	posted := c.Request().PostArgs()
-	for i := range choices {
-		ch := &choices[i]
-		for _, v := range posted.PeekMulti("groups") {
-			ch.Checked = ch.Checked || string(v) == ch.Name
-		}
-		if want := string(posted.Peek("duration_" + ch.Name)); want != "" {
-			for j := range ch.Durations {
-				ch.Durations[j].Selected = ch.Durations[j].Value == want
+	if keep {
+		posted := c.Request().PostArgs()
+		for i := range choices {
+			ch := &choices[i]
+			for _, v := range posted.PeekMulti("groups") {
+				ch.Checked = ch.Checked || string(v) == ch.Name
+			}
+			if want := string(posted.Peek("duration_" + ch.Name)); want != "" {
+				for j := range ch.Durations {
+					ch.Durations[j].Selected = ch.Durations[j].Value == want
+				}
 			}
 		}
 	}
