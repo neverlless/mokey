@@ -80,7 +80,8 @@ not disabled, the group still has member managers, the inviter is still a
 manager of it, it is not owned by sync and
 the end date is still allowed. A group that fails a check is skipped. The
 account is always created. If an end date cannot be stored, the add is rolled
-back.
+back. If mokey cannot record the invite link as used, the link would keep
+working, so all its groups are skipped with reason `failed`.
 
 Both outcomes are audit events, so they appear in the admin audit log and
 reach [webhooks](webhooks-api.md) like any other event:

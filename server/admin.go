@@ -180,14 +180,23 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	MarkTokenUsed(token, TokenInvite, claims, r.storage)
+	markErr := MarkTokenUsed(token, TokenInvite, claims, r.storage)
+	if markErr != nil {
+		logMarkFailed(claims, TokenInvite, markErr)
+	}
 
 	slog.Info("AUDIT invited user account created successfully",
 		"username", user.Username,
 		"email", user.Email,
 		"ip", RemoteIP(c),
 	)
-	r.applyInviteGroups(user.Username, claims)
+	if markErr != nil {
+		// the link stays valid, so every replay would make another account
+		// with the same groups
+		skipInviteGroups(user.Username, claims, "failed", markErr)
+	} else {
+		r.applyInviteGroups(user.Username, claims)
+	}
 	r.metrics.totalSignups.Inc()
 
 	if err := r.emailer.SendWelcomeEmail(user, c); err != nil {

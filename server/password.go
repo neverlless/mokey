@@ -570,7 +570,9 @@ func (r *Router) PasswordReset(c fiber.Ctx) error {
 		}
 	}
 
-	MarkTokenUsed(token, TokenPasswordReset, claims, r.storage)
+	if err := MarkTokenUsed(token, TokenPasswordReset, claims, r.storage); err != nil {
+		logMarkFailed(claims, TokenPasswordReset, err)
+	}
 	r.invalidateUserSessions(user.Username)
 
 	err = r.emailer.SendPasswordChangedEmail(user, c)

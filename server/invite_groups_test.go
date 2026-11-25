@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -241,4 +242,33 @@ func TestInviteAcceptSkipsDisabledInviter(t *testing.T) {
 	if assert.NotNil(t, e) {
 		assert.Equal(t, "inviter disabled", e.Attrs["reason"])
 	}
+}
+
+// usedMarkerDown fails every write of a token's used-marker
+type usedMarkerDown struct{ fiber.Storage }
+
+func (s *usedMarkerDown) Set(key string, val []byte, exp time.Duration) error {
+	if strings.Contains(key, TokenUsedPrefix) {
+		return errors.New("storage backend down")
+	}
+	return s.Storage.Set(key, val, exp)
+}
+
+func TestInviteAcceptMarkFailSkipsGroups(t *testing.T) {
+	tc, router, fake, _ := inviteGroupsApp(t, true, false)
+	allowServiceAccountAdds(t)
+	token := groupInviteToken(t, router, InviteGroup{Name: "chemists"}, InviteGroup{Name: "physics"})
+	router.storage = &usedMarkerDown{router.storage}
+
+	resp, _ := acceptPresetInvite(t, tc.app, token, "kim")
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(t, fakeUser(fake, "kim"))
+	assert.NotContains(t, groupMembers(t, fake, "chemists"), "kim")
+	skipped := map[string]string{}
+	for _, e := range auditRecent(router.storage, 50) {
+		if e.Message == "invite group skipped" {
+			skipped[e.Attrs["group"]] = e.Attrs["reason"]
+		}
+	}
+	assert.Equal(t, map[string]string{"chemists": "failed", "physics": "failed"}, skipped)
 }
