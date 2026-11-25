@@ -176,13 +176,17 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 	user.First = strings.TrimSpace(c.FormValue("first"))
 	user.Last = strings.TrimSpace(c.FormValue("last"))
 
+	undo, err := r.spendToken(token, TokenInvite, claims)
+	if err != nil {
+		slog.Debug("Invalid invite token",
+			"err", err,
+		)
+		return c.Status(fiber.StatusNotFound).SendString("")
+	}
+	defer undoOnError(c, undo)
+
 	if err := r.accountCreateWith(requestLanguage(c), user, c.FormValue("password"), c.FormValue("password2"), true, presetInviteUsername(claims) != ""); err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
-	}
-
-	markErr := MarkTokenUsed(token, TokenInvite, claims, r.storage)
-	if markErr != nil {
-		logMarkFailed(claims, TokenInvite, markErr)
 	}
 
 	slog.Info("AUDIT invited user account created successfully",
@@ -190,13 +194,7 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 		"email", user.Email,
 		"ip", RemoteIP(c),
 	)
-	if markErr != nil {
-		// the link stays valid, so every replay would make another account
-		// with the same groups
-		skipInviteGroups(user.Username, claims, "failed", markErr)
-	} else {
-		r.applyInviteGroups(user.Username, claims)
-	}
+	r.applyInviteGroups(user.Username, claims)
 	r.metrics.totalSignups.Inc()
 
 	if err := r.emailer.SendWelcomeEmail(user, c); err != nil {

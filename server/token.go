@@ -156,24 +156,54 @@ func ParseToken(token, prefix string, storage fiber.Storage) (*Token, error) {
 	return &tk, nil
 }
 
-// MarkTokenUsed runs after the token's action has taken effect, so a storage
-// failure cannot be rolled back: the caller logs it, and the token stays valid
-// until it expires
-func MarkTokenUsed(token, prefix string, claims *Token, storage fiber.Storage) error {
+var errTokenUsed = errors.New("token already used")
+
+// spendToken marks a parsed token used before its action runs, so two
+// concurrent submits cannot both act on it. undo frees the token again for
+// an action that failed; undoOnError does that for a handler's error reply.
+func (r *Router) spendToken(token, prefix string, claims *Token) (undo func(), err error) {
+	key := prefix + TokenUsedPrefix + token
+	// one lock per token kind, not per token: lock keys are never freed
+	unlock, err := r.lock.holdStrict(prefix + TokenUsedPrefix)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+
+	used, err := r.storage.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	if used != nil {
+		return nil, errTokenUsed
+	}
+
 	maxAge := int64(viper.GetInt("email.token_max_age"))
 	if claims.MaxAge > 0 {
 		maxAge = claims.MaxAge
 	}
 	ttl := time.Until(claims.Timestamp.Add(time.Duration(maxAge) * time.Second))
-	return storage.Set(prefix+TokenUsedPrefix+token, []byte("true"), ttl)
+	if err := r.storage.Set(key, []byte("true"), ttl); err != nil {
+		return nil, err
+	}
+
+	return func() {
+		if err := r.storage.Delete(key); err != nil {
+			slog.Error("Failed to release a single-use link after a failed attempt, it stays spent",
+				"username", claims.Username,
+				"token_type", prefix,
+				"err", err,
+			)
+		}
+	}, nil
 }
 
-func logMarkFailed(claims *Token, prefix string, err error) {
-	slog.Error("Failed to mark token used",
-		"username", claims.Username,
-		"token_type", prefix,
-		"err", err,
-	)
+// undoOnError, deferred after spendToken, gives the token back unless the
+// handler answered 200
+func undoOnError(c fiber.Ctx, undo func()) {
+	if c.Response().StatusCode() != fiber.StatusOK {
+		undo()
+	}
 }
 
 // EnsureSecrets generates server.csrf_secret and email.token_secret when they
