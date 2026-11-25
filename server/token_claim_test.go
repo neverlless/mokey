@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	ipa "github.com/neverlless/goipa"
 	"github.com/neverlless/goipa/ipatest"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,17 +84,32 @@ func TestInviteAcceptConcurrentSubmitOnce(t *testing.T) {
 	}
 
 	codes := make([]int, len(names))
+	errs := make([]error, len(names))
 	var wg sync.WaitGroup
 	for i, name := range names {
 		wg.Go(func() {
 			// a request that never reaches user_add frees the other one
 			defer gate.release()
-			resp := guests[i].postForm("/auth/invite/"+token, inviteForm(name), nil)
+			// not postForm: its t.Fatalf must not run off the test goroutine
+			req := httptest.NewRequest("POST", "/auth/invite/"+token, strings.NewReader(inviteForm(name).Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("X-CSRF-Token", guests[i].csrf)
+			for k, v := range guests[i].cookies {
+				req.AddCookie(&http.Cookie{Name: k, Value: v})
+			}
+			resp, err := tc.app.Test(req, fiber.TestConfig{Timeout: 10 * time.Second, FailOnTimeout: true})
+			if err != nil {
+				errs[i] = err
+				return
+			}
 			_ = resp.Body.Close()
 			codes[i] = resp.StatusCode
 		})
 	}
 	wg.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
 
 	created := 0
 	for _, name := range names {
@@ -138,4 +157,32 @@ func TestInviteAcceptClaimStorageDownRefused(t *testing.T) {
 	assert.Equal(t, fiber.StatusNotFound, resp.StatusCode)
 	assert.Nil(t, fakeUser(fake, "kim"))
 	assert.NotContains(t, groupMembers(t, fake, "chemists"), "kim")
+}
+
+// user_add ran but FreeIPA refused the password and the cleanup failed: the
+// account exists, so another try with another username must not make a
+// second one
+func TestInviteAcceptLeftAccountKeepsLinkSpent(t *testing.T) {
+	tc, router, fake, _ := inviteGroupsApp(t, true, false)
+	viper.Set("accounts.min_passwd_len", 4)
+	reportLaxerPolicy(fake)
+	fake.Handle("user_del", func(ipatest.Call) (any, *ipa.IpaError) {
+		return nil, &ipa.IpaError{Code: 903, Message: "internal error"}
+	})
+	token := groupInviteToken(t, router, InviteGroup{Name: "chemists"})
+
+	guest := newTestClient(t, tc.app)
+	guest.getCSRF("/auth/invite/" + token)
+	resp := guest.postForm("/auth/invite/"+token, url.Values{
+		"username": {"kim"}, "first": {"Kim"}, "last": {"Wexler"},
+		"password": {"sh0rt"}, "password2": {"sh0rt"},
+	}, nil)
+	assert.Equal(t, fiber.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, T("password.rejected_by_policy"), readBody(t, resp))
+	assert.NotNil(t, fakeUser(fake, "kim"))
+
+	resp = guest.postForm("/auth/invite/"+token, inviteForm("kwexler"), nil)
+	_ = resp.Body.Close()
+	assert.Equal(t, fiber.StatusNotFound, resp.StatusCode)
+	assert.Nil(t, fakeUser(fake, "kwexler"))
 }

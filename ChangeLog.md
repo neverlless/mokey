@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Fix: single-use mail links (invite, password reset, account
+- Single-use mail links (invite, password reset, account
   verification, email change, OTP recovery) now work once even when
   submitted twice at the same moment; a failed attempt leaves the link
   usable (#91)

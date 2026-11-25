@@ -198,10 +198,11 @@ func (r *Router) spendToken(token, prefix string, claims *Token) (undo func(), e
 	}, nil
 }
 
-// undoOnError, deferred after spendToken, gives the token back unless the
-// handler answered 200
+// undoOnError, deferred after spendToken, gives the token back when the
+// handler answered with an error status. Any other status keeps it spent,
+// so a success path answering 201 or a redirect never frees a used link.
 func undoOnError(c fiber.Ctx, undo func()) {
-	if c.Response().StatusCode() != fiber.StatusOK {
+	if c.Response().StatusCode() >= fiber.StatusBadRequest {
 		undo()
 	}
 }

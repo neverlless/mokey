@@ -183,9 +183,13 @@ func (r *Router) InviteAccept(c fiber.Ctx) error {
 		)
 		return c.Status(fiber.StatusNotFound).SendString("")
 	}
-	defer undoOnError(c, undo)
 
 	if err := r.accountCreateWith(requestLanguage(c), user, c.FormValue("password"), c.FormValue("password2"), true, presetInviteUsername(claims) != ""); err != nil {
+		// an account the link already made keeps it spent: a retry with
+		// another username would make a second one
+		if !errors.As(err, new(accountLeftError)) {
+			undo()
+		}
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 

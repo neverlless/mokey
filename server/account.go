@@ -272,15 +272,17 @@ func (r *Router) accountCreateWith(lang string, user *ipa.User, password, passwo
 			// second, so a policy rejection leaves a half-created account
 			// holding a random password. Left behind it would block the
 			// retry we are about to invite with "username already exists".
+			// FreeIPA rejected the password after the local check passed;
+			// say so instead of "contact your administrator" (#18)
+			rejected := errors.New(TL(lang, "password.rejected_by_policy"))
 			if derr := r.adminClient.UserDelete(false, true, user.Username); derr != nil {
 				slog.Error("Failed to remove half-created account after password rejection",
 					"err", derr,
 					"username", user.Username,
 				)
+				return accountLeftError{rejected}
 			}
-			// FreeIPA rejected the password after the local check passed;
-			// say so instead of "contact your administrator" (#18)
-			return errors.New(TL(lang, "password.rejected_by_policy"))
+			return rejected
 		default:
 			slog.Error("Failed to create user account",
 				"err", err,
@@ -290,7 +292,13 @@ func (r *Router) accountCreateWith(lang string, user *ipa.User, password, passwo
 				"last", user.Last,
 				"homedir", user.HomeDir,
 			)
-			return errors.New("Failed to create account. Please contact system administrator")
+			failed := errors.New("Failed to create account. Please contact system administrator")
+			// not ErrUserExists, so an account there now is the one user_add
+			// made before the password step failed
+			if _, serr := r.adminClient.UserShow(user.Username); serr == nil {
+				return accountLeftError{failed}
+			}
+			return failed
 		}
 	}
 
@@ -321,6 +329,10 @@ func (r *Router) accountCreateWith(lang string, user *ipa.User, password, passwo
 
 	return nil
 }
+
+// accountLeftError is an accountCreateWith failure after user_add made the
+// account, which is still in FreeIPA
+type accountLeftError struct{ error }
 
 // stagedAccountCreate creates the signup as a FreeIPA stage user instead of
 // a disabled active account. stageuser_add only checks the staging tree for
