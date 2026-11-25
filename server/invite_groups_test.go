@@ -40,7 +40,6 @@ func inviteGroupsApp(t *testing.T, on bool, durations bool) (*testClient, *Route
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"walter"}})
 	fake.AddGroup("engineers", ipatest.Group{ManagerUsers: []string{"walter"}})
 	fake.AddGroup("physics", ipatest.Group{ManagerUsers: []string{"skyler"}})
-	allowServiceAccountAdds(t)
 	fake.GrantPrivilege(keytabUser, "Modify Group membership")
 	tc := newTestClient(t, app)
 	tc.login("walter", "Secret123!")
@@ -107,6 +106,7 @@ func TestInviteSendGroupsChecked(t *testing.T) {
 
 func TestInviteAcceptAddsGroups(t *testing.T) {
 	tc, router, fake, _ := inviteGroupsApp(t, true, false)
+	allowServiceAccountAdds(t)
 	token := groupInviteToken(t, router, InviteGroup{Name: "chemists"})
 
 	resp, _ := acceptPresetInvite(t, tc.app, token, "kim")
@@ -122,6 +122,7 @@ func TestInviteAcceptAddsGroups(t *testing.T) {
 
 func TestInviteAcceptTimeBound(t *testing.T) {
 	tc, router, fake, _ := inviteGroupsApp(t, true, true)
+	allowServiceAccountAdds(t)
 	token := groupInviteToken(t, router, InviteGroup{Name: "chemists", Duration: "7d"})
 
 	before := time.Now()
@@ -138,6 +139,7 @@ func TestInviteAcceptTimeBound(t *testing.T) {
 
 func TestInviteAcceptSkipsLostRights(t *testing.T) {
 	tc, router, fake, _ := inviteGroupsApp(t, true, false)
+	allowServiceAccountAdds(t)
 	token := groupInviteToken(t, router, InviteGroup{Name: "chemists"})
 	fake.AddGroup("chemists", ipatest.Group{ManagerUsers: []string{"skyler"}})
 
@@ -154,6 +156,7 @@ func TestInviteAcceptSkipsLostRights(t *testing.T) {
 
 func TestInviteAcceptOptionOffSkips(t *testing.T) {
 	tc, router, fake, _ := inviteGroupsApp(t, true, false)
+	allowServiceAccountAdds(t)
 	token := groupInviteToken(t, router, InviteGroup{Name: "chemists"})
 	viper.Set("admin.invite_groups", false)
 
@@ -169,6 +172,7 @@ func TestInviteAcceptOptionOffSkips(t *testing.T) {
 
 func TestInviteAcceptOldToken(t *testing.T) {
 	tc, router, fake, _ := inviteGroupsApp(t, true, false)
+	allowServiceAccountAdds(t)
 	token, err := NewToken("kim@example.com", "kim@example.com", TokenInvite, router.storage)
 	require.NoError(t, err)
 
@@ -182,6 +186,7 @@ func TestInviteAcceptOldToken(t *testing.T) {
 
 func TestInviteAcceptStoreFailRollsBack(t *testing.T) {
 	tc, router, fake, _ := inviteGroupsApp(t, true, true)
+	allowServiceAccountAdds(t)
 	allowServiceAccountRemovals(t)
 	token := groupInviteToken(t, router, InviteGroup{Name: "chemists", Duration: "7d"})
 	router.storage = &timedMembersDown{router.storage}
