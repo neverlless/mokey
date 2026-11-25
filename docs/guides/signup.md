@@ -60,6 +60,36 @@ first and last name; the invitee sees the username read-only and can edit
 the names. A username that is invalid or already taken is rejected before
 anything is sent.
 
+### Groups chosen at invite
+
+With `admin.invite_groups = true` (off by default) the invite form lists the
+groups the inviting admin is a member manager of, up to 20 per invite. Groups
+without member managers and groups owned by
+[directory sync](directory-sync.md) are not offered. When
+[`groups.durations`](groups.md) is set, each group also gets an end date.
+
+The groups are applied when the invitee accepts the invite and the account is
+created. Adding runs as mokey's service account, because the invitee has no
+session yet and the inviter is not there. It needs the same FreeIPA
+permission as removing expired memberships, even without `groups.durations`:
+see [FreeIPA privilege](groups.md#freeipa-privilege).
+
+Because rights may change between sending and accepting, mokey checks each
+group again before adding: the option is still on, the group still has member
+managers, the inviter is still a manager of it, it is not owned by sync and
+the end date is still allowed. A group that fails a check is skipped. The
+account is always created. If an end date cannot be stored, the add is rolled
+back.
+
+Both outcomes are audit events, so they appear in the admin audit log and
+reach [webhooks](webhooks-api.md) like any other event:
+
+- `AUDIT invited user added to group` with `group`, `username`, `invited_by`
+  and `until` for a time-bound add.
+- `AUDIT invite group skipped` with the same fields and a `reason`:
+  `disabled`, `sync`, `not managed`, `not a manager`, `invalid duration` or
+  `failed` (with `err`).
+
 ## FreeIPA prerequisites
 
 - **User Administrators** (creating and enabling users) and the

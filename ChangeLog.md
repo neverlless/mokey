@@ -1,5 +1,11 @@
 # Mokey ChangeLog
 
+## Unreleased
+
+- New `admin.invite_groups` (off by default): the invite form can put the
+  invited user into groups the admin sponsors, with an end date when
+  `groups.durations` is set (#87, thanks @jameslawfer)
+
 ## [v2.13.0] - 2026-11-20
 
 - New `[server.csp]`: extra Content-Security-Policy sources per fetch
