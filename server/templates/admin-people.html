@@ -48,13 +48,14 @@
       {{ range $g := . }}
       <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
         <div class="form-check mb-0">
-          <input class="form-check-input" type="checkbox" name="groups" value="{{ $g.Name }}" id="invite-group-{{ $g.Name }}">
-          <label class="form-check-label" for="invite-group-{{ $g.Name }}">{{ $g.Name }}{{ with $g.Description }} <span class="text-muted small">{{ . }}</span>{{ end }}</label>
+          <input class="form-check-input" type="checkbox" name="groups" value="{{ $g.Name }}" id="invite-group-{{ $g.Name }}"{{ if $g.Checked }} checked{{ end }}{{ with $g.Description }} aria-describedby="invite-group-desc-{{ $g.Name }}"{{ end }}>
+          <label class="form-check-label" id="invite-group-label-{{ $g.Name }}" for="invite-group-{{ $g.Name }}">{{ $g.Name }}</label>
+          {{ with $g.Description }}<span class="text-muted small" id="invite-group-desc-{{ $g.Name }}">{{ . }}</span>{{ end }}
         </div>
         {{ with $g.Durations }}
-        <label for="invite-duration-{{ $g.Name }}" class="visually-hidden">{{ T "groups.duration_label" }}</label>
-        <select class="form-select form-select-sm w-auto" name="duration_{{ $g.Name }}" id="invite-duration-{{ $g.Name }}">
-          {{ range . }}<option value="{{ .Value }}">{{ .Label }}</option>{{ end }}
+        <label for="invite-duration-{{ $g.Name }}" id="invite-duration-label-{{ $g.Name }}" class="visually-hidden">{{ T "groups.duration_label" }}</label>
+        <select class="form-select form-select-sm w-auto" name="duration_{{ $g.Name }}" id="invite-duration-{{ $g.Name }}" aria-labelledby="invite-duration-label-{{ $g.Name }} invite-group-label-{{ $g.Name }}">
+          {{ range . }}<option value="{{ .Value }}"{{ if .Selected }} selected{{ end }}>{{ .Label }}</option>{{ end }}
         </select>
         {{ end }}
       </div>
