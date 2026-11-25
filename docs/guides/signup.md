@@ -75,8 +75,9 @@ permission as removing expired memberships, even without `groups.durations`:
 see [FreeIPA privilege](groups.md#freeipa-privilege).
 
 Because rights may change between sending and accepting, mokey checks each
-group again before adding: the option is still on, the group still has member
-managers, the inviter is still a manager of it, it is not owned by sync and
+group again before adding: the option is still on, the inviter's account is
+not disabled, the group still has member managers, the inviter is still a
+manager of it, it is not owned by sync and
 the end date is still allowed. A group that fails a check is skipped. The
 account is always created. If an end date cannot be stored, the add is rolled
 back.
@@ -87,8 +88,8 @@ reach [webhooks](webhooks-api.md) like any other event:
 - `AUDIT invited user added to group` with `group`, `username`, `invited_by`
   and `until` for a time-bound add.
 - `AUDIT invite group skipped` with the same fields and a `reason`:
-  `disabled`, `sync`, `not managed`, `not a manager`, `invalid duration` or
-  `failed` (with `err`).
+  `disabled`, `inviter disabled`, `sync`, `not managed`, `not a manager`,
+  `invalid duration` or `failed` (with `err`).
 
 ## FreeIPA prerequisites
 

@@ -226,3 +226,19 @@ func TestInviteSendSuccessClearsGroups(t *testing.T) {
 	assert.NotRegexp(t, `name="groups" value="chemists"[^>]* checked`, body)
 	assert.NotContains(t, body, " selected>")
 }
+
+func TestInviteAcceptSkipsDisabledInviter(t *testing.T) {
+	tc, router, fake, _ := inviteGroupsApp(t, true, false)
+	allowServiceAccountAdds(t)
+	token := groupInviteToken(t, router, InviteGroup{Name: "chemists"})
+	fake.AddUser("walter", ipatest.User{Password: "Secret123!", Groups: []string{"admins"}, Locked: true})
+
+	resp, _ := acceptPresetInvite(t, tc.app, token, "kim")
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	assert.NotNil(t, fakeUser(fake, "kim"))
+	assert.NotContains(t, groupMembers(t, fake, "chemists"), "kim")
+	e := auditEvent(router, "invite group skipped")
+	if assert.NotNil(t, e) {
+		assert.Equal(t, "inviter disabled", e.Attrs["reason"])
+	}
+}
