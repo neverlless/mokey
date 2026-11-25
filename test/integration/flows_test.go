@@ -184,9 +184,10 @@ func TestOTPLogin(t *testing.T) {
 // docs/guides/groups.md, and a group that lost its member managers shows up
 // as a failed expiry instead of silently staying permanent. The sweep runs
 // every 5 minutes, so this takes up to about 6.
-func TestTimedMembershipExpiresOnRealFreeIPA(t *testing.T) {
-	stand(t)
-
+// grantMembershipWrite gives mokey's role the scoped group membership
+// permission from docs/guides/groups.md until the test ends
+func grantMembershipWrite(t *testing.T) {
+	t.Helper()
 	const perm, priv, role = "Mokey Modify Sponsored Group Membership", "Mokey Expire Memberships", "Mokey User Manager"
 	if out, err := ipaCmd("", "permission-show", perm); err == nil {
 		t.Fatalf("permission %q already exists on the stand, remove it first: %s", perm, out)
@@ -200,6 +201,11 @@ func TestTimedMembershipExpiresOnRealFreeIPA(t *testing.T) {
 	mustIPA(t, "privilege-add", priv, "--desc=Remove expired time-bound memberships")
 	mustIPA(t, "privilege-add-permission", priv, "--permissions="+perm)
 	mustIPA(t, "role-add-privilege", role, "--privileges="+priv)
+}
+
+func TestTimedMembershipExpiresOnRealFreeIPA(t *testing.T) {
+	stand(t)
+	grantMembershipWrite(t)
 
 	sponsor, expiring, orphaned := newUser(t), newUser(t), newUser(t)
 	mustIPA(t, "group-add", "timed"+runID, "--desc=mokey integration")
