@@ -64,8 +64,8 @@ anything is sent.
 
 With `admin.invite_groups = true` (off by default) the invite form lists the
 groups the inviting admin is a member manager of, up to 20 per invite. Groups
-without member managers and groups owned by
-[directory sync](directory-sync.md) are not offered. When
+without member managers, mokey's admin group (`admin.group`) and groups owned
+by [directory sync](directory-sync.md) are not offered. When
 [`groups.durations`](groups.md) is set, each group also gets an end date.
 
 The groups are applied when the invitee accepts the invite and the account is
@@ -76,9 +76,9 @@ see [FreeIPA privilege](groups.md#freeipa-privilege).
 
 Because rights may change between sending and accepting, mokey checks each
 group again before adding: the option is still on, the inviter's account is
-not disabled, the group still has member managers, the inviter is still a
-manager of it, it is not owned by sync and
-the end date is still allowed. A group that fails a check is skipped. The
+not disabled, the group is not owned by sync and is not the admin group, it
+still has member managers, the inviter is still a manager of it and the end
+date is still allowed. A group that fails a check is skipped. The
 account is always created. If an end date cannot be stored, the add is rolled
 back. If mokey cannot record the invite link as used, the link would keep
 working, so all its groups are skipped with reason `failed`.
@@ -89,8 +89,8 @@ reach [webhooks](webhooks-api.md) like any other event:
 - `AUDIT invited user added to group` with `group`, `username`, `invited_by`
   and `until` for a time-bound add.
 - `AUDIT invite group skipped` with the same fields and a `reason`:
-  `disabled`, `inviter disabled`, `sync`, `not managed`, `not a manager`,
-  `invalid duration` or `failed` (with `err`).
+  `disabled`, `inviter disabled`, `sync`, `admin group`, `not managed`,
+  `not a manager`, `invalid duration` or `failed` (with `err`).
 
 ## FreeIPA prerequisites
 
