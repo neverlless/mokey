@@ -212,7 +212,7 @@ func TestAdminPeopleInviteGroupList(t *testing.T) {
 	assert.Regexp(t, `name="groups" value="chemists"[^>]* checked`, body)
 	assert.Regexp(t, `<option value="168h0m0s" selected>`, body)
 	assert.NotRegexp(t, `<option value="720h0m0s" selected>`, body)
-	assert.Contains(t, body, `aria-labelledby="invite-duration-label-chemists invite-group-label-chemists"`)
+	assert.Contains(t, body, `aria-labelledby="invite-gdurlabel-chemists invite-glabel-chemists"`)
 
 	tc, _, _, _ = inviteGroupsApp(t, true, false)
 	body = readBody(t, tc.get("/admin/people", htmx))
