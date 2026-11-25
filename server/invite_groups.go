@@ -54,6 +54,20 @@ func (r *Router) inviteGroupChoices(c fiber.Ctx) ([]inviteGroupChoice, error) {
 	return choices, nil
 }
 
+// inviteGroupVars puts the picker's groups into the people page vars; a
+// listing failure leaves the form without the picker
+func (r *Router) inviteGroupVars(c fiber.Ctx, vars fiber.Map) {
+	if !r.inviteGroupsOn() {
+		return
+	}
+	choices, err := r.inviteGroupChoices(c)
+	if err != nil {
+		slog.Error("Failed to list groups for the invite form", "username", r.username(c), "err", err)
+		return
+	}
+	vars["invite_groups"] = choices
+}
+
 // inviteGroupsFromForm reads the ticked groups and their durations; the
 // error carries the form message to show.
 func (r *Router) inviteGroupsFromForm(c fiber.Ctx) ([]InviteGroup, error) {

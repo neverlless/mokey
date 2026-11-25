@@ -64,6 +64,7 @@ func (r *Router) InviteSend(c fiber.Ctx) error {
 	vars := fiber.Map{
 		"user": r.user(c),
 	}
+	r.inviteGroupVars(c, vars)
 
 	check := &ipa.User{Email: email}
 	if err := validateEmail(check, viper.GetStringMapString("accounts.allowed_domains")); err != nil {
