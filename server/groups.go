@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	ipa "github.com/neverlless/goipa"
 )
 
 type managedGroup struct {
@@ -565,6 +566,11 @@ func (r *Router) GroupApprove(c fiber.Ctx) error {
 // permanent, dropping any earlier record). On failure the membership is
 // removed again: a time-bound grant must never stay without its record.
 func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Time) error {
+	return r.recordGrantAs(r.userClient(c), r.username(c), group, username, until)
+}
+
+// recordGrantAs is recordGrant for grantedBy, rolling back with client.
+func (r *Router) recordGrantAs(client *ipa.Client, grantedBy, group, username string, until time.Time) error {
 	var err error
 	if until.IsZero() {
 		err = r.dropTimedIfAny(group, username)
@@ -582,7 +588,7 @@ func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Tim
 			Group:     group,
 			Username:  username,
 			Until:     until,
-			GrantedBy: r.username(c),
+			GrantedBy: grantedBy,
 			GrantedAt: time.Now(),
 		})
 	}
@@ -594,7 +600,7 @@ func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Tim
 		"username", username,
 		"err", err,
 	)
-	rerr := groupRemoveMember(r.userClient(c), group, username)
+	rerr := groupRemoveMember(client, group, username)
 	switch {
 	case rerr == nil:
 		return err
@@ -602,7 +608,7 @@ func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Tim
 		slog.Error("Rollback failed: membership left without its end date record",
 			"group", group,
 			"username", username,
-			"sponsor", r.username(c),
+			"sponsor", grantedBy,
 			"err", rerr,
 		)
 		return err
@@ -610,7 +616,7 @@ func (r *Router) recordGrant(c fiber.Ctx, group, username string, until time.Tim
 	slog.Error("AUDIT group membership granted without end date",
 		"group", group,
 		"username", username,
-		"sponsor", r.username(c),
+		"sponsor", grantedBy,
 		"err", err,
 		"rollback_err", rerr,
 	)
