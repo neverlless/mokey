@@ -36,7 +36,7 @@ the end. It also grants mokey's role the account expiry permission from
 Start the stand with mokey built from your checkout and the overlay that
 turns the CAPTCHA off (signup and forgot password cannot pass it) and
 switches mokey to sqlite3 storage, turns on sponsor renewal
-(`lifecycle.renewal_period = 365d`, `lifecycle.max_changes_per_run = 1`)
+(`lifecycle.renewal_period = 365d`, `lifecycle.max_changes_per_run = 1`),
 turns on groups chosen at invite (`admin.invite_groups`) and sets
 `groups.durations = 1m 1h`, which the
 time-bound membership test needs (it waits for the 5-minute expiry sweep, so
