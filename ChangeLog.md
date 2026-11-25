@@ -1,10 +1,20 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.14.0] - 2026-11-25
 
 - New `admin.invite_groups` (off by default): the invite form can put the
   invited user into groups the admin sponsors, with an end date when
-  `groups.durations` is set (#87, thanks @jameslawfer)
+  `groups.durations` is set (#87, thanks @jameslawfer). Each group is
+  checked again when the invite is accepted; a group that no longer
+  qualifies is skipped and logged, and the account is still created
+- Dependencies: fasthttp 1.79, golang.org/x/net 0.63, Google API client
+  0.316; Astro 7.4.13 and Starlight 0.43 for the documentation site
+
+### Upgrade notes
+
+- With `admin.invite_groups` on, mokey's service account adds the invited
+  users, so its role needs the `Mokey Modify Sponsored Group Membership`
+  permission from the groups guide, even without `groups.durations`
 
 ## [v2.13.0] - 2026-11-20
 
