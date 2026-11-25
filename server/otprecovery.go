@@ -137,8 +137,9 @@ func (r *Router) OTPRecoveryConfirm(c fiber.Ctx) error {
 		return c.Render("otprecovery-confirm.html", fiber.Map{"claims": claims})
 	}
 
-	if err := MarkTokenUsed(token, TokenOTPRecovery, claims, r.storage); err != nil {
-		logMarkFailed(claims, TokenOTPRecovery, err)
+	if _, err := r.spendToken(token, TokenOTPRecovery, claims); err != nil {
+		slog.Debug("Invalid OTP recovery token", "err", err)
+		return c.Status(fiber.StatusNotFound).SendString("")
 	}
 	// release the issued-token lock now that this request is confirmed and
 	// queued, so a future recovery attempt isn't blocked until TTL expiry

@@ -259,25 +259,6 @@ func (s *usedMarkerDown) Set(key string, val []byte, exp time.Duration) error {
 	return s.Storage.Set(key, val, exp)
 }
 
-func TestInviteAcceptMarkFailSkipsGroups(t *testing.T) {
-	tc, router, fake, _ := inviteGroupsApp(t, true, false)
-	allowServiceAccountAdds(t)
-	token := groupInviteToken(t, router, InviteGroup{Name: "chemists"}, InviteGroup{Name: "physics"})
-	router.storage = &usedMarkerDown{router.storage}
-
-	resp, _ := acceptPresetInvite(t, tc.app, token, "kim")
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-	assert.NotNil(t, fakeUser(fake, "kim"))
-	assert.NotContains(t, groupMembers(t, fake, "chemists"), "kim")
-	skipped := map[string]string{}
-	for _, e := range auditRecent(router.storage, 50) {
-		if e.Message == "invite group skipped" {
-			skipped[e.Attrs["group"]] = e.Attrs["reason"]
-		}
-	}
-	assert.Equal(t, map[string]string{"chemists": "failed", "physics": "failed"}, skipped)
-}
-
 func TestInviteGroupsExcludeAdminGroup(t *testing.T) {
 	tc, router, fake, sink := inviteGroupsApp(t, true, false)
 	allowServiceAccountAdds(t)

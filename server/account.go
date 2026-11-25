@@ -388,6 +388,15 @@ func (r *Router) AccountVerify(c fiber.Ctx) error {
 		return c.Render("verify-account.html", vars)
 	}
 
+	undo, err := r.spendToken(token, TokenAccountVerify, claims)
+	if err != nil {
+		slog.Debug("Invalid account verify token",
+			"err", err,
+		)
+		return c.Status(fiber.StatusNotFound).SendString("")
+	}
+	defer undoOnError(c, undo)
+
 	// Staged signups live in the staging tree; missing there falls through
 	// to the legacy path (signups from before staged_signup was enabled)
 	var user *ipa.User
@@ -406,15 +415,15 @@ func (r *Router) AccountVerify(c fiber.Ctx) error {
 	}
 
 	if user == nil {
-		return r.verifyLegacyUser(c, claims, token)
+		return r.verifyLegacyUser(c, claims)
 	}
 
-	return r.finishAccountVerify(c, claims, user, token)
+	return r.finishAccountVerify(c, claims, user)
 }
 
 // verifyLegacyUser finishes email verification for a disabled-until-verified
 // signup (the pre-staged_signup backend)
-func (r *Router) verifyLegacyUser(c fiber.Ctx, claims *Token, token string) error {
+func (r *Router) verifyLegacyUser(c fiber.Ctx, claims *Token) error {
 	user, err := r.adminClient.UserShow(claims.Username)
 	if err != nil {
 		slog.Error("Verifying account failed while fetching user from FreeIPA",
@@ -456,16 +465,12 @@ func (r *Router) verifyLegacyUser(c fiber.Ctx, claims *Token, token string) erro
 		}
 	}
 
-	return r.finishAccountVerify(c, claims, user, token)
+	return r.finishAccountVerify(c, claims, user)
 }
 
-// finishAccountVerify marks the verify token used, sends the welcome email
-// and renders the success page — shared by the staged and legacy paths
-func (r *Router) finishAccountVerify(c fiber.Ctx, claims *Token, user *ipa.User, token string) error {
-	if err := MarkTokenUsed(token, TokenAccountVerify, claims, r.storage); err != nil {
-		logMarkFailed(claims, TokenAccountVerify, err)
-	}
-
+// finishAccountVerify sends the welcome email and renders the success
+// page — shared by the staged and legacy paths
+func (r *Router) finishAccountVerify(c fiber.Ctx, claims *Token, user *ipa.User) error {
 	err := r.emailer.SendWelcomeEmail(user, c)
 	if err != nil {
 		slog.Error("Failed to send welcome email",
@@ -615,6 +620,15 @@ func (r *Router) EmailChangeConfirm(c fiber.Ctx) error {
 	oldEmail := user.Email
 	user.Email = claims.Email
 
+	undo, err := r.spendToken(token, TokenEmailChange, claims)
+	if err != nil {
+		slog.Debug("Invalid email change token",
+			"err", err,
+		)
+		return c.Status(fiber.StatusNotFound).SendString("")
+	}
+	defer undoOnError(c, undo)
+
 	if _, err := r.adminClient.UserMod(user); err != nil {
 		slog.Error("Email change failed to modify user in FreeIPA",
 			"username", claims.Username,
@@ -622,10 +636,6 @@ func (r *Router) EmailChangeConfirm(c fiber.Ctx) error {
 			"err", err,
 		)
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.fatal_system_error"))
-	}
-
-	if err := MarkTokenUsed(token, TokenEmailChange, claims, r.storage); err != nil {
-		logMarkFailed(claims, TokenEmailChange, err)
 	}
 
 	if oldEmail != "" {

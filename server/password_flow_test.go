@@ -1,9 +1,6 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -237,10 +234,9 @@ func TestPasswordResetInvalidatesSessions(t *testing.T) {
 	assert.Equal(fiber.StatusFound, resp.StatusCode)
 }
 
-// The password is already changed when the used marker is written, so a
-// failed write cannot undo the reset, but it leaves the link reusable and
-// must not go unnoticed
-func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
+// The link is claimed before the password changes: when the claim cannot be
+// stored the reset is refused and the password stays as it was
+func TestPasswordResetClaimStorageDownRefused(t *testing.T) {
 	assert := assert.New(t)
 	app, router, fake := newTestApp(t)
 	fake.AddUser("walter", ipatest.User{Password: "OldSecret123!"})
@@ -250,34 +246,14 @@ func TestPasswordResetLogsUsedMarkerFailure(t *testing.T) {
 
 	tc := newTestClient(t, app)
 	tc.getCSRF("/auth/resetpw/" + token)
-
-	var logs bytes.Buffer
-	saved := slog.Default()
-	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
-	t.Cleanup(func() { slog.SetDefault(saved) })
 	router.storage = &failingSetStorage{router.storage}
 
 	resp := tc.postForm("/auth/resetpw/"+token, url.Values{
 		"password":  {"NewSecret456!"},
 		"password2": {"NewSecret456!"},
 	}, nil)
-	assert.Equal(fiber.StatusOK, resp.StatusCode)
-	assert.Equal("NewSecret456!", fakeUser(fake, "walter").Password)
-
-	logged := false
-	dec := json.NewDecoder(&logs)
-	for {
-		var e map[string]any
-		if dec.Decode(&e) != nil {
-			break
-		}
-		if e["level"] == "ERROR" && e["msg"] == "Failed to mark token used" {
-			logged = true
-			assert.Equal("walter", e["username"])
-			assert.NotEmpty(e["err"])
-		}
-	}
-	assert.True(logged, "used-marker write failure was not logged")
+	assert.Equal(fiber.StatusNotFound, resp.StatusCode)
+	assert.Equal("OldSecret123!", fakeUser(fake, "walter").Password)
 }
 
 // futureMarker rewrites the password-change marker one minute into the

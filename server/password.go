@@ -541,6 +541,12 @@ func (r *Router) PasswordReset(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
+	undo, err := r.spendToken(token, TokenPasswordReset, claims)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).SendString("")
+	}
+	defer undoOnError(c, undo)
+
 	rand, err := r.adminClient.ResetPassword(user.Username)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(TC(c, "account.system_error"))
@@ -570,9 +576,6 @@ func (r *Router) PasswordReset(c fiber.Ctx) error {
 		}
 	}
 
-	if err := MarkTokenUsed(token, TokenPasswordReset, claims, r.storage); err != nil {
-		logMarkFailed(claims, TokenPasswordReset, err)
-	}
 	r.invalidateUserSessions(user.Username)
 
 	err = r.emailer.SendPasswordChangedEmail(user, c)
