@@ -180,10 +180,6 @@ func TestOTPLogin(t *testing.T) {
 	}
 }
 
-// A grant ends on the real FreeIPA through the scoped permission from
-// docs/guides/groups.md, and a group that lost its member managers shows up
-// as a failed expiry instead of silently staying permanent. The sweep runs
-// every 5 minutes, so this takes up to about 6.
 // grantMembershipWrite gives mokey's role the scoped group membership
 // permission from docs/guides/groups.md until the test ends
 func grantMembershipWrite(t *testing.T) {
@@ -203,6 +199,10 @@ func grantMembershipWrite(t *testing.T) {
 	mustIPA(t, "role-add-privilege", role, "--privileges="+priv)
 }
 
+// A grant ends on the real FreeIPA through the scoped permission from
+// docs/guides/groups.md, and a group that lost its member managers shows up
+// as a failed expiry instead of silently staying permanent. The sweep runs
+// every 5 minutes, so this takes up to about 6.
 func TestTimedMembershipExpiresOnRealFreeIPA(t *testing.T) {
 	stand(t)
 	grantMembershipWrite(t)
