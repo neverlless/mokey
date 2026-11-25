@@ -1,11 +1,11 @@
 # Mokey ChangeLog
 
-## Unreleased
+## [v2.14.1] - 2026-11-25
 
-- Single-use mail links (invite, password reset, account
-  verification, email change, OTP recovery) now work once even when
-  submitted twice at the same moment; a failed attempt leaves the link
-  usable (#91)
+- Single-use mail links (invite, password reset, account verification,
+  email change, OTP recovery) now work once even when submitted twice at
+  the same moment; a failed attempt leaves the link usable unless it
+  already created the account (#91)
 
 ## [v2.14.0] - 2026-11-25
 
