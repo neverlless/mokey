@@ -43,6 +43,7 @@ func TestUIPreviewServe(t *testing.T) {
 		viper.Set("hydra.clients", []map[string]any{{"client_id": "wiki", "groups": []string{"staff"}}})
 		viper.Set("accounts.enable_subid", true)
 		viper.Set("admin.enabled", true)
+		viper.Set("admin.invite_groups", true)
 		viper.Set("storage.driver", "sqlite3")
 		viper.Set("storage.sqlite3.dbpath", filepath.Join(t.TempDir(), "mokey.db"))
 		viper.Set("groups.durations", []string{"8h", "7d", "30d", "90d"})
@@ -74,6 +75,8 @@ func TestUIPreviewServe(t *testing.T) {
 		d.add(fmt.Sprintf("demo%03d", i), ipatest.User{First: "Demo", Last: fmt.Sprintf("User %03d", i), Email: fmt.Sprintf("demo%03d@acme.local", i)}, "", time.Time{})
 	}
 	fake.AddGroup("chemists", ipatest.Group{Description: "Lab crew", ManagerUsers: []string{"walter"}, Members: []string{"walter", "skinny"}})
+	fake.AddGroup("lab-admins", ipatest.Group{Description: "Lab administrators", ManagerUsers: []string{"walter"}})
+	fake.AddGroup("visitors", ipatest.Group{ManagerUsers: []string{"walter"}})
 	fake.AddGroup("glee-club", ipatest.Group{Description: "After-hours choir", ManagerUsers: []string{"jesse"}})
 	fake.AddSubID(ipatest.SubID{Owner: "walter"})
 	fake.AddHBACRule("lab-access", ipatest.HBACRule{

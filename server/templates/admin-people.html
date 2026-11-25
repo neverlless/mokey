@@ -41,6 +41,26 @@
         <button class="btn btn-primary w-100 text-nowrap" type="submit">{{ T "admin.invite_button" }}</button>
       </div>
     </div>
+    {{ with $.invite_groups }}
+    <fieldset class="mt-3">
+      <legend class="form-label fs-6">{{ T "admin.invite_groups" }}</legend>
+      <p class="text-muted small mb-2">{{ T "admin.invite_groups_hint" }}</p>
+      {{ range $g := . }}
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" name="groups" value="{{ $g.Name }}" id="invite-group-{{ $g.Name }}">
+          <label class="form-check-label" for="invite-group-{{ $g.Name }}">{{ $g.Name }}{{ with $g.Description }} <span class="text-muted small">{{ . }}</span>{{ end }}</label>
+        </div>
+        {{ with $g.Durations }}
+        <label for="invite-duration-{{ $g.Name }}" class="visually-hidden">{{ T "groups.duration_label" }}</label>
+        <select class="form-select form-select-sm w-auto" name="duration_{{ $g.Name }}" id="invite-duration-{{ $g.Name }}">
+          {{ range . }}<option value="{{ .Value }}">{{ .Label }}</option>{{ end }}
+        </select>
+        {{ end }}
+      </div>
+      {{ end }}
+    </fieldset>
+    {{ end }}
     <p class="text-muted small mt-2 mb-0">{{ T "admin.invite_hint" }}</p>
   </form>
 </div>

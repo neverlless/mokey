@@ -190,3 +190,25 @@ func TestInviteAcceptStoreFailRollsBack(t *testing.T) {
 	assert.NotNil(t, fakeUser(fake, "kim"))
 	assert.NotContains(t, groupMembers(t, fake, "chemists"), "kim")
 }
+
+func TestAdminPeopleInviteGroupList(t *testing.T) {
+	tc, _, _, _ := inviteGroupsApp(t, true, true)
+	body := readBody(t, tc.get("/admin/people", htmx))
+	assert.Contains(t, body, `name="groups" value="chemists"`)
+	assert.NotContains(t, body, `value="admins"`)
+	assert.NotContains(t, body, `value="engineers"`)
+	assert.NotContains(t, body, `value="physics"`)
+	assert.Regexp(t, `name="duration_chemists"[^>]*>\s*<option value="">`+T("groups.no_end_date"), body)
+
+	// the form errors re-render keeps the list
+	resp := tc.postForm("/admin/invite", url.Values{"email": {"bad"}}, htmx)
+	assert.Contains(t, readBody(t, resp), `name="groups" value="chemists"`)
+
+	tc, _, _, _ = inviteGroupsApp(t, true, false)
+	body = readBody(t, tc.get("/admin/people", htmx))
+	assert.Contains(t, body, `name="groups" value="chemists"`)
+	assert.NotContains(t, body, "duration_chemists")
+
+	tc, _, _, _ = inviteGroupsApp(t, false, false)
+	assert.NotContains(t, readBody(t, tc.get("/admin/people", htmx)), `name="groups"`)
+}
